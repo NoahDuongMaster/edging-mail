@@ -32,7 +32,7 @@ export default function App() {
   const fetchStats = async () => {
     try {
       const res = await fetch('/api/stats');
-      const data = await res.json();
+      const data: any = await res.json();
       if (data.success && data.stats) {
         setStats(data.stats);
       }
@@ -50,7 +50,7 @@ export default function App() {
         q: searchQuery,
       });
       const res = await fetch(`/api/messages?${query.toString()}`);
-      const data = await res.json();
+      const data: any = await res.json();
       if (data.success) {
         setMessages(data.messages || []);
         // Auto-select first message if none selected or current selection missing
@@ -75,7 +75,7 @@ export default function App() {
     setIsLoadingMessage(true);
     try {
       const res = await fetch(`/api/messages/${id}`);
-      const data = await res.json();
+      const data: any = await res.json();
       if (data.success) {
         setCurrentMessage(data.message);
         setAttachments(data.attachments || []);
@@ -120,7 +120,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message_ids: ids, action }),
       });
-      const data = await res.json();
+      const data: any = await res.json();
       if (data.success) {
         fetchMessages();
         fetchStats();
