@@ -1,0 +1,48 @@
+{
+  "name": "edging-mail",
+  "version": "1.0.0",
+  "description": "100% Serverless Edge Webmail running on Cloudflare Workers, D1, R2, and Email Routing",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "worker:dev": "wrangler dev",
+    "db:migrate:local": "wrangler d1 execute DB --local --file=./schema.sql",
+    "db:migrate:remote": "wrangler d1 execute DB --remote --file=./schema.sql",
+    "deploy": "npm run build && wrangler deploy"
+  },
+  "keywords": [
+    "cloudflare",
+    "cloudflare-workers",
+    "webmail",
+    "email-routing",
+    "serverless",
+    "d1",
+    "r2",
+    "hono"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "hono": "^4.13.16",
+    "lucide-react": "^1.66.0",
+    "mimetext": "^3.0.28",
+    "postal-mime": "^4.2.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261103.1",
+    "@tailwindcss/vite": "^4.3.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.2.1",
+    "autoprefixer": "^10.6.2",
+    "postcss": "^8.5.32",
+    "tailwindcss": "^4.3.4",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "wrangler": "^4.156.2"
+  }
+}
