@@ -311,13 +311,15 @@ npx wrangler d1 create edging_mail_db
 npx wrangler r2 bucket create edging-mail-storage
 ```
 
-Paste the printed `database_id` into `d1_databases[0].database_id` in `wrangler.jsonc` (it holds `local-db-placeholder` until then). R2 needs an R2 subscription on the account; it is free to start ([R2 get started](https://developers.cloudflare.com/r2/get-started/)).
+Paste the printed `database_id` into `d1_databases[0].database_id` in `wrangler.jsonc`. The id in this repo belongs to the maintainer's account: if you fork the project, replace it with your own. An id is not a secret (it only works with your account's API token), but `wrangler deploy` refuses a binding without a real one (`binding DB of type d1 must have a valid database_id`, code 10021). R2 needs an R2 subscription on the account; it is free to start ([R2 get started](https://developers.cloudflare.com/r2/get-started/)).
 
 ### 2. Apply the migrations to the remote D1
 
 ```bash
 npm run db:migrate:remote
 ```
+
+**Deploying with Workers Builds (Git push):** the token Cloudflare creates for it has no D1 permission (Workers Scripts, KV, R2 and Routes only, see [Builds configuration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/#api-token)), so a build can neither create the database nor run migrations. Do steps 1 and 2 from your own machine, and run `npm run db:migrate:remote` again before you push a change that adds a `drizzle/NNNN_*.sql` file. If you would rather migrate in the build, add **D1 Edit** to the build token and set the deploy command to `npm run db:migrate:remote && npx wrangler deploy`.
 
 ### 3. Keys, secrets and vars
 

@@ -20,7 +20,7 @@
     {
       "binding": "DB",
       "database_name": "edging_mail_db",
-      "database_id": "local-db-placeholder",
+      "database_id": "1676eb5f-62e8-41cf-bb5f-555e8fdf3504",
       "migrations_dir": "drizzle"
     }
   ],
