@@ -14,12 +14,6 @@ APP_PASSWORD=CHANGE_ME
 #   openssl rand -hex 32
 JWT_SECRET=CHANGE_ME
 
-# Web Push (optional). All three must be set, otherwise notifications stay off.
-# Generate the key pair as described under "VAPID keys" in README.md.
-# VAPID_PUBLIC_KEY=
-# VAPID_PRIVATE_KEY=
-# VAPID_SUBJECT=mailto:you@yourdomain.com
-
 # Optional: override the defaults from `vars` in wrangler.jsonc.
 # APP_NAME="Edging Mail"
 # DEFAULT_FROM=hi@duongnamtruong.com

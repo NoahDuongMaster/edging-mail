@@ -38,7 +38,7 @@ flowchart LR
 | Inbound parser  | `src/worker/services/email-parser.ts` | Parses a raw message with `postal-mime`, stores the `.eml` and attachments in R2 and the rows in D1 |
 | Outbound sender | `src/worker/services/email-sender.ts` | Validates a send request, calls the `send_email` binding, stores the Sent copy                      |
 | `MailHub`       | `src/worker/realtime.ts`              | One Durable Object holding every open WebSocket; fans events out to them                            |
-| Web Push        | `src/worker/push.ts`                  | RFC 8291 payload encryption and RFC 8292 VAPID signing on WebCrypto, no library                     |
+| Web Push        | `src/worker/push.ts`                  | RFC 8291 encryption and RFC 8292 VAPID signing on WebCrypto, no library; creates its own key pair   |
 | Snooze release  | `src/worker/snooze.ts`                | Moves due snoozed mail back to the Inbox                                                            |
 | Database        | `src/worker/db/`                      | Drizzle schema and client for D1. Migrations live in `drizzle/` and are applied by Wrangler         |
 | React app       | `src/client/`                         | Single-page app built by Vite into `dist/client`, served by the Worker's static assets binding      |
@@ -86,6 +86,8 @@ The auth middleware is registered above every route so that a route added later 
 - `broadcast(env, event)` POSTs the event to the Durable Object, which sends it as JSON text to every socket and drops dead ones.
 - `notifyPush` encrypts a notification for each stored subscription and posts it to the browser's push service (`TTL: 86400`, `Urgency: high`, 8 s timeout, no
   redirects). `404`/`410` answers delete the subscription. At most 20 subscriptions are kept.
+- The VAPID key pair is created the first time push is needed and kept in `push_keys`. If `JWT_SECRET` changes, the stored pair is replaced and every subscription is
+  removed (see [Web Push keys](configuration.md#web-push-keys)). An install where nobody turns notifications on never creates a key.
 - The client reconnects with exponential backoff (1 s up to 30 s) and refetches when the tab becomes visible again, so a missed event is repaired.
 
 More in [Realtime, Web Push and PWA](pwa-and-push.md).
@@ -105,6 +107,7 @@ Defined in `src/worker/db/schema.ts`; the SQL is in `drizzle/`.
 | `attachments`        | One row per attachment: file name, type, size, `r2_key`, `content_id`, `is_inline`. Cascades when the message row is deleted                                                                  |
 | `settings`           | Key/value: `display_name`, `signature`, `default_from`, plus the internal `sessions_valid_after` marker                                                                                       |
 | `push_subscriptions` | One row per subscribed device: unique `endpoint`, `p256dh`, `auth`, `user_agent`, `last_success_at`                                                                                           |
+| `push_keys`          | One row (`id` 1): the VAPID `public_key` and the `private_key_sealed` (AES-256-GCM under a key derived from `JWT_SECRET`), created on first use                                               |
 | `login_attempts`     | Failed-login throttle: one row per client key and one `global` row                                                                                                                            |
 
 Folders are a text column on `messages`: `inbox`, `sent`, `archive`, `trash`, `spam`, `drafts`, `snoozed`. `starred` is a flag, shown as a view.

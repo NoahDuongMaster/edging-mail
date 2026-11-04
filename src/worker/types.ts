@@ -13,10 +13,6 @@ export interface Env {
   APP_PASSWORD?: string;
   /** HMAC key for the session cookie (secret). */
   JWT_SECRET?: string;
-  /** Web Push (VAPID): public key is a var, private key a secret. */
-  VAPID_PUBLIC_KEY?: string;
-  VAPID_PRIVATE_KEY?: string;
-  VAPID_SUBJECT?: string;
 }
 
 // Row types are derived from the Drizzle schema (src/worker/db/schema.ts).

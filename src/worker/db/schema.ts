@@ -85,6 +85,15 @@ export const pushSubscriptions = sqliteTable('push_subscriptions', {
   last_success_at: integer('last_success_at')
 });
 
+// Web Push (VAPID) key pair: created on first use by src/worker/push.ts, a single row with id 1.
+// The private half is AES-GCM sealed with a key derived from JWT_SECRET, so a copy of the database alone cannot sign pushes.
+export const pushKeys = sqliteTable('push_keys', {
+  id: integer('id').primaryKey(),
+  public_key: text('public_key').notNull(),
+  private_key_sealed: text('private_key_sealed').notNull(),
+  created_at: integer('created_at').notNull()
+});
+
 // Failed-login throttle (see src/worker/auth.ts): one row per client (CF-Connecting-IP, IPv6 as /64) plus one 'global' row.
 export const loginAttempts = sqliteTable('login_attempts', {
   key: text('key').primaryKey(),

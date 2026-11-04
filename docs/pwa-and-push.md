@@ -23,7 +23,7 @@ The WebSocket handshake is checked like any other request: it needs the session 
 ## Web Push
 
 Installed PWAs get a system notification when mail arrives, even with the app closed. The Worker encrypts each notification for the subscribed browser (RFC 8291
-`aes128gcm`) and signs the request with your VAPID key (RFC 8292). The push service (Google, Apple, Mozilla, Microsoft) only relays ciphertext. The notification contains:
+`aes128gcm`) and signs the request with a VAPID key (RFC 8292) that the Worker creates by itself. The push service (Google, Apple, Mozilla, Microsoft) only relays ciphertext. The notification contains:
 
 | Field   | Content                                                           |
 | ------- | ----------------------------------------------------------------- |
@@ -40,12 +40,13 @@ Snoozed mail that comes back also notifies: one notification each for up to 3 re
 
 ### Set it up
 
-1. Generate a VAPID key pair and store the three values as described in [Configuration](configuration.md#vapid-keys).
+1. Nothing to generate or configure. The Worker creates its VAPID key pair the first time push is needed and keeps it in D1, with the private half sealed
+   ([Configuration → Web Push keys](configuration.md#web-push-keys)). Existing installs only need the migrations (`0004_push_keys` adds the table).
 2. Deploy, open the app on each device and turn notifications on in **Settings → Notifications**. Send a test notification from there.
 
-Push needs a secure context (https, or `localhost` in development). If one of the three VAPID values is missing, push is off: `GET /api/push/public-key` answers
-`503 Push is not configured`, nothing is sent, and mail and realtime keep working. Changing the key pair invalidates existing subscriptions: turn notifications off
-and on again on each device.
+Push needs a secure context (https, or `localhost` in development). It also needs `JWT_SECRET`, which login needs anyway: without it `GET /api/push/public-key`,
+`subscribe` and `test` answer `503 Push is not configured` and nothing is sent. Changing `JWT_SECRET` replaces the key pair and removes every device, so turn
+notifications on again on each device; they show as off after the reset.
 
 - **iPhone and iPad:** Safari only allows Web Push for a web app that was added to the Home Screen (Share → Add to Home Screen), on iOS or iPadOS 16.4 or later. Open
   the installed app and enable notifications from there; in a normal Safari tab the option is unavailable.
@@ -80,8 +81,8 @@ The service worker is registered in production builds only, so the Vite dev serv
 
 | Symptom                                          | Check                                                                                                                                               |
 | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| "Push is not configured"                         | All of `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` must be set; the public key and subject are `vars`, the private key a secret        |
-| Notifications stopped after rotating VAPID keys  | Turn notifications off and on again on every device                                                                                                 |
+| "Push is not configured"                         | `JWT_SECRET` is missing. Set it, see [Configuration](configuration.md#variables-and-secrets); there is no separate Web Push setting                 |
+| Notifications stopped after `JWT_SECRET` change  | The push key was replaced and every device removed. Turn notifications off and on again on each device (they show as off after the reset)           |
 | No notifications on iPhone                       | Add the app to the Home Screen first and enable notifications from the installed app                                                                |
 | Live updates do not arrive                       | Check the WebSocket in the browser's network tab: `101` on `/api/ws`. A `403` means the `Origin` did not match; a `401` means signed out            |
 | A device keeps getting notifications after theft | Rotate `APP_PASSWORD` and `JWT_SECRET`, then run `DELETE FROM push_subscriptions` on the remote D1 (see [Security](security.md#if-something-leaks)) |

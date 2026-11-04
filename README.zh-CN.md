@@ -77,7 +77,7 @@ Edging Mail 是一个自托管的 webmail，部署在你自己的 Cloudflare 账
 
 - 通过 WebSocket 实时更新，连接由一个支持休眠的 Durable Object 持有。
 - 可安装的应用，离线也能打开（仅限应用外壳；邮件内容从不缓存）。
-- 使用你自己的 VAPID 密钥发送 Web Push 推送通知（RFC 8291 和 8292），无需任何第三方账号。在 iPhone 和 iPad 上，需要先把应用添加到主屏幕。
+- Web Push 推送通知（RFC 8291 和 8292）使用自动生成的 VAPID 密钥，无需任何配置，也无需第三方账号。在 iPhone 和 iPad 上，需要先把应用添加到主屏幕。
 - 键盘快捷键（`/` 搜索，`c` 写邮件，`j` 和 `k` 上下移动）、浅色和深色主题，手机上支持滑动归档。
 
 **安全**
@@ -154,15 +154,12 @@ curl -X POST "http://localhost:8787/cdn-cgi/handler/email?from=alice@example.org
 
 配置分布在三处：`wrangler.jsonc`（绑定和普通变量）、Worker secret（生产环境用 `wrangler secret put`，本地用 `.dev.vars`），以及应用内的**设置**页面（显示名称、签名、发件地址）。完整参考见 [docs/configuration.md](docs/configuration.md)。
 
-| 名称                | 类型   | 是否必填 | 约束                        | 用途                                                |
-| ------------------- | ------ | -------- | --------------------------- | --------------------------------------------------- |
-| `APP_PASSWORD`      | secret | 必填     | 至少 12 个字符              | 你在登录页输入的密码                                |
-| `JWT_SECRET`        | secret | 必填     | 至少 32 个字符              | 用来给会话 cookie 签名的随机密钥                    |
-| `DEFAULT_FROM`      | var    | 可选     | 不带显示名的邮箱地址        | 在你于设置中保存发件地址之前使用的发件地址          |
-| `APP_NAME`          | var    | 可选     | 默认 `Edging Mail`          | 出现在 `/api/health` 和部分推送通知标题中的产品名称 |
-| `VAPID_PUBLIC_KEY`  | var    | 推送必填 | base64url 编码的 P-256 公钥 | Web Push 密钥对的公钥部分                           |
-| `VAPID_SUBJECT`     | var    | 推送必填 | `mailto:` 或 `https://` URL | 推送服务用来联系你的方式                            |
-| `VAPID_PRIVATE_KEY` | secret | 推送必填 | base64url 编码的 P-256 私钥 | Web Push 密钥对的私钥部分                           |
+| 名称           | 类型   | 是否必填 | 约束                 | 用途                                                |
+| -------------- | ------ | -------- | -------------------- | --------------------------------------------------- |
+| `APP_PASSWORD` | secret | 必填     | 至少 12 个字符       | 你在登录页输入的密码                                |
+| `JWT_SECRET`   | secret | 必填     | 至少 32 个字符       | 用来给会话 cookie 签名的随机密钥                    |
+| `DEFAULT_FROM` | var    | 可选     | 不带显示名的邮箱地址 | 在你于设置中保存发件地址之前使用的发件地址          |
+| `APP_NAME`     | var    | 可选     | 默认 `Edging Mail`   | 出现在 `/api/health` 和部分推送通知标题中的产品名称 |
 
 | 绑定         | 类型                    | 用途                                   |
 | ------------ | ----------------------- | -------------------------------------- |
@@ -172,13 +169,7 @@ curl -X POST "http://localhost:8787/cdn-cgi/handler/email?from=alice@example.org
 | `ASSETS`     | 静态资源                | 构建好的 React 应用                    |
 | `MAIL_HUB`   | Durable Object 命名空间 | 实时 WebSocket 消息的广播分发          |
 
-缺少 `APP_PASSWORD` 或 `JWT_SECRET`（或者其中一个太短）时，登录接口会返回 `503`，其余接口一律无法访问。只有三个 VAPID 值全部设置好，推送才能工作。
-
-**VAPID 密钥**：Web Push 密钥对只需生成一次。把公钥和 subject 放在 `wrangler.jsonc` 的 `vars` 下（本地则放进 `.dev.vars`），私钥则作为 secret 保存：
-
-```bash
-node -e "const k=require('node:crypto').generateKeyPairSync('ec',{namedCurve:'P-256'}).privateKey.export({format:'jwk'});const b=(s)=>Buffer.from(s,'base64url');console.log('VAPID_PUBLIC_KEY='+Buffer.concat([Buffer.from([4]),b(k.x),b(k.y)]).toString('base64url'));console.log('VAPID_PRIVATE_KEY='+k.d)"
-```
+缺少 `APP_PASSWORD` 或 `JWT_SECRET`（或者其中一个太短）时，登录接口会返回 `503`，其余接口一律无法访问。Web Push 无需任何配置：密钥对会在首次使用时自动创建并保存在数据库中，并用由 `JWT_SECRET` 派生出的密钥加密。更换 `JWT_SECRET` 会重置该密钥对，所有设备都需要重新开启通知。
 
 ## 部署
 
@@ -190,7 +181,7 @@ node -e "const k=require('node:crypto').generateKeyPairSync('ec',{namedCurve:'P-
    npx wrangler d1 create edging_mail_db
    npx wrangler r2 bucket create edging-mail-storage
    ```
-3. **执行迁移并设置 secret**（如果要用推送，还要设置 VAPID 的值），然后部署：
+3. **执行迁移并设置 secret**，然后部署：
    ```bash
    npm run db:migrate:remote
    npx wrangler secret put APP_PASSWORD
@@ -200,7 +191,7 @@ node -e "const k=require('node:crypto').generateKeyPairSync('ec',{namedCurve:'P-
 4. **接收邮件**：在控制台（Compute → Email Service → Email Routing）中接入你的域名，并添加一条路由规则，动作选 _Send to a Worker_，目标选 `edging-mail`。在根域名上收信，需要在该域名上启用 Email Routing，它会接管该域名的 MX 记录。如果必须把 MX 记录留给其他服务商，就改为把某个地址转发到一个用于路由的子域名（维护者就是从 Proton 转发过来的）。
 5. **发送邮件**：在 Email Sending 下接入该域名。它目前处于 beta 阶段，向任意收件人发信需要 Workers Paid 套餐。
 
-**Workers Builds（push 到 git 时自动部署）**：Cloudflare 为它创建的 API token 没有 D1 权限，所以构建过程既不能创建数据库，也不能执行迁移。请自行完成第 2、3 步，并且在推送新增了 `drizzle/` 文件的改动之前，先重新执行一次迁移。
+**Workers Builds（push 到 git 时自动部署）**：想让每次 push 都自动迁移再部署，只需在 Cloudflare 控制台里一次性做两件事：给构建所用的 API token 加上 **Account → D1 → Edit** 权限（默认 token 没有 D1 权限），并把部署命令（deploy command）设为 `npm run db:migrate:remote && npx wrangler deploy`。否则请自行完成第 2、3 步，并且在推送新增了 `drizzle/` 文件的改动之前，先重新执行一次迁移。
 
 ## 架构
 
@@ -279,7 +270,7 @@ flowchart LR
 | `npm run dev`               | 运行在 `localhost:3000` 的 Vite 开发服务器，把 `/api` 代理到 Worker  |
 | `npm run build`             | `tsc -b && vite build`：先做类型检查，再打包到 `dist/client`         |
 | `npm run preview`           | `vite preview`：预览构建好的客户端                                   |
-| `npm run deploy`            | `npm run build && wrangler deploy`                                   |
+| `npm run deploy`            | `npm run build && npm run db:migrate:remote && wrangler deploy`      |
 | `npm run db:generate`       | `drizzle-kit generate`：根据 `schema.ts` 生成新的迁移                |
 | `npm run db:migrate:local`  | 把待执行的迁移应用到本地 D1                                          |
 | `npm run db:migrate:remote` | 把待执行的迁移应用到生产环境的 D1                                    |

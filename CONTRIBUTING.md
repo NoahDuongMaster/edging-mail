@@ -69,7 +69,7 @@ Short imperative subject, lower case after the type, and a body that says why wh
 ## Never commit secrets
 
 - Keep real values in `.dev.vars` (gitignored) or in Worker secrets. `.env*` files are gitignored too.
-- Do not paste passwords, `JWT_SECRET`, `VAPID_PRIVATE_KEY`, API tokens or real mail content into issues, pull requests, commits or screenshots.
+- Do not paste passwords, `JWT_SECRET`, API tokens or real mail content into issues, pull requests, commits or screenshots.
 - If you committed a secret by accident, treat it as leaked: rotate it first, then remove it from the history.
 
 ## License

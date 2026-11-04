@@ -78,7 +78,7 @@ container or queue to run.
 
 - Live updates over a WebSocket held by one hibernatable Durable Object.
 - Installable app that opens offline (app shell only; mail is never cached).
-- Web Push notifications with your own VAPID key (RFC 8291 and 8292), no third-party account needed. On iPhone and iPad, add the app to the Home Screen first.
+- Web Push notifications (RFC 8291 and 8292) with a VAPID key that is generated automatically: nothing to configure, no third-party account needed. On iPhone and iPad, add the app to the Home Screen first.
 - Keyboard shortcuts (`/` search, `c` compose, `j` and `k` to move), light and dark theme, swipe to archive on phones.
 
 **Security**
@@ -159,15 +159,12 @@ hot reload, run `npm run dev` next to `npm run worker:dev`; see [docs/developmen
 Configuration lives in `wrangler.jsonc` (bindings and plain variables), Worker secrets (`wrangler secret put` in production, `.dev.vars` locally) and the in-app
 **Settings** screen (display name, signature, sender address). Full reference: [docs/configuration.md](docs/configuration.md).
 
-| Name                | Kind   | Required | Constraint                  | Purpose                                                         |
-| ------------------- | ------ | -------- | --------------------------- | --------------------------------------------------------------- |
-| `APP_PASSWORD`      | secret | yes      | at least 12 characters      | The password you type on the login screen                       |
-| `JWT_SECRET`        | secret | yes      | at least 32 characters      | Random key that signs the session cookie                        |
-| `DEFAULT_FROM`      | var    | no       | a bare email address        | Sender address used until you save one in Settings              |
-| `APP_NAME`          | var    | no       | default `Edging Mail`       | Product name in `/api/health` and some push notification titles |
-| `VAPID_PUBLIC_KEY`  | var    | for push | base64url P-256 public key  | Web Push key pair, public half                                  |
-| `VAPID_SUBJECT`     | var    | for push | `mailto:` or `https://` URL | Contact for the push services                                   |
-| `VAPID_PRIVATE_KEY` | secret | for push | base64url P-256 private key | Web Push key pair, private half                                 |
+| Name           | Kind   | Required | Constraint             | Purpose                                                         |
+| -------------- | ------ | -------- | ---------------------- | --------------------------------------------------------------- |
+| `APP_PASSWORD` | secret | yes      | at least 12 characters | The password you type on the login screen                       |
+| `JWT_SECRET`   | secret | yes      | at least 32 characters | Random key that signs the session cookie                        |
+| `DEFAULT_FROM` | var    | no       | a bare email address   | Sender address used until you save one in Settings              |
+| `APP_NAME`     | var    | no       | default `Edging Mail`  | Product name in `/api/health` and some push notification titles |
 
 | Binding      | Type                     | Purpose                                        |
 | ------------ | ------------------------ | ---------------------------------------------- |
@@ -177,14 +174,7 @@ Configuration lives in `wrangler.jsonc` (bindings and plain variables), Worker s
 | `ASSETS`     | Static assets            | The built React app                            |
 | `MAIL_HUB`   | Durable Object namespace | Realtime WebSocket fan-out                     |
 
-Without `APP_PASSWORD` or `JWT_SECRET` (or with one that is too short) login answers `503` and nothing else is reachable. Push works only when all three VAPID values are set.
-
-**VAPID keys.** Generate the Web Push key pair once. Put the public key and the subject under `vars` in `wrangler.jsonc` (or in `.dev.vars` locally) and store the private
-key as a secret:
-
-```bash
-node -e "const k=require('node:crypto').generateKeyPairSync('ec',{namedCurve:'P-256'}).privateKey.export({format:'jwk'});const b=(s)=>Buffer.from(s,'base64url');console.log('VAPID_PUBLIC_KEY='+Buffer.concat([Buffer.from([4]),b(k.x),b(k.y)]).toString('base64url'));console.log('VAPID_PRIVATE_KEY='+k.d)"
-```
+Without `APP_PASSWORD` or `JWT_SECRET` (or with one that is too short) login answers `503` and nothing else is reachable. Web Push needs no configuration: the key pair is created on first use and kept in the database, sealed with a key derived from `JWT_SECRET`. Changing `JWT_SECRET` resets it, and every device turns notifications on again.
 
 ## Deploy
 
@@ -198,7 +188,7 @@ them first. The full walk-through, including DNS and Email Routing, is in [docs/
    npx wrangler d1 create edging_mail_db
    npx wrangler r2 bucket create edging-mail-storage
    ```
-3. **Migrate and set secrets** (plus the VAPID values if you want push), then deploy:
+3. **Migrate and set secrets**, then deploy:
    ```bash
    npm run db:migrate:remote
    npx wrangler secret put APP_PASSWORD
@@ -210,8 +200,9 @@ them first. The full walk-through, including DNS and Email Routing, is in [docs/
    forward one address to a routing subdomain instead (the maintainer forwards from Proton).
 5. **Send mail.** Onboard the domain under Email Sending. It is in beta, and sending to arbitrary recipients needs the Workers Paid plan.
 
-**Workers Builds (deploy on git push):** the API token Cloudflare creates for it has no D1 permission, so a build can neither create the database nor run migrations.
-Run steps 2 and 3 yourself, and migrate again before you push a change that adds a file to `drizzle/`.
+**Workers Builds (deploy on git push):** to migrate and deploy on every push, do two things once in the Cloudflare dashboard: add **Account → D1 → Edit** to the
+build's API token (the default token has no D1 permission) and set the deploy command to `npm run db:migrate:remote && npx wrangler deploy`. Without that, run
+steps 2 and 3 yourself and migrate again before you push a change that adds a file to `drizzle/`.
 
 ## Architecture
 
@@ -290,7 +281,7 @@ How the pieces fit, with the data flows and the data model, is in [docs/architec
 | `npm run dev`               | Vite dev server on `localhost:3000`, proxying `/api` to the Worker |
 | `npm run build`             | `tsc -b && vite build`: type-check, then bundle into `dist/client` |
 | `npm run preview`           | `vite preview`: serve the built client                             |
-| `npm run deploy`            | `npm run build && wrangler deploy`                                 |
+| `npm run deploy`            | `npm run build && npm run db:migrate:remote && wrangler deploy`    |
 | `npm run db:generate`       | `drizzle-kit generate`: new migration from `schema.ts`             |
 | `npm run db:migrate:local`  | Apply pending migrations to the local D1                           |
 | `npm run db:migrate:remote` | Apply pending migrations to the production D1                      |

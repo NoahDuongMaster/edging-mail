@@ -10,7 +10,7 @@ Hostnames below are placeholders: `mail.example.com` is the app, `example.com` i
 - [1. Make the repository yours](#1-make-the-repository-yours)
 - [2. Create the D1 database and the R2 bucket](#2-create-the-d1-database-and-the-r2-bucket)
 - [3. Apply the migrations](#3-apply-the-migrations)
-- [4. Keys, secrets and vars](#4-keys-secrets-and-vars)
+- [4. Secrets](#4-secrets)
 - [5. Deploy](#5-deploy)
 - [Receive mail (Email Routing)](#receive-mail-email-routing)
 - [Send mail from your domain](#send-mail-from-your-domain)
@@ -59,38 +59,36 @@ If you choose other names, change `database_name` and `bucket_name` in `wrangler
 npm run db:migrate:remote
 ```
 
-It is safe to repeat: Wrangler skips migrations it has already applied.
+It is safe to repeat: Wrangler skips migrations it has already applied. Migration `0004_push_keys` creates the table where Web Push keeps its key pair.
 
-**Deploying with Workers Builds (Git push):** the token Cloudflare creates for it has no D1 permission (Workers Scripts, KV, R2 and Routes only, see
-[Builds configuration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/#api-token)), so a build can neither create the database nor run
-migrations. Do steps 2 and 3 from your own machine, and run `npm run db:migrate:remote` again before you push a change that adds a `drizzle/NNNN_*.sql` file. If
-you would rather migrate in the build, add **D1 Edit** to the build token and set the deploy command to `npm run db:migrate:remote && npx wrangler deploy`.
+**Deploying with Workers Builds (Git push):** to migrate and deploy on every push, do two things once in the Cloudflare dashboard. First, add **Account → D1 → Edit**
+to the build's API token: the token Cloudflare creates by default has no D1 permission (Workers Scripts, KV, R2 and Routes only, see
+[Builds configuration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/#api-token)), so without it a build can neither create the database
+nor run migrations. Second, set **Settings → Builds → Deploy command** to `npm run db:migrate:remote && npx wrangler deploy`. The migration step runs before the
+deploy, and Wrangler skips migrations it has already applied, so it is safe on every push. If you would rather not give the build token D1 access, do steps 2 and 3
+from your own machine and run `npm run db:migrate:remote` again before you push a change that adds a `drizzle/NNNN_*.sql` file.
 
-## 4. Keys, secrets and vars
+## 4. Secrets
 
-Generate the VAPID key pair as shown in [Configuration → VAPID keys](configuration.md#vapid-keys) (skip it if you do not want push notifications). The public values
-go into `wrangler.jsonc` under `vars`; the secrets are stored with Wrangler:
-
-```jsonc
-"vars": { /* APP_NAME, DEFAULT_FROM, */ "VAPID_PUBLIC_KEY": "<printed public key>", "VAPID_SUBJECT": "mailto:you@example.com" }
-```
+The two secrets are stored with Wrangler. `APP_NAME` and `DEFAULT_FROM` are plain `vars` in `wrangler.jsonc`.
 
 ```bash
 npx wrangler secret put APP_PASSWORD         # at least 12 characters
 npx wrangler secret put JWT_SECRET           # at least 32 characters
-npx wrangler secret put VAPID_PRIVATE_KEY    # only with push
 ```
 
 The Worker does not exist before the first deploy, so the first `secret put` asks "Do you want to create a new Worker with that name and add secrets to it?":
 answer yes. That prompt comes from Wrangler itself. The deploy in step 5 replaces the empty Worker and keeps the secrets. Alternative: `npx wrangler deploy
 --secrets-file <json file>` uploads secrets together with the code ([Secrets](https://developers.cloudflare.com/workers/configuration/secrets/)).
 
-Until `APP_PASSWORD` and `JWT_SECRET` exist, login answers `503` and nothing else is reachable.
+Until `APP_PASSWORD` and `JWT_SECRET` exist, login answers `503` and nothing else is reachable. Web Push needs nothing else: the Worker creates its own key pair when
+notifications are first turned on ([Web Push keys](configuration.md#web-push-keys)). Because that key is sealed with `JWT_SECRET`, changing `JWT_SECRET` later resets
+push and every device has to turn notifications on again.
 
 ## 5. Deploy
 
 ```bash
-npm run deploy    # npm run build, then wrangler deploy
+npm run deploy    # npm run build, apply the migrations, then wrangler deploy
 ```
 
 Open `https://mail.example.com` and sign in. In the dashboard, **Workers & Pages → edging-mail → Settings → Domains & Routes** should list only your hostname. A new
@@ -186,7 +184,8 @@ npm run db:migrate:remote    # only needed when drizzle/ gained a new migration;
 npm run deploy
 ```
 
-`npm run deploy` rebuilds the client and runs `wrangler deploy`. Installed PWAs pick up the new version the next time they are brought to the front.
+`npm run deploy` rebuilds the client, applies pending migrations and runs `wrangler deploy`. Installed PWAs pick up the new version the next time they are brought to the front. Migrations
+go first because push reads its key pair from the `push_keys` table, which migration `0004_push_keys` creates.
 
 ## Cost and plan notes
 

@@ -570,9 +570,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
               <p style={{ ...muted, fontWeight: 600, color: t.text }}>2. Apply the migrations</p>
               <pre style={pre}>npm run db:migrate:remote</pre>
               <p style={{ ...muted, fontWeight: 600, color: t.text }}>3. Set the secrets (wrangler secret put)</p>
-              <pre
-                style={pre}
-              >{`npx wrangler secret put APP_PASSWORD\nnpx wrangler secret put JWT_SECRET\nnpx wrangler secret put VAPID_PRIVATE_KEY`}</pre>
+              <pre style={pre}>{`npx wrangler secret put APP_PASSWORD\nnpx wrangler secret put JWT_SECRET`}</pre>
               <p style={{ ...muted, fontWeight: 600, color: t.text }}>4. Deploy</p>
               <pre style={pre}>npm run deploy</pre>
             </div>

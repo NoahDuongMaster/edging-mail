@@ -28,6 +28,7 @@ Edging Mail is built for one owner who runs their own deployment.
 - **Not protected against:** Cloudflare itself and anyone with access to your Cloudflare account, who can read D1 and R2 directly. Mail is stored as received
   and is not end-to-end encrypted. Mail in transit between mail servers is as protected as those servers make it.
 - **Untrusted input:** every inbound message (headers, HTML, attachments, file names) is treated as hostile.
+- **Push key:** the Web Push private key sits in D1 sealed under a key derived from `JWT_SECRET`, so a database export alone cannot sign pushes.
 
 ## Login and sessions
 
@@ -102,11 +103,12 @@ Mail is untrusted, so the reader never runs it as part of the app.
   service sees ciphertext.
 - Subscriptions are accepted only for the real push services (`fcm.googleapis.com`, `*.push.services.mozilla.com`, `*.push.apple.com`, `*.notify.windows.com`), so
   a stolen session cannot point notifications at a server of the thief's choosing. Redirects from a push service are never followed.
-- The VAPID private key is a Worker secret.
+- The Web Push key pair is created by the Worker on first use. Its private half is stored in D1 (`push_keys`), sealed with AES-256-GCM under a key derived from
+  `JWT_SECRET`; it is not an environment variable. See [Web Push keys](configuration.md#web-push-keys).
 
 ## Secrets and logs
 
-- `APP_PASSWORD`, `JWT_SECRET` and `VAPID_PRIVATE_KEY` are Worker secrets (`wrangler secret put`) or, locally, entries in the gitignored `.dev.vars`. Never commit
+- `APP_PASSWORD` and `JWT_SECRET` are Worker secrets (`wrangler secret put`) or, locally, entries in the gitignored `.dev.vars`. Never commit
   them, and never paste them into an issue or pull request.
 - `.env*` and `.dev.vars` are in `.gitignore`. `.dev.vars.example` holds placeholders that are deliberately too short to log in with.
 - Error answers use the plain D1 message and drop the SQL parameters (addresses, subjects, draft text). Push logs name only the push service origin. The snooze cron
@@ -114,11 +116,12 @@ Mail is untrusted, so the reader never runs it as part of the app.
 
 ## If something leaks
 
-1. Replace `APP_PASSWORD` and `JWT_SECRET` (`npx wrangler secret put …`). Every existing session stops working at once because the signing key changes.
-2. Remove push subscriptions so no device keeps receiving notifications:
+1. Replace `APP_PASSWORD` and `JWT_SECRET` (`npx wrangler secret put …`). Every existing session stops working at once because the signing key changes. A new
+   `JWT_SECRET` also resets the push key: the next time push is needed the Worker creates a new pair and removes every registered device.
+2. To remove push subscriptions right away instead of at the next push, so no device keeps receiving notifications:
    `npx wrangler d1 execute DB --remote --command "DELETE FROM push_subscriptions"`.
-3. If the VAPID private key leaked, generate a new pair ([Configuration](configuration.md#vapid-keys)), update the var and the secret, and re-enable notifications on
-   your devices.
+3. If you suspect only the push key leaked, rotating `JWT_SECRET` (step 1) is the way to reset it: there is no separate command. Afterwards turn notifications on again
+   on your devices.
 4. If the Cloudflare API token leaked, roll it in the Cloudflare dashboard.
 
 ## Known limitations

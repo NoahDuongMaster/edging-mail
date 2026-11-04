@@ -82,7 +82,7 @@ Sending. Không có server, container hay hàng đợi nào để bạn phải v
 
 - Cập nhật trực tiếp qua WebSocket, do một Durable Object hỗ trợ hibernation đảm nhiệm.
 - Cài đặt được như một ứng dụng và mở được khi offline (chỉ app shell; thư không bao giờ bị cache).
-- Thông báo Web Push dùng khóa VAPID của riêng bạn (RFC 8291 và 8292), không cần tài khoản của bên thứ ba. Trên iPhone và iPad, hãy thêm ứng dụng vào Màn hình chính
+- Thông báo Web Push (RFC 8291 và 8292) với khóa VAPID được tạo tự động: không cần cấu hình gì, không cần tài khoản của bên thứ ba. Trên iPhone và iPad, hãy thêm ứng dụng vào Màn hình chính
   (Home Screen) trước.
 - Phím tắt (`/` tìm kiếm, `c` soạn thư, `j` và `k` để di chuyển), giao diện sáng và tối, vuốt để archive thư trên điện thoại.
 
@@ -165,15 +165,12 @@ hãy chạy `npm run dev` song song với `npm run worker:dev`; xem [docs/develo
 Cấu hình nằm ở `wrangler.jsonc` (binding và các biến thông thường), secret của Worker (`wrangler secret put` trên production, `.dev.vars` ở local) và màn hình
 **Settings** trong ứng dụng (tên hiển thị, chữ ký, địa chỉ người gửi). Tài liệu tham chiếu đầy đủ: [docs/configuration.md](docs/configuration.md).
 
-| Tên                 | Loại   | Bắt buộc      | Ràng buộc                           | Mục đích                                                                 |
-| ------------------- | ------ | ------------- | ----------------------------------- | ------------------------------------------------------------------------ |
-| `APP_PASSWORD`      | secret | có            | ít nhất 12 ký tự                    | Mật khẩu bạn nhập ở màn hình đăng nhập                                   |
-| `JWT_SECRET`        | secret | có            | ít nhất 32 ký tự                    | Khóa ngẫu nhiên dùng để ký cookie phiên                                  |
-| `DEFAULT_FROM`      | var    | không         | một địa chỉ email thuần             | Địa chỉ người gửi dùng cho đến khi bạn lưu một địa chỉ trong Settings    |
-| `APP_NAME`          | var    | không         | mặc định `Edging Mail`              | Tên sản phẩm trong `/api/health` và tiêu đề của một số push notification |
-| `VAPID_PUBLIC_KEY`  | var    | khi dùng push | khóa công khai P-256 dạng base64url | Cặp khóa Web Push, nửa công khai                                         |
-| `VAPID_SUBJECT`     | var    | khi dùng push | URL `mailto:` hoặc `https://`       | Thông tin liên hệ dành cho các dịch vụ push                              |
-| `VAPID_PRIVATE_KEY` | secret | khi dùng push | khóa riêng tư P-256 dạng base64url  | Cặp khóa Web Push, nửa riêng tư                                          |
+| Tên            | Loại   | Bắt buộc | Ràng buộc               | Mục đích                                                                 |
+| -------------- | ------ | -------- | ----------------------- | ------------------------------------------------------------------------ |
+| `APP_PASSWORD` | secret | có       | ít nhất 12 ký tự        | Mật khẩu bạn nhập ở màn hình đăng nhập                                   |
+| `JWT_SECRET`   | secret | có       | ít nhất 32 ký tự        | Khóa ngẫu nhiên dùng để ký cookie phiên                                  |
+| `DEFAULT_FROM` | var    | không    | một địa chỉ email thuần | Địa chỉ người gửi dùng cho đến khi bạn lưu một địa chỉ trong Settings    |
+| `APP_NAME`     | var    | không    | mặc định `Edging Mail`  | Tên sản phẩm trong `/api/health` và tiêu đề của một số push notification |
 
 | Binding      | Loại                     | Mục đích                                |
 | ------------ | ------------------------ | --------------------------------------- |
@@ -183,15 +180,8 @@ Cấu hình nằm ở `wrangler.jsonc` (binding và các biến thông thường
 | `ASSETS`     | Static asset             | Ứng dụng React đã build                 |
 | `MAIL_HUB`   | Durable Object namespace | Fan-out WebSocket realtime              |
 
-Thiếu `APP_PASSWORD` hoặc `JWT_SECRET` (hoặc một trong hai quá ngắn) thì đăng nhập trả về `503` và không truy cập được gì khác. Push chỉ hoạt động khi cả ba giá trị VAPID
-đều được đặt.
-
-**Khóa VAPID.** Chỉ cần tạo cặp khóa Web Push một lần. Đặt khóa công khai và subject vào `vars` trong `wrangler.jsonc` (hoặc trong `.dev.vars` ở local), còn khóa
-riêng tư thì lưu dưới dạng secret:
-
-```bash
-node -e "const k=require('node:crypto').generateKeyPairSync('ec',{namedCurve:'P-256'}).privateKey.export({format:'jwk'});const b=(s)=>Buffer.from(s,'base64url');console.log('VAPID_PUBLIC_KEY='+Buffer.concat([Buffer.from([4]),b(k.x),b(k.y)]).toString('base64url'));console.log('VAPID_PRIVATE_KEY='+k.d)"
-```
+Thiếu `APP_PASSWORD` hoặc `JWT_SECRET` (hoặc một trong hai quá ngắn) thì đăng nhập trả về `503` và không truy cập được gì khác. Web Push không cần cấu hình: cặp khóa được tạo ở lần dùng đầu tiên và lưu trong database, được mã hóa bằng một khóa dẫn xuất từ `JWT_SECRET`.
+Đổi `JWT_SECRET` sẽ đặt lại cặp khóa này, và mọi thiết bị phải bật lại thông báo.
 
 ## Deploy
 
@@ -205,7 +195,7 @@ trước. Hướng dẫn đầy đủ, gồm cả DNS và Email Routing, nằm t
    npx wrangler d1 create edging_mail_db
    npx wrangler r2 bucket create edging-mail-storage
    ```
-3. **Migrate và đặt secret** (thêm các giá trị VAPID nếu bạn muốn dùng push), rồi deploy:
+3. **Migrate và đặt secret**, rồi deploy:
    ```bash
    npm run db:migrate:remote
    npx wrangler secret put APP_PASSWORD
@@ -217,8 +207,9 @@ trước. Hướng dẫn đầy đủ, gồm cả DNS và Email Routing, nằm t
    cung cấp khác cần giữ các bản ghi đó, hãy forward một địa chỉ sang một subdomain dùng cho routing (maintainer forward từ Proton).
 5. **Gửi thư.** Onboard domain trong mục Email Sending. Dịch vụ này đang ở giai đoạn beta, và muốn gửi tới người nhận bất kỳ thì cần gói Workers Paid.
 
-**Workers Builds (deploy khi git push):** API token mà Cloudflare tạo cho tính năng này không có quyền D1, nên một lần build không thể tạo database cũng như chạy migration.
-Hãy tự làm bước 2 và 3, và migrate lại trước khi push một thay đổi có thêm file vào `drizzle/`.
+**Workers Builds (deploy khi git push):** để mỗi lần push đều tự migrate rồi deploy, hãy làm hai việc một lần trong dashboard Cloudflare: thêm quyền **Account → D1 → Edit**
+cho API token của lần build (token mặc định không có quyền D1) và đặt deploy command thành `npm run db:migrate:remote && npx wrangler deploy`. Nếu không, hãy tự làm
+bước 2 và 3, và migrate lại trước khi push một thay đổi có thêm file vào `drizzle/`.
 
 ## Kiến trúc
 
@@ -297,7 +288,7 @@ Cách các thành phần khớp với nhau, kèm luồng dữ liệu và mô hì
 | `npm run dev`               | Vite dev server tại `localhost:3000`, proxy `/api` tới Worker              |
 | `npm run build`             | `tsc -b && vite build`: kiểm tra kiểu, rồi bundle vào `dist/client`        |
 | `npm run preview`           | `vite preview`: chạy bản client đã build                                   |
-| `npm run deploy`            | `npm run build && wrangler deploy`                                         |
+| `npm run deploy`            | `npm run build && npm run db:migrate:remote && wrangler deploy`            |
 | `npm run db:generate`       | `drizzle-kit generate`: tạo migration mới từ `schema.ts`                   |
 | `npm run db:migrate:local`  | Áp dụng các migration đang chờ vào D1 local                                |
 | `npm run db:migrate:remote` | Áp dụng các migration đang chờ vào D1 production                           |

@@ -3,15 +3,14 @@
 Configuration lives in three places:
 
 1. **`wrangler.jsonc`**: bindings, the route and non-secret variables. Committed.
-2. **Worker secrets**: the password, the cookie signing key and the VAPID private key. Set with `wrangler secret put` in production and `.dev.vars` locally. Never
-   committed.
+2. **Worker secrets**: the password and the cookie signing key. Set with `wrangler secret put` in production and `.dev.vars` locally. Never committed.
 3. **The Settings screen**: display name, signature and default sender, stored in D1.
 
 - [Bindings](#bindings)
 - [Variables and secrets](#variables-and-secrets)
 - [Local development: `.dev.vars`](#local-development-devvars)
 - [Generating values](#generating-values)
-- [VAPID keys](#vapid-keys)
+- [Web Push keys](#web-push-keys)
 - [Settings in the app](#settings-in-the-app)
 - [`wrangler.jsonc` reference](#wranglerjsonc-reference)
 - [What a fork must change](#what-a-fork-must-change)
@@ -22,7 +21,7 @@ Declared in `wrangler.jsonc`, typed in `src/worker/types.ts` (`Env`).
 
 | Binding      | Kind                         | Value in this repo                                                                | Purpose                                                    |
 | ------------ | ---------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `DB`         | D1 database                  | `edging_mail_db`, `migrations_dir: "drizzle"`                                     | Mail index, settings, push subscriptions, login throttle   |
+| `DB`         | D1 database                  | `edging_mail_db`, `migrations_dir: "drizzle"`                                     | Mail, settings, push subscriptions and key, login throttle |
 | `BUCKET`     | R2 bucket                    | `edging-mail-storage`                                                             | Raw `.eml` files and attachments                           |
 | `SEND_EMAIL` | `send_email` (Email Sending) | declared without restrictions                                                     | Outbound mail. Optional: without it, sending answers `502` |
 | `ASSETS`     | Static assets                | `./dist/client`, single-page-application fallback, `run_worker_first: ["/api/*"]` | Serves the built React app                                 |
@@ -32,18 +31,15 @@ Inbound mail needs no binding: Email Routing calls the Worker's `email()` handle
 
 ## Variables and secrets
 
-| Name                | Kind   | Required | Constraint                   | Purpose                                                                                               |
-| ------------------- | ------ | -------- | ---------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `APP_PASSWORD`      | secret | yes      | at least 12 characters       | The password you type on the login screen                                                             |
-| `JWT_SECRET`        | secret | yes      | at least 32 characters       | Random key that signs the session cookie                                                              |
-| `DEFAULT_FROM`      | var    | no       | a bare email address         | Sender address used until you save one in Settings                                                    |
-| `APP_NAME`          | var    | no       | default `Edging Mail`        | Product name in `GET /api/health` and in the titles of the test and snooze-summary push notifications |
-| `VAPID_PUBLIC_KEY`  | var    | for push | base64url, 65-byte P-256 key | Public half of the Web Push key pair                                                                  |
-| `VAPID_SUBJECT`     | var    | for push | `mailto:` or `https://` URL  | Contact for the push services (RFC 8292)                                                              |
-| `VAPID_PRIVATE_KEY` | secret | for push | base64url, 32 bytes          | Private half of the key pair                                                                          |
+| Name           | Kind   | Required | Constraint             | Purpose                                                                                               |
+| -------------- | ------ | -------- | ---------------------- | ----------------------------------------------------------------------------------------------------- |
+| `APP_PASSWORD` | secret | yes      | at least 12 characters | The password you type on the login screen                                                             |
+| `JWT_SECRET`   | secret | yes      | at least 32 characters | Random key that signs the session cookie                                                              |
+| `DEFAULT_FROM` | var    | no       | a bare email address   | Sender address used until you save one in Settings                                                    |
+| `APP_NAME`     | var    | no       | default `Edging Mail`  | Product name in `GET /api/health` and in the titles of the test and snooze-summary push notifications |
 
 - Without `APP_PASSWORD` or `JWT_SECRET`, or with one that is too short, login answers `503` and nothing else is reachable.
-- Push works only when all three VAPID values are set. If one is missing, push is off and mail and realtime keep working.
+- Web Push has no variables of its own: the Worker creates its key pair itself, see [Web Push keys](#web-push-keys).
 - `APP_NAME` is not used for the page title, the PWA manifest or the Settings screen: those are static (`index.html`, `public/manifest.webmanifest`). Edit them if you
   rebrand.
 - A plain `wrangler deploy` deletes variables that exist only in the dashboard (unless you pass `--keep-vars`), so keep `vars` in `wrangler.jsonc`.
@@ -58,7 +54,7 @@ npm run worker:dev
 ```
 
 The template contains `APP_PASSWORD=CHANGE_ME` and `JWT_SECRET=CHANGE_ME`. They are too short on purpose: until you replace them, login answers `503` instead of
-accepting a password everybody can read on GitHub. The VAPID entries and the `APP_NAME` / `DEFAULT_FROM` overrides are commented out.
+accepting a password everybody can read on GitHub. The `APP_NAME` / `DEFAULT_FROM` overrides are commented out.
 
 You can also pass values on the command line instead of using a file:
 
@@ -78,26 +74,28 @@ Production secrets are stored with Wrangler and prompted for, so they never touc
 ```bash
 npx wrangler secret put APP_PASSWORD
 npx wrangler secret put JWT_SECRET
-npx wrangler secret put VAPID_PRIVATE_KEY
 ```
 
-## VAPID keys
+## Web Push keys
 
-Generate a key pair once:
+Nothing to configure. Web Push signs its requests with a VAPID key pair (RFC 8292), and the Worker creates that pair itself the first time push is needed: the first
+`GET /api/push/public-key` (the notification switch in **Settings**), `POST /api/push/subscribe`, `POST /api/push/test`, or an inbound mail while at least one device
+is subscribed. An install where nobody turns notifications on never creates a key.
 
-```bash
-node -e "const k=require('node:crypto').generateKeyPairSync('ec',{namedCurve:'P-256'}).privateKey.export({format:'jwk'});const b=(s)=>Buffer.from(s,'base64url');console.log('VAPID_PUBLIC_KEY='+Buffer.concat([Buffer.from([4]),b(k.x),b(k.y)]).toString('base64url'));console.log('VAPID_PRIVATE_KEY='+k.d)"
-```
+| Part                            | How it works                                                                                                                                                                              |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Where it lives                  | D1 table `push_keys`, a single row with `id` 1 (`public_key`, `private_key_sealed`, `created_at`). Migration `0004_push_keys` creates the table                                           |
+| How the private half is stored  | Sealed with AES-256-GCM. The key is derived from `JWT_SECRET` with HKDF-SHA256, and the public key is the associated data. A copy of the database alone cannot sign pushes                |
+| Contact claim (`sub`, RFC 8292) | `mailto:` plus the sender address saved in Settings; else the `DEFAULT_FROM` var; else, when neither is a valid address, the project URL `https://github.com/NoahDuongMaster/edging-mail` |
+| Without `JWT_SECRET`            | Push is unavailable: `public-key`, `subscribe` and `test` answer `503 Push is not configured`, and no key is created. An inbound mail is never refused because of push                    |
 
-| Name                | Kind   | Value                                                                              |
-| ------------------- | ------ | ---------------------------------------------------------------------------------- |
-| `VAPID_PUBLIC_KEY`  | var    | the printed public key; add it under `vars` in `wrangler.jsonc`                    |
-| `VAPID_SUBJECT`     | var    | `mailto:you@yourdomain.com` (or an `https://` URL); add it under `vars` as well    |
-| `VAPID_PRIVATE_KEY` | secret | the printed private key: `npx wrangler secret put VAPID_PRIVATE_KEY`, never commit |
+**Changing `JWT_SECRET`** already signs everybody out, and it also makes the stored pair unreadable. The next time push is needed the Worker creates a new pair and
+removes every registered device, because the push services would refuse subscriptions made for the old key. Afterwards each device shows notifications as off: turn
+them on again in **Settings → Notifications**. Changing `APP_PASSWORD` alone does not touch the push key.
 
-Locally, put the three values in `.dev.vars`, or pass `--var VAPID_PUBLIC_KEY:… --var VAPID_PRIVATE_KEY:… --var VAPID_SUBJECT:mailto:…`.
-
-Changing the key pair invalidates existing subscriptions: turn notifications off and on again on each device. More in
+**Upgrading from a version where you generated the key by hand:** run `npm run db:migrate:remote` before the new code serves push (`npm run deploy` does it, and so does the Workers Builds
+deploy command described in [Deployment](deployment.md)). The hand-made key and the vars and secret that held it are no longer read and can be deleted. The Worker
+generates a new pair and removes the devices registered under the old one, so turn notifications on again on each device. More in
 [Realtime, Web Push and PWA](pwa-and-push.md).
 
 ## Settings in the app
@@ -125,7 +123,7 @@ The sender of a mail is the first of: the `from` of the request, the saved `defa
 | `dev.host`                                   | `localhost`                                 | Without it `wrangler dev` tells the Worker its URL is the `routes` hostname, and the WebSocket `Origin` check then refuses the Vite dev server |
 | `triggers.crons`                             | `["* * * * *"]`                             | Every minute: returns due snoozed mail                                                                                                         |
 | `migrations`                                 | tag `v1`, `new_sqlite_classes: ["MailHub"]` | Durable Object class migration                                                                                                                 |
-| `vars`                                       | `APP_NAME`, `DEFAULT_FROM`                  | Non-secret variables; add the two VAPID vars here                                                                                              |
+| `vars`                                       | `APP_NAME`, `DEFAULT_FROM`                  | Non-secret variables                                                                                                                           |
 
 ## What a fork must change
 

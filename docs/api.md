@@ -224,8 +224,9 @@ Errors are `400` with: `Body must be an object of settings`, `Unknown setting: <
 
 ## Web Push
 
-All routes are behind the login cookie. Push needs `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT`; without them `public-key`, `subscribe` and
-`test` answer `503 "Push is not configured"`. Bodies are limited to 4096 characters (`413`).
+All routes are behind the login cookie. There is nothing to configure: the Worker creates its VAPID key pair the first time push needs it
+([Web Push keys](configuration.md#web-push-keys)). Only without `JWT_SECRET` do `public-key`, `subscribe` and `test` answer `503 "Push is not configured"`. Bodies are
+limited to 4096 characters (`413`).
 
 | Route                        | Body                                           | Answer                                                               |
 | ---------------------------- | ---------------------------------------------- | -------------------------------------------------------------------- |
@@ -234,6 +235,9 @@ All routes are behind the login cookie. Push needs `VAPID_PUBLIC_KEY`, `VAPID_PR
 | `POST /api/push/unsubscribe` | `{ "endpoint" }`                               | `{ "success": true }` (also when it was not subscribed)              |
 | `POST /api/push/status`      | `{ "endpoint" }`                               | `{ "success": true, "subscribed": true \| false }`                   |
 | `POST /api/push/test`        |                                                | `{ "success": true, "sent": n, "failed": n, "removed": n }`          |
+
+`GET /api/push/public-key` creates the key pair on the first call and returns the same key afterwards; `subscribe` and `test` create it too when it does not exist yet.
+`unsubscribe` and `status` never need the key, so they do not answer `503`.
 
 `subscribe` validation (all `400`): `endpoint` is required, at most 2048 characters, a valid URL, without credentials, and `https` on a known push service
 (`fcm.googleapis.com`, `updates.push.services.mozilla.com` or another `*.push.services.mozilla.com`, `*.push.apple.com`, `*.notify.windows.com`); plain `http`
