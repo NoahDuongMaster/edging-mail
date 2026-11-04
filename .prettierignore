@@ -1,0 +1,9 @@
+dist
+node_modules
+.wrangler
+drizzle
+package-lock.json
+tsconfig.tsbuildinfo
+vite.verify.config.ts
+public
+*.sql

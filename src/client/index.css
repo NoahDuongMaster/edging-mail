@@ -1,22 +1,251 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
-@layer base {
-  * {
-    scrollbar-width: thin;
-    scrollbar-color: #334155 transparent;
+:root {
+  --accent: #2f5bea;
+  --line: #e3e6eb;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family:
+    'Geist',
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  -webkit-font-smoothing: antialiased;
+  background: #f4f5f7;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+button {
+  font-family: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Thin, quiet scrollbars that follow the active theme */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border, #e3e6eb) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border, #e3e6eb);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong, #d2d6dd);
+}
+
+.nm-hide-scrollbar {
+  scrollbar-width: none;
+}
+.nm-hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* On short screens the sidebar scrolls instead of squashing its buttons */
+.nm-sidebar > * {
+  flex-shrink: 0;
+}
+
+@keyframes nm-spin {
+  to {
+    transform: rotate(360deg);
   }
-  *::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+}
+.nm-spin {
+  animation: nm-spin 0.8s linear infinite;
+}
+
+@keyframes nm-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
   }
-  *::-webkit-scrollbar-track {
-    background: transparent;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
-  *::-webkit-scrollbar-thumb {
-    background: #334155;
-    border-radius: 9999px;
+}
+.nm-fade-in {
+  animation: nm-fade-in 0.18s ease-out;
+}
+
+@media (max-width: 640px) {
+  .nm-hide-sm {
+    display: none !important;
   }
-  *::-webkit-scrollbar-thumb:hover {
-    background: #475569;
+  .nm-compose-head {
+    flex-wrap: nowrap !important;
   }
+  /* Four tab labels do not fit side by side on a phone: a 2x2 grid instead of a scrolling row */
+  .nm-settings-tabs {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* Settings footer: a sign-out message gets its own full-width row under Sign out and Close, so neither button is ever squeezed */
+  .nm-settings-foot-msg {
+    order: 1;
+    flex: 1 1 100% !important;
+  }
+}
+
+/* At 320px a tab cell is 125px wide: 'Email routing & MX' (118.6px selected, 13px Geist 600) needs 2 lines. 12px with 4px
+   side padding needs 109.5 of 117px. The selected label stops fitting 13px/10px below 348px, hence 350. */
+@media (max-width: 350px) {
+  .nm-settings-tab {
+    font-size: 12px !important;
+    padding-inline: 4px !important;
+  }
+}
+
+/* Touch screens scroll by dragging; the 8px custom scrollbar would cut a strip off the compose card */
+@media (max-width: 900px) {
+  .nm-compose-scroll {
+    scrollbar-width: none;
+  }
+  .nm-compose-scroll::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Phone tap targets (44px). Class names go on the control; desktop keeps its inline sizes. */
+@media (max-width: 900px) {
+  .nm-tap {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .nm-tap-h {
+    min-height: 44px;
+  }
+  /* Dense toolbars keep their visual size and only grow the hit area. */
+  .nm-tap-ext {
+    position: relative;
+  }
+  .nm-tap-ext::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+  }
+}
+
+/* Reader toolbar on phones: seven buttons (44px high) in ONE row. They are 44px wide while the row has room and share it when it
+   has not (320px: 43px, never under 40px); under 351px the side padding and the divider's margin go as well. */
+.nm-bar > button,
+.nm-bar > div {
+  flex: 0 1 44px;
+  min-width: 40px;
+}
+.nm-bar .nm-tap {
+  min-width: 40px;
+}
+.nm-bar-sep {
+  flex: none;
+}
+@media (max-width: 350px) {
+  .nm-bar {
+    padding-inline: 0 !important;
+  }
+  .nm-bar-sep {
+    margin-inline: 0 !important;
+  }
+}
+
+/* Desktop reader toolbar on a touch screen (a landscape tablet is wider than 900px): 44px high targets, the widths stay. */
+@media (pointer: coarse) {
+  .nm-bar-d > button,
+  .nm-bar-d > div > button {
+    min-height: 44px;
+  }
+}
+
+/* iOS Safari zooms into any focused field under 16px. Pinch zoom is allowed (index.html), so keep fields at 16px on phones. */
+@media (max-width: 900px) {
+  input,
+  select,
+  textarea,
+  .nm-editor {
+    font-size: 16px !important;
+  }
+}
+
+/* Rich-text compose editor */
+.nm-editor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--placeholder, #6a717d);
+  pointer-events: none;
+}
+.nm-editor blockquote {
+  margin: 0 0 12px 12px;
+  padding-left: 12px;
+  border-left: 2px solid var(--line);
+  color: var(--text2, #535a66);
+}
+/* Tailwind's reset removes list markers and indent; the toolbar's bulleted and numbered lists need them back */
+.nm-editor ul,
+.nm-editor ol {
+  margin: 0 0 12px;
+  padding-left: 24px;
+}
+.nm-editor ul {
+  list-style: disc;
+}
+.nm-editor ol {
+  list-style: decimal;
+}
+.nm-editor h3 {
+  font-size: 19px;
+  line-height: 26px;
+  margin: 0 0 12px;
+}
+.nm-editor h4 {
+  font-size: 16px;
+  line-height: 24px;
+  margin: 0 0 10px;
+}
+
+/* Email body rendering inside the reader (sandboxed iframe) */
+.nm-mail-body {
+  font-family:
+    'Geist',
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  font-size: 15px;
+  line-height: 24px;
+  color: inherit;
+  word-break: break-word;
+}
+.nm-body-html img {
+  max-width: 100%;
+  height: auto;
 }

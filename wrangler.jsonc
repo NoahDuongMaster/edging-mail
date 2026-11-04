@@ -4,16 +4,24 @@
   "main": "src/worker/index.ts",
   "compatibility_date": "2024-09-23",
   "compatibility_flags": ["nodejs_compat"],
+  "routes": [{ "pattern": "mail.duongnamtruong.com", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false,
+  // `wrangler dev` only: without this the Worker is told its URL is mail.duongnamtruong.com (inferred from `routes`),
+  // which makes the WebSocket Origin check refuse the Vite dev server (http://localhost:<port>).
+  "dev": { "host": "localhost" },
   "assets": {
     "directory": "./dist/client",
     "binding": "ASSETS",
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
   },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "edging_mail_db",
-      "database_id": "local-db-placeholder"
+      "database_id": "local-db-placeholder",
+      "migrations_dir": "drizzle"
     }
   ],
   "r2_buckets": [
@@ -27,8 +35,13 @@
       "name": "SEND_EMAIL"
     }
   ],
+  "durable_objects": {
+    "bindings": [{ "name": "MAIL_HUB", "class_name": "MailHub" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["MailHub"] }],
+  "triggers": { "crons": ["* * * * *"] },
   "vars": {
     "APP_NAME": "Edging Mail",
-    "DEFAULT_DOMAIN": "example.com"
+    "DEFAULT_FROM": "hi@duongnamtruong.com"
   }
 }

@@ -13,7 +13,14 @@ export interface Message {
   body_text?: string | null;
   body_html?: string | null;
   r2_key?: string | null;
-  folder: 'inbox' | 'sent' | 'starred' | 'archive' | 'trash' | 'spam';
+  folder: 'inbox' | 'sent' | 'starred' | 'archive' | 'trash' | 'spam' | 'drafts' | 'snoozed';
+  labels?: string | null;
+  /** Header `References`: the Message-ID chain of the thread so far. */
+  references_header?: string | null;
+  /** Message-ID this mail answers. */
+  in_reply_to?: string | null;
+  /** Epoch ms a snoozed mail comes back; set only while folder is 'snoozed'. */
+  snoozed_until?: number | null;
   is_read: number;
   is_starred: number;
   has_attachments: number;
@@ -34,9 +41,10 @@ export interface Attachment {
   created_at: number;
 }
 
-export interface FolderStats {
-  [folder: string]: {
+export type FolderStats = Record<
+  string,
+  {
     total: number;
     unread: number;
-  };
-}
+  }
+>;

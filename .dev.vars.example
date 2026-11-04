@@ -1,0 +1,25 @@
+# Local secrets for `npm run worker:dev` (wrangler dev reads `.dev.vars`).
+# Copy this file to `.dev.vars` (gitignored) and replace every value. Never commit real values.
+#
+#   cp .dev.vars.example .dev.vars
+#
+# The placeholders below are deliberately too short: until you replace them, login answers
+# 503 "Login is not configured" instead of accepting a password everybody can read here.
+
+# The password you type on the login screen. At least 12 characters.
+#   openssl rand -base64 24
+APP_PASSWORD=CHANGE_ME
+
+# Key that signs the session cookie. At least 32 characters.
+#   openssl rand -hex 32
+JWT_SECRET=CHANGE_ME
+
+# Web Push (optional). All three must be set, otherwise notifications stay off.
+# Generate the key pair as described under "VAPID keys" in README.md.
+# VAPID_PUBLIC_KEY=
+# VAPID_PRIVATE_KEY=
+# VAPID_SUBJECT=mailto:you@yourdomain.com
+
+# Optional: override the defaults from `vars` in wrangler.jsonc.
+# APP_NAME="Edging Mail"
+# DEFAULT_FROM=hi@duongnamtruong.com
