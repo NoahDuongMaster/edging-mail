@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS `messages` (
 -- `messages.labels` column and the IF NOT EXISTS above skipped it, and Drizzle's
 -- quoted "labels" would then read back as the string 'labels' instead of failing.
 -- No-op on healthy databases; fails with "no such column: labels" on legacy ones.
--- Fix: see "Legacy databases" in README.md, then re-run the migration.
+-- Fix: see "Legacy databases" in docs/development.md, then re-run the migration.
 UPDATE messages SET labels = '[]' WHERE labels IS NULL;
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS `idx_messages_folder_created_at` ON `messages` (`folder`,"created_at" desc);--> statement-breakpoint

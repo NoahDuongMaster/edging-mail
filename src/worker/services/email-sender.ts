@@ -61,7 +61,7 @@ function decodeBase64(attachment: { filename: string; content_base64: string }):
 
 const hasLineBreak = (value: string): boolean => /[\r\n]/.test(value);
 
-// Cloudflare Email Service limits (README): enforced by Cloudflare too, checked here so nothing oversized is built.
+// Cloudflare Email Service limits (docs/mail-features.md): enforced by Cloudflare too, checked here so nothing oversized is built.
 const MAX_ATTACHMENTS = 32;
 const MAX_MESSAGE_BYTES = 25 * 1024 * 1024;
 

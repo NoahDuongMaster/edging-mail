@@ -28,8 +28,16 @@
     "r2",
     "hono"
   ],
-  "author": "",
+  "author": "Noah Duong (https://github.com/NoahDuongMaster)",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NoahDuongMaster/edging-mail.git"
+  },
+  "homepage": "https://github.com/NoahDuongMaster/edging-mail#readme",
+  "bugs": {
+    "url": "https://github.com/NoahDuongMaster/edging-mail/issues"
+  },
   "dependencies": {
     "@tanstack/react-query": "^5.105.3",
     "drizzle-orm": "^0.45.4",
