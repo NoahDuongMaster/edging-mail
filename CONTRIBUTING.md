@@ -44,6 +44,7 @@ change (for example "sent a test mail through `/cdn-cgi/handler/email`, replied,
 - **Prettier** decides formatting (`.prettierrc.json`: 140 columns, single quotes, semicolons, no trailing commas). Markdown is checked too.
 - Comments explain why, not what. Keep diffs small: no drive-by refactors in a feature pull request.
 - Update the docs in `docs/` when you change behaviour, an environment variable or an API route.
+- `README.md` (English) is the source of truth. `README.vi.md` and `README.zh-CN.md` are translations of it: when you change the English README, update them too, or say in the pull request that they are out of date.
 
 ## Database changes
 

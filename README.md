@@ -1,4 +1,10 @@
 <p align="center">
+  <strong>English</strong> ·
+  <a href="README.vi.md">Tiếng Việt</a> ·
+  <a href="README.zh-CN.md">简体中文</a>
+</p>
+
+<p align="center">
   <picture>
     <img src="docs/assets/edgar-banner.svg" alt="Edging Mail banner with Edgar, the edge pigeon" width="100%">
   </picture>
