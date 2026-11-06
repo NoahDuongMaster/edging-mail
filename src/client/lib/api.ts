@@ -16,7 +16,8 @@ export class UnauthorizedError extends Error {
 // Every endpoint answers `{ success, ... }` (or `{ success: false, error }`); anything else is an error.
 async function request<T>(url: string, init: RequestInit, fallbackError: string): Promise<T> {
   const res = await fetch(url, init);
-  const data = await res.json<(T & ApiBody) | null>();
+  // An error page from a proxy or a deploy in progress is not JSON: it fails like any other answer, with the fallback text.
+  const data = await res.json<(T & ApiBody) | null>().catch(() => null);
   if (!res.ok || data?.success !== true) {
     const message = nonEmpty(data?.error) ?? fallbackError;
     throw res.status === 401 ? new UnauthorizedError(message) : new Error(message);

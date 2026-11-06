@@ -37,6 +37,9 @@ interface MessageListProps {
   hasMore?: boolean;
   loadingMore?: boolean;
   onLoadMore?: () => void;
+  /** The load failed: with no rows, the list says so and offers `onRetry`, never the empty-folder copy. */
+  loadFailed?: boolean;
+  onRetry?: () => void;
 }
 
 const FILTERS: { id: MailFilter; label: string }[] = [
@@ -330,16 +333,16 @@ const CompactRow: React.FC<CompactRowProps> = ({
         {starred ? (
           <button
             type="button"
-            className="nm-tap-ext"
-            aria-label={`Unstar conversation from ${sender}`}
+            aria-label={`Star message from ${sender}`}
             aria-pressed={starred}
             onClick={() => onToggleStar(m)}
             style={{
               position: 'absolute',
-              right: 4,
-              top: 49,
-              width: 40,
-              height: 36,
+              // A 44px touch target; the 16px star stays centred where it was.
+              right: 2,
+              top: 45,
+              width: 44,
+              height: 44,
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -378,7 +381,9 @@ export const MessageList: React.FC<MessageListProps> = ({
   scrollMemory,
   hasMore = false,
   loadingMore = false,
-  onLoadMore
+  onLoadMore,
+  loadFailed = false,
+  onRetry
 }) => {
   const scrollerRef = React.useRef<HTMLDivElement | null>(null);
   // Restore the offset the list had before it was unmounted (reader opened, then Back).
@@ -411,9 +416,12 @@ export const MessageList: React.FC<MessageListProps> = ({
     });
   }, [messages, isDrafts, isSnoozed]);
 
+  // An empty Inbox with no search, filter or failed load is the "all caught up" screen, which Edgar owns.
+  const caughtUp = title === 'Inbox' && filter === 'all' && !loadFailed && (searchQuery === undefined || searchQuery === '');
+
   return (
     <section
-      aria-labelledby="list-title"
+      aria-label={title}
       style={{
         flex: '1 1 400px',
         minWidth: 0,
@@ -594,7 +602,7 @@ export const MessageList: React.FC<MessageListProps> = ({
         {isLoading && groups.length === 0 ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '72px 24px', color: t.text2 }}>
             <Loader2 size={18} className="nm-spin" aria-hidden="true" />
-            <span>Loading conversations…</span>
+            <span>Loading messages…</span>
           </div>
         ) : null}
 
@@ -636,7 +644,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                 const preview = snippetOf(m, 120);
                 const sender = party.label;
                 const timestamp = isDrafts ? m.updated_at : m.created_at;
-                const subject = m.subject || (isDrafts ? '(no subject)' : '(No subject)');
+                const subject = m.subject || '(No subject)';
                 const snoozedUntil = m.folder === 'snoozed' && typeof m.snoozed_until === 'number' ? m.snoozed_until : null;
 
                 if (compact) {
@@ -745,7 +753,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                               flex: 'none',
                               fontSize: 12,
                               lineHeight: '16px',
-                              color: unread ? t.text : t.text3,
+                              color: unread ? t.text : selected ? t.text2 : t.text3,
                               fontWeight: unread ? 600 : 400,
                               fontVariantNumeric: 'tabular-nums'
                             }}
@@ -840,7 +848,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                     {isDrafts ? null : (
                       <button
                         type="button"
-                        aria-label={starred ? `Unstar conversation from ${sender}` : `Star conversation from ${sender}`}
+                        aria-label={`Star message from ${sender}`}
                         aria-pressed={starred}
                         onClick={() => onToggleStar(m)}
                         style={{
@@ -873,40 +881,69 @@ export const MessageList: React.FC<MessageListProps> = ({
           <div
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '72px 24px', textAlign: 'center' }}
           >
-            <span
-              aria-hidden="true"
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: 16,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: t.raised,
-                border: `1px solid ${t.border}`,
-                color: t.text2
-              }}
-            >
-              <Inbox size={24} strokeWidth={1.8} />
-            </span>
+            {caughtUp ? (
+              <img src="/edgar.svg" alt="" width={120} height={117} style={{ display: 'block', maxWidth: '100%', height: 'auto' }} />
+            ) : (
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 16,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: t.raised,
+                  border: `1px solid ${t.border}`,
+                  color: t.text2
+                }}
+              >
+                <Inbox size={24} strokeWidth={1.8} />
+              </span>
+            )}
             <p style={{ margin: '8px 0 0', fontSize: 15, fontWeight: 600, overflowWrap: 'anywhere' }}>
-              {filter === 'all'
-                ? searchQuery !== undefined && searchQuery !== ''
-                  ? `No results for “${searchQuery}”`
-                  : `No conversations in ${title}`
-                : 'Nothing matches this filter'}
+              {loadFailed
+                ? 'Could not load mail'
+                : filter === 'all'
+                  ? searchQuery !== undefined && searchQuery !== ''
+                    ? `No results for “${searchQuery}”`
+                    : `No messages in ${title}`
+                  : 'Nothing matches this filter'}
             </p>
-            <p style={{ margin: 0, maxWidth: 280, color: t.text2 }}>
-              {filter === 'all'
-                ? searchQuery !== undefined && searchQuery !== ''
-                  ? 'Try a different search.'
-                  : isDrafts
-                    ? 'Drafts you start are saved here.'
-                    : isSnoozed
-                      ? 'Snoozed messages come back to your inbox at the time you pick.'
-                      : 'Messages you receive will appear in this list.'
-                : 'Switch back to All to see every conversation.'}
+            <p style={{ margin: 0, maxWidth: 280, color: t.text2, textWrap: 'balance' }}>
+              {loadFailed
+                ? 'Check your connection and try again.'
+                : filter === 'all'
+                  ? searchQuery !== undefined && searchQuery !== ''
+                    ? 'Try a different search.'
+                    : isDrafts
+                      ? 'Drafts you start are saved here.'
+                      : isSnoozed
+                        ? 'Snoozed messages come back to your inbox at the time you pick.'
+                        : 'Messages you receive will appear in this list.'
+                  : 'Switch back to All to see every message.'}
             </p>
+            {loadFailed ? (
+              <button
+                type="button"
+                onClick={onRetry}
+                style={{
+                  height: 44,
+                  marginTop: 8,
+                  padding: '0 20px',
+                  border: `1px solid ${t.borderStrong}`,
+                  borderRadius: 10,
+                  background: 'transparent',
+                  color: t.text2,
+                  font: 'inherit',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: 'pointer'
+                }}
+              >
+                Try again
+              </button>
+            ) : null}
           </div>
         ) : null}
 

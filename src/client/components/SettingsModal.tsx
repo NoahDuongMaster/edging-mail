@@ -9,6 +9,7 @@ interface SettingsModalProps {
   isOpen: boolean;
   t: ThemeTokens;
   onClose: () => void;
+  onToggleDark: () => void;
 }
 
 type Tab = 'account' | 'architecture' | 'deployment' | 'routing';
@@ -45,7 +46,68 @@ const SETTING_KEYS: (keyof Settings)[] = ['display_name', 'default_from', 'signa
 
 type Feedback = { type: 'saved' } | { type: 'error'; text: string } | null;
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose }) => {
+interface SwitchProps {
+  t: ThemeTokens;
+  checked: boolean;
+  /** Names the switch: the id of the element that holds its label. */
+  labelledBy: string;
+  onClick: () => void;
+  busy?: boolean;
+}
+
+// A 44px target around a 44x26 track, as used for every on/off setting in this dialog.
+const Switch: React.FC<SwitchProps> = ({ t, checked, labelledBy, onClick, busy = false }) => (
+  <button
+    type="button"
+    role="switch"
+    aria-checked={checked}
+    aria-labelledby={labelledBy}
+    className="nm-tap"
+    disabled={busy}
+    onClick={onClick}
+    style={{
+      flex: 'none',
+      width: 52,
+      height: 44,
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 0,
+      border: 0,
+      background: 'transparent',
+      cursor: busy ? 'progress' : 'pointer'
+    }}
+  >
+    <span
+      aria-hidden="true"
+      style={{
+        position: 'relative',
+        width: 44,
+        height: 26,
+        borderRadius: 13,
+        background: checked ? t.accent : t.text3,
+        opacity: busy ? 0.6 : 1,
+        transition: 'background 120ms ease'
+      }}
+    >
+      <span
+        style={{
+          position: 'absolute',
+          top: 3,
+          left: checked ? 21 : 3,
+          width: 20,
+          height: 20,
+          borderRadius: '50%',
+          background: '#FFFFFF',
+          boxShadow: '0 1px 2px rgba(16,24,40,0.3)',
+          transition: 'left 120ms ease'
+        }}
+      />
+    </span>
+  </button>
+);
+
+export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose, onToggleDark }) => {
   const [tab, setTab] = React.useState<Tab>('account');
   const dialogRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -60,11 +122,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
   const [signingOut, setSigningOut] = React.useState(false);
   const [signOutError, setSignOutError] = React.useState<string | null>(null);
 
-  // Each time the dialog opens, start from the saved settings (adjusting state while rendering, not in an effect).
+  // Each time the dialog opens, start from the saved settings on the Account tab (adjusting state while rendering, not in an effect).
   const [wasOpen, setWasOpen] = React.useState(isOpen);
   if (isOpen !== wasOpen) {
     setWasOpen(isOpen);
     if (isOpen) {
+      setTab('account');
       setForm(null);
       setFeedback(null);
       setSignOutError(null);
@@ -128,7 +191,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
           setForm(null);
           setFeedback({ type: 'saved' });
         },
-        onError: (error) => setFeedback({ type: 'error', text: error.message })
+        // fetch rejects with a TypeError when offline: its own text ('Failed to fetch') tells the user nothing.
+        onError: (error) =>
+          setFeedback({ type: 'error', text: error instanceof TypeError ? 'No connection: nothing was saved' : error.message })
       }
     );
   };
@@ -248,7 +313,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
         alignItems: 'center',
         justifyContent: 'center',
         padding: 16,
-        background: 'rgba(16,24,40,0.45)',
+        background: t.dark ? 'rgba(0,0,0,0.6)' : 'rgba(16,24,40,0.45)',
         outline: 'none'
       }}
       onClick={onClose}
@@ -423,6 +488,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
                 </form>
               )}
 
+              <section aria-labelledby="settings-appearance" style={card}>
+                <h3 id="settings-appearance" style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>
+                  Appearance
+                </h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div id="settings-dark-label" style={{ flex: 1, minWidth: 0, fontSize: 13 }}>
+                    Dark theme
+                  </div>
+                  <Switch t={t} checked={t.dark} labelledBy="settings-dark-label" onClick={onToggleDark} />
+                </div>
+              </section>
+
               <section aria-labelledby="settings-notifications" style={card}>
                 <h3 id="settings-notifications" style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>
                   Notifications
@@ -444,56 +521,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
                                 : 'Off'}
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={push.subscribed}
-                        aria-labelledby="settings-push-label"
-                        className="nm-tap"
-                        disabled={push.busy}
+                      <Switch
+                        t={t}
+                        checked={push.subscribed}
+                        busy={push.busy}
+                        labelledBy="settings-push-label"
                         onClick={() => {
                           void (push.subscribed ? push.disable() : push.enable());
                         }}
-                        style={{
-                          flex: 'none',
-                          width: 52,
-                          height: 44,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          padding: 0,
-                          border: 0,
-                          background: 'transparent',
-                          cursor: push.busy ? 'progress' : 'pointer'
-                        }}
-                      >
-                        <span
-                          aria-hidden="true"
-                          style={{
-                            position: 'relative',
-                            width: 44,
-                            height: 26,
-                            borderRadius: 13,
-                            background: push.subscribed ? t.accent : t.text3,
-                            opacity: push.busy ? 0.6 : 1,
-                            transition: 'background 120ms ease'
-                          }}
-                        >
-                          <span
-                            style={{
-                              position: 'absolute',
-                              top: 3,
-                              left: push.subscribed ? 21 : 3,
-                              width: 20,
-                              height: 20,
-                              borderRadius: '50%',
-                              background: '#FFFFFF',
-                              boxShadow: '0 1px 2px rgba(16,24,40,0.3)',
-                              transition: 'left 120ms ease'
-                            }}
-                          />
-                        </span>
-                      </button>
+                      />
                     </div>
                     {push.error === null ? null : (
                       <p role="alert" style={{ ...muted, color: danger }}>

@@ -1,7 +1,8 @@
 import React from 'react';
-import { Loader2, Mail } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import type { ThemeTokens } from '../theme';
 import { useLogin } from '../lib/auth';
+import { Wordmark } from './BrandMark';
 
 interface LoginScreenProps {
   t: ThemeTokens;
@@ -60,28 +61,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ t }) => {
           boxShadow: '0 1px 2px rgba(16,24,40,0.05), 0 16px 40px -16px rgba(16,24,40,0.16)'
         }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-          {/* Same mark and wordmark as the sidebar header. */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span
-              aria-hidden="true"
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 9,
-                background: t.accent,
-                color: '#FFFFFF',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <Mail size={18} strokeWidth={2} />
-            </span>
-            <span style={{ fontSize: 17, lineHeight: '24px', letterSpacing: '-0.01em' }}>
-              <span style={{ fontWeight: 700 }}>Edging</span> <span style={{ fontWeight: 400, color: t.text2 }}>Mail</span>
-            </span>
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+          <img src="/edgar.svg" alt="" width={112} height={109} style={{ display: 'block' }} />
+          <Wordmark t={t} />
           <h1 style={{ margin: 0, fontSize: 22, lineHeight: '28px', fontWeight: 600, letterSpacing: '-0.01em' }}>Sign in</h1>
         </div>
 

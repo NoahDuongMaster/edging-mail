@@ -1,8 +1,9 @@
 import type React from 'react';
-import { Archive, Ban, Clock, FileText, Inbox, Mail, PenLine, Send, Sliders, Star, Trash2, X } from 'lucide-react';
+import { Archive, Ban, Clock, FileText, Inbox, PenLine, Send, Sliders, Star, Trash2, X } from 'lucide-react';
 import type { ThemeTokens } from '../theme';
 import { getLabelChip } from '../theme';
 import type { FolderStats } from '../types';
+import { BrandMark } from './BrandMark';
 
 interface SidebarProps {
   t: ThemeTokens;
@@ -30,12 +31,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ t, folder, onSelectFolder, sta
   // Stats come from the API, so any folder can be missing.
   const folderStats: Partial<FolderStats> = stats;
   const inboxUnread = folderStats.inbox?.unread ?? 0;
-
-  // 'starred' is a virtual folder (a view over mails that also sit in their own folder): summing it would count them twice.
-  const realFolders = Object.entries(folderStats).filter(([id]) => id !== 'starred');
-  const totalMail = realFolders.reduce((sum, [, s]) => sum + (s?.total ?? 0), 0);
-  const totalUnread = realFolders.reduce((sum, [, s]) => sum + (s?.unread ?? 0), 0);
-  const readRatio = totalMail > 0 ? Math.round(((totalMail - totalUnread) / totalMail) * 100) : 0;
 
   const pick = (id: string) => {
     onSelectFolder(id);
@@ -79,26 +74,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ t, folder, onSelectFolder, sta
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 40, padding: '0 4px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span
-            aria-hidden="true"
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 9,
-              background: t.accent,
-              color: '#FFFFFF',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <Mail size={18} strokeWidth={2} />
-          </span>
-          <span style={{ fontSize: 17, lineHeight: '24px', letterSpacing: '-0.01em' }}>
-            <span style={{ fontWeight: 700 }}>Edging</span> <span style={{ fontWeight: 400, color: t.text2 }}>Mail</span>
-          </span>
-        </div>
+        <BrandMark t={t} />
         {onCloseMobile ? (
           <button
             type="button"
@@ -146,6 +122,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ t, folder, onSelectFolder, sta
         <span>Compose</span>
         {onCloseMobile ? null : (
           <kbd
+            aria-hidden="true"
             style={{
               marginLeft: 4,
               fontFamily: "'Geist Mono', ui-monospace, monospace",
@@ -262,31 +239,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ t, folder, onSelectFolder, sta
           <Sliders size={14} color={t.accent} aria-hidden="true" />
           <span>Settings</span>
         </button>
-
-        <div
-          style={{
-            padding: 12,
-            borderRadius: 12,
-            background: t.surface,
-            border: `1px solid ${t.border}`,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 12, lineHeight: '16px' }}>
-            <span style={{ fontWeight: 600 }}>Mailbox</span>
-            <span style={{ color: t.text2 }}>
-              {totalMail} {totalMail === 1 ? 'message' : 'messages'}
-            </span>
-          </div>
-          <div aria-hidden="true" style={{ height: 6, borderRadius: 999, background: t.track, overflow: 'hidden' }}>
-            <div style={{ width: `${readRatio}%`, height: '100%', borderRadius: 999, background: t.accent }} />
-          </div>
-          <div style={{ fontSize: 12, lineHeight: '16px', color: t.text2 }}>
-            {totalUnread > 0 ? `${totalUnread} unread` : 'All caught up'}
-          </div>
-        </div>
       </div>
     </aside>
   );

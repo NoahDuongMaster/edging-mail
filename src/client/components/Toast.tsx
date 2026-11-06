@@ -17,13 +17,19 @@ interface ToastProps {
 }
 
 export const Toast: React.FC<ToastProps> = ({ t, toast, onDismiss, raised = false, desktop = false }) => {
+  // App passes a new onDismiss on every render: the timer must not restart each time (an Undo toast would never expire).
+  const dismissRef = React.useRef(onDismiss);
+  React.useLayoutEffect(() => {
+    dismissRef.current = onDismiss;
+  }, [onDismiss]);
+
   React.useEffect(() => {
     if (!toast) {
       return;
     }
-    const timer = window.setTimeout(onDismiss, 6000);
+    const timer = window.setTimeout(() => dismissRef.current(), 6000);
     return () => window.clearTimeout(timer);
-  }, [toast, onDismiss]);
+  }, [toast]);
 
   if (!toast) {
     return null;

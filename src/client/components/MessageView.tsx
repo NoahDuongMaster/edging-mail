@@ -7,7 +7,6 @@ import {
   Download,
   Forward,
   Loader2,
-  Mail,
   MailOpen,
   Paperclip,
   Plus,
@@ -332,24 +331,9 @@ export const MessageView: React.FC<MessageViewProps> = ({
     return (
       <article ref={paneRef} style={{ ...shell, alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: 40, textAlign: 'center' }}>
-          <span
-            aria-hidden="true"
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 16,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: t.raised,
-              border: `1px solid ${t.border}`,
-              color: t.text2
-            }}
-          >
-            <Mail size={24} strokeWidth={1.8} />
-          </span>
-          <p style={{ margin: '8px 0 0', fontSize: 15, fontWeight: 600 }}>No conversation selected</p>
-          <p style={{ margin: 0, maxWidth: 280, color: t.text2 }}>Choose a conversation from the list to read it here.</p>
+          <img src="/edgar.svg" alt="" width={132} height={128} style={{ display: 'block', maxWidth: '100%', height: 'auto' }} />
+          <p style={{ margin: '8px 0 0', fontSize: 15, fontWeight: 600 }}>No message selected</p>
+          <p style={{ margin: 0, maxWidth: 280, color: t.text2, textWrap: 'balance' }}>Choose a message from the list to read it here.</p>
         </div>
       </article>
     );
@@ -357,7 +341,7 @@ export const MessageView: React.FC<MessageViewProps> = ({
 
   const avatar = getChip(stringHue(message.from_address), t);
   const messageLabels = labelsOf(message);
-  const paragraphs = bodyParagraphs(message);
+  const paragraphs = bodyParagraphs(message, !showHtml);
   const starred = message.is_starred === 1;
   const sender = displayName(message);
   // Drafts and sent mail are not in the inbox flow, so there is nothing to snooze.
@@ -500,7 +484,7 @@ export const MessageView: React.FC<MessageViewProps> = ({
                       <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {label}
                       </span>
-                      {on ? <span style={{ flex: 'none', color: t.accent, fontSize: 12, fontWeight: 600 }}>Added</span> : null}
+                      {on ? <span style={{ flex: 'none', color: t.link, fontSize: 12, fontWeight: 600 }}>Added</span> : null}
                     </button>
                   );
                 })}
@@ -525,7 +509,7 @@ export const MessageView: React.FC<MessageViewProps> = ({
             )}
             <button
               type="button"
-              aria-label="Newer conversation"
+              aria-label="Newer message"
               title="Newer"
               disabled={!hasPrev}
               onClick={onPrev}
@@ -535,7 +519,7 @@ export const MessageView: React.FC<MessageViewProps> = ({
             </button>
             <button
               type="button"
-              aria-label="Older conversation"
+              aria-label="Older message"
               title="Older"
               disabled={!hasNext}
               onClick={onNext}
@@ -817,9 +801,12 @@ export const MessageView: React.FC<MessageViewProps> = ({
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
+                    // Phone: the three share one row at equal widths. Each keeps its whole label as its minimum width, so where the
+                    // row cannot hold all three (under ~360px) it wraps and the last one fills its own row instead of standing narrow.
+                    ...(compact ? { flex: '1 1 0', justifyContent: 'center', whiteSpace: 'nowrap' } : {}),
                     gap: 8,
                     height: 40,
-                    padding: '0 16px',
+                    padding: compact ? '0 6px' : '0 16px',
                     border: `1px solid ${t.borderStrong}`,
                     borderRadius: 10,
                     background: t.surface,

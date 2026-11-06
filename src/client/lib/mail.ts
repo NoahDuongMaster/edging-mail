@@ -153,11 +153,12 @@ export function fileTypeOf(value: string): string {
   return /^[a-z0-9]{1,4}$/i.test(ext) ? ext.toUpperCase() : 'FILE';
 }
 
-export function bodyParagraphs(m: Message | null): string[] {
+/** The body as plain paragraphs. A mail with HTML has none (the frame shows it) unless `preferText` asks for its plain-text part. */
+export function bodyParagraphs(m: Message | null, preferText = false): string[] {
   if (!m) {
     return [];
   }
-  if (nonEmpty(m.body_html) !== undefined) {
+  if (!preferText && nonEmpty(m.body_html) !== undefined) {
     return [];
   }
   const text = nonEmpty(m.body_text) ?? nonEmpty(m.snippet) ?? '';

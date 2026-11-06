@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { UnauthorizedError } from './lib/api';
 import { endSession } from './lib/auth';
 import './index.css';
@@ -16,10 +17,13 @@ const queryClient = new QueryClient({
   mutationCache: new MutationCache({ onError: onApiError }),
   defaultOptions: {
     // No refetch on tab focus: lists and stats refresh on user actions, as before. A 401 is never retried.
+    // 'always': a request made offline fails at once and the screen says so. The default would pause it silently, and a
+    // paused load looks exactly like an empty folder.
     queries: {
       retry: (failureCount, error) => failureCount < 1 && !(error instanceof UnauthorizedError),
       staleTime: 10_000,
-      refetchOnWindowFocus: false
+      refetchOnWindowFocus: false,
+      networkMode: 'always'
     },
     // 'always': offline, a mutation must fail at once and roll back. The default would pause it and fire it later,
     // so a mail "sent" offline would be delivered silently on reconnect.
@@ -39,7 +43,9 @@ if (root) {
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>
-        <App />
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
       </QueryClientProvider>
     </React.StrictMode>
   );

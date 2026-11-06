@@ -82,7 +82,36 @@ const draftStatusText: Record<DraftStatus, string> = {
   idle: '',
   saving: 'Saving…',
   saved: 'Draft saved',
-  error: 'Could not save draft'
+  error: 'Could not save the draft'
+};
+
+const noConnectionText = 'No connection: the message was not sent. Try again.';
+
+const sentUnsavedPrefix = 'The email was sent but could not be saved to Sent';
+
+/** What a failed send says: Cloudflare's error codes turned into what the user has to do. */
+const sendErrorText = (message: string): string => {
+  if (message.includes('E_RECIPIENT_NOT_ALLOWED')) {
+    return 'Cloudflare only delivers to verified addresses until your domain is onboarded for Email Sending. Add the recipient under Email Routing > Destination addresses, or onboard the domain (Compute > Email Service > Email Sending).';
+  }
+  if (message.includes('E_SENDER_NOT_VERIFIED') || message.includes('E_SENDER_DOMAIN_NOT_AVAILABLE')) {
+    return 'The sender address must be on a domain onboarded for Email Sending. Change it in Settings.';
+  }
+  if (message.startsWith(sentUnsavedPrefix)) {
+    return 'Sent, but the copy could not be saved to Sent. Do not send it again.';
+  }
+  return message;
+};
+
+/** The compose header: what this compose is, from the draft it was opened with. */
+const titleOf = (draft: ComposeDraft) => {
+  if (draft.draftId !== undefined) {
+    return 'Draft';
+  }
+  if (draft.quote === undefined) {
+    return 'New message';
+  }
+  return /^fwd:/i.test(draft.subject ?? '') ? 'Forward' : 'Reply';
 };
 
 const unique = (list: string[]) => [...new Set(list)];
@@ -159,6 +188,8 @@ const read = (file: File) =>
 const RecipientChip: React.FC<{ t: ThemeTokens; address: string; onRemove: () => void }> = ({ t, address, onRemove }) => {
   const chip = getChip(stringHue(address), t);
   const name = address.split('@', 1)[0];
+  // Phones: a 44px hit area. The button has no background, so the negative margin keeps the chip the size it is.
+  const touch = useMedia('(max-width: 900px)');
   return (
     <span
       style={{
@@ -200,12 +231,12 @@ const RecipientChip: React.FC<{ t: ThemeTokens; address: string; onRemove: () =>
       <button
         type="button"
         aria-label={`Remove ${address}`}
-        className="nm-tap-ext"
         onClick={onRemove}
         style={{
           flex: 'none',
-          width: 26,
-          height: 26,
+          width: touch ? 44 : 26,
+          height: touch ? 44 : 26,
+          margin: touch ? -9 : 0,
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -261,6 +292,8 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
   // The header's right slot is (width - 56px - title) / 2 wide, minus the draft status and the close button: 54px at 641px and
   // 174px at 880px for 'New message', while 'Add at least one recipient.' needs 180px. Up to 900px the status gets its own line.
   const statusBelow = useMedia('(max-width: 900px)');
+  // No keyboard to press Ctrl+Enter on a touch screen, whatever its width.
+  const touchOnly = useMedia('(hover: none)');
 
   // Drafts: one saver per time the compose opens. It outlives renders (and the close of the modal, while its last save
   // finishes), so it reads the form and calls back through `latest`.
@@ -268,6 +301,12 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
   // contentKey of the form as it was opened; a form still equal to it has nothing to save.
   const baselineRef = React.useRef('');
   const closingRef = React.useRef(false);
+  // A send is under way or has gone through. A ref, as state lags a Ctrl+Enter pressed twice; it is only cleared by a failed send
+  // or a new compose.
+  const sendingRef = React.useRef(false);
+  const closeTimerRef = React.useRef<number | undefined>(undefined);
+  // The draft the form was last reset for: a later change of `defaultFrom` / `signature` is not a new compose.
+  const openedRef = React.useRef<ComposeDraft | null>(null);
   // The body as of the last edit. A compose closed from outside (system Back) loses its editor before the last save reads it.
   const bodyRef = React.useRef({ html: '', text: '' });
   const readBody = React.useCallback(() => {
@@ -305,9 +344,12 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
     };
   };
 
-  const latest = React.useRef({ readDraft, onNotice, queryClient });
+  // Nothing typed, attached or sent since the compose opened (the sender and the signature it was opened with are not typing).
+  const isPristine = () => !sendingRef.current && files.length === 0 && readDraft().key === baselineRef.current;
+
+  const latest = React.useRef({ readDraft, isPristine, onNotice, queryClient });
   React.useLayoutEffect(() => {
-    latest.current = { readDraft, onNotice, queryClient };
+    latest.current = { readDraft, isPristine, onNotice, queryClient };
   });
 
   React.useEffect(() => {
@@ -329,13 +371,15 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
         void latest.current.queryClient.invalidateQueries({ queryKey: queryKeys.messages });
         void latest.current.queryClient.invalidateQueries({ queryKey: queryKeys.stats });
       },
-      onLost: () => latest.current.onNotice?.('Could not save draft')
+      onLost: () => latest.current.onNotice?.('Could not save the draft')
     });
     saverRef.current = saver;
     return () => {
       // Every way out (buttons, Esc, system Back, a sent mail) ends up here; closing twice is harmless.
       void saver.close();
       saverRef.current = null;
+      // The close that follows a sent mail must not outlive its compose: it would close the next one.
+      window.clearTimeout(closeTimerRef.current);
     };
   }, [isOpen, draft]);
 
@@ -359,13 +403,20 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
 
   React.useEffect(() => {
     if (!isOpen) {
+      openedRef.current = null;
       return;
     }
+    // Settings that finish loading with the compose open must not wipe it: a form that was typed in only gets a sender if it has none.
+    if (openedRef.current === draft && !latest.current.isPristine()) {
+      setFrom((current) => (current === '' ? defaultFrom : current));
+      return;
+    }
+    openedRef.current = draft;
     const to = unique(splitRecipients(draft.to ?? ''));
     const cc = unique(splitRecipients(draft.cc ?? ''));
     const bcc = unique(splitRecipients(draft.bcc ?? ''));
     const sender = nonEmpty(draft.from) ?? defaultFrom;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- form state must be reset when the modal (re)opens
+    // Form state must be reset when the modal (re)opens.
     setFrom(sender);
     setToList(to);
     setCcList(cc);
@@ -380,6 +431,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
     setStatus(null);
     setDraftStatus('idle');
     closingRef.current = false;
+    sendingRef.current = false;
     const editor = editorRef.current;
     if (editor) {
       // New mail: the signature. Reply or forward: the signature above the quote. Reopened draft: exactly what was saved.
@@ -419,6 +471,16 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
     document.execCommand(command, false, value);
   };
 
+  // Enter in a one-line field must not submit the form (Ctrl/Cmd+Enter still sends, from the dialog): it moves on to the body.
+  const enterToBody = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {
+      e.preventDefault();
+      if (editorRef.current) {
+        focusAtStart(editorRef.current);
+      }
+    }
+  };
+
   const handleFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const input = event.target;
     const picked = [...(input.files ?? [])];
@@ -436,6 +498,9 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
   };
 
   const handleSend = async () => {
+    if (sendingRef.current) {
+      return;
+    }
     const sender = from.trim();
     const { to, cc, bcc, html, text } = collect();
 
@@ -452,10 +517,18 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
       return;
     }
 
+    sendingRef.current = true;
     setIsSending(true);
     setStatus(null);
 
     const saver = saverRef.current;
+    // The mail is out: its draft is done and the compose closes by itself in a moment (sendingRef stays set until then).
+    const markSent = (notice: string) => {
+      saver?.finishSent();
+      setDraftStatus('idle');
+      setStatus({ text: notice, type: 'success' });
+      closeTimerRef.current = window.setTimeout(onClose, 900);
+    };
     try {
       // A save in flight finishes first and no new one starts: a PUT landing after the send would bring the draft back.
       await saver?.lockForSend();
@@ -476,15 +549,24 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
         draft_id: saver?.id
       });
 
-      saver?.finishSent();
-      setDraftStatus('idle');
-      setStatus({ text: data.note !== undefined && data.note !== '' ? data.note : 'Message sent.', type: 'success' });
+      markSent('Message sent.');
       onSuccess(data.note);
-      window.setTimeout(onClose, 900);
     } catch (error: unknown) {
-      // The server keeps the draft when the send fails; autosave goes on.
-      saver?.unlock();
-      setStatus({ text: error instanceof Error && error.message !== '' ? error.message : 'Error sending email', type: 'error' });
+      console.error('Send failed', error);
+      const message = error instanceof Error && error.message !== '' ? error.message : 'Error sending email';
+      if (message.startsWith(sentUnsavedPrefix)) {
+        // The mail went out and only its copy in Sent is missing: sending it again would deliver it twice.
+        const notice = sendErrorText(message);
+        markSent(notice);
+        onSuccess();
+        // The compose is gone in under a second; the warning has to outlive it.
+        onNotice?.(notice);
+      } else {
+        // The server keeps the draft when the send fails; autosave goes on.
+        saver?.unlock();
+        sendingRef.current = false;
+        setStatus({ text: error instanceof TypeError ? noConnectionText : sendErrorText(message), type: 'error' });
+      }
     } finally {
       setIsSending(false);
     }
@@ -492,7 +574,8 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
 
   // The ways out of the compose that keep a draft: wait (up to 2 s) for its last save, then close.
   const requestClose = async () => {
-    if (closingRef.current) {
+    // Not while a send is under way: a failure after the compose is gone would go unseen.
+    if (closingRef.current || isSending) {
       return;
     }
     closingRef.current = true;
@@ -530,8 +613,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
     background: 'transparent',
     color: t.text,
     font: 'inherit',
-    fontSize: 14,
-    outline: 'none'
+    fontSize: 14
   };
   const toolBtn: React.CSSProperties = {
     width: 36,
@@ -547,6 +629,9 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
   };
 
   const missingFrom = from.trim() === '';
+  // A sent mail (it closes in a moment) must not be sent again.
+  const sent = status?.type === 'success';
+  const noSignature = signatureBlock(signature) === '';
   // The empty-sender hint shows until the field is filled; other messages (validation, send result) take over.
   const shownStatus = status ?? (missingFrom ? { text: missingFromText, type: 'error' as const } : null);
 
@@ -662,7 +747,8 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
             onClick={() => {
               void requestClose();
             }}
-            aria-label="Back to inbox"
+            disabled={isSending}
+            aria-label="Back"
             className="nm-tap"
             style={{
               display: 'inline-flex',
@@ -675,15 +761,16 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
               background: 'transparent',
               color: t.text2,
               fontWeight: 500,
-              cursor: 'pointer'
+              cursor: isSending ? 'not-allowed' : 'pointer',
+              opacity: isSending ? 0.5 : 1
             }}
           >
             <ArrowLeft size={20} strokeWidth={1.8} aria-hidden="true" />
-            <span className="nm-hide-sm">Inbox</span>
+            <span className="nm-hide-sm">Back</span>
           </button>
         </div>
         <h1 id="compose-title" style={{ margin: 0, fontSize: 16, lineHeight: '24px', fontWeight: 600, whiteSpace: 'nowrap' }}>
-          {draft.draftId === undefined ? 'New message' : 'Draft'}
+          {titleOf(draft)}
         </h1>
         <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
           {statusBelow ? null : statusEl}
@@ -693,10 +780,19 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
             onClick={() => {
               void requestClose();
             }}
+            disabled={isSending}
             aria-label="Close"
             className="nm-tap"
             title="Close"
-            style={{ ...toolBtn, flex: 'none', width: 40, height: 40, borderRadius: 10 }}
+            style={{
+              ...toolBtn,
+              flex: 'none',
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              cursor: isSending ? 'not-allowed' : 'pointer',
+              opacity: isSending ? 0.5 : 1
+            }}
           >
             <X size={20} strokeWidth={1.8} aria-hidden="true" />
           </button>
@@ -740,6 +836,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                 type="email"
                 value={from}
                 onChange={(e) => setFrom(e.target.value)}
+                onKeyDown={enterToBody}
                 style={{ ...inputStyle, height: 40 }}
                 placeholder="sender@yourdomain.com"
               />
@@ -764,6 +861,10 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                   className="nm-tap-h"
                   type="text"
                   autoComplete="off"
+                  inputMode="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   placeholder={toList.length === 0 ? 'Add people' : ''}
                   value={toInput}
                   onChange={(e) => setToInput(e.target.value)}
@@ -804,6 +905,10 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                     className="nm-tap-h"
                     type="text"
                     autoComplete="off"
+                    inputMode="email"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     value={ccInput}
                     onChange={(e) => setCcInput(e.target.value)}
                     onKeyDown={(e) => {
@@ -839,6 +944,10 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                     className="nm-tap-h"
                     type="text"
                     autoComplete="off"
+                    inputMode="email"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     value={bccInput}
                     onChange={(e) => setBccInput(e.target.value)}
                     onKeyDown={(e) => {
@@ -864,6 +973,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                 type="text"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
+                onKeyDown={enterToBody}
                 placeholder="Subject"
                 style={{ ...inputStyle, height: 40, fontSize: 15, fontWeight: 500 }}
               />
@@ -1035,7 +1145,8 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                 color: t.text,
                 fontSize: 15,
                 lineHeight: '24px',
-                outline: 'none',
+                // The ring of :focus-visible, drawn inside: the scroll region around the editor would clip it outside.
+                outlineOffset: -2,
                 overflowY: 'auto'
               }}
             />
@@ -1122,7 +1233,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
             <div style={{ display: 'inline-flex', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 2px rgba(16,24,40,0.14)' }}>
               <button
                 type="submit"
-                disabled={isSending || missingFrom}
+                disabled={isSending || sent || missingFrom}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -1134,8 +1245,8 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                   color: '#FFFFFF',
                   fontSize: 14,
                   fontWeight: 600,
-                  cursor: isSending ? 'progress' : missingFrom ? 'not-allowed' : 'pointer',
-                  opacity: isSending ? 0.8 : missingFrom ? 0.5 : 1
+                  cursor: isSending ? 'progress' : missingFrom || sent ? 'not-allowed' : 'pointer',
+                  opacity: isSending ? 0.8 : missingFrom || sent ? 0.5 : 1
                 }}
               >
                 {isSending ? (
@@ -1146,45 +1257,45 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                 {isSending ? 'Sending…' : 'Send'}
               </button>
             </div>
-            <span
-              className="nm-hide-sm"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, lineHeight: '16px', color: t.text2 }}
-            >
-              <kbd
-                style={{
-                  fontFamily: "'Geist Mono', ui-monospace, monospace",
-                  fontSize: 11,
-                  lineHeight: '18px',
-                  padding: '0 6px',
-                  borderRadius: 5,
-                  border: `1px solid ${t.borderStrong}`,
-                  background: t.surface,
-                  color: t.text2
-                }}
-              >
-                Ctrl
-              </kbd>
-              <kbd
-                style={{
-                  fontFamily: "'Geist Mono', ui-monospace, monospace",
-                  fontSize: 11,
-                  lineHeight: '18px',
-                  padding: '0 6px',
-                  borderRadius: 5,
-                  border: `1px solid ${t.borderStrong}`,
-                  background: t.surface,
-                  color: t.text2
-                }}
-              >
-                Enter
-              </kbd>
-              to send
-            </span>
+            {statusBelow || touchOnly ? null : (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, lineHeight: '16px', color: t.text2 }}>
+                <kbd
+                  style={{
+                    fontFamily: "'Geist Mono', ui-monospace, monospace",
+                    fontSize: 11,
+                    lineHeight: '18px',
+                    padding: '0 6px',
+                    borderRadius: 5,
+                    border: `1px solid ${t.borderStrong}`,
+                    background: t.surface,
+                    color: t.text2
+                  }}
+                >
+                  Ctrl
+                </kbd>
+                <kbd
+                  style={{
+                    fontFamily: "'Geist Mono', ui-monospace, monospace",
+                    fontSize: 11,
+                    lineHeight: '18px',
+                    padding: '0 6px',
+                    borderRadius: 5,
+                    border: `1px solid ${t.borderStrong}`,
+                    background: t.surface,
+                    color: t.text2
+                  }}
+                >
+                  Enter
+                </kbd>
+                to send
+              </span>
+            )}
             <button
               type="button"
               aria-label="Insert signature"
               className="nm-tap"
-              title="Insert signature"
+              disabled={noSignature}
+              title={noSignature ? 'No signature saved. Add one in Settings.' : 'Insert signature'}
               onClick={() => {
                 editorRef.current?.focus();
                 const block = signatureBlock(signature);
@@ -1193,7 +1304,15 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                   document.execCommand('insertText', false, block);
                 }
               }}
-              style={{ ...toolBtn, marginLeft: 'auto', width: 40, height: 40, borderRadius: 10 }}
+              style={{
+                ...toolBtn,
+                marginLeft: 'auto',
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                cursor: noSignature ? 'not-allowed' : 'pointer',
+                opacity: noSignature ? 0.5 : 1
+              }}
             >
               <Signature size={20} strokeWidth={1.8} aria-hidden="true" />
             </button>
