@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCheck, Menu, Moon, PenLine, Search, Settings, Sun, User, X } from 'lucide-react';
+import { CheckCheck, Menu, Moon, PenLine, Search, Sun, User, X } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { MessageList, type MailFilter } from './components/MessageList';
 import { MessageView } from './components/MessageView';
@@ -58,14 +58,14 @@ function failureText(error: unknown, fallback: string): string {
   return error instanceof TypeError ? 'No connection: nothing was changed' : error instanceof Error ? error.message : fallback;
 }
 
-/** The owner's round avatar in the header, desktop and phone: opens Settings. On phones `nm-tap` grows the hit area to 44px around the same 32px circle. */
+/** The owner's round avatar in the header, desktop and phone: the one way into Settings (account, appearance, notifications, sign out). On phones `nm-tap` grows the hit area to 44px around the same 32px circle. */
 function AccountButton({ t, initials, onClick }: { t: ThemeTokens; initials: string; onClick: () => void }) {
   return (
     <button
       type="button"
       className="nm-tap"
-      aria-label="Account"
-      title="Account"
+      aria-label="Account and settings"
+      title="Account and settings"
       onClick={onClick}
       style={{
         width: 32,
@@ -927,26 +927,6 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
         >
           {dark ? <Sun size={20} strokeWidth={1.8} aria-hidden="true" /> : <Moon size={20} strokeWidth={1.8} aria-hidden="true" />}
         </button>
-        <button
-          type="button"
-          aria-label="Settings"
-          title="Settings"
-          onClick={() => setIsSettingsOpen(true)}
-          style={{
-            width: 40,
-            height: 40,
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            border: 0,
-            borderRadius: 10,
-            background: 'transparent',
-            color: t.text2,
-            cursor: 'pointer'
-          }}
-        >
-          <Settings size={20} strokeWidth={1.8} aria-hidden="true" />
-        </button>
         <AccountButton t={t} initials={initials} onClick={() => setIsSettingsOpen(true)} />
       </div>
     </header>
@@ -1063,7 +1043,6 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
           stats={stats}
           labels={availableLabels}
           onCompose={() => openCompose()}
-          onOpenSettings={() => setIsSettingsOpen(true)}
         />
       ) : null}
 
@@ -1274,10 +1253,6 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
               onCompose={() => {
                 setSidebarOpen(false);
                 openCompose();
-              }}
-              onOpenSettings={() => {
-                setSidebarOpen(false);
-                setIsSettingsOpen(true);
               }}
               onCloseMobile={() => setSidebarOpen(false)}
             />

@@ -1,5 +1,5 @@
 import type React from 'react';
-import { Archive, Ban, Clock, FileText, Inbox, PenLine, Send, Sliders, Star, Trash2, X } from 'lucide-react';
+import { Archive, Ban, Clock, FileText, Inbox, PenLine, Send, Star, Trash2, X } from 'lucide-react';
 import type { ThemeTokens } from '../theme';
 import { getLabelChip } from '../theme';
 import type { FolderStats } from '../types';
@@ -12,7 +12,6 @@ interface SidebarProps {
   stats: FolderStats;
   labels: string[];
   onCompose: () => void;
-  onOpenSettings: () => void;
   onCloseMobile?: () => void;
 }
 
@@ -27,7 +26,7 @@ const NAV_ITEMS = [
   { id: 'trash', label: 'Trash', icon: Trash2 }
 ] as const;
 
-export const Sidebar: React.FC<SidebarProps> = ({ t, folder, onSelectFolder, stats, labels, onCompose, onOpenSettings, onCloseMobile }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ t, folder, onSelectFolder, stats, labels, onCompose, onCloseMobile }) => {
   // Stats come from the API, so any folder can be missing.
   const folderStats: Partial<FolderStats> = stats;
   const inboxUnread = folderStats.inbox?.unread ?? 0;
@@ -215,31 +214,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ t, folder, onSelectFolder, sta
           </ul>
         </section>
       ) : null}
-
-      <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <button
-          type="button"
-          onClick={onOpenSettings}
-          className="nm-tap-h"
-          style={{
-            height: 32,
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            border: `1px solid ${t.border}`,
-            borderRadius: 8,
-            background: t.surface,
-            color: t.text2,
-            fontSize: 12,
-            fontWeight: 500,
-            cursor: 'pointer'
-          }}
-        >
-          <Sliders size={14} color={t.accent} aria-hidden="true" />
-          <span>Settings</span>
-        </button>
-      </div>
     </aside>
   );
 };
