@@ -24,6 +24,7 @@ import type { ThemeTokens } from '../theme';
 import { getChip } from '../theme';
 import { fileTypeOf, formatBytes, initialsOf, nonEmpty, stringHue } from '../lib/mail';
 import { DraftSaver, newDraftId, sanitizeDraftHtml, type DraftSnapshot, type DraftStatus } from '../lib/drafts';
+import { trapTab } from '../lib/focusTrap';
 import { queryKeys, useSendMessage } from '../lib/queries';
 import { restoreSignatureDelimiter, signatureBlock } from '../lib/settings';
 
@@ -67,11 +68,17 @@ interface PendingFile {
   uploading?: boolean;
 }
 
-const splitRecipients = (value: string): string[] =>
-  value
-    .split(/[,;]+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+const splitRecipients = (value: string): string[] => value.split(/[\s,;]+/).filter(Boolean);
+
+// The worker's rule (isEmail in src/worker/utils.ts): one plain address, no name part.
+const isAddress = (value: string) => /^[^\s@<>,"]+@[^\s@<>,"]+\.[^\s@<>,"]+$/.test(value);
+
+const invalidAddressText = 'Enter a full address like name@example.com.';
+
+// What the server accepts in one send (src/worker/services/email-sender.ts); it counts the base64 text of the attachments.
+const MAX_ATTACHMENTS = 32;
+const MAX_MESSAGE_BYTES = 25 * 1024 * 1024;
+const base64Length = (bytes: number) => Math.ceil(bytes / 3) * 4;
 
 const escapeHtml = (value: string) =>
   value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('\n', '<br />');
@@ -268,6 +275,8 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
   const [isSending, setIsSending] = React.useState(false);
   const [status, setStatus] = React.useState<{ text: string; type: 'error' | 'success' } | null>(null);
   const [draftStatus, setDraftStatus] = React.useState<DraftStatus>('idle');
+  // The first click on the trash button only asks; the second one discards.
+  const [confirmingDiscard, setConfirmingDiscard] = React.useState(false);
 
   // An error message (a validation hint or a failed send) goes away as soon as the user changes recipients or subject (the
   // body clears it in its onInput). Adjusting state while rendering, as the form values are what it follows.
@@ -281,6 +290,8 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
   }
 
   const editorRef = React.useRef<HTMLDivElement | null>(null);
+  const dialogRef = React.useRef<HTMLDivElement | null>(null);
+  const discardRef = React.useRef<HTMLButtonElement | null>(null);
   const toInputRef = React.useRef<HTMLInputElement | null>(null);
   const ccInputRef = React.useRef<HTMLInputElement | null>(null);
   const bccInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -401,6 +412,43 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
     saverRef.current?.touch();
   }, [from, toList, ccList, bccList, toInput, ccInput, bccInput, subject]);
 
+  // The trash button asks for 4 s. A tap elsewhere ends it too (the button's own blur is not enough: Safari does not focus a tapped button).
+  React.useEffect(() => {
+    if (!confirmingDiscard) {
+      return;
+    }
+    const timer = window.setTimeout(() => setConfirmingDiscard(false), 4000);
+    const onPointerDown = (event: PointerEvent) => {
+      if (!(event.target instanceof Node && discardRef.current?.contains(event.target) === true)) {
+        setConfirmingDiscard(false);
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('pointerdown', onPointerDown);
+    };
+  }, [confirmingDiscard]);
+
+  // Focus goes back to what opened the compose when it closes (as in SettingsModal). This effect comes before the one below, which
+  // moves focus into the form.
+  React.useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    const opener = document.activeElement as HTMLElement | null;
+    return () => {
+      // The opener can be gone: the phone drawer unmounts when its Compose button is used, and the C shortcut starts from BODY. The
+      // header button that opens the drawer takes over, else the Compose button (both are found by label: they have no id).
+      const openerGone = !opener || opener === document.body || !opener.isConnected;
+      const target = openerGone
+        ? (document.querySelector<HTMLElement>('button[aria-label="Open mailboxes"]') ??
+          [...document.querySelectorAll<HTMLElement>('button')].find((button) => button.textContent.startsWith('Compose')))
+        : opener;
+      target?.focus({ preventScroll: true });
+    };
+  }, [isOpen]);
+
   React.useEffect(() => {
     if (!isOpen) {
       openedRef.current = null;
@@ -430,6 +478,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
     setFiles([]);
     setStatus(null);
     setDraftStatus('idle');
+    setConfirmingDiscard(false);
     closingRef.current = false;
     sendingRef.current = false;
     const editor = editorRef.current;
@@ -461,8 +510,22 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
     if (parts.length === 0) {
       return;
     }
-    setList((prev) => [...new Set([...prev, ...parts])]);
-    setInput('');
+    // A mistyped address ('bob') stays in the input instead of becoming a chip that only the server would refuse.
+    const valid = parts.filter((part) => isAddress(part));
+    const invalid = parts.filter((part) => !isAddress(part));
+    const add = () => {
+      setList((prev) => [...new Set([...prev, ...valid])]);
+      setInput(invalid.join(', '));
+    };
+    if (invalid.length === 0) {
+      add();
+      return;
+    }
+    if (valid.length > 0) {
+      // Rendered first: the recipients changed, and that clears an error (see formKey), so the one below must come after it.
+      flushSync(add);
+    }
+    setStatus({ text: invalidAddressText, type: 'error' });
   };
 
   const exec = (command: string, value?: string) => {
@@ -488,6 +551,17 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
     if (picked.length === 0) {
       return;
     }
+    // Refused as a whole when it would pass what the server accepts; it counts the attachments as base64 plus the text of the body.
+    if (files.length + picked.length > MAX_ATTACHMENTS) {
+      setStatus({ text: 'At most 32 attachments.', type: 'error' });
+      return;
+    }
+    const { html, text } = readBody();
+    const size = [...files, ...picked].reduce((total, file) => total + base64Length(file.size), html.length + text.length);
+    if (size > MAX_MESSAGE_BYTES) {
+      setStatus({ text: 'Attachments are larger than 25 MB in total.', type: 'error' });
+      return;
+    }
 
     try {
       const next = await Promise.all(picked.map(read));
@@ -510,6 +584,11 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
     }
     if (to.length === 0) {
       setStatus({ text: 'Add at least one recipient.', type: 'error' });
+      return;
+    }
+    // Text left in a field after Enter / blur (or a chip from an old draft) that is not an address.
+    if ([...to, ...cc, ...bcc].some((address) => !isAddress(address))) {
+      setStatus({ text: invalidAddressText, type: 'error' });
       return;
     }
     if (!subject.trim()) {
@@ -629,6 +708,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
   };
 
   const missingFrom = from.trim() === '';
+  const danger = t.dark ? '#F97066' : '#B42318';
   // A sent mail (it closes in a moment) must not be sent again.
   const sent = status?.type === 'success';
   const noSignature = signatureBlock(signature) === '';
@@ -646,7 +726,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
         minWidth: 0,
         fontSize: 13,
         lineHeight: '20px',
-        color: shownStatus.type === 'error' ? (t.dark ? '#F97066' : '#B42318') : t.dark ? '#4ADE80' : '#15803D'
+        color: shownStatus.type === 'error' ? danger : t.dark ? '#4ADE80' : '#15803D'
       }}
     >
       {shownStatus.type === 'error' ? (
@@ -671,7 +751,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
         fontSize: 12,
         lineHeight: '16px',
         whiteSpace: 'nowrap',
-        color: draftStatus === 'error' ? (t.dark ? '#F97066' : '#B42318') : t.text3
+        color: draftStatus === 'error' ? danger : t.text3
       }}
     >
       {draftStatusText[draftStatus]}
@@ -714,9 +794,11 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
   return (
     // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- dialog-wide Escape / Ctrl+Enter shortcuts catch keys bubbling up from the fields inside
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby="compose-title"
+      tabIndex={-1}
       style={{
         position: 'fixed',
         inset: 0,
@@ -724,10 +806,12 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
         display: 'flex',
         flexDirection: 'column',
         background: t.bg,
-        color: t.text
+        color: t.text,
+        outline: 'none'
       }}
       className="nm-fade-in"
       onKeyDown={(e) => {
+        trapTab(e, dialogRef.current);
         if (e.key === 'Escape') {
           void requestClose();
         }
@@ -837,7 +921,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                 value={from}
                 onChange={(e) => setFrom(e.target.value)}
                 onKeyDown={enterToBody}
-                style={{ ...inputStyle, height: 40 }}
+                style={{ ...inputStyle, height: 40, textOverflow: 'ellipsis' }}
                 placeholder="sender@yourdomain.com"
               />
             </div>
@@ -878,7 +962,8 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                     }
                   }}
                   onBlur={() => commitRecipients(toInput, setToList, setToInput)}
-                  style={{ ...inputStyle, flex: '1 1 140px', minWidth: 120 }}
+                  // Phones: the Cc/Bcc toggle shares the line with the input, so the input may start narrow (140px + the toggle does not fit at 320px).
+                  style={{ ...inputStyle, flex: narrow ? '1 1 72px' : '1 1 140px', minWidth: narrow ? 72 : 120 }}
                 />
                 {narrow ? ccBccToggle : null}
               </div>
@@ -975,12 +1060,13 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                 onChange={(e) => setSubject(e.target.value)}
                 onKeyDown={enterToBody}
                 placeholder="Subject"
-                style={{ ...inputStyle, height: 40, fontSize: 15, fontWeight: 500 }}
+                style={{ ...inputStyle, height: 40, fontSize: 15, fontWeight: 500, textOverflow: 'ellipsis' }}
               />
             </div>
 
             <div
               aria-label="Formatting"
+              className="nm-hide-scrollbar nm-compose-fmt"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -1014,24 +1100,17 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                 <option value="h4">Subheading</option>
               </select>
               <span aria-hidden="true" className="nm-hide-sm" style={{ width: 1, height: 20, margin: '0 6px', background: t.border }} />
-              <button type="button" aria-label="Bold" title="Bold" className="nm-tap-ext" onClick={() => exec('bold')} style={toolBtn}>
+              <button type="button" aria-label="Bold" title="Bold" className="nm-tap" onClick={() => exec('bold')} style={toolBtn}>
                 <Bold size={18} strokeWidth={2.2} aria-hidden="true" />
               </button>
-              <button
-                type="button"
-                aria-label="Italic"
-                title="Italic"
-                className="nm-tap-ext"
-                onClick={() => exec('italic')}
-                style={toolBtn}
-              >
+              <button type="button" aria-label="Italic" title="Italic" className="nm-tap" onClick={() => exec('italic')} style={toolBtn}>
                 <Italic size={18} strokeWidth={2} aria-hidden="true" />
               </button>
               <button
                 type="button"
                 aria-label="Underline"
                 title="Underline"
-                className="nm-tap-ext"
+                className="nm-tap"
                 onClick={() => exec('underline')}
                 style={toolBtn}
               >
@@ -1042,7 +1121,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                 type="button"
                 aria-label="Bulleted list"
                 title="Bulleted list"
-                className="nm-tap-ext"
+                className="nm-tap"
                 onClick={() => exec('insertUnorderedList')}
                 style={toolBtn}
               >
@@ -1052,7 +1131,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                 type="button"
                 aria-label="Numbered list"
                 title="Numbered list"
-                className="nm-tap-ext"
+                className="nm-tap"
                 onClick={() => exec('insertOrderedList')}
                 style={toolBtn}
               >
@@ -1062,7 +1141,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                 type="button"
                 aria-label="Quote"
                 title="Quote"
-                className="nm-tap-ext"
+                className="nm-tap"
                 onClick={() => exec('formatBlock', 'blockquote')}
                 style={toolBtn}
               >
@@ -1073,7 +1152,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                 type="button"
                 aria-label="Insert link"
                 title="Insert link"
-                className="nm-tap-ext"
+                className="nm-tap"
                 onClick={() => {
                   // eslint-disable-next-line no-alert -- no custom dialog exists for the URL prompt
                   const url = window.prompt('Link URL');
@@ -1089,7 +1168,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                 type="button"
                 aria-label="Insert image"
                 title="Insert image by URL"
-                className="nm-tap-ext"
+                className="nm-tap"
                 onClick={() => {
                   // eslint-disable-next-line no-alert -- no custom dialog exists for the URL prompt
                   const url = window.prompt('Image URL');
@@ -1105,7 +1184,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                 type="button"
                 aria-label="Attach files"
                 title="Attach files"
-                className="nm-tap-ext"
+                className="nm-tap"
                 onClick={() => fileRef.current?.click()}
                 style={toolBtn}
               >
@@ -1317,16 +1396,31 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
               <Signature size={20} strokeWidth={1.8} aria-hidden="true" />
             </button>
             <button
+              ref={discardRef}
               type="button"
-              aria-label="Discard draft"
+              aria-label={confirmingDiscard ? 'Confirm discard' : 'Discard draft'}
               className="nm-tap"
               title="Discard draft"
               onClick={() => {
-                void discardDraft();
+                // Asks first when something would be lost: typed text, attachments, or a draft that is saved on the server.
+                const { empty } = readDraft();
+                const worthKeeping = files.length > 0 || (!empty && (draft.draftId !== undefined || !isPristine()));
+                if (confirmingDiscard || !worthKeeping) {
+                  void discardDraft();
+                } else {
+                  setConfirmingDiscard(true);
+                }
               }}
-              style={{ ...toolBtn, width: 40, height: 40, borderRadius: 10 }}
+              onBlur={() => setConfirmingDiscard(false)}
+              style={{
+                ...toolBtn,
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                ...(confirmingDiscard ? { width: 'auto', padding: '0 8px', color: danger, fontSize: 14, fontWeight: 600 } : null)
+              }}
             >
-              <Trash2 size={20} strokeWidth={1.8} aria-hidden="true" />
+              {confirmingDiscard ? 'Discard?' : <Trash2 size={20} strokeWidth={1.8} aria-hidden="true" />}
             </button>
           </div>
         </form>

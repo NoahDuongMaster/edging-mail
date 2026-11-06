@@ -1,7 +1,8 @@
 import React from 'react';
-import { Cloud, Database, HardDrive, Loader2, LogOut, Mail, ShieldCheck, X } from 'lucide-react';
+import { BellRing, Clock, Cloud, Database, Globe, HardDrive, Loader2, LogOut, Mail, Radio, Send, X } from 'lucide-react';
 import type { ThemeTokens } from '../theme';
 import { useLogout } from '../lib/auth';
+import { trapTab } from '../lib/focusTrap';
 import { deviceOffMessage, removeThisDevice, usePushNotifications } from '../lib/push';
 import { useSaveSettings, useSettings, type Settings } from '../lib/settings';
 
@@ -110,6 +111,8 @@ const Switch: React.FC<SwitchProps> = ({ t, checked, labelledBy, onClick, busy =
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose, onToggleDark }) => {
   const [tab, setTab] = React.useState<Tab>('account');
   const dialogRef = React.useRef<HTMLDivElement | null>(null);
+  // Whether the latest press began on the backdrop itself: a drag that starts in a field and ends outside the card must not close the dialog.
+  const pressedBackdrop = React.useRef(false);
 
   const settingsQuery = useSettings();
   const { mutate: saveSettings, isPending: isSaving } = useSaveSettings();
@@ -298,7 +301,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
   };
 
   return (
-    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- backdrop click is a pointer shortcut; Escape (window keydown) and the Close button are the keyboard routes
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- backdrop click is a pointer shortcut; Escape (window keydown) and the Close button are the keyboard routes
     <div
       ref={dialogRef}
       role="dialog"
@@ -316,7 +319,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
         background: t.dark ? 'rgba(0,0,0,0.6)' : 'rgba(16,24,40,0.45)',
         outline: 'none'
       }}
-      onClick={onClose}
+      onKeyDown={(e) => trapTab(e, dialogRef.current)}
+      onPointerDown={(e) => {
+        pressedBackdrop.current = e.target === e.currentTarget;
+      }}
+      onClick={() => {
+        if (pressedBackdrop.current) {
+          pressedBackdrop.current = false;
+          onClose();
+        }
+      }}
     >
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- only stops clicks from reaching the backdrop; not an interactive control */}
       <div
@@ -360,7 +372,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
                 type="button"
                 role="tab"
                 aria-selected={on}
-                aria-controls={`settings-panel-${item.id}`}
+                aria-controls={on ? `settings-panel-${item.id}` : undefined}
                 tabIndex={on ? 0 : -1}
                 className="nm-tap-h nm-settings-tab"
                 onClick={() => setTab(item.id)}
@@ -577,10 +589,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
               </div>
               <div style={card}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13 }}>
+                  <Send size={16} color={t.accent} aria-hidden="true" />
+                  Outbound mail
+                </div>
+                <p style={muted}>Mail you send goes out through Cloudflare Email Sending, using the Worker&apos;s send_email binding.</p>
+              </div>
+              <div style={card}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13 }}>
                   <Database size={16} color="#15803D" aria-hidden="true" />
                   D1 (SQLite)
                 </div>
-                <p style={muted}>Headers, snippets, folders, labels and read state live in D1 for instant edge queries.</p>
+                <p style={muted}>Message bodies, folders, labels, read state, drafts and settings live in D1.</p>
               </div>
               <div style={card}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13 }}>
@@ -591,10 +610,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
               </div>
               <div style={card}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13 }}>
-                  <ShieldCheck size={16} color="#B97800" aria-hidden="true" />
+                  <Globe size={16} color="#B97800" aria-hidden="true" />
                   Static assets
                 </div>
-                <p style={muted}>The React client is served from the Cloudflare edge cache alongside the API routes.</p>
+                <p style={muted}>The React app is served by the Worker&apos;s static assets binding, next to the /api routes.</p>
+              </div>
+              <div style={card}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13 }}>
+                  <Radio size={16} color={t.accent} aria-hidden="true" />
+                  Realtime
+                </div>
+                <p style={muted}>
+                  A Durable Object (MailHub) holds the open WebSocket connections and tells every open tab when mail changes.
+                </p>
+              </div>
+              <div style={card}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13 }}>
+                  <Clock size={16} color={t.accent} aria-hidden="true" />
+                  Snooze
+                </div>
+                <p style={muted}>A cron trigger runs every minute and moves snoozed mail that is due back to the Inbox.</p>
+              </div>
+              <div style={card}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13 }}>
+                  <BellRing size={16} color={t.accent} aria-hidden="true" />
+                  Web Push
+                </div>
+                <p style={muted}>Devices with notifications on get a Web Push for new mail and for snoozed mail that comes back.</p>
               </div>
             </div>
           ) : null}
@@ -603,12 +645,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <p style={{ ...muted, fontWeight: 600, color: t.text }}>1. Create the D1 database and R2 bucket</p>
               <pre style={pre}>{`npx wrangler d1 create edging_mail_db\nnpx wrangler r2 bucket create edging-mail-storage`}</pre>
+              <p style={muted}>
+                Paste the printed <code style={{ color: t.text }}>database_id</code> into{' '}
+                <code style={{ color: t.text }}>wrangler.jsonc</code>, and set the route there to your own domain.
+              </p>
               <p style={{ ...muted, fontWeight: 600, color: t.text }}>2. Apply the migrations</p>
               <pre style={pre}>npm run db:migrate:remote</pre>
               <p style={{ ...muted, fontWeight: 600, color: t.text }}>3. Set the secrets (wrangler secret put)</p>
               <pre style={pre}>{`npx wrangler secret put APP_PASSWORD\nnpx wrangler secret put JWT_SECRET`}</pre>
+              <p style={muted}>
+                <code style={{ color: t.text }}>APP_PASSWORD</code> needs at least 12 characters and{' '}
+                <code style={{ color: t.text }}>JWT_SECRET</code> at least 32. Until both are set, login answers 503.
+              </p>
               <p style={{ ...muted, fontWeight: 600, color: t.text }}>4. Deploy</p>
               <pre style={pre}>npm run deploy</pre>
+              <p style={muted}>It builds the app, applies any pending migrations, then deploys.</p>
             </div>
           ) : null}
 
@@ -628,14 +679,53 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
                 }}
               >
                 <li>
-                  Open <strong style={{ color: t.text }}>Cloudflare Dashboard → your domain → Email Routing</strong>.
+                  Open <strong style={{ color: t.text }}>Compute → Email Service → Email Routing → Onboard Domain</strong> and choose your
+                  domain.
                 </li>
-                <li>Enable Email Routing so the MX and SPF records are created for you.</li>
                 <li>
-                  Add a routing rule with the custom address <code style={{ color: t.text }}>*@yourdomain.com</code> and the action{' '}
-                  <strong style={{ color: t.text }}>Send to a Worker</strong> → <code style={{ color: t.text }}>edging-mail</code>.
+                  Cloudflare adds the MX, SPF and DKIM records on the domain. MX records of another mail provider must be removed first, so
+                  that provider stops receiving mail for the domain.
+                </li>
+                <li>
+                  Create a routing rule for one address, such as <code style={{ color: t.text }}>you@yourdomain.com</code>, with the action{' '}
+                  <strong style={{ color: t.text }}>Send to a Worker</strong> → <code style={{ color: t.text }}>edging-mail</code>. To
+                  receive every address of the domain, use the catch-all rule with the same action instead.
                 </li>
                 <li>Save. Inbound mail now lands straight in this inbox.</li>
+              </ol>
+              <p style={muted}>
+                Keeping mail at another provider? Run Email Routing on a subdomain (Email Routing → Settings → Subdomains) and forward one
+                address to it. See Option B in <code style={{ color: t.text }}>docs/deployment.md</code>.
+              </p>
+              <p style={{ ...muted, fontWeight: 600, color: t.text, marginTop: 6 }}>Sending mail</p>
+              <ol
+                style={{
+                  margin: 0,
+                  paddingLeft: 18,
+                  listStyle: 'decimal',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                  color: t.text2,
+                  fontSize: 13,
+                  overflowWrap: 'anywhere'
+                }}
+              >
+                <li>
+                  To send to other people, open{' '}
+                  <strong style={{ color: t.text }}>Compute → Email Service → Email Sending → Onboard Domain</strong> and choose your
+                  domain.
+                </li>
+                <li>
+                  Cloudflare adds the records it needs: MX and SPF on a <code style={{ color: t.text }}>cf-bounce</code> subdomain, a DKIM
+                  key, and DMARC on <code style={{ color: t.text }}>_dmarc</code>. They can take 5–15 minutes to take effect.
+                </li>
+                <li>
+                  Until the domain is onboarded, only verified destination addresses of your account can receive mail; anyone else fails
+                  with <code style={{ color: t.text }}>E_RECIPIENT_NOT_ALLOWED</code>. Sending to any other recipient also needs the Workers
+                  Paid plan.
+                </li>
+                <li>Use an address on that domain as your Sender address (Account tab).</li>
               </ol>
             </div>
           ) : null}

@@ -133,6 +133,14 @@ button {
   .nm-compose-scroll::-webkit-scrollbar {
     display: none;
   }
+  /* Compose formatting toolbar: nine 44px buttons do not fit 390px, so the row scrolls sideways instead of wrapping or shrinking */
+  .nm-compose-fmt {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+  }
+  .nm-compose-fmt > * {
+    flex: none;
+  }
 }
 
 /* Phone tap targets (44px). Class names go on the control; desktop keeps its inline sizes. */

@@ -6,8 +6,10 @@ import {
   ChevronRight,
   Download,
   Forward,
+  Inbox,
   Loader2,
   MailOpen,
+  MailX,
   Paperclip,
   Plus,
   Reply,
@@ -48,6 +50,10 @@ interface MessageViewProps {
   onArchive: (message: Message) => void;
   onTrash: (message: Message) => void;
   onSpam: (message: Message) => void;
+  /** Trash and Spam only: back to the Inbox. */
+  onRestore: (message: Message) => void;
+  /** Trash and Spam only: remove the message for good (the owner asks first). */
+  onDeleteForever: (message: Message) => void;
   onMarkUnread: (message: Message) => void;
   onSnooze: (message: Message, until: Date) => void;
   onUnsnooze: (message: Message) => void;
@@ -248,6 +254,8 @@ export const MessageView: React.FC<MessageViewProps> = ({
   onArchive,
   onTrash,
   onSpam,
+  onRestore,
+  onDeleteForever,
   onMarkUnread,
   onSnooze,
   onUnsnooze,
@@ -344,8 +352,13 @@ export const MessageView: React.FC<MessageViewProps> = ({
   const paragraphs = bodyParagraphs(message, !showHtml);
   const starred = message.is_starred === 1;
   const sender = displayName(message);
-  // Drafts and sent mail are not in the inbox flow, so there is nothing to snooze.
-  const canSnooze = message.folder !== 'drafts' && message.folder !== 'sent';
+  const inTrash = message.folder === 'trash';
+  const inSpam = message.folder === 'spam';
+  const inBin = inTrash || inSpam;
+  const danger = t.dark ? '#F97066' : '#B42318';
+  // Drafts, sent mail, Trash and Spam are not in the inbox flow, so there is nothing to snooze. In Trash and Spam the bar also gains
+  // Move to Inbox and Delete forever: dropping Snooze keeps it at the 8 buttons the density arithmetic above (and a 320px phone) allows.
+  const canSnooze = message.folder !== 'drafts' && message.folder !== 'sent' && !inBin;
   const snoozed = message.folder === 'snoozed';
   const snoozeUntil = snoozed && typeof message.snoozed_until === 'number' ? message.snoozed_until : null;
   // On a phone the toolbar buttons fill the width index.css gives them (the snooze and label buttons sit in a wrapper of that width).
@@ -377,19 +390,54 @@ export const MessageView: React.FC<MessageViewProps> = ({
         <button type="button" aria-label="Archive" title="Archive" className="nm-tap" onClick={() => onArchive(message)} style={barBtn}>
           <Archive size={20} strokeWidth={1.8} aria-hidden="true" />
         </button>
-        <button
-          type="button"
-          aria-label="Report spam"
-          title="Report spam"
-          className="nm-tap"
-          onClick={() => onSpam(message)}
-          style={barBtn}
-        >
-          <Ban size={20} strokeWidth={1.8} aria-hidden="true" />
-        </button>
-        <button type="button" aria-label="Delete" title="Delete" className="nm-tap" onClick={() => onTrash(message)} style={barBtn}>
-          <Trash2 size={20} strokeWidth={1.8} aria-hidden="true" />
-        </button>
+        {inSpam ? null : (
+          <button
+            type="button"
+            aria-label="Move to Spam"
+            title="Move to Spam"
+            className="nm-tap"
+            onClick={() => onSpam(message)}
+            style={barBtn}
+          >
+            <Ban size={20} strokeWidth={1.8} aria-hidden="true" />
+          </button>
+        )}
+        {inTrash ? null : (
+          <button
+            type="button"
+            aria-label="Move to Trash"
+            title="Move to Trash"
+            className="nm-tap"
+            onClick={() => onTrash(message)}
+            style={barBtn}
+          >
+            <Trash2 size={20} strokeWidth={1.8} aria-hidden="true" />
+          </button>
+        )}
+        {inBin ? (
+          <>
+            <button
+              type="button"
+              aria-label="Move to Inbox"
+              title="Move to Inbox"
+              className="nm-tap"
+              onClick={() => onRestore(message)}
+              style={barBtn}
+            >
+              <Inbox size={20} strokeWidth={1.8} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              aria-label="Delete forever"
+              title="Delete forever"
+              className="nm-tap"
+              onClick={() => onDeleteForever(message)}
+              style={{ ...barBtn, color: danger }}
+            >
+              <MailX size={20} strokeWidth={1.8} aria-hidden="true" />
+            </button>
+          </>
+        ) : null}
         <span
           aria-hidden="true"
           className={compact ? 'nm-bar-sep' : undefined}

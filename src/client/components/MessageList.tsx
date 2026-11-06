@@ -18,6 +18,8 @@ interface MessageListProps {
   /** Mobile only: when set, rows can be swiped left to archive. */
   onSwipeArchive?: (message: Message) => void;
   title: string;
+  /** The folder behind `messages` ('inbox', 'spam', 'label:Work' ...); only picks the empty-state hint. */
+  folder: string;
   subtitle: string;
   filter: MailFilter;
   onFilterChange: (filter: MailFilter) => void;
@@ -53,6 +55,21 @@ const COMPACT_FILTERS: { id: MailFilter; label: string }[] = [FILTERS[0], FILTER
 
 const SWIPE_REVEAL = 96;
 const SWIPE_ARCHIVE_BG = '#0F766E';
+
+// What an empty folder says it holds; the Inbox's wording is the default (Drafts and Snoozed have their own lines below).
+const EMPTY_HINTS: Record<string, string> = {
+  spam: 'Messages you move to Spam are kept here.',
+  trash: 'Messages you move to Trash are kept here.',
+  archive: 'Archived messages are kept here.',
+  sent: 'Messages you send are kept here.',
+  starred: 'Star a message to find it here.'
+};
+
+function emptyHint(folder: string): string {
+  return folder.startsWith('label:')
+    ? 'Messages with this label appear here.'
+    : EMPTY_HINTS[folder] || 'Messages you receive will appear in this list.';
+}
 
 /** How a row names the other side: the sender, or in Drafts the recipients ('No recipient' when none is set yet). */
 function partyOf(m: Message, isDrafts: boolean) {
@@ -368,6 +385,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   onToggleStar,
   onSwipeArchive,
   title,
+  folder,
   subtitle,
   filter,
   onFilterChange,
@@ -416,8 +434,9 @@ export const MessageList: React.FC<MessageListProps> = ({
     });
   }, [messages, isDrafts, isSnoozed]);
 
+  const searching = searchQuery !== undefined && searchQuery !== '';
   // An empty Inbox with no search, filter or failed load is the "all caught up" screen, which Edgar owns.
-  const caughtUp = title === 'Inbox' && filter === 'all' && !loadFailed && (searchQuery === undefined || searchQuery === '');
+  const caughtUp = title === 'Inbox' && filter === 'all' && !loadFailed && !searching;
 
   return (
     <section
@@ -905,23 +924,27 @@ export const MessageList: React.FC<MessageListProps> = ({
               {loadFailed
                 ? 'Could not load mail'
                 : filter === 'all'
-                  ? searchQuery !== undefined && searchQuery !== ''
+                  ? searching
                     ? `No results for “${searchQuery}”`
                     : `No messages in ${title}`
-                  : 'Nothing matches this filter'}
+                  : searching
+                    ? 'Nothing matches this filter and search'
+                    : 'Nothing matches this filter'}
             </p>
             <p style={{ margin: 0, maxWidth: 280, color: t.text2, textWrap: 'balance' }}>
               {loadFailed
                 ? 'Check your connection and try again.'
                 : filter === 'all'
-                  ? searchQuery !== undefined && searchQuery !== ''
+                  ? searching
                     ? 'Try a different search.'
                     : isDrafts
                       ? 'Drafts you start are saved here.'
                       : isSnoozed
                         ? 'Snoozed messages come back to your inbox at the time you pick.'
-                        : 'Messages you receive will appear in this list.'
-                  : 'Switch back to All to see every message.'}
+                        : emptyHint(folder)
+                  : searching
+                    ? 'Clear the search or switch back to All.'
+                    : 'Switch back to All to see every message.'}
             </p>
             {loadFailed ? (
               <button

@@ -4,6 +4,7 @@ import { Sidebar } from './components/Sidebar';
 import { MessageList, type MailFilter } from './components/MessageList';
 import { MessageView } from './components/MessageView';
 import { ComposeModal, type ComposeDraft } from './components/ComposeModal';
+import { ConfirmDialog } from './components/ConfirmDialog';
 import { LoginScreen } from './components/LoginScreen';
 import { SettingsModal } from './components/SettingsModal';
 import { Toast, type ToastState } from './components/Toast';
@@ -12,6 +13,7 @@ import { displayName, formatSender, labelsOf, nonEmpty, SEARCH_MAX } from './lib
 import { useBackStack } from './lib/backStack';
 import { useSession } from './lib/auth';
 import { fetchDraft } from './lib/drafts';
+import { trapTab } from './lib/focusTrap';
 import {
   useBatchAction,
   useLabels,
@@ -238,6 +240,8 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
   const [composeOpen, setComposeOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<ComposeDraft>({});
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
+  // The mail whose Delete forever waits for the owner's yes (see ConfirmDialog).
+  const [confirmDelete, setConfirmDelete] = React.useState<Message | null>(null);
   const [toast, setToast] = React.useState<ToastState | null>(null);
 
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
@@ -265,7 +269,8 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
       { open: mobilePane === 'reader', close: () => setMobilePane('list') },
       { open: sidebarOpen, close: () => setSidebarOpen(false) },
       { open: isSettingsOpen, close: () => setIsSettingsOpen(false) },
-      { open: composeOpen, close: () => setComposeOpen(false) }
+      { open: composeOpen, close: () => setComposeOpen(false) },
+      { open: confirmDelete !== null, close: () => setConfirmDelete(null) }
     ],
     isMobile
   );
@@ -563,8 +568,22 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
       return;
     }
 
-    const label = target === 'trash' ? 'Moved to Trash' : target === 'spam' ? 'Reported as spam' : 'Archived';
+    const label = target === 'trash' ? 'Moved to Trash' : target === 'spam' ? 'Moved to Spam' : 'Archived';
     setToast({ text: label, undo: undoFor(message) });
+  };
+
+  // Trash and Spam only. Move to Inbox can be undone (the mail goes back to the folder it came from); Delete forever cannot, which is
+  // why the toolbar asks first (confirmDelete) and the toast has no Undo.
+  const restoreOrDelete = async (message: Message, action: 'restore' | 'delete') => {
+    const ok = await leaveMessage(message, () => batch(action, [message.id]));
+    if (ok !== true) {
+      if (ok === false) {
+        void refreshMessages();
+      }
+      return;
+    }
+
+    setToast(action === 'restore' ? { text: 'Moved to Inbox', undo: undoFor(message) } : { text: 'Deleted forever' });
   };
 
   const snoozeMessage = async (message: Message, until: Date) => {
@@ -770,7 +789,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
         return;
       }
       const shortcut = shortcutOf(event, event.target as HTMLElement | null);
-      if (shortcut === null || composeOpen || isSettingsOpen || drawerOpen) {
+      if (shortcut === null || composeOpen || isSettingsOpen || drawerOpen || confirmDelete !== null) {
         return;
       }
       event.preventDefault();
@@ -784,7 +803,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [composeOpen, isSettingsOpen, drawerOpen, navigateRelative, openCompose]);
+  }, [composeOpen, isSettingsOpen, drawerOpen, confirmDelete, navigateRelative, openCompose]);
 
   // Focus moves into the drawer when it opens and returns to the button that opens it when it closes (as in SettingsModal; the
   // button is found by its label, it has no id).
@@ -818,6 +837,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
         ref={searchRef}
         type="text"
         autoComplete="off"
+        spellCheck={false}
         maxLength={SEARCH_MAX}
         value={searchInput}
         onChange={(e) => setSearchInput(e.target.value)}
@@ -944,6 +964,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
       isDrafts={folder === 'drafts'}
       isSnoozed={folder === 'snoozed'}
       title={title}
+      folder={folder}
       subtitle={subtitle}
       filter={filter}
       onFilterChange={setFilter}
@@ -985,6 +1006,10 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
       onSpam={(m) => {
         void moveMessage(m, 'spam');
       }}
+      onRestore={(m) => {
+        void restoreOrDelete(m, 'restore');
+      }}
+      onDeleteForever={setConfirmDelete}
       onMarkUnread={(m) => {
         void markUnread(m);
       }}
@@ -1066,10 +1091,25 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
                 <Menu size={22} strokeWidth={1.8} aria-hidden="true" />
               </button>
               <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 8, paddingLeft: 4 }}>
-                <h1 style={{ margin: 0, fontSize: 22, lineHeight: '28px', fontWeight: 600, letterSpacing: '-0.01em' }}>
+                <h1
+                  title={title}
+                  style={{
+                    minWidth: 0,
+                    margin: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    fontSize: 22,
+                    lineHeight: '28px',
+                    fontWeight: 600,
+                    letterSpacing: '-0.01em'
+                  }}
+                >
                   {mobilePane === 'reader' ? 'Message' : title}
                 </h1>
-                {mobilePane === 'list' ? <span style={{ fontSize: 13, color: t.text2 }}>{subtitle}</span> : null}
+                {mobilePane === 'list' ? (
+                  <span style={{ flex: 'none', fontSize: 13, color: t.text2, whiteSpace: 'nowrap' }}>{subtitle}</span>
+                ) : null}
               </div>
               {/* MessageList hides its own header on phones, so its Mark all as read lives here (Drafts have nothing unread). */}
               {mobilePane === 'list' && folder !== 'drafts' ? (
@@ -1136,6 +1176,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
                       : undefined
                   }
                   title={title}
+                  folder={folder}
                   subtitle={subtitle}
                   filter={filter}
                   onFilterChange={setFilter}
@@ -1200,12 +1241,14 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
             onClick={() => setSidebarOpen(false)}
             style={{ position: 'absolute', inset: 0, background: t.dark ? 'rgba(0,0,0,0.6)' : 'rgba(16,24,40,0.45)' }}
           />
+          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the handler only keeps Tab inside the modal drawer; the panel is not a control */}
           <div
             ref={drawerRef}
             role="dialog"
             aria-modal="true"
             aria-label="Mailboxes"
             tabIndex={-1}
+            onKeyDown={(e) => trapTab(e, drawerRef.current)}
             style={{
               position: 'relative',
               zIndex: 1,
@@ -1259,6 +1302,21 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
       />
 
       <SettingsModal isOpen={isSettingsOpen} t={t} onClose={() => setIsSettingsOpen(false)} onToggleDark={onToggleDark} />
+
+      <ConfirmDialog
+        isOpen={confirmDelete !== null}
+        t={t}
+        title="Delete this message forever?"
+        body="It and its attachments are removed for good. This cannot be undone."
+        confirmLabel="Delete forever"
+        onConfirm={() => {
+          if (confirmDelete !== null) {
+            void restoreOrDelete(confirmDelete, 'delete');
+          }
+          setConfirmDelete(null);
+        }}
+        onCancel={() => setConfirmDelete(null)}
+      />
 
       <Toast t={t} toast={toast} onDismiss={() => setToast(null)} raised={isMobile ? mobilePane === 'list' : false} desktop={!isMobile} />
     </div>
