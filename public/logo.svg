@@ -1,18 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 100 100">
+  <title>Edging Mail</title>
   <defs>
-    <linearGradient id="cfGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#F38020" />
-      <stop offset="50%" stop-color="#FAAD3F" />
-      <stop offset="100%" stop-color="#F6821F" />
-    </linearGradient>
+    <rect id="ek-tile" width="100" height="100" rx="24"/>
+    <clipPath id="ek-clip"><use xlink:href="#ek-tile"/></clipPath>
+    <path id="ek-body" d="M40 9C49.5 9 56 17 56 27C56 35 54 40 52 44C51 47 51 50 53 52C60 55 77 59 82 72C85 81 79 91 73 100L22 100C21 96 19 92 18 86C16 76 30 68 30 58C30 50 22 45 22 33C22 19 30.5 9 40 9Z"/>
+    <clipPath id="ek-clip-body"><use xlink:href="#ek-body"/></clipPath>
+    <path id="ek-beak" d="M50 39C61 37 69 40 75 47C69 51 59 52 50 51Z"/>
   </defs>
-  <rect width="100" height="100" rx="24" fill="#0F172A" />
-  <rect x="4" y="4" width="92" height="92" rx="20" stroke="#1E293B" stroke-width="2" />
-  <!-- Envelope Base -->
-  <path d="M20 32C20 28.6863 22.6863 26 26 26H74C77.3137 26 80 28.6863 80 32V68C80 71.3137 77.3137 74 74 74H26C22.6863 74 20 71.3137 20 68V32Z" fill="#1E293B" stroke="#334155" stroke-width="2" />
-  <!-- Cloudflare Edge Lightning Bolt / Fold -->
-  <path d="M22 30L50 52L78 30" stroke="url(#cfGradient)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-  <!-- Flame / Edge Accent -->
-  <path d="M50 48L62 66H38L50 48Z" fill="url(#cfGradient)" opacity="0.25" />
-  <circle cx="50" cy="52" r="4" fill="#F6821F" />
+  <use xlink:href="#ek-tile" fill="#2F5BEA"/>
+  <g clip-path="url(#ek-clip)">
+    <g transform="translate(-2 0)" stroke-linejoin="round">
+      <use xlink:href="#ek-beak" fill="#0B1236" stroke="#0B1236" stroke-width="5.5"/>
+      <use xlink:href="#ek-body" fill="#0B1236" stroke="#0B1236" stroke-width="5.5"/>
+      <use xlink:href="#ek-beak" fill="#FFDD7A"/>
+      <use xlink:href="#ek-body" fill="#B4C0DC"/>
+      <g clip-path="url(#ek-clip-body)">
+        <path d="M0 41Q40 57 90 43V50Q40 65 0 48Z" fill="#3DB39C"/>
+        <path d="M0 48Q40 65 90 50V57Q40 73 0 55Z" fill="#7F5AD6"/>
+      </g>
+      <g transform="translate(0 1.5) rotate(-4 40 31)">
+        <path d="M25 24H56Q59 24 59 27V32Q59 39 52.5 39H48.5Q43 39 42 33.5Q40 31.5 38 33.5Q37 39 31 39H30Q26 39 25 32Z" fill="#0B1220" stroke="#0B1220" stroke-width="2"/>
+        <path d="M53 29L49 36" stroke="#D5E0FF" stroke-width="4.2" stroke-linecap="round"/>
+      </g>
+    </g>
+  </g>
 </svg>

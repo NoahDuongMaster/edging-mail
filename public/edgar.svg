@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="14 41 484 471" width="484" height="471" role="img" aria-labelledby="eg-t eg-d">
+  <title id="eg-t">Edgar, the Edging Mail courier pigeon</title>
+  <desc id="eg-d">A smug pigeon in sunglasses with a mail bag, perched on the edge of a cloud.</desc>
+  <defs>
+    <filter id="eg-rim" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="6" result="b"/>
+      <feComponentTransfer in="b" result="d"><feFuncA type="linear" slope="14" intercept="-1.5"/></feComponentTransfer>
+      <feFlood flood-color="#D5DFFF" flood-opacity="0.95"/>
+      <feComposite in2="d" operator="in" result="halo"/>
+      <feMerge><feMergeNode in="halo"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <linearGradient id="eg-tail" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="-100" y2="0">
+      <stop offset="0" stop-color="#AFBAD6"/>
+      <stop offset="0.64" stop-color="#93A1C4"/>
+      <stop offset="0.64" stop-color="#46558A"/>
+      <stop offset="1" stop-color="#46558A"/>
+    </linearGradient>
+    <linearGradient id="eg-lens" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2B3F7C"/>
+      <stop offset="1" stop-color="#0B1220"/>
+    </linearGradient>
+
+    <rect id="eg-c0" x="40" y="444" width="300" height="40" rx="20"/>
+    <rect id="eg-c6" x="128" y="400" width="214" height="62" rx="30"/>
+    <circle id="eg-c1" cx="92" cy="454" r="34"/>
+    <circle id="eg-c2" cx="150" cy="442" r="42"/>
+    <circle id="eg-c3" cx="205" cy="438" r="42"/>
+    <circle id="eg-c4" cx="262" cy="440" r="44"/>
+    <circle id="eg-c5" cx="310" cy="450" r="40"/>
+    <g id="eg-cloud"><use xlink:href="#eg-c0"/><use xlink:href="#eg-c1"/><use xlink:href="#eg-c2"/><use xlink:href="#eg-c3"/><use xlink:href="#eg-c4"/><use xlink:href="#eg-c5"/><use xlink:href="#eg-c6"/></g>
+    <clipPath id="eg-clipCloud"><use xlink:href="#eg-c0"/><use xlink:href="#eg-c1"/><use xlink:href="#eg-c2"/><use xlink:href="#eg-c3"/><use xlink:href="#eg-c4"/><use xlink:href="#eg-c5"/><use xlink:href="#eg-c6"/></clipPath>
+
+    <circle id="eg-s0" cx="354" cy="128" r="58"/>
+    <circle id="eg-s6" cx="388" cy="176" r="22"/>
+    <ellipse id="eg-s1" cx="346" cy="190" rx="48" ry="52"/>
+    <ellipse id="eg-s4" cx="298" cy="204" rx="44" ry="50" transform="rotate(-20 298 204)"/>
+    <circle id="eg-s2" cx="336" cy="256" r="86"/>
+    <ellipse id="eg-s3" cx="216" cy="288" rx="106" ry="76" transform="rotate(-22 216 288)"/>
+    <ellipse id="eg-s5" cx="274" cy="324" rx="98" ry="50"/>
+    <g id="eg-sil"><use xlink:href="#eg-s0"/><use xlink:href="#eg-s6"/><use xlink:href="#eg-s1"/><use xlink:href="#eg-s4"/><use xlink:href="#eg-s2"/><use xlink:href="#eg-s3"/><use xlink:href="#eg-s5"/></g>
+    <clipPath id="eg-clipSil"><use xlink:href="#eg-s0"/><use xlink:href="#eg-s6"/><use xlink:href="#eg-s1"/><use xlink:href="#eg-s4"/><use xlink:href="#eg-s2"/><use xlink:href="#eg-s3"/><use xlink:href="#eg-s5"/></clipPath>
+
+    <path id="eg-wing" d="M282 244C282 216 246 210 212 230C176 250 148 280 112 328Q132 344 168 312Q188 332 208 304Q226 324 246 296Q264 314 282 288Z"/>
+    <clipPath id="eg-clipWing"><use xlink:href="#eg-wing"/></clipPath>
+  </defs>
+
+  <g filter="url(#eg-rim)">
+    <!-- cloud -->
+    <use xlink:href="#eg-cloud" fill="#2B3C7A" stroke="#2B3C7A" stroke-width="16" stroke-linejoin="round"/>
+    <use xlink:href="#eg-cloud" fill="#DCE6FB"/>
+    <g clip-path="url(#eg-clipCloud)">
+      <rect x="0" y="466" width="400" height="40" fill="#B9CAF0"/>
+      <ellipse cx="248" cy="416" rx="34" ry="6" fill="#A9BDEB"/>
+      <ellipse cx="308" cy="416" rx="34" ry="6" fill="#A9BDEB"/>
+    </g>
+    <g fill="none" stroke="#F4F8FF" stroke-width="6" stroke-linecap="round">
+      <path d="M68 450Q74 438 88 436"/>
+      <path d="M124 436Q132 424 148 424"/>
+      <path d="M320 428Q328 420 336 420"/>
+    </g>
+
+    <!-- tail: three feather tips, dark band at the end -->
+    <path transform="translate(172 322) rotate(-15)" d="M0 -22L-92 -40Q-108 -28 -96 -14Q-110 0 -97 14Q-108 28 -92 40L0 22Z" fill="url(#eg-tail)" stroke="#2B3C7A" stroke-width="8" stroke-linejoin="round"/>
+
+    <!-- legs -->
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M236 356V410M238 414L264 418M238 414L260 404M238 414L224 420M296 350V410M298 414L322 418M298 414L318 404M298 414L284 420" stroke="#2B3C7A" stroke-width="20"/>
+      <path d="M236 356V410M238 414L264 418M238 414L260 404M238 414L224 420M296 350V410M298 414L322 418M298 414L318 404M298 414L284 420" stroke="#E4607A" stroke-width="10"/>
+    </g>
+
+    <!-- beak: tucked behind the head outline -->
+    <g transform="translate(354 128) rotate(-12) scale(1.08) translate(-354 -118)">
+      <path d="M390 150C414 148 436 152 450 159C440 172 416 181 390 178Z" fill="#5C6791" stroke="#2B3C7A" stroke-width="7" stroke-linejoin="round"/>
+    </g>
+
+    <!-- body -->
+    <use xlink:href="#eg-sil" fill="#2B3C7A" stroke="#2B3C7A" stroke-width="16" stroke-linejoin="round"/>
+    <use xlink:href="#eg-sil" fill="#A9B6D2"/>
+    <g clip-path="url(#eg-clipSil)">
+      <ellipse cx="346" cy="300" rx="80" ry="64" fill="#DCE3F2"/>
+      <path d="M262 176Q346 236 436 172V190Q346 252 262 194Z" fill="#3DB39C"/>
+      <path d="M262 194Q346 252 436 190V206Q346 268 262 212Z" fill="#8E6AD8"/>
+    </g>
+
+    <!-- strap: over the shoulder, ends under the bag -->
+    <g clip-path="url(#eg-clipSil)" fill="none">
+      <path d="M282 190L330 300" stroke="#2B3C7A" stroke-width="22"/>
+      <path d="M282 190L330 300" stroke="#C98B4B" stroke-width="10"/>
+    </g>
+    <rect x="292" y="226" width="20" height="14" rx="3" transform="rotate(-23 302 233)" fill="#F59E0B" stroke="#2B3C7A" stroke-width="4"/>
+
+    <!-- wing: pale coverts over dark primaries -->
+    <g transform="translate(-12 8)">
+      <use xlink:href="#eg-wing" fill="#2B3C7A" stroke="#2B3C7A" stroke-width="16" stroke-linejoin="round"/>
+      <use xlink:href="#eg-wing" fill="#6F7EA8"/>
+      <g clip-path="url(#eg-clipWing)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M300 290Q284 308 265 292Q246 310 227 296Q208 314 189 300Q170 316 151 304L110 296V196H300Z" fill="#A8B5D3" stroke="none"/>
+        <path d="M300 290Q284 308 265 292Q246 310 227 296Q208 314 189 300Q170 316 151 304L110 296" stroke="#2B3C7A" stroke-width="6"/>
+      </g>
+    </g>
+
+    <!-- open satchel with a letter tucked in -->
+    <g transform="rotate(-5 346 322)">
+      <ellipse cx="346" cy="296" rx="44" ry="10" fill="#17204A" stroke="#2B3C7A" stroke-width="7"/>
+    </g>
+    <g transform="rotate(8 360 274)">
+      <rect x="330" y="250" width="62" height="52" rx="6" fill="#FFF3D6" stroke="#2B3C7A" stroke-width="7" stroke-linejoin="round"/>
+      <path d="M333 254L361 277L389 254" fill="none" stroke="#2B3C7A" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="361" cy="277" r="6" fill="#F59E0B" stroke="#2B3C7A" stroke-width="3.5"/>
+    </g>
+    <g transform="rotate(-5 346 322)">
+      <path d="M302 296Q346 314 390 296V342Q390 354 378 354H314Q302 354 302 342Z" fill="#2F5BEA" stroke="#2B3C7A" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M314 310Q346 326 378 310" fill="none" stroke="#4C74F5" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="314" cy="318" r="5" fill="#F59E0B" stroke="#2B3C7A" stroke-width="3.5"/>
+    </g>
+
+    <!-- face: chin up -->
+    <g transform="translate(354 128) rotate(-12) scale(1.08) translate(-354 -118)">
+      <path d="M420 168Q434 169 444 162" fill="none" stroke="#A9B6D8" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M394 169Q385 172 378 160" fill="none" stroke="#2B3C7A" stroke-width="5.5" stroke-linecap="round"/>
+      <path d="M396 153Q397 144 407 144Q416 146 414 153Q405 157 396 153Z" fill="#DCE2F0" stroke="#2B3C7A" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M316 108H362V126Q362 144 346 144H332Q316 144 316 126Z" fill="url(#eg-lens)" stroke="#0B1220" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M374 108H420V117Q420 129 408 129H390Q374 129 374 120Z" fill="url(#eg-lens)" stroke="#0B1220" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M310 106H420" stroke="#0B1220" stroke-width="10" stroke-linecap="round"/>
+      <path d="M326 138L340 116M336 142L346 127M388 124L398 112" fill="none" stroke="#BFD1FF" stroke-width="5" stroke-linecap="round" opacity="0.85"/>
+    </g>
+
+    <!-- sparkle -->
+    <path d="M462 58Q464 76 482 78Q464 80 462 98Q460 80 442 78Q460 76 462 58Z" fill="#FBBF24" stroke="#2B3C7A" stroke-width="5" stroke-linejoin="round"/>
+  </g>
+</svg>

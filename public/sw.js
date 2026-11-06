@@ -3,7 +3,7 @@
 // 2. Shows Web Push notifications (sender + subject only) and opens the mail when one is tapped.
 
 // Bump to drop everything cached by older versions of this file.
-const CACHE = 'edging-mail-v1';
+const CACHE = 'edging-mail-v2';
 const SHELL = '/';
 const NAVIGATION_TIMEOUT_MS = 4000;
 // A notification that appears while the app is in front is dismissed after this long.
