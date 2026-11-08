@@ -4,7 +4,19 @@ import { handleSite } from '../../src/worker/site';
 import { copyEn } from '../../src/worker/site/copy.en';
 import { copyVi } from '../../src/worker/site/copy.vi';
 import { copyZh } from '../../src/worker/site/copy.zh';
+import { SECURITY_KINDS } from '../../src/worker/site/landing';
 import { GITHUB_URL } from '../../src/worker/site/links';
+
+/** The deploy commands exactly as docs/deployment.md writes them (steps 2 to 5). */
+const DEPLOY_COMMANDS = [
+  'npx wrangler d1 create edging_mail_db',
+  'npx wrangler r2 bucket create edging-mail-storage',
+  'npm run db:migrate:remote',
+  'npx wrangler secret put JWT_SECRET',
+  'npx wrangler secret put DATA_KEY',
+  'npx wrangler secret put APP_PASSWORD',
+  'npm run deploy'
+];
 
 const ctx = createExecutionContext();
 const env = { LANDING_PAGE: 'on' };
@@ -72,6 +84,9 @@ describe.each(PAGES)('landing page ($name)', ({ path, copy, lang, app, locale, a
   it('puts all of the approved copy on the page', async () => {
     const { text } = await fetchText(origin, path);
     const html = text.replaceAll('&#39;', "'");
+    // The page may set the first clause of a statement in its own element (the security rows do), so the words are compared
+    // as text: every approved sentence must still be on the page, word for word and in order.
+    const words = html.replaceAll(/<[^>]+>/g, '');
     const sentences = [
       copy.hero.h1,
       copy.hero.subline,
@@ -95,7 +110,7 @@ describe.each(PAGES)('landing page ($name)', ({ path, copy, lang, app, locale, a
       copy.footer.text
     ];
     for (const sentence of sentences) {
-      expect(html).toContain(sentence);
+      expect(words).toContain(sentence);
     }
   });
 
@@ -113,6 +128,74 @@ describe.each(PAGES)('landing page ($name)', ({ path, copy, lang, app, locale, a
     for (const group of copy.security.groups) {
       expect(text).toContain(`<h3>${group.title}</h3>`);
     }
+  });
+
+  it('has a nav whose links reach the sections, and the language and phone menus as disclosures (no script, no button)', async () => {
+    const { text } = await fetchText(origin, path);
+    const header = /<header[\s\S]*?<\/header>/.exec(text)?.[0] ?? '';
+    for (const id of ['features', 'security', 'how', 'faq']) {
+      expect(header).toContain(`<a class="nav-link" href="#${id}">`);
+      expect(text).toContain(`<h2 id="${id}"`);
+    }
+    expect(count(header, /<details class="drop (lang|menu)" name="top-menu">/g)).toBe(2);
+    expect(text).not.toContain('<button');
+  });
+
+  it('draws the product as decoration: every fragment of the benefits and the bento is hidden from screen readers', async () => {
+    const { text } = await fetchText(origin, path);
+    expect(count(text, /<article class="tile tile-(wide|full|phone|small) tile-[a-f]">/g)).toBe(copy.features.cards.length);
+    expect(count(text, /<div class="tile-art" aria-hidden="true">/g)).toBe(copy.features.cards.length);
+    expect(count(text, /<div class="card-visual" aria-hidden="true">/g)).toBe(copy.benefits.cards.length);
+    // The fragments speak the product's own words: the folder list is the glossary's, in the page's language.
+    for (const folder of Object.values(copy.ui.folders)) {
+      expect(text).toContain(folder);
+    }
+  });
+
+  it('shows the deploy commands of docs/deployment.md in a terminal that scrolls sideways, with no copy button', async () => {
+    const { text } = await fetchText(origin, path);
+    const terminal = /<pre tabindex="0" aria-label="[^"]+">[\s\S]*?<\/pre>/.exec(text)?.[0] ?? '';
+    const lines = terminal.replaceAll(/<[^>]+>/g, '').split('\n');
+    for (const command of DEPLOY_COMMANDS) {
+      expect(lines).toContain(command);
+    }
+    expect(text).not.toMatch(/clipboard/i);
+  });
+
+  it('marks a guarantee with a check and a limit with the warning mark, never a check, and the caveat as a note', async () => {
+    const { text } = await fetchText(origin, path);
+    const lists = text.match(/<ul class="checks">[\s\S]*?<\/ul>/g) ?? [];
+    expect(lists).toHaveLength(SECURITY_KINDS.length);
+    for (const [index, list] of lists.entries()) {
+      expect([...list.matchAll(/<li class="is-(protected|limit)">/g)].map((match) => match[1])).toEqual(SECURITY_KINDS[index]);
+    }
+    for (const item of text.match(/<li class="is-limit">[\s\S]*?<\/li>/g) ?? []) {
+      expect(item).toContain(`class="ic mark mark-limit"`);
+      expect(item).toContain(`aria-label="${copy.ui.legend.limit}"`);
+      expect(item).not.toContain('mark-protected');
+    }
+    expect(text).toContain('<div class="callout callout-warning" role="note">');
+  });
+
+  it('answers every question in a disclosure whose summary is the h3, the first one open', async () => {
+    const { text } = await fetchText(origin, path);
+    expect(count(text, /<details class="qa"( open)?><summary><h3>/g)).toBe(copy.faq.items.length);
+    expect(count(text, /<details class="qa" open>/g)).toBe(1);
+  });
+
+  it('shows the product, not the mascot, in the hero: a light and a dark screenshot with their size, loaded at once', async () => {
+    const { text } = await fetchText(origin, path);
+    const hero = /<section class="hero">[\s\S]*?<\/section>/.exec(text)?.[0] ?? '';
+    const alt = copy.hero.screenshotAlt.replaceAll("'", '&#39;');
+    expect(hero).toContain(`<source media="(prefers-color-scheme: dark)" srcset="/landing/app-dark.${app}.png" width="1440" height="900">`);
+    expect(hero).toContain(`<img src="/landing/app-light.${app}.png" width="1440" height="900" alt="${alt}" loading="eager"`);
+    // The screenshot is the hero's one image; the other two are the logo beside the brand name in the header and in the footer.
+    expect(count(hero, /<img /g)).toBe(1);
+    expect(count(text, /<img /g)).toBe(3);
+    expect(count(text, /<img src="\/logo\.svg\?v=2" width="28" height="28" alt="">/g)).toBe(2);
+    expect(text).not.toContain('edgar.svg');
+    // The frame may have a faint glow behind it, but text is never painted with a gradient.
+    expect(text).not.toMatch(/background-clip:\s*text|text-fill-color/i);
   });
 
   it('never uses the retired recovery wording (nobody, admins included, can reset or read)', async () => {
@@ -180,7 +263,11 @@ describe.each(PAGES)('landing page ($name)', ({ path, copy, lang, app, locale, a
 
   it('asks for nothing from a third party and has no inline script', async () => {
     const { text } = await fetchText(origin, path);
-    expect(text).not.toMatch(/<link[^>]+rel="(stylesheet|preload|preconnect|dns-prefetch)"/);
+    expect(text).not.toMatch(/<link[^>]+rel="(stylesheet|preconnect|dns-prefetch)"/);
+    // The one preload is the page's own font, from this origin (a path, never a URL with a host).
+    const preloads = text.match(/<link[^>]+rel="preload"[^>]*>/g) ?? [];
+    expect(preloads).toHaveLength(1);
+    expect(preloads[0]).toMatch(/href="\/fonts\/[\w.-]+\.woff2" as="font" type="font\/woff2" crossorigin>/);
     expect(text).not.toMatch(/<(script|img|iframe|source)\b[^>]*\s(src|srcset)="(https?:)?\/\//);
     expect(text).not.toMatch(/fonts\.(googleapis|gstatic)|googletagmanager|analytics/i);
     for (const script of text.match(/<script\b[^>]*>/g) ?? []) {
@@ -191,10 +278,18 @@ describe.each(PAGES)('landing page ($name)', ({ path, copy, lang, app, locale, a
   it('links the sign-in buttons to /app with the page language, and the deploy buttons to the deployment guide', async () => {
     const { text } = await fetchText(origin, path);
     expect(text).toContain(`href="/app?lang=${app}">${copy.cta.signIn}</a>`);
-    expect(count(text, /href="\/app[^"]*"/g)).toBe(2);
-    expect(count(text, /href="\/app\?lang=[a-z]+"/g)).toBe(2);
+    // Four sign-in links: the quiet button in the header, the hero and the closing band (their priority is the owner's decision), and
+    // the Product column of the footer.
+    expect(count(text, /href="\/app[^"]*"/g)).toBe(4);
+    expect(count(text, /href="\/app\?lang=[a-z]+"/g)).toBe(4);
+    const header = /<header[\s\S]*?<\/header>/.exec(text)?.[0] ?? '';
+    expect(header).toContain(`<a class="btn btn-sm" href="/app?lang=${app}">${copy.cta.signIn}</a>`);
+    expect(count(text, /class="btn btn-primary" href="\/app/g)).toBe(1);
+    const footer = /<footer[\s\S]*?<\/footer>/.exec(text)?.[0] ?? '';
+    expect(footer).toContain(`<a href="/app?lang=${app}">${copy.cta.signIn}</a>`);
     expect(text).toContain('docs/deployment.md" rel="noopener">');
-    expect(count(text, /deployment\.md/g)).toBe(2);
+    // The guide is linked from the hero, under the deploy commands, from the closing band and from the footer.
+    expect(count(text, /deployment\.md/g)).toBe(4);
   });
 
   it("holds no value of the maintainer's deployment (only the upstream links in links.ts are allowed)", async () => {

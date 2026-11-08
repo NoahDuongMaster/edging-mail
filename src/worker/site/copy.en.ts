@@ -2,8 +2,8 @@ import type { LandingCopy } from './copy.types';
 
 /**
  * English landing page, served at `/en/`. The text is the final approved copy from Marketing (copy-final.md v6, spec addenda 2,
- * 4.2 to 4.7), word for word. Only `chrome.skipLink` and `chrome.licenseLink` are not from that copy: they are the small words
- * around the page.
+ * 4.2 to 4.7), word for word. Not from that copy: `chrome.skipLink`, `chrome.licenseLink` and `chrome.languageLabel` (the small words around the
+ * page) and `hero.screenshotAlt` (the text alternative of the product screenshot). `og.imageAlt` is the former mascot alt text.
  */
 export const copyEn: LandingCopy = {
   lang: 'en',
@@ -16,15 +16,16 @@ export const copyEn: LandingCopy = {
   og: {
     title: 'Edging Mail: company email in your own Cloudflare account',
     description:
-      "One mailbox per person on your company's domain. Subjects, content and attachments are encrypted with each person's own key before they are stored. Open source."
+      "One mailbox per person on your company's domain. Subjects, content and attachments are encrypted with each person's own key before they are stored. Open source.",
+    imageAlt: 'Edgar the courier pigeon, the Edging Mail mascot'
   },
-  chrome: { skipLink: 'Skip to main content', githubLink: 'GitHub', licenseLink: 'MIT license' },
+  chrome: { skipLink: 'Skip to main content', githubLink: 'GitHub', licenseLink: 'MIT license', languageLabel: 'Language' },
   cta: { signIn: 'Sign in', deploy: 'Deploy for your company' },
   hero: {
     h1: 'Company email on your own domain',
     subline:
       "Edging Mail runs in your company's own Cloudflare account. Each person gets their own mailbox, with mail content encrypted by their own key.",
-    mascotAlt: 'Edgar the courier pigeon, the Edging Mail mascot'
+    screenshotAlt: 'The Edging Mail mailbox with the folder list, the message list and an open message'
   },
   benefits: {
     h2: 'Your company keeps its own email',
@@ -171,5 +172,77 @@ export const copyEn: LandingCopy = {
     h2: "Start with your company's domain",
     text: 'The deployment guide and all the code are on GitHub. If you already have an account, sign in here.'
   },
-  footer: { text: 'Edging Mail is open source under the MIT license. Its mascot, Edgar, is a courier pigeon.' }
+  footer: { text: 'Edging Mail is open source under the MIT license. Its mascot, Edgar, is a courier pigeon.' },
+  ui: {
+    nav: { label: 'Sections', features: 'Features', security: 'Security', how: 'How it works', faq: 'FAQ', menu: 'Menu' },
+    eyebrows: { benefits: 'Ownership', features: 'Product', how: 'Setup', security: 'Security', faq: 'FAQ' },
+    heroPills: ['Open source · MIT', 'Runs on Cloudflare'],
+    builtOn: 'Built on',
+    sampleDomain: 'yourcompany.com',
+    sampleSubjects: {
+      lena: 'Agenda for the planning day',
+      daniel: 'Budget draft for next quarter',
+      hana: 'Welcome to the team',
+      marco: 'Contract renewal',
+      aisha: 'Interview schedule',
+      omar: 'Updated invoice',
+      grace: 'Feedback from the design review',
+      ben: 'Parking next week',
+      elena: 'Train tickets for Monday',
+      lucas: 'Team photo',
+      jonas: 'Lunch on Friday?',
+      priya: 'Notes from the customer call',
+      tom: 'Re: Moving stand-up to 9:30'
+    },
+    sampleBody: 'Hi Sam, the agenda for the planning day is attached. Could you add the workshop times by Friday?',
+    sampleReply: "Tuesday at 10:00 works for me. I'll book the small meeting room.",
+    folders: {
+      inbox: 'Inbox',
+      starred: 'Starred',
+      snoozed: 'Snoozed',
+      sent: 'Sent',
+      drafts: 'Drafts',
+      archive: 'Archive',
+      spam: 'Spam',
+      trash: 'Trash'
+    },
+    words: {
+      compose: 'Compose',
+      reply: 'Reply',
+      forward: 'Forward',
+      send: 'Send',
+      to: 'To',
+      subject: 'Subject',
+      attachments: 'Attachments',
+      search: 'Search',
+      alias: 'Alias',
+      admin: 'Admin',
+      member: 'Member',
+      auditLog: 'Audit log',
+      adminConsole: 'Admin console',
+      name: 'Name',
+      address: 'Address',
+      role: 'Role',
+      newMail: 'New mail',
+      yourKey: 'Your key',
+      encryptedWithKey: 'Encrypted with your key',
+      cloudflareAccount: "Your company's Cloudflare account",
+      aliasAdded: 'added an alias',
+      notNeeded: ['Mail server', 'Container', 'Queue']
+    },
+    code: {
+      title: 'Terminal',
+      caption: 'Before step 1, your IT person deploys from a terminal:',
+      comments: ['Create the D1 database and the R2 bucket', 'Apply the migrations', 'Secrets', 'Deploy'],
+      guideLink: 'Read the deployment guide'
+    },
+    diagram: {
+      caption: 'How stored mail is protected. Each limit is marked in the lists.',
+      browser: { title: 'Browser', text: 'Your key, unlocked by your password. The password stays here.', tag: 'Holds the key' },
+      worker: { title: 'Cloudflare Worker', text: 'Encrypts mail before it is stored', tag: 'Can seal, cannot open' },
+      storage: { title: 'D1 · R2', text: 'Encrypted subjects, content and attachments', tag: 'Stores ciphertext' }
+    },
+    legend: { protected: 'Protected', limit: 'Limit' },
+    footer: { product: 'Product', project: 'Open source', deployGuide: 'Deployment guide' }
+  }
 };

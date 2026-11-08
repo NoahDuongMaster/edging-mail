@@ -2,7 +2,8 @@ import type { LandingCopy } from './copy.types';
 
 /**
  * Simplified Chinese landing page, served at `/zh/`. The text is the final zh-CN copy from Marketing (copy-final.md v6, spec
- * addenda 4.5, 4.8 and 4.8.1), word for word. Only `chrome.skipLink` is not from that copy: it is a small word around the page.
+ * addenda 4.5, 4.8 and 4.8.1), word for word. Not from that copy: `chrome.skipLink` and `chrome.languageLabel` (the small words around the page) and
+ * `hero.screenshotAlt` (the text alternative of the product screenshot). `og.imageAlt` is the former mascot alt text.
  */
 export const copyZh: LandingCopy = {
   lang: 'zh-CN',
@@ -13,14 +14,15 @@ export const copyZh: LandingCopy = {
   },
   og: {
     title: 'Edging Mail：部署在自己 Cloudflare 账号里的企业邮箱',
-    description: '公司域名下每人一个邮箱。主题、正文和附件在存储前用每个人自己的密钥加密。开源。'
+    description: '公司域名下每人一个邮箱。主题、正文和附件在存储前用每个人自己的密钥加密。开源。',
+    imageAlt: 'Edging Mail 的吉祥物：信鸽 Edgar'
   },
-  chrome: { skipLink: '跳到主要内容', githubLink: 'GitHub', licenseLink: 'MIT 许可证' },
+  chrome: { skipLink: '跳到主要内容', githubLink: 'GitHub', licenseLink: 'MIT 许可证', languageLabel: '语言' },
   cta: { signIn: '登录', deploy: '为公司部署', deployNote: '（部署指南为英文）' },
   hero: {
     h1: '企业邮箱，用你自己的域名',
     subline: 'Edging Mail 运行在公司自己的 Cloudflare 账号中。每个人都有自己的邮箱，邮件内容用本人的密钥加密。',
-    mascotAlt: 'Edging Mail 的吉祥物：信鸽 Edgar'
+    screenshotAlt: 'Edging Mail 邮箱：文件夹列表、邮件列表和一封已打开的邮件'
   },
   benefits: {
     h2: '公司的邮件，由公司自己保管',
@@ -160,5 +162,77 @@ export const copyZh: LandingCopy = {
     ]
   },
   closing: { h2: '从公司的域名开始', text: '部署指南和全部代码都在 GitHub 上。如果已有账号，请在这里登录。' },
-  footer: { text: 'Edging Mail 是基于 MIT 许可证的开源软件。吉祥物 Edgar 是一只信鸽。' }
+  footer: { text: 'Edging Mail 是基于 MIT 许可证的开源软件。吉祥物 Edgar 是一只信鸽。' },
+  ui: {
+    nav: { label: '页面章节', features: '功能', security: '安全', how: '使用流程', faq: '常见问题', menu: '菜单' },
+    eyebrows: { benefits: '自主掌控', features: '产品', how: '上手步骤', security: '安全', faq: '问答' },
+    heroPills: ['开源 · MIT', '运行在 Cloudflare 上'],
+    builtOn: '基于',
+    sampleDomain: 'yourcompany.com',
+    sampleSubjects: {
+      lena: '规划日议程',
+      daniel: '下季度预算草案',
+      hana: '欢迎加入团队',
+      marco: '合同续签',
+      aisha: '面试时间安排',
+      omar: '更新后的发票',
+      grace: '设计评审的反馈',
+      ben: '下周的停车安排',
+      elena: '周一的火车票',
+      lucas: '团队合影',
+      jonas: '周五一起吃午饭？',
+      priya: '客户电话的记录',
+      tom: 'Re: 晨会改到 9:30'
+    },
+    sampleBody: 'Sam 你好，规划日的议程在附件里。能在周五前把研讨会的时间加上吗？',
+    sampleReply: '周二 10:00 我可以，我来订小会议室。',
+    folders: {
+      inbox: '收件箱',
+      starred: '星标',
+      snoozed: '已延后',
+      sent: '已发送',
+      drafts: '草稿',
+      archive: '归档',
+      spam: '垃圾邮件',
+      trash: '回收站'
+    },
+    words: {
+      compose: '写邮件',
+      reply: '回复',
+      forward: '转发',
+      send: '发送',
+      to: '收件人',
+      subject: '主题',
+      attachments: '附件',
+      search: '搜索',
+      alias: '别名',
+      admin: '管理员',
+      member: '成员',
+      auditLog: '审计日志',
+      adminConsole: '管理后台',
+      name: '姓名',
+      address: '地址',
+      role: '角色',
+      newMail: '新邮件',
+      yourKey: '你的密钥',
+      encryptedWithKey: '已用你的密钥加密',
+      cloudflareAccount: '公司的 Cloudflare 账号',
+      aliasAdded: '添加了别名',
+      notNeeded: ['邮件服务器', '容器', '队列']
+    },
+    code: {
+      title: '终端',
+      caption: '第 1 步之前，IT 人员先在终端里完成部署：',
+      comments: ['创建 D1 数据库和 R2 存储桶', '执行数据库迁移', '设置 Worker 机密', '部署'],
+      guideLink: '阅读部署指南'
+    },
+    diagram: {
+      caption: '已存储的邮件如何受到保护。每项限制都在列表中标出。',
+      browser: { title: '浏览器', text: '你的密钥由密码解开，密码只留在这里。', tag: '持有密钥' },
+      worker: { title: 'Cloudflare Worker', text: '在存储前加密邮件', tag: '能加密，不能解密' },
+      storage: { title: 'D1 · R2', text: '已加密的主题、正文和附件', tag: '存储密文' }
+    },
+    legend: { protected: '受保护', limit: '限制' },
+    footer: { product: '产品', project: '开源', deployGuide: '部署指南' }
+  }
 };

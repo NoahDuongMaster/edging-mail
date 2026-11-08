@@ -2,8 +2,8 @@ import type { LandingCopy } from './copy.types';
 
 /**
  * Vietnamese landing page, served at `/`. The text is the final approved copy from Marketing (copy-final.md v6, spec addenda 2,
- * 4.2 to 4.7), word for word. Only `chrome.skipLink` and `chrome.licenseLink` are not from that copy: they are the small words
- * around the page.
+ * 4.2 to 4.7), word for word. Not from that copy: `chrome.skipLink`, `chrome.licenseLink` and `chrome.languageLabel` (the small words around the
+ * page) and `hero.screenshotAlt` (the text alternative of the product screenshot). `og.imageAlt` is the former mascot alt text.
  */
 export const copyVi: LandingCopy = {
   lang: 'vi',
@@ -16,15 +16,16 @@ export const copyVi: LandingCopy = {
   og: {
     title: 'Edging Mail: email công ty do công ty tự giữ',
     description:
-      'Mỗi nhân viên một hộp thư trên tên miền công ty. Tiêu đề, nội dung và tệp đính kèm được mã hóa bằng khóa riêng của từng người trước khi lưu. Mã nguồn mở.'
+      'Mỗi nhân viên một hộp thư trên tên miền công ty. Tiêu đề, nội dung và tệp đính kèm được mã hóa bằng khóa riêng của từng người trước khi lưu. Mã nguồn mở.',
+    imageAlt: 'Edgar, chú bồ câu đưa thư, linh vật của Edging Mail'
   },
-  chrome: { skipLink: 'Chuyển đến nội dung chính', githubLink: 'GitHub', licenseLink: 'Giấy phép MIT' },
+  chrome: { skipLink: 'Chuyển đến nội dung chính', githubLink: 'GitHub', licenseLink: 'Giấy phép MIT', languageLabel: 'Ngôn ngữ' },
   cta: { signIn: 'Đăng nhập', deploy: 'Triển khai cho công ty', deployNote: '(hướng dẫn bằng tiếng Anh)' },
   hero: {
     h1: 'Email theo tên miền riêng cho cả công ty',
     subline:
       'Edging Mail chạy trên tài khoản Cloudflare của chính công ty. Mỗi nhân viên có hộp thư riêng, nội dung thư được mã hóa bằng khóa của chính họ.',
-    mascotAlt: 'Edgar, chú bồ câu đưa thư, linh vật của Edging Mail'
+    screenshotAlt: 'Hộp thư Edging Mail với danh sách thư mục, danh sách thư và một thư đang mở'
   },
   benefits: {
     h2: 'Công ty tự giữ email của mình',
@@ -172,5 +173,78 @@ export const copyVi: LandingCopy = {
     h2: 'Bắt đầu với tên miền của công ty',
     text: 'Hướng dẫn triển khai và toàn bộ mã nguồn nằm trên GitHub. Ai đã có tài khoản thì đăng nhập tại đây.'
   },
-  footer: { text: 'Edging Mail là phần mềm mã nguồn mở theo giấy phép MIT. Linh vật Edgar là chú bồ câu đưa thư.' }
+  footer: { text: 'Edging Mail là phần mềm mã nguồn mở theo giấy phép MIT. Linh vật Edgar là chú bồ câu đưa thư.' },
+  ui: {
+    nav: { label: 'Các mục', features: 'Tính năng', security: 'Bảo mật', how: 'Cách hoạt động', faq: 'Hỏi đáp', menu: 'Menu' },
+    eyebrows: { benefits: 'Quyền sở hữu', features: 'Sản phẩm', how: 'Thiết lập', security: 'Bảo mật', faq: 'Hỏi đáp' },
+    heroPills: ['Mã nguồn mở · MIT', 'Chạy trên Cloudflare'],
+    builtOn: 'Xây dựng trên',
+    sampleDomain: 'congty.com',
+    sampleSubjects: {
+      lena: 'Chương trình ngày lập kế hoạch',
+      daniel: 'Bản nháp ngân sách quý tới',
+      hana: 'Chào mừng bạn vào nhóm',
+      marco: 'Gia hạn hợp đồng',
+      aisha: 'Lịch phỏng vấn',
+      omar: 'Hóa đơn đã cập nhật',
+      grace: 'Góp ý sau buổi duyệt thiết kế',
+      ben: 'Chỗ đỗ xe tuần tới',
+      elena: 'Vé tàu cho thứ Hai',
+      lucas: 'Ảnh cả nhóm',
+      jonas: 'Thứ Sáu đi ăn trưa nhé?',
+      priya: 'Ghi chú cuộc gọi với khách hàng',
+      tom: 'Re: Dời họp đầu ngày sang 9:30'
+    },
+    sampleBody:
+      'Chào Sam, chương trình ngày lập kế hoạch có trong tệp đính kèm. Bạn thêm giờ các buổi thảo luận trước thứ Sáu giúp mình nhé?',
+    sampleReply: 'Thứ Ba lúc 10:00 mình được. Mình sẽ đặt phòng họp nhỏ.',
+    folders: {
+      inbox: 'Hộp thư đến',
+      starred: 'Có gắn dấu sao',
+      snoozed: 'Đã tạm ẩn',
+      sent: 'Đã gửi',
+      drafts: 'Thư nháp',
+      archive: 'Lưu trữ',
+      spam: 'Thư rác',
+      trash: 'Thùng rác'
+    },
+    words: {
+      compose: 'Soạn thư',
+      reply: 'Trả lời',
+      forward: 'Chuyển tiếp',
+      send: 'Gửi',
+      to: 'Tới',
+      subject: 'Tiêu đề',
+      attachments: 'Tệp đính kèm',
+      search: 'Tìm kiếm',
+      alias: 'Địa chỉ phụ',
+      admin: 'Quản trị viên',
+      member: 'Thành viên',
+      auditLog: 'Nhật ký hoạt động',
+      adminConsole: 'Trang quản trị',
+      name: 'Tên',
+      address: 'Địa chỉ',
+      role: 'Vai trò',
+      newMail: 'Thư mới',
+      yourKey: 'Khóa của bạn',
+      encryptedWithKey: 'Mã hóa bằng khóa của bạn',
+      cloudflareAccount: 'Tài khoản Cloudflare của công ty',
+      aliasAdded: 'đã thêm địa chỉ phụ',
+      notNeeded: ['Máy chủ mail', 'Container', 'Hàng đợi']
+    },
+    code: {
+      title: 'Terminal',
+      caption: 'Trước bước 1, bộ phận IT triển khai từ terminal:',
+      comments: ['Tạo cơ sở dữ liệu D1 và bucket R2', 'Chạy migration', 'Khai báo secret', 'Triển khai'],
+      guideLink: 'Đọc hướng dẫn triển khai'
+    },
+    diagram: {
+      caption: 'Cách thư đang lưu được bảo vệ. Mỗi giới hạn được đánh dấu trong danh sách.',
+      browser: { title: 'Trình duyệt', text: 'Khóa của bạn, mở bằng mật khẩu. Mật khẩu chỉ ở lại đây.', tag: 'Giữ khóa' },
+      worker: { title: 'Cloudflare Worker', text: 'Mã hóa thư trước khi lưu', tag: 'Mã hóa được, không mở được' },
+      storage: { title: 'D1 · R2', text: 'Tiêu đề, nội dung và tệp đính kèm đã mã hóa', tag: 'Lưu bản đã mã hóa' }
+    },
+    legend: { protected: 'Được bảo vệ', limit: 'Giới hạn' },
+    footer: { product: 'Sản phẩm', project: 'Mã nguồn mở', deployGuide: 'Hướng dẫn triển khai' }
+  }
 };

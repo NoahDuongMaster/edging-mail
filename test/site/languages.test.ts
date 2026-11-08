@@ -29,9 +29,9 @@ describe('the three languages', () => {
 
   it('offer the other two languages in the header and all three in the footer, the current one as plain text', async () => {
     const pages = [
-      { path: '/', here: 'vi', others: ['en', 'zh-CN'] },
-      { path: '/en/', here: 'en', others: ['vi', 'zh-CN'] },
-      { path: '/zh/', here: 'zh-CN', others: ['vi', 'en'] }
+      { path: '/', here: 'vi', others: ['en', 'zh-CN'], label: 'Ngôn ngữ' },
+      { path: '/en/', here: 'en', others: ['vi', 'zh-CN'], label: 'Language' },
+      { path: '/zh/', here: 'zh-CN', others: ['vi', 'en'], label: '语言' }
     ];
     const links: Record<string, string> = {
       vi: 'href="/" hreflang="vi" lang="vi">Tiếng Việt</a>',
@@ -50,6 +50,13 @@ describe('the three languages', () => {
       expect(footer).not.toContain(links[page.here]);
       expect(footer).toContain(`<span aria-current="true" lang="${page.here}">`);
       expect(count(footer, /aria-current/g)).toBe(1);
+      // The header switch is one labelled group with the languages in a fixed order; the current one is marked, not a link.
+      expect(header).toContain(`<nav class="seg" aria-label="${page.label}">`);
+      expect(header).toContain(`<span aria-current="true" lang="${page.here}">`);
+      expect(count(header, /aria-current/g)).toBe(1);
+      expect(count(header, /hreflang=/g)).toBe(2);
+      const nav = /<nav class="seg"[\s\S]*?<\/nav>/.exec(header)?.[0] ?? '';
+      expect([...nav.matchAll(/(?<!href)lang="([\w-]+)"/g)].map((match) => match[1])).toEqual(['vi', 'en', 'zh-CN']);
     }
   });
 
@@ -65,13 +72,20 @@ describe('the three languages', () => {
     expect(await fetchText(host, '/en/')).not.toContain('<span class="note">');
   });
 
-  it('give the Chinese page the system CJK fonts and no font download', async () => {
+  it('give the Chinese page the system CJK fonts and no CJK font download (the one web font is Geist, from this origin)', async () => {
     const text = await fetchText(host, '/zh/');
-    const rule = /html:lang\(zh-CN\) body\{font-family:([^}]*)\}/.exec(text)?.[1] ?? '';
+    const body = /body\{[^}]*font:[^}]*\}/.exec(text)?.[0] ?? '';
     for (const family of ['PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC']) {
-      expect(rule).toContain(`"${family}"`);
+      expect(body).toContain(`'${family}'`);
     }
-    expect(text).not.toMatch(/@font-face|fonts\.(googleapis|gstatic)|<link[^>]+rel="(stylesheet|preload)"/);
+    // Every @font-face reads a file of this origin under /fonts; nothing is fetched from a font service.
+    const faces = text.match(/@font-face\{[^}]*\}/g) ?? [];
+    expect(faces.length).toBeGreaterThan(0);
+    for (const face of faces) {
+      expect(face).toMatch(/src:url\('\/fonts\/[\w.-]+\.woff2'\)/);
+      expect(face).not.toMatch(/PingFang|Hiragino|YaHei|CJK/);
+    }
+    expect(text).not.toMatch(/fonts\.(googleapis|gstatic)|<link[^>]+rel="stylesheet"/);
   });
 });
 

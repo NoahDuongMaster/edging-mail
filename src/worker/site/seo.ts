@@ -73,14 +73,14 @@ export function seoTags(copy: LandingCopy, origin: string): string {
     meta('property', 'og:image:type', 'image/png'),
     meta('property', 'og:image:width', OG_IMAGE_WIDTH),
     meta('property', 'og:image:height', OG_IMAGE_HEIGHT),
-    meta('property', 'og:image:alt', copy.hero.mascotAlt),
+    meta('property', 'og:image:alt', copy.og.imageAlt),
     meta('property', 'og:locale', own.locale),
     ...otherLocales.map((locale) => meta('property', 'og:locale:alternate', locale)),
     meta('name', 'twitter:card', 'summary_large_image'),
     meta('name', 'twitter:title', copy.og.title),
     meta('name', 'twitter:description', copy.og.description),
     meta('name', 'twitter:image', image),
-    meta('name', 'twitter:image:alt', copy.hero.mascotAlt),
+    meta('name', 'twitter:image:alt', copy.og.imageAlt),
     `<script type="application/ld+json">${safeJson(structuredData(copy, origin))}</script>`
   ].join('\n    ');
 }
