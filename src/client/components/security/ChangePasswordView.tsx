@@ -2,23 +2,22 @@ import React from 'react';
 import type { ThemeTokens } from '../../theme';
 import type { SessionUser } from '../../lib/auth';
 import { changePassword } from '../../lib/crypto/account';
+import { firstInvalid, useFieldFocus } from '../../lib/fieldFocus';
 import { useT } from '../../lib/i18n';
 import { contextWords } from '../../lib/password/policy';
 import { usePasswordCheck } from '../../lib/password/usePasswordCheck';
 import { useAction } from '../../lib/useAction';
 import { useCountdown } from '../../lib/useCountdown';
+import { TextField } from '../../ui';
 import { PasswordField } from '../PasswordField';
-import { AuthButton, ErrorLine, Field } from '../auth/authUi';
-import { DoneNote, Failure, PasswordInput, ViewFrame, controlStyle, formStyle, mutedStyle } from './securityUi';
+import { AuthButton, ErrorLine } from '../auth/authUi';
+import { DoneNote, Failure, PasswordInput, ViewFrame } from './securityUi';
 
 interface ChangePasswordViewProps {
   t: ThemeTokens;
   user: SessionUser;
   onBack: () => void;
 }
-
-// A visually hidden copy of the address, so a password manager updates the right entry. Not a secret.
-const HIDDEN: React.CSSProperties = { position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' };
 
 /**
  * Change password (crypto-design.md 15.3): the current password, a new one chosen the way every new password is, and a repeat. The lib opens
@@ -33,14 +32,30 @@ export const ChangePasswordView: React.FC<ChangePasswordViewProps> = ({ t, user,
   const [repeat, setRepeat] = React.useState('');
   const [done, setDone] = React.useState(false);
   const check = usePasswordCheck(next, user.role, contextWords(user.email, user.display_name));
-  const mismatch = repeat !== '' && repeat !== next;
-  const ready = current !== '' && check.assessment?.ok === true && repeat === next;
+  // The button can be pressed whenever no request runs and no wait is asked for: a press with something missing shows every field's error and
+  // takes the keyboard to the first of them. A press that sends starts the errors over (the current password is emptied whatever the answer).
+  const [submitted, setSubmitted] = React.useState(false);
+  const focusLater = useFieldFocus();
+  const currentError = submitted && current === '' ? tr('security.password_required') : null;
+  const mismatch = (repeat !== '' || submitted) && repeat !== next;
+  // The new password counts as missing while it is empty, refused or not judged yet (its check loading or failed): the line under it says which.
+  const toFix = firstInvalid([
+    ['security-current', current === ''],
+    ['security-new', check.assessment?.ok !== true],
+    ['security-repeat', repeat !== next]
+  ]);
 
   const submit = async (event: React.SyntheticEvent) => {
     event.preventDefault();
-    if (action.busy || wait > 0 || !ready) {
+    if (action.busy || wait > 0) {
       return;
     }
+    if (toFix !== undefined) {
+      setSubmitted(true);
+      focusLater(toFix);
+      return;
+    }
+    setSubmitted(false);
     const changed = await action.run(async () => {
       await changePassword(user, current, next);
       return true;
@@ -69,8 +84,9 @@ export const ChangePasswordView: React.FC<ChangePasswordViewProps> = ({ t, user,
         onSubmit={(event) => {
           void submit(event);
         }}
-        style={formStyle}
+        className="st-view-form"
       >
+        {/* A visually hidden copy of the address, so a password manager updates the right entry. Not a secret. */}
         <input
           type="text"
           name="username"
@@ -79,7 +95,7 @@ export const ChangePasswordView: React.FC<ChangePasswordViewProps> = ({ t, user,
           readOnly
           tabIndex={-1}
           aria-hidden="true"
-          style={HIDDEN}
+          className="st-username"
         />
         <PasswordInput
           t={t}
@@ -88,6 +104,7 @@ export const ChangePasswordView: React.FC<ChangePasswordViewProps> = ({ t, user,
           value={current}
           onChange={setCurrent}
           invalid={action.error !== null}
+          error={currentError}
         />
         <PasswordField
           t={t}
@@ -97,10 +114,12 @@ export const ChangePasswordView: React.FC<ChangePasswordViewProps> = ({ t, user,
           onChange={setNext}
           check={check}
           offerPassphrase={user.role === 'admin'}
+          submitted={submitted}
         />
-        <Field t={t} id="security-repeat" label={tr('gate.repeat_password')}>
-          <input
+        <div className="au-row">
+          <TextField
             id="security-repeat"
+            label={tr('gate.repeat_password')}
             type="password"
             value={repeat}
             onChange={(event) => setRepeat(event.target.value)}
@@ -109,15 +128,15 @@ export const ChangePasswordView: React.FC<ChangePasswordViewProps> = ({ t, user,
             autoCorrect="off"
             spellCheck={false}
             aria-invalid={mismatch}
-            style={controlStyle(t)}
+            aria-describedby={mismatch ? 'security-mismatch' : undefined}
           />
-        </Field>
-        <ErrorLine t={t} id="security-mismatch" text={mismatch ? tr('gate.passwords_differ') : null} />
+          <ErrorLine t={t} id="security-mismatch" text={mismatch ? tr('gate.passwords_differ') : null} />
+        </div>
         <Failure t={t} id="security-password-error" error={action.error} wait={wait} />
         <div>
-          <AuthButton t={t} busy={action.busy} disabled={!ready || wait > 0} label={tr('security.change_password')} />
+          <AuthButton t={t} busy={action.busy} disabled={wait > 0} label={tr('security.change_password')} />
         </div>
-        <p style={mutedStyle(t)}>{tr('security.password_note')}</p>
+        <p className="st-muted">{tr('security.password_note')}</p>
       </form>
     </ViewFrame>
   );

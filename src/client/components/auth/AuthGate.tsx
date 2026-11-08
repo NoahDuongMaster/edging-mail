@@ -119,7 +119,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ t, session, children }) => {
     return <TwoFactorGateScreen t={t} user={user} />;
   }
   if (restore === 'checking') {
-    return <div style={{ height: '100%', background: t.bg }} />;
+    return <div className="au-blank" />;
   }
   if (restore === 'locked') {
     return <UnlockScreen t={t} user={user} />;

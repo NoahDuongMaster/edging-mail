@@ -17,6 +17,10 @@ interface ToastProps {
   desktop?: boolean;
 }
 
+/**
+ * A short message that goes away by itself after 6 seconds, with an Undo when the action can be taken back. It is the inverse of the
+ * theme (dark on light, light on dark), so the colours come from `t`; the shape and the states are in ui.css (`ui-toast`).
+ */
 export const Toast: React.FC<ToastProps> = ({ t, toast, onDismiss, raised = false, desktop = false }) => {
   const tr = useT();
   // App passes a new onDismiss on every render: the timer must not restart each time (an Undo toast would never expire).
@@ -40,49 +44,27 @@ export const Toast: React.FC<ToastProps> = ({ t, toast, onDismiss, raised = fals
   return (
     <output
       aria-live="polite"
-      className="nm-fade-in"
+      className="ui-toast nm-fade-in"
       style={{
-        position: 'fixed',
-        // 264 = 248px sidebar + 16px gap. A phone centres with auto margins, not a transform: nm-fade-in animates
-        // `transform`, which would drop a translateX(-50%) for its 0.18 s and make the toast jump sideways.
-        ...(desktop ? { left: 264 } : { left: 0, right: 0, marginInline: 'auto' }),
+        // 256 = 240px sidebar + 16px gap. A phone centres with auto margins, not a transform: nm-fade-in animates
+        // `transform`, which would drop a translateX(-50%) for its animation and make the toast jump sideways.
+        ...(desktop ? { left: 256 } : { left: 0, right: 0, marginInline: 'auto' }),
         bottom: raised ? 'calc(104px + env(safe-area-inset-bottom))' : desktop ? 24 : 28,
-        zIndex: 80,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        // As wide as its text, but never wider than the screen: a long text (a snooze date) wraps instead of running off a phone.
-        width: 'max-content',
-        maxWidth: desktop ? 'calc(100vw - 296px)' : 'calc(100vw - 32px)', // 296 = 264 left offset + 32px right margin
-        padding: '6px 6px 6px 16px',
-        borderRadius: 12,
+        maxWidth: desktop ? 'calc(100vw - 288px)' : 'calc(100vw - 32px)', // 288 = 256 left offset + 32px right margin
         background: t.toastBg,
-        color: t.toastText,
-        boxShadow: '0 12px 32px rgba(0,0,0,0.24)',
-        fontSize: 14,
-        whiteSpace: 'nowrap'
+        color: t.toastText
       }}
     >
-      <span style={{ minWidth: 0, whiteSpace: 'normal' }}>{toast.text}</span>
+      <span className="ui-toast-text">{toast.text}</span>
       {toast.undo ? (
         <button
           type="button"
-          className="nm-tap-h"
+          className="ui-toast-action nm-tap-h"
           onClick={() => {
             toast.undo?.();
             onDismiss();
           }}
-          style={{
-            height: 36,
-            padding: '0 12px',
-            border: 0,
-            borderRadius: 8,
-            background: 'transparent',
-            color: t.toastAction,
-            font: 'inherit',
-            fontWeight: 600,
-            cursor: 'pointer'
-          }}
+          style={{ color: t.toastAction }}
         >
           {tr('toast.undo')}
         </button>

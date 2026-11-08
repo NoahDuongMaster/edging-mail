@@ -3,8 +3,23 @@ import type { ThemeTokens } from '../theme';
 import { useT } from '../lib/i18n';
 import { buildMailDocument } from '../lib/mailDocument';
 import type { EmbeddedImages } from '../lib/mailcrypto/inline';
+import { Banner, Button } from '../ui';
 
 const NO_EMBEDDED: ReadonlyMap<string, string> = new Map();
+
+/**
+ * A guess, from the HTML text alone, that a mail runs past one view: about 80 characters to a line plus a line for each block or picture,
+ * over 24 lines (576px). Nothing is parsed, rendered or loaded; the tag strip is one linear pass. reader.css gives a long mail a frame as
+ * tall as the column, a short one what the page leaves; a wrong guess costs some scrolling inside the frame or some white, never content.
+ */
+function looksLong(html: string): boolean {
+  const blocks = html.match(/<(?:p|br|tr|li|div|h[1-6]|img|blockquote)\b/gi)?.length ?? 0;
+  const text = html
+    .replaceAll(/<[^>]*>/g, ' ')
+    .replaceAll(/\s+/g, ' ')
+    .trim();
+  return text.length / 80 + blocks > 24;
+}
 
 interface MailFrameProps {
   html: string;
@@ -29,6 +44,7 @@ export const MailFrame: React.FC<MailFrameProps> = ({ html, t, loadEmbedded }) =
     [html, t.accent, showImages, opened]
   );
   const hasEmbedded = loadEmbedded !== undefined && embedded.length > 0;
+  const tall = React.useMemo(() => looksLong(html), [html]);
   const embeddedKey = embedded.join('\n');
   const loadRef = React.useRef(loadEmbedded);
   React.useEffect(() => {
@@ -58,61 +74,35 @@ export const MailFrame: React.FC<MailFrameProps> = ({ html, t, loadEmbedded }) =
     };
   }, [showImages, embeddedKey]);
 
-  const barStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: '0 8px',
-    padding: '4px 12px',
-    borderBottom: `1px solid ${t.border}`,
-    background: t.raised,
-    color: t.text2,
-    fontSize: 13,
-    lineHeight: '20px'
-  };
-
+  // The chrome around the frame is `.rd-*` in reader.css (imported by MessageView): the notices stand above the white canvas of the mail.
   return (
-    <div
-      style={{
-        border: `1px solid ${t.border}`,
-        borderRadius: 12,
-        background: '#FFFFFF',
-        overflow: 'hidden'
-      }}
-    >
+    <div className="rd-mail">
       {(hasRemoteImages || hasEmbedded) && !showImages ? (
-        <div style={barStyle}>
-          <span>{hasRemoteImages ? tr('frame.images_blocked') : tr('mailcrypto.images_hidden')}</span>
-          <button
-            type="button"
-            className="nm-tap-h"
-            onClick={() => setShowImages(true)}
-            style={{
-              padding: '0 4px',
-              border: 0,
-              background: 'transparent',
-              color: t.link,
-              font: 'inherit',
-              fontWeight: 500,
-              textDecoration: 'underline',
-              cursor: 'pointer'
-            }}
-          >
-            {tr('action.show_images')}
-          </button>
-        </div>
+        <Banner
+          className="rd-images"
+          action={
+            <Button size="sm" onClick={() => setShowImages(true)}>
+              {tr('action.show_images')}
+            </Button>
+          }
+        >
+          {hasRemoteImages ? tr('frame.images_blocked') : tr('mailcrypto.images_hidden')}
+        </Banner>
       ) : null}
       {showImages && opened !== null && opened.failed > 0 ? (
-        <div role="status" style={barStyle}>
-          <span>{tr('fail.mailcrypto_images')}</span>
-        </div>
+        <Banner tone="warning" className="rd-images">
+          {tr('fail.mailcrypto_images')}
+        </Banner>
       ) : null}
-      <iframe
-        title={tr('frame.title')}
-        srcDoc={srcDoc}
-        sandbox="allow-popups allow-popups-to-escape-sandbox"
-        style={{ width: '100%', height: 480, border: 0, display: 'block', background: '#FFFFFF' }}
-      />
+      <div className="rd-frame" data-tall={tall}>
+        {/* Its height is set in reader.css: nothing can measure the mail inside, so it fills the page, or the column for a long mail. */}
+        <iframe
+          title={tr('frame.title')}
+          srcDoc={srcDoc}
+          sandbox="allow-popups allow-popups-to-escape-sandbox"
+          style={{ width: '100%', border: 0, display: 'block', background: '#FFFFFF' }}
+        />
+      </div>
     </div>
   );
 };

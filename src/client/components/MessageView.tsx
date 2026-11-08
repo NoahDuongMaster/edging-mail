@@ -7,46 +7,34 @@ import {
   Download,
   Forward,
   Inbox,
-  Loader2,
   MailOpen,
   MailX,
   Paperclip,
-  Plus,
   Reply,
   ReplyAll,
   Star,
-  Tag,
-  Trash2
+  Trash2,
+  type LucideIcon
 } from 'lucide-react';
 import type { Attachment, Message } from '../types';
 import type { ThemeTokens } from '../theme';
-import { FILE_HUES, getChip, getLabelChip } from '../theme';
-import {
-  LABEL_NAME_MAX,
-  LABEL_NAME_PATTERN,
-  MAX_LABELS_PER_MESSAGE,
-  arrivedUnverified,
-  bodyParagraphs,
-  displayName,
-  fileTypeOf,
-  formatBytes,
-  formatFullDate,
-  initialsOf,
-  labelsOf,
-  stringHue,
-  subjectOf
-} from '../lib/mail';
-import { useT, type MessageKey } from '../lib/i18n';
+import { getFileChip, getLabelChip } from '../theme';
+import { arrivedUnverified, bodyParagraphs, displayName, fileTypeOf, formatBytes, formatFullDate, labelsOf, subjectOf } from '../lib/mail';
+import { useT } from '../lib/i18n';
 import { getUnlockedKey } from '../lib/crypto/keyStore';
 import { loadEmbeddedImages } from '../lib/mailcrypto/inline';
 import { safeFileName } from '../lib/mailcrypto/files';
+import { NOTE_KEYS, isUnreadable } from '../lib/mailcrypto/texts';
+import { useMailDownloads } from '../lib/mailcrypto/useMailDownloads';
+import { Avatar, Banner, Button, Chip, Disclosure, Divider, EmptyState, IconButton, SegmentedControl, Spinner, Tooltip } from '../ui';
+import { cx } from '../ui/cx';
 import { E2eBadge } from './E2eBadge';
 import { UnverifiedChip } from './UnverifiedChip';
-import { MailNote } from '../lib/mailcrypto/MailNote';
-import { isUnreadable } from '../lib/mailcrypto/texts';
-import { useMailDownloads } from '../lib/mailcrypto/useMailDownloads';
 import { MailFrame } from './MailFrame';
 import { SnoozeChip, SnoozeMenu } from './SnoozeMenu';
+import { LabelMenu } from './reader/LabelMenu';
+import { barDensity, replyDensity, usePaneMeasure, type BarDensity } from './reader/barDensity';
+import './reader.css';
 
 interface MessageViewProps {
   t: ThemeTokens;
@@ -77,205 +65,119 @@ interface MessageViewProps {
   hasNext: boolean;
   position: string;
   onBack?: () => void;
+  /** The list beside the reader has no rows (an empty folder, no match, a failed or first load): there is nothing to choose, so the empty reader
+   * only names itself, quietly; the list's own state says what is going on (and carries Edgar where one belongs), instead of a second Edgar and
+   * a hint pointing at a list with nothing in it. */
+  listEmpty?: boolean;
   compact?: boolean;
 }
 
 const hasText = (value: string | null | undefined): value is string => value !== null && value !== undefined && value !== '';
 
-type BarDensity = 'phone' | 'full' | 'snug' | 'tight';
+/** The Snooze button asks for the look of the other toolbar buttons; they are styled by class (`.rd-bar` in reader.css), so there is nothing to add. */
+const NO_STYLE: React.CSSProperties = {};
 
-// How the desktop reader toolbar fits its pane, from the pane's inner width. Worst case, all in px: 8 buttons of 40 (Snooze included),
-// the 1 px divider, and the counter "100 of 100" (a list holds 100 mails: 71 of text + 2 x 8 padding = 87).
-//   full:  side padding 12, gaps 2, divider margin 6  -> 24 + 320 + 20 + 13 + 87 = 464; the label menu (240) sits left-aligned on its
-//          button at x = 237 and must fit as well (477), so 480
-//   snug:  side padding 8, no gaps or margins          -> 16 + 320 + 1 + 87 = 424
-//   tight: side padding 4, no counter                  -> 8 + 320 + 1 = 329 (the pane is 339 inside at the narrowest desktop window, 901)
-const FULL_BAR_MIN = 480;
-const SNUG_BAR_MIN = 424;
-
-function barDensity(paneWidth: number | null): BarDensity {
-  if (paneWidth === null || paneWidth >= FULL_BAR_MIN) {
-    return 'full';
-  }
-  return paneWidth >= SNUG_BAR_MIN ? 'snug' : 'tight';
+interface BarButtonProps {
+  label: string;
+  icon: LucideIcon;
+  iconSize: number;
+  onClick: () => void;
+  disabled?: boolean;
+  /** Delete forever: the one red button of the bar. */
+  danger?: boolean;
 }
 
-const BAR_LOOK: Record<BarDensity, { gap: number; padding: string; divider: string }> = {
-  phone: { gap: 0, padding: '8px 8px', divider: '0 4px' },
-  full: { gap: 2, padding: '8px 12px', divider: '0 6px' },
-  snug: { gap: 0, padding: '8px 8px', divider: '0' },
-  tight: { gap: 0, padding: '8px 4px', divider: '0' }
-};
+/** One button of the toolbar: an icon, named by its label (which is also its tooltip). */
+const BarButton: React.FC<BarButtonProps> = ({ label, icon: Icon, iconSize, onClick, disabled = false, danger = false }) => (
+  <IconButton label={label} size="sm" className={cx(danger && 'rd-danger')} disabled={disabled} onClick={onClick}>
+    <Icon size={iconSize} strokeWidth={1.75} aria-hidden="true" />
+  </IconButton>
+);
 
-/** Ref for the element to measure: its inner width in px (null until it has one), kept current while it resizes. */
-function usePaneWidth(): [(element: HTMLElement | null) => (() => void) | undefined, number | null] {
-  const [width, setWidth] = React.useState<number | null>(null);
-  const ref = React.useCallback((element: HTMLElement | null) => {
-    if (element === null) {
-      return;
-    }
-    const measure = () => setWidth(element.clientWidth > 0 ? element.clientWidth : null);
-    // Measured as soon as it is attached, before the first paint: the bar never shows a frame in the wrong density.
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-  return [ref, width];
+interface DownloadLinkProps {
+  href: string;
+  /** The name the browser saves the file under. */
+  download: string;
+  label: string;
+  children: React.ReactNode;
 }
 
-const iconBtn = (t: ThemeTokens): React.CSSProperties => ({
-  width: 40,
-  height: 40,
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  border: 0,
-  borderRadius: 10,
-  background: 'transparent',
-  color: t.text2,
-  cursor: 'pointer'
-});
-
-/** The download control of one attachment (a link for a plain file, a button for an encrypted one). */
-const downloadStyle = (t: ThemeTokens): React.CSSProperties => ({
-  width: 36,
-  height: 36,
-  flex: 'none',
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  border: 0,
-  borderRadius: 8,
-  color: t.text2
-});
-
-type LabelProblem = 'invalid' | 'exists' | 'full';
-
-/** What is shown for each problem: the key is kept (not the text), so a language switch changes a hint that is on screen. */
-const LABEL_PROBLEM_KEYS: Record<LabelProblem, MessageKey> = {
-  invalid: 'reader.label_invalid',
-  exists: 'reader.label_exists',
-  full: 'reader.label_limit'
-};
-
-/** Why `label` cannot be created (checked again by the server), or null when it can. */
-function labelProblem(label: string, existing: string[], full: boolean): LabelProblem | null {
-  if (!LABEL_NAME_PATTERN.test(label)) {
-    return 'invalid';
-  }
-  if (existing.some((name) => name.toLowerCase() === label.toLowerCase())) {
-    return 'exists';
-  }
-  return full ? 'full' : null;
-}
-
-interface NewLabelRowProps {
-  t: ThemeTokens;
-  /** Every label already listed in the menu. */
-  existing: string[];
-  /** The open message already has the most labels it may have. */
-  full: boolean;
-  onCreate: (name: string) => void;
-}
-
-/** Last row of the label menu: type a name, press Enter (or the button) to create it and put it on the open message. */
-const NewLabelRow: React.FC<NewLabelRowProps> = ({ t, existing, full, onCreate }) => {
-  const tr = useT();
-  const [name, setName] = React.useState('');
-  const [hint, setHint] = React.useState<LabelProblem | null>(null);
-  const blank = name.trim() === '';
-  const hasList = existing.length > 0;
-  // maxLength cuts a longer paste; this says so instead of leaving the field short without a word.
-  const atLimit = name.length >= LABEL_NAME_MAX;
-  const describedBy = hint === null ? (atLimit ? 'new-label-limit' : undefined) : 'new-label-hint';
-
-  const submit = (event: React.SyntheticEvent) => {
-    event.preventDefault();
-    const label = name.trim();
-    if (label === '') {
-      return;
-    }
-    const problem = labelProblem(label, existing, full);
-    setHint(problem);
-    if (problem === null) {
-      onCreate(label);
-      setName('');
-    }
-  };
-
+/** The download control of a plain attachment: a link (so the browser saves the file itself) that looks and names itself like an IconButton. */
+const DownloadLink: React.FC<DownloadLinkProps> = ({ href, download, label, children }) => {
+  const ref = React.useRef<HTMLAnchorElement | null>(null);
+  const [tip, setTip] = React.useState(false);
   return (
-    <form onSubmit={submit} style={hasList ? { marginTop: 6, paddingTop: 6, borderTop: `1px solid ${t.border}` } : undefined}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <input
-          type="text"
-          className="nm-tap-h"
-          aria-label={tr('reader.new_label')}
-          aria-invalid={hint !== null}
-          aria-describedby={describedBy}
-          placeholder={tr('reader.new_label')}
-          autoComplete="off"
-          maxLength={LABEL_NAME_MAX}
-          value={name}
-          onChange={(e) => {
-            setName(e.target.value);
-            setHint(null);
-          }}
-          style={{
-            flex: 1,
-            minWidth: 0,
-            height: 34,
-            padding: '0 10px',
-            border: `1px solid ${t.borderStrong}`,
-            borderRadius: 8,
-            background: t.surface,
-            color: t.text,
-            font: 'inherit',
-            fontSize: 16
-          }}
-        />
-        <button
-          type="submit"
-          aria-label={tr('reader.create_label')}
-          title={tr('reader.create_label')}
-          className="nm-tap"
-          disabled={blank}
-          style={{
-            flex: 'none',
-            width: 34,
-            height: 34,
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            border: 0,
-            borderRadius: 8,
-            background: t.accent,
-            color: '#FFFFFF',
-            opacity: blank ? 0.4 : 1,
-            cursor: blank ? 'default' : 'pointer'
-          }}
-        >
-          <Plus size={18} strokeWidth={1.8} aria-hidden="true" />
-        </button>
-      </div>
-      {hint === null ? (
-        atLimit ? (
-          <p id="new-label-limit" style={{ margin: '6px 2px 2px', fontSize: 12, lineHeight: '16px', color: t.text2 }}>
-            {tr('reader.label_name_limit', { max: LABEL_NAME_MAX })}
-          </p>
-        ) : null
-      ) : (
-        <p
-          id="new-label-hint"
-          role="alert"
-          style={{ margin: '6px 2px 2px', fontSize: 12, lineHeight: '16px', color: t.dark ? '#F97066' : '#B42318' }}
-        >
-          {tr(LABEL_PROBLEM_KEYS[hint], { max: MAX_LABELS_PER_MESSAGE })}
-        </p>
-      )}
-    </form>
+    <>
+      <a
+        ref={ref}
+        href={href}
+        download={download}
+        aria-label={label}
+        className="ui-btn ui-icon-btn"
+        data-variant="ghost"
+        data-size="sm"
+        onPointerEnter={(event) => setTip(event.pointerType === 'mouse')}
+        onPointerLeave={() => setTip(false)}
+        onPointerDown={() => setTip(false)}
+        onFocus={(event) => setTip(event.currentTarget.matches(':focus-visible'))}
+        onBlur={() => setTip(false)}
+      >
+        {children}
+      </a>
+      <Tooltip open={tip} text={label} anchorRef={ref} />
+    </>
   );
 };
+
+/**
+ * Ref for a line of text cut with an ellipsis, and whether it is cut now (its text is wider than its box): null until it is measured, kept
+ * current while the line resizes, and measured again when `text` (what the line shows) changes. An open line (white-space: normal, it wraps)
+ * is not measured, so opening it never takes away the control that closes it.
+ */
+function useCutLine(text: string): [(element: HTMLElement | null) => (() => void) | undefined, boolean | null] {
+  const [cut, setCut] = React.useState<boolean | null>(null);
+  const ref = React.useCallback(
+    (element: HTMLElement | null) => {
+      if (element === null) {
+        return;
+      }
+      const measure = () => {
+        if (window.getComputedStyle(element).whiteSpace === 'nowrap') {
+          setCut(text !== '' && element.scrollWidth > element.clientWidth);
+        }
+      };
+      // Measured as soon as it is attached, before the first paint.
+      measure();
+      const observer = new ResizeObserver(measure);
+      observer.observe(element);
+      return () => {
+        observer.disconnect();
+        setCut(null);
+      };
+    },
+    [text]
+  );
+  return [ref, cut];
+}
+
+/**
+ * An address shown whole (the recipients are open): it may wrap after its @ and before a dot (a <wbr> there), never inside a name. Each
+ * piece is a nowrap span, as a hyphen inside a name ('riverside-clinic') would otherwise be a break of its own.
+ */
+function wrappableAddress(address: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  for (const part of address.replaceAll('@', '@\n').replaceAll('.', '\n.').split('\n')) {
+    if (nodes.length > 0) {
+      nodes.push(<wbr key={nodes.length} />);
+    }
+    nodes.push(
+      <span key={nodes.length} className="rd-addr-part">
+        {part}
+      </span>
+    );
+  }
+  return nodes;
+}
 
 export const MessageView: React.FC<MessageViewProps> = ({
   t,
@@ -303,71 +205,31 @@ export const MessageView: React.FC<MessageViewProps> = ({
   position,
   onBack,
   onNotice,
+  listEmpty = false,
   compact = false
 }) => {
   const tr = useT();
   const downloads = useMailDownloads(message, onNotice);
-  const [labelMenuOpen, setLabelMenuOpen] = React.useState(false);
-  const labelMenuRef = React.useRef<HTMLDivElement | null>(null);
   const [showHtml, setShowHtml] = React.useState(true);
-  const [paneRef, paneWidth] = usePaneWidth();
+  const [recipientsOpen, setRecipientsOpen] = React.useState(false);
+  const [paneRef, pane] = usePaneMeasure();
+  // The reply row is measured on its own: its width is the column's, scrollbar and page margins included.
+  const [replyRef, replyRow] = usePaneMeasure();
+  // The sender's address and the recipients are one line each, cut with an ellipsis where they do not fit.
+  const [addrRef, addrCut] = useCutLine(message?.from_address ?? '');
+  const [rcptRef, rcptCut] = useCutLine(`${message?.to_address ?? ''}\n${message?.cc ?? ''}`);
 
   React.useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- the menu and HTML/plain toggle must reset whenever another message is shown
-    setLabelMenuOpen(false);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the HTML/plain toggle and the recipients must reset whenever another message is shown
     setShowHtml(true);
+    setRecipientsOpen(false);
   }, [message?.id]);
-
-  // Touch screens have no hover/blur, so a tap anywhere outside (or Escape) must close the label menu.
-  React.useEffect(() => {
-    if (!labelMenuOpen) {
-      return;
-    }
-    const onPointerDown = (e: PointerEvent) => {
-      if (labelMenuRef.current?.contains(e.target as Node) !== true) {
-        setLabelMenuOpen(false);
-      }
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setLabelMenuOpen(false);
-      }
-    };
-    // The body iframe is sandboxed (opaque origin), so its clicks never reach this document;
-    // the window losing focus to the iframe is the only signal.
-    const onWindowBlur = () => {
-      if (document.activeElement instanceof HTMLIFrameElement) {
-        setLabelMenuOpen(false);
-      }
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    window.addEventListener('blur', onWindowBlur);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('blur', onWindowBlur);
-    };
-  }, [labelMenuOpen]);
-
-  const shell: React.CSSProperties = {
-    flex: '999 1 480px',
-    minWidth: 0,
-    minHeight: 0,
-    display: 'flex',
-    flexDirection: 'column',
-    background: t.surface,
-    border: `1px solid ${t.border}`,
-    borderRadius: 14,
-    overflow: 'hidden',
-    boxShadow: t.shadow
-  };
 
   if (isLoading) {
     return (
-      <article ref={paneRef} aria-busy="true" style={{ ...shell, alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: t.text2 }}>
-          <Loader2 size={18} className="nm-spin" aria-hidden="true" />
+      <article ref={paneRef} aria-busy="true" className="rd-root" data-state="loading">
+        <div className="rd-loading" role="status">
+          <Spinner decorative />
           <span>{tr('reader.loading_message')}</span>
         </div>
       </article>
@@ -376,17 +238,16 @@ export const MessageView: React.FC<MessageViewProps> = ({
 
   if (!message) {
     return (
-      <article ref={paneRef} style={{ ...shell, alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: 40, textAlign: 'center' }}>
-          <img src="/edgar.svg" alt="" width={132} height={128} style={{ display: 'block', maxWidth: '100%', height: 'auto' }} />
-          <p style={{ margin: '8px 0 0', fontSize: 15, fontWeight: 600 }}>{tr('reader.none_selected')}</p>
-          <p style={{ margin: 0, maxWidth: 280, color: t.text2, textWrap: 'balance' }}>{tr('reader.none_selected_hint')}</p>
-        </div>
+      <article ref={paneRef} className="rd-root" data-state="empty">
+        {listEmpty ? (
+          <EmptyState className="rd-idle" title={tr('reader.none_selected')} />
+        ) : (
+          <EmptyState illustration title={tr('reader.none_selected')} description={tr('reader.none_selected_hint')} />
+        )}
       </article>
     );
   }
 
-  const avatar = getChip(stringHue(message.from_address), t);
   const messageLabels = labelsOf(message);
   const paragraphs = bodyParagraphs(message, !showHtml);
   const starred = message.is_starred === 1;
@@ -394,406 +255,169 @@ export const MessageView: React.FC<MessageViewProps> = ({
   const inTrash = message.folder === 'trash';
   const inSpam = message.folder === 'spam';
   const inBin = inTrash || inSpam;
-  const danger = t.dark ? '#F97066' : '#B42318';
   // Drafts, sent mail, Trash and Spam are not in the inbox flow, so there is nothing to snooze. In Trash and Spam the bar also gains
-  // Move to Inbox and Delete forever: dropping Snooze keeps it at the 8 buttons the density arithmetic above (and a 320px phone) allows.
+  // Move to Inbox and Delete forever: dropping Snooze keeps it at the 8 buttons the density arithmetic (reader/barDensity.ts) and a 320px phone allow.
   const canSnooze = message.folder !== 'drafts' && message.folder !== 'sent' && !inBin;
   const snoozed = message.folder === 'snoozed';
   const snoozeUntil = snoozed && typeof message.snoozed_until === 'number' ? message.snoozed_until : null;
-  // On a phone the toolbar buttons fill the width index.css gives them (the snooze and label buttons sit in a wrapper of that width).
-  const barBtn: React.CSSProperties = compact ? { ...iconBtn(t), width: '100%' } : iconBtn(t);
-  const density = compact ? 'phone' : barDensity(paneWidth);
-  const look = BAR_LOOK[density];
+  const density: BarDensity = compact ? 'phone' : barDensity(pane.width, pane.coarse);
+  const showCount = !compact && density !== 'tight';
+  const iconSize = compact ? 20 : 16;
+  const sealed = message.is_e2e === 1 && message.mail_state === 'ready';
+  const unverified = arrivedUnverified(message);
+  const recipients = hasText(message.cc)
+    ? tr('reader.to_cc_line', { to: message.to_address, cc: message.cc })
+    : tr('reader.to_line', { to: message.to_address });
+  // The recipients open in place (a Disclosure) only when there is something to show: the line, or the sender's address, is cut. Until the
+  // lines are measured (the first render, the server), a line of more than one recipient is taken as cut.
+  const manyRecipients = hasText(message.cc) || message.to_address.includes(',');
+  const offerAll = recipientsOpen || addrCut === true || (rcptCut ?? manyRecipients);
+  const recipientsLine = (
+    <span ref={rcptRef} className="rd-rcpt-text">
+      {recipients}
+    </span>
+  );
+  // On a desktop the row of Reply, Reply all and Forward takes smaller buttons, then drops their icons, before it would wrap.
+  const reply = compact ? 'full' : replyDensity(replyRow.width);
+  const replyActions = [
+    { label: tr('action.reply'), icon: Reply, action: () => onReply(message) },
+    { label: tr('action.reply_all'), icon: ReplyAll, action: () => onReplyAll(message) },
+    // A message the browser could not open has no content to forward.
+    ...(isUnreadable(message.mail_state) ? [] : [{ label: tr('action.forward'), icon: Forward, action: () => onForward(message) }])
+  ];
 
   return (
-    <article ref={paneRef} aria-labelledby="msg-subject" style={shell}>
-      <div
-        className={compact ? 'nm-bar' : 'nm-bar-d'}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          // Seven 44px buttons fit one row on 360px and 390px phones with these tight gaps and side padding; on a 320px phone
-          // index.css drops the padding and the buttons share the row (nm-bar), so the phone toolbar never wraps. On desktop the
-          // pane's width picks the density (barDensity): wrap stays only as a safety net, the arithmetic keeps it to one row.
-          gap: look.gap,
-          flexWrap: compact ? 'nowrap' : 'wrap',
-          padding: look.padding,
-          borderBottom: `1px solid ${t.border}`
-        }}
-      >
-        {onBack ? (
-          <button
-            type="button"
-            aria-label={tr('reader.back_to_list')}
-            title={tr('common.back')}
-            className="nm-tap"
-            onClick={onBack}
-            style={barBtn}
-          >
-            <ChevronLeft size={20} strokeWidth={1.8} aria-hidden="true" />
-          </button>
-        ) : null}
-        <button
-          type="button"
-          aria-label={tr('action.archive')}
-          title={tr('action.archive')}
-          className="nm-tap"
-          onClick={() => onArchive(message)}
-          style={barBtn}
-        >
-          <Archive size={20} strokeWidth={1.8} aria-hidden="true" />
-        </button>
-        {inSpam ? null : (
-          <button
-            type="button"
-            aria-label={tr('action.move_to_spam')}
-            title={tr('action.move_to_spam')}
-            className="nm-tap"
-            onClick={() => onSpam(message)}
-            style={barBtn}
-          >
-            <Ban size={20} strokeWidth={1.8} aria-hidden="true" />
-          </button>
-        )}
+    <article ref={paneRef} aria-labelledby="msg-subject" className="rd-root">
+      {/* Seven 44px buttons fit one row on 360px and 390px phones with the tight gaps and side padding of reader.css; on a 320px phone index.css
+          drops the padding and the buttons share the row (nm-bar), so the phone toolbar never wraps. On desktop the pane's width picks the
+          density (reader/barDensity.ts): wrap stays only as a safety net, the arithmetic keeps it to one row. */}
+      <div className={cx('rd-bar', compact ? 'nm-bar' : 'nm-bar-d')} data-density={density} data-compact={compact}>
+        {onBack ? <BarButton label={tr('reader.back_to_list')} icon={ChevronLeft} iconSize={iconSize} onClick={onBack} /> : null}
+        <BarButton label={tr('action.archive')} icon={Archive} iconSize={iconSize} onClick={() => onArchive(message)} />
+        {inSpam ? null : <BarButton label={tr('action.move_to_spam')} icon={Ban} iconSize={iconSize} onClick={() => onSpam(message)} />}
         {inTrash ? null : (
-          <button
-            type="button"
-            aria-label={tr('action.move_to_trash')}
-            title={tr('action.move_to_trash')}
-            className="nm-tap"
-            onClick={() => onTrash(message)}
-            style={barBtn}
-          >
-            <Trash2 size={20} strokeWidth={1.8} aria-hidden="true" />
-          </button>
+          <BarButton label={tr('action.move_to_trash')} icon={Trash2} iconSize={iconSize} onClick={() => onTrash(message)} />
         )}
         {inBin ? (
           <>
-            <button
-              type="button"
-              aria-label={tr('action.move_to_inbox')}
-              title={tr('action.move_to_inbox')}
-              className="nm-tap"
-              onClick={() => onRestore(message)}
-              style={barBtn}
-            >
-              <Inbox size={20} strokeWidth={1.8} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              aria-label={tr('action.delete_forever')}
-              title={tr('action.delete_forever')}
-              className="nm-tap"
+            <BarButton label={tr('action.move_to_inbox')} icon={Inbox} iconSize={iconSize} onClick={() => onRestore(message)} />
+            <BarButton
+              label={tr('action.delete_forever')}
+              icon={MailX}
+              iconSize={iconSize}
               onClick={() => onDeleteForever(message)}
-              style={{ ...barBtn, color: danger }}
-            >
-              <MailX size={20} strokeWidth={1.8} aria-hidden="true" />
-            </button>
+              danger
+            />
           </>
         ) : null}
-        <span
-          aria-hidden="true"
-          className={compact ? 'nm-bar-sep' : undefined}
-          style={{ width: 1, height: 20, margin: look.divider, background: t.border }}
-        />
-        <button
-          type="button"
-          aria-label={tr('action.mark_unread')}
-          title={tr('action.mark_unread')}
-          className="nm-tap"
-          onClick={() => onMarkUnread(message)}
-          style={barBtn}
-        >
-          <MailOpen size={20} strokeWidth={1.8} aria-hidden="true" />
-        </button>
+        <Divider orientation="vertical" className={cx('rd-sep', compact && 'nm-bar-sep')} />
+        <BarButton label={tr('action.mark_unread')} icon={MailOpen} iconSize={iconSize} onClick={() => onMarkUnread(message)} />
         {canSnooze ? (
           <SnoozeMenu
             // A new mail starts with the menu closed.
             key={message.id}
             t={t}
-            buttonStyle={barBtn}
+            buttonStyle={NO_STYLE}
+            iconSize={iconSize}
             snoozed={snoozed}
             onSnooze={(until) => onSnooze(message, until)}
             onUnsnooze={() => onUnsnooze(message)}
           />
         ) : null}
-        <div ref={labelMenuRef} style={{ position: 'relative' }}>
-          <button
-            type="button"
-            aria-label={tr('reader.add_label')}
-            title={tr('reader.add_label')}
-            className="nm-tap"
-            aria-expanded={labelMenuOpen}
-            onClick={() => setLabelMenuOpen((v) => !v)}
-            style={labelMenuOpen ? { ...barBtn, background: t.hover } : barBtn}
-          >
-            <Tag size={20} strokeWidth={1.8} aria-hidden="true" />
-          </button>
-          {labelMenuOpen ? (
-            <div
-              role="menu"
-              className="nm-fade-in"
-              style={{
-                position: 'absolute',
-                // The toolbar sits at the right on phones, and on a narrow desktop pane the left-aligned 240px card would run past the
-                // pane's edge (its overflow is clipped): anchor to the button's right edge there.
-                ...(density === 'full' ? { left: 0 } : { right: 0 }),
-                top: 44,
-                zIndex: 20,
-                width: 240,
-                maxWidth: 'calc(100vw - 32px)',
-                // The card clips its content: a long list scrolls inside the menu, the new-label row stays in view.
-                maxHeight: 'min(380px, calc(100dvh - 160px))',
-                display: 'flex',
-                flexDirection: 'column',
-                padding: 6,
-                borderRadius: 12,
-                border: `1px solid ${t.border}`,
-                background: t.surface,
-                boxShadow: '0 12px 32px rgba(16,24,40,0.16)'
-              }}
-            >
-              <div style={{ minHeight: 0, overflowY: 'auto' }}>
-                {labels.map((label) => {
-                  const on = messageLabels.includes(label);
-                  const chip = getLabelChip(label, t);
-                  return (
-                    <button
-                      key={label}
-                      type="button"
-                      role="menuitemcheckbox"
-                      className="nm-tap-h"
-                      aria-checked={on}
-                      onClick={() => onToggleLabel(message, label)}
-                      style={{
-                        width: '100%',
-                        height: 34,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        padding: '0 8px',
-                        border: 0,
-                        borderRadius: 8,
-                        background: 'transparent',
-                        color: t.text,
-                        fontSize: 13,
-                        textAlign: 'left',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <span aria-hidden="true" style={{ flex: 'none', width: 8, height: 8, borderRadius: 2, background: chip.dot }} />
-                      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {label}
-                      </span>
-                      {on ? (
-                        <span style={{ flex: 'none', color: t.link, fontSize: 12, fontWeight: 600 }}>{tr('reader.label_added')}</span>
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-              <NewLabelRow
-                t={t}
-                existing={labels}
-                full={messageLabels.length >= MAX_LABELS_PER_MESSAGE}
-                onCreate={(name) => onToggleLabel(message, name)}
-              />
-            </div>
-          ) : null}
-        </div>
+        <LabelMenu
+          // A new mail starts with the menu closed.
+          key={`${message.id}:labels`}
+          t={t}
+          message={message}
+          labels={labels}
+          onToggleLabel={onToggleLabel}
+          iconSize={iconSize}
+        />
 
-        <span style={{ flex: 1 }} />
+        {showCount ? <span className="rd-count">{position}</span> : <span className="rd-spacer" />}
         {compact ? null : (
           <>
-            {density === 'tight' ? null : (
-              <span style={{ padding: '0 8px', fontSize: 13, color: t.text2, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                {position}
-              </span>
-            )}
-            <button
-              type="button"
-              aria-label={tr('reader.newer_message')}
-              title={tr('reader.newer')}
-              disabled={!hasPrev}
-              onClick={onPrev}
-              style={{ ...iconBtn(t), opacity: hasPrev ? 1 : 0.4, cursor: hasPrev ? 'pointer' : 'default' }}
-            >
-              <ChevronLeft size={20} strokeWidth={1.8} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              aria-label={tr('reader.older_message')}
-              title={tr('reader.older')}
-              disabled={!hasNext}
-              onClick={onNext}
-              style={{ ...iconBtn(t), opacity: hasNext ? 1 : 0.4, cursor: hasNext ? 'pointer' : 'default' }}
-            >
-              <ChevronRight size={20} strokeWidth={1.8} aria-hidden="true" />
-            </button>
+            <BarButton label={tr('reader.newer_message')} icon={ChevronLeft} iconSize={iconSize} onClick={onPrev} disabled={!hasPrev} />
+            <BarButton label={tr('reader.older_message')} icon={ChevronRight} iconSize={iconSize} onClick={onNext} disabled={!hasNext} />
           </>
         )}
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-        <div style={{ maxWidth: 760, margin: '0 auto', padding: compact ? '20px 20px 32px' : '28px 32px 40px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
-            <h2
-              id="msg-subject"
-              style={{
-                margin: 0,
-                fontSize: compact ? 21 : 24,
-                lineHeight: compact ? '28px' : '32px',
-                fontWeight: 600,
-                letterSpacing: '-0.015em',
-                color: t.text,
-                overflowWrap: 'anywhere',
-                textWrap: 'balance'
-              }}
-            >
+      <div className="rd-scroll">
+        <div className="rd-page" data-compact={compact}>
+          <header className="rd-head">
+            <h2 id="msg-subject" className="rd-subject">
               {subjectOf(message, tr('reader.no_subject'))}
             </h2>
             {messageLabels.length > 0 || snoozeUntil !== null ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <div className="rd-tags">
                 {snoozeUntil === null ? null : <SnoozeChip t={t} until={snoozeUntil} />}
-                {messageLabels.map((label) => {
-                  const chip = getLabelChip(label, t);
-                  return (
-                    <span
-                      key={label}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        height: 24,
-                        padding: '0 10px',
-                        borderRadius: 6,
-                        background: chip.bg,
-                        color: chip.fg,
-                        fontSize: 12,
-                        lineHeight: '16px',
-                        fontWeight: 500
-                      }}
-                    >
-                      <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: 2, background: chip.dot }} />
-                      {label}
-                    </span>
-                  );
-                })}
+                {messageLabels.map((label) => (
+                  <Chip key={label} colors={getLabelChip(label, t)}>
+                    {label}
+                  </Chip>
+                ))}
               </div>
             ) : null}
-          </div>
 
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-            <span
-              aria-hidden="true"
-              style={{
-                width: 44,
-                height: 44,
-                flex: 'none',
-                borderRadius: '50%',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: avatar.bg,
-                color: avatar.fg,
-                fontSize: 15,
-                fontWeight: 600
-              }}
-            >
-              {initialsOf(message.from_name, message.from_address)}
-            </span>
-            <div style={{ flex: '1 1 180px', minWidth: 160, display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 15, lineHeight: '22px', fontWeight: 600, overflowWrap: 'anywhere' }}>{sender}</span>
-                {/* A sender without a display name is already shown as the address. */}
-                {sender === message.from_address ? null : (
-                  <span style={{ fontSize: 13, color: t.text2, overflow: 'hidden', textOverflow: 'ellipsis' }}>{message.from_address}</span>
+            <div className="rd-sender">
+              <Avatar name={sender} />
+              <div className="rd-who">
+                <div className="rd-line">
+                  <span className="rd-from">
+                    <span className="rd-name">{sender}</span>
+                    {/* A sender without a display name is already shown as the address. */}
+                    {sender === message.from_address ? null : (
+                      <span ref={addrRef} className="rd-addr">
+                        {recipientsOpen ? wrappableAddress(message.from_address) : message.from_address}
+                      </span>
+                    )}
+                  </span>
+                  <span className="rd-date">{formatFullDate(message.created_at)}</span>
+                </div>
+                {offerAll ? (
+                  <Disclosure className="rd-rcpt" open={recipientsOpen} onOpenChange={setRecipientsOpen}>
+                    {recipientsLine}
+                  </Disclosure>
+                ) : (
+                  <p className="rd-rcpt">{recipientsLine}</p>
                 )}
               </div>
-              <span style={{ fontSize: 13, color: t.text2, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {hasText(message.cc)
-                  ? tr('reader.to_cc_line', { to: message.to_address, cc: message.cc })
-                  : tr('reader.to_line', { to: message.to_address })}
-              </span>
+              <div className="rd-tools">
+                <IconButton label={tr('action.star')} size="sm" pressed={starred} className="rd-star" onClick={() => onToggleStar(message)}>
+                  <Star size={16} strokeWidth={1.75} aria-hidden="true" />
+                </IconButton>
+                <IconButton label={tr('action.reply')} size="sm" onClick={() => onReply(message)}>
+                  <Reply size={16} strokeWidth={1.75} aria-hidden="true" />
+                </IconButton>
+              </div>
             </div>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 2,
-                flex: 'none',
-                marginLeft: 'auto',
-                flexWrap: 'wrap',
-                justifyContent: 'flex-end'
-              }}
-            >
-              <span style={{ marginRight: 6, fontSize: 13, color: t.text2, whiteSpace: 'nowrap' }}>
-                {formatFullDate(message.created_at)}
-              </span>
-              <button
-                type="button"
-                aria-label={tr('action.star')}
-                aria-pressed={starred}
-                className="nm-tap"
-                onClick={() => onToggleStar(message)}
-                style={{ ...iconBtn(t), color: starred ? t.star : t.text2 }}
-              >
-                <Star size={20} strokeWidth={1.8} fill={starred ? t.star : 'none'} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                aria-label={tr('action.reply')}
-                title={tr('action.reply')}
-                className="nm-tap"
-                onClick={() => onReply(message)}
-                style={iconBtn(t)}
-              >
-                <Reply size={20} strokeWidth={1.8} aria-hidden="true" />
-              </button>
-            </div>
-          </div>
 
-          {isUnreadable(message.mail_state) ? <MailNote t={t} state={message.mail_state} /> : null}
-          {message.is_e2e === 1 && message.mail_state === 'ready' ? <E2eBadge t={t} /> : null}
-          {arrivedUnverified(message) ? <UnverifiedChip t={t} /> : null}
+            {sealed || unverified ? (
+              <div className="rd-prov">
+                {sealed ? <E2eBadge t={t} /> : null}
+                {unverified ? <UnverifiedChip t={t} /> : null}
+              </div>
+            ) : null}
+          </header>
+
+          {isUnreadable(message.mail_state) ? (
+            <div data-mail-state={message.mail_state} className="rd-note">
+              <Banner>{tr(NOTE_KEYS[message.mail_state])}</Banner>
+            </div>
+          ) : null}
 
           {hasText(message.body_html) && hasText(message.body_text) ? (
-            <div
-              style={{
-                display: 'inline-flex',
-                marginBottom: 16,
-                padding: 2,
-                borderRadius: 9,
-                border: `1px solid ${t.border}`,
-                background: t.raised
-              }}
-            >
-              {[
-                { id: true, label: tr('reader.view_html') },
-                { id: false, label: tr('reader.view_plain') }
-              ].map((mode) => (
-                <button
-                  key={String(mode.id)}
-                  type="button"
-                  className="nm-tap-h"
-                  onClick={() => setShowHtml(mode.id)}
-                  style={{
-                    height: 26,
-                    padding: '0 10px',
-                    border: 0,
-                    borderRadius: 7,
-                    background: showHtml === mode.id ? t.surface : 'transparent',
-                    color: showHtml === mode.id ? t.text : t.text2,
-                    fontSize: 12,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    boxShadow: showHtml === mode.id ? '0 1px 2px rgba(16,24,40,0.08)' : 'none'
-                  }}
-                >
-                  {mode.label}
-                </button>
-              ))}
-            </div>
+            <SegmentedControl
+              className="rd-view"
+              label={tr('reader.view_label')}
+              options={[
+                { value: 'html', label: tr('reader.view_html') },
+                { value: 'plain', label: tr('reader.view_plain') }
+              ]}
+              value={showHtml ? 'html' : 'plain'}
+              onChange={(view) => setShowHtml(view === 'html')}
+            />
           ) : null}
 
           {hasText(message.body_html) && showHtml ? (
@@ -806,118 +430,56 @@ export const MessageView: React.FC<MessageViewProps> = ({
               }
             />
           ) : (
-            <div style={{ maxWidth: '68ch', fontSize: 15, lineHeight: '24px', color: t.text }}>
+            <div className="rd-text">
               {paragraphs.map((p, i) => (
                 // eslint-disable-next-line react/no-array-index-key -- paragraphs are plain strings that can repeat and are never reordered
-                <p key={i} style={{ margin: '0 0 16px', whiteSpace: 'pre-line', textWrap: 'pretty' }}>
-                  {p}
-                </p>
+                <p key={i}>{p}</p>
               ))}
             </div>
           )}
 
           {attachments.length > 0 ? (
-            <section aria-label={tr('term.attachments')} style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${t.border}` }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-                <h3 style={{ margin: 0, fontSize: 13, lineHeight: '20px', fontWeight: 600, color: t.text2 }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <Paperclip size={14} strokeWidth={2} aria-hidden="true" />
-                    {tr('reader.attachments_summary', {
-                      count: attachments.length,
-                      size: formatBytes(attachments.reduce((sum, a) => sum + a.size, 0))
-                    })}
-                  </span>
-                </h3>
-              </div>
-              <ul
-                role="list"
-                style={{
-                  listStyle: 'none',
-                  margin: 0,
-                  padding: 0,
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(min(240px, 100%), 1fr))',
-                  gap: 12
-                }}
-              >
+            <section aria-label={tr('term.attachments')} className="rd-files">
+              <h3 className="rd-files-title">
+                <Paperclip size={14} strokeWidth={1.75} aria-hidden="true" />
+                {tr('reader.attachments_summary', {
+                  count: attachments.length,
+                  size: formatBytes(attachments.reduce((sum, a) => sum + a.size, 0))
+                })}
+              </h3>
+              <ul role="list" className="rd-file-list">
                 {attachments.map((att) => {
                   // PX-7: the name the sender gave is shown the way it is saved (no direction controls: "photo\u202Egpj.exe" would read
                   // "photoexe.jpg"), and the type chip is read from that same name.
                   const name = safeFileName(att.filename, tr('list.attachment'));
                   const type = fileTypeOf(name);
-                  const chip = getChip(FILE_HUES[type] || '#475569', t);
+                  const chip = getFileChip(type, t);
                   const fetching = downloads.busy === att.id;
+                  const downloadLabel = tr('reader.download_file', { name });
                   return (
-                    <li
-                      key={att.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 12,
-                        padding: '10px 8px 10px 12px',
-                        border: `1px solid ${t.border}`,
-                        borderRadius: 12,
-                        background: t.raised
-                      }}
-                    >
-                      <span
-                        aria-hidden="true"
-                        style={{
-                          width: 40,
-                          height: 40,
-                          flex: 'none',
-                          borderRadius: 8,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          background: chip.bg,
-                          color: chip.fg,
-                          fontSize: 11,
-                          fontWeight: 700,
-                          letterSpacing: '0.04em'
-                        }}
-                      >
+                    <li key={att.id} className="rd-file">
+                      <span aria-hidden="true" className="rd-type" style={{ background: chip.bg, color: chip.fg }}>
                         {type}
                       </span>
-                      <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, fontWeight: 500 }}>
-                          {name}
-                        </span>
-                        <span style={{ fontSize: 12, lineHeight: '16px', color: t.text3 }}>{formatBytes(att.size)}</span>
+                      <span className="rd-file-main">
+                        <span className="rd-file-name">{name}</span>
+                        <span className="rd-file-size">{formatBytes(att.size)}</span>
                       </span>
                       {message.enc_fmt === 1 ? (
                         // An encrypted file is fetched and opened here, then saved; a plain link would save the encrypted bytes.
-                        <button
-                          type="button"
-                          onClick={() => downloads.saveAttachment(att)}
-                          disabled={downloads.busy !== null}
+                        <IconButton
+                          label={downloadLabel}
+                          size="sm"
                           aria-busy={fetching}
-                          aria-label={tr('reader.download_file', { name })}
-                          title={tr('reader.download')}
-                          className="nm-tap"
-                          style={{
-                            ...downloadStyle(t),
-                            background: 'transparent',
-                            cursor: downloads.busy === null ? 'pointer' : 'default'
-                          }}
+                          disabled={downloads.busy !== null}
+                          onClick={() => downloads.saveAttachment(att)}
                         >
-                          {fetching ? (
-                            <Loader2 size={18} className="nm-spin" aria-hidden="true" />
-                          ) : (
-                            <Download size={18} strokeWidth={1.8} aria-hidden="true" />
-                          )}
-                        </button>
+                          {fetching ? <Spinner size={16} decorative /> : <Download size={16} strokeWidth={1.75} aria-hidden="true" />}
+                        </IconButton>
                       ) : (
-                        <a
-                          href={`/api/attachments/${att.id}`}
-                          download={safeFileName(att.filename, '')}
-                          aria-label={tr('reader.download_file', { name })}
-                          title={tr('reader.download')}
-                          className="nm-tap"
-                          style={{ ...downloadStyle(t), textDecoration: 'none' }}
-                        >
-                          <Download size={18} strokeWidth={1.8} aria-hidden="true" />
-                        </a>
+                        <DownloadLink href={`/api/attachments/${att.id}`} download={safeFileName(att.filename, '')} label={downloadLabel}>
+                          <Download size={16} strokeWidth={1.75} aria-hidden="true" />
+                        </DownloadLink>
                       )}
                     </li>
                   );
@@ -926,75 +488,41 @@ export const MessageView: React.FC<MessageViewProps> = ({
             </section>
           ) : null}
 
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 28 }}>
-            {[
-              { label: tr('action.reply'), icon: Reply, action: () => onReply(message) },
-              { label: tr('action.reply_all'), icon: ReplyAll, action: () => onReplyAll(message) },
-              // A message the browser could not open has no content to forward.
-              ...(isUnreadable(message.mail_state)
-                ? []
-                : [{ label: tr('action.forward'), icon: Forward, action: () => onForward(message) }])
-            ].map((item) => {
+          <div ref={replyRef} className="rd-reply" data-compact={compact}>
+            {replyActions.map((item) => {
               const Icon = item.icon;
               return (
-                <button
+                <Button
                   key={item.label}
-                  type="button"
-                  className="nm-tap-h"
+                  size={reply === 'full' ? 'md' : 'sm'}
                   onClick={item.action}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    // Phone: the three share one row at equal widths. Each keeps its whole label as its minimum width, so where the
-                    // row cannot hold all three (under ~360px) it wraps and the last one fills its own row instead of standing narrow.
-                    ...(compact ? { flex: '1 1 0', justifyContent: 'center', whiteSpace: 'nowrap' } : {}),
-                    gap: 8,
-                    height: 40,
-                    padding: compact ? '0 6px' : '0 16px',
-                    border: `1px solid ${t.borderStrong}`,
-                    borderRadius: 10,
-                    background: t.surface,
-                    color: t.text,
-                    fontSize: 14,
-                    fontWeight: 500,
-                    cursor: 'pointer'
-                  }}
+                  leadingIcon={reply === 'tight' ? undefined : <Icon size={16} strokeWidth={1.75} aria-hidden="true" />}
                 >
-                  <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
                   {item.label}
-                </button>
+                </Button>
               );
             })}
           </div>
 
           {message.mail_state === 'ready' && hasText(message.r2_key) ? (
-            <button
-              type="button"
-              className="nm-tap-h"
+            <Button
+              variant="ghost"
+              size="sm"
+              className="rd-raw"
               onClick={downloads.saveRaw}
               disabled={downloads.busy !== null}
               aria-busy={downloads.busy === 'raw'}
-              style={{
-                display: 'block',
-                minHeight: 44,
-                marginTop: 8,
-                padding: 0,
-                border: 0,
-                background: 'transparent',
-                color: t.link,
-                font: 'inherit',
-                fontSize: 13,
-                textDecoration: 'underline',
-                cursor: downloads.busy === null ? 'pointer' : 'default'
-              }}
+              leadingIcon={
+                downloads.busy === 'raw' ? <Spinner size={16} decorative /> : <Download size={16} strokeWidth={1.75} aria-hidden="true" />
+              }
             >
               {downloads.busy === 'raw' ? tr('common.loading') : tr('mailcrypto.download_raw')}
-            </button>
+            </Button>
           ) : null}
           {downloads.error === null ? null : (
-            <p role="alert" style={{ margin: '8px 0 0', fontSize: 13, lineHeight: '20px', color: danger }}>
+            <Banner tone="danger" className="rd-error">
               {downloads.error}
-            </p>
+            </Banner>
           )}
         </div>
       </div>

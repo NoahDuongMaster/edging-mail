@@ -1,6 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
+// The base styles and the component library (ui.css) come first, so the stylesheet of each screen, imported by App below, is later in the
+// cascade and wins over a ui-* rule of the same specificity.
+import './index.css';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { UnauthorizedError } from './lib/api';
@@ -10,8 +13,10 @@ import { registerCredentialDeriver } from './lib/crypto/registerDeriver';
 import { initLanguage, useLanguageSync } from './lib/i18n';
 import { useAdoptDeviceLanguage } from './lib/language';
 import { confirmSession, renewalInProgress, whenRenewalEnds } from './lib/sessionRenewal';
-import './index.css';
+import { applyTheme, storedThemeIsDark } from './theme';
 
+// The stored theme is on the page before anything renders (and before the language is loaded), so no screen flashes the wrong one.
+applyTheme(storedThemeIsDark());
 registerCredentialDeriver();
 
 const queryClient = new QueryClient({
@@ -92,7 +97,15 @@ if (root) {
       setTimeout(resolve, LANGUAGE_WAIT_MS);
     })
   ]);
-  ReactDOM.createRoot(root).render(
+  // The dev server's hot reload can run this module again before it reloads the page: a second createRoot on the same element makes two
+  // React trees fight over it (a flash of the crash screen). The first root is kept in the hot-reload data and reused. Production has no
+  // import.meta.hot, so this is always a new root there.
+  const hot = import.meta.hot?.data as { root?: ReactDOM.Root } | undefined;
+  const reactRoot = hot?.root ?? ReactDOM.createRoot(root);
+  if (hot !== undefined) {
+    hot.root = reactRoot;
+  }
+  reactRoot.render(
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>
         <LanguageSync />

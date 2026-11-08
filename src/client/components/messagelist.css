@@ -1,0 +1,473 @@
+/* The message list (components/MessageList.tsx) and the snooze menu and chip (components/SnoozeMenu.tsx). Classes are `ml-*`.
+   Colours, radii and heights are the variables of the theme (see ui/ui.css); the only inline styles in the two files are values that are
+   computed (the distance of a swipe; ui/Chip sets the colours of a label). main.tsx imports index.css (and with it ui.css) before App, so
+   this file comes later in the cascade: a rule here wins over a `ui-*` rule of the same specificity.
+
+   The frame of the list on a desktop is a hairline card. The owner of the page layout can flatten it from outside, without editing this
+   file: set --ml-frame-border, --ml-frame-radius and --ml-frame-shadow on an ancestor (for example `0`, `0`, `none`). */
+
+/* ---------- Frame ---------- */
+
+.ml-root {
+  /* Vertical padding of a row and the box of the star button, which sits on the subject line. */
+  --ml-pad-y: 8px;
+  --ml-star: var(--ui-h-sm);
+  flex: 1 1 400px;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface);
+  border: var(--ml-frame-border, 1px solid var(--border));
+  border-radius: var(--ml-frame-radius, var(--radius-card));
+  box-shadow: var(--ml-frame-shadow, var(--shadow-sm));
+}
+/* The phone board: no frame, rows a little taller, the star is a 44px target. */
+.ml-root[data-compact='true'] {
+  --ml-pad-y: 12px;
+  --ml-star: 44px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* ---------- Head: folder, count, actions ---------- */
+
+/* As high as the reader's toolbar beside it (8 + a small button + 8) and closed by a hairline, so the two columns share one hairline across the
+   page; the filters are a row of their own under it. */
+.ml-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 8px 8px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.ml-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.ml-title {
+  flex: 0 1 auto;
+  min-width: 3ch;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+}
+/* The count gives way first. */
+.ml-subtitle {
+  flex: 0 100 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text2);
+  font-variant-numeric: tabular-nums;
+}
+.ml-actions {
+  display: flex;
+  flex: none;
+  gap: 2px;
+}
+
+/* ---------- Filters ---------- */
+
+/* A SegmentedControl (ui) that wraps onto a second line instead of scrolling sideways, so every filter is visible at 320px in every language
+   (by pairs: four filters are one row or two rows of two). The track starts at the content edge of the list, where the title does, and sits in
+   the middle of its row, between the head's hairline and its own. */
+.ml-filters {
+  display: flex;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.ml-root[data-compact='true'] .ml-filters {
+  padding: 4px 16px;
+  border-bottom: 0;
+}
+
+/* ---------- Scroller, date groups ---------- */
+
+.ml-scroll {
+  /* A column, so an empty state can take the room the rows would (below); the groups, the loading rows and Load more keep their own height. */
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  /* The scrollbar's lane is kept whether the list scrolls or not, so nothing shifts when it starts to; a row's fill runs to the lane. */
+  scrollbar-gutter: stable;
+}
+.ml-scroll > * {
+  flex: none;
+}
+.ml-scroll[data-compact='true'] {
+  border-top: 1px solid var(--border);
+}
+.ml-group-title {
+  margin: 0;
+  padding: 16px 16px 4px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  color: var(--text2);
+}
+.ml-group:first-child .ml-group-title {
+  padding-top: 12px;
+}
+.ml-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* Clearance for the floating Compose button under the last group (the Load more button carries it when shown): the shell sets
+   --ml-fab-clear from the button's own size and offset (safe area included), so the last row can scroll above it. */
+.ml-list[data-clear='true'] {
+  padding-bottom: var(--ml-fab-clear, 120px);
+}
+
+/* ---------- Row ---------- */
+
+.ml-item {
+  position: relative;
+  list-style: none;
+}
+.ml-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: var(--ml-pad-y) 16px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--motion-fast) ease-out;
+}
+.ml-row:active {
+  background: var(--hover);
+}
+.ml-row[aria-current='true'] {
+  background: var(--accent-soft);
+}
+/* The ring would be cut by the scroller outside the row. */
+.ml-row:focus-visible {
+  outline-offset: -2px;
+}
+/* The whole item reacts, so the row stays lit while the pointer is on its star. */
+@media (hover: hover) {
+  .ml-item:hover .ml-row {
+    background: var(--hover);
+  }
+  .ml-item:hover .ml-row[aria-current='true'] {
+    background: var(--accent-soft);
+  }
+}
+
+/* The unread dot sits in its own column, so read and unread rows start their text at the same place. */
+.ml-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: transparent;
+}
+/* The accent as an icon (4.5:1 on the surface and on the selected row's tint): the plain accent was 3.3:1 on the dark surface and read faint. */
+.ml-row[data-unread='true'] .ml-dot {
+  background: var(--accent-text);
+}
+
+.ml-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.ml-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.ml-sender {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
+.ml-row[data-unread='true'] .ml-sender {
+  font-weight: 600;
+}
+.ml-clip {
+  flex: none;
+  align-self: center;
+  color: var(--text3);
+}
+.ml-time {
+  flex: none;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text3);
+  font-variant-numeric: tabular-nums;
+}
+.ml-row[aria-current='true'] .ml-time {
+  color: var(--text2);
+}
+.ml-row[data-unread='true'] .ml-time {
+  color: var(--text);
+  font-weight: 600;
+}
+/* On the phone board a snoozed mail shows its wake time in place of the date. */
+.ml-time-slot {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.ml-subject {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  line-height: 20px;
+}
+.ml-row[data-unread='true'] .ml-subject {
+  font-weight: 600;
+}
+/* The preview, then the chips (labels, a snooze time) on the same line. */
+.ml-line3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.ml-preview {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text2);
+}
+.ml-chips {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+.ml-preview + .ml-chips {
+  max-width: 60%;
+}
+
+/* The chips are ui Chips (a label in its hue, the snooze time as an outline). The snooze chip has two looks that belong to the row: on the
+   selected row, whose tint swallows the plain border in dark mode, its border is stronger; on the phone board it sits in the first line in
+   place of the date, with no border and no padding. */
+.ml-row .ui-chip[data-selected='true'] {
+  border-color: color-mix(in srgb, var(--text2) 40%, transparent);
+}
+.ml-row .ui-chip[data-bare='true'] {
+  padding: 0;
+  border: 0;
+}
+
+/* The star button is beside the row button (a button cannot hold a button), in the column of the time but under it: its box starts at the
+   top of the subject line, so it never covers the time (or the snooze time of a phone row). With a mouse it is exactly the subject line,
+   20px high; on a touch screen it reaches down to the bottom of the row (52px in a phone row of three lines), the icon still on the subject
+   line. */
+.ml-star {
+  position: absolute;
+  top: calc(var(--ml-pad-y) + 20px);
+  right: calc(16px - (var(--ml-star) - 16px) / 2);
+  display: inline-flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: var(--ml-star);
+  height: 20px;
+  padding: 2px 0 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text3);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (max-width: 900px), (pointer: coarse) {
+  .ml-star {
+    bottom: 0;
+    height: auto;
+  }
+}
+.ml-star:active {
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+}
+.ml-star[aria-pressed='true'] {
+  color: var(--star);
+}
+@media (hover: hover) {
+  .ml-star:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
+  .ml-star[aria-pressed='true']:hover {
+    color: var(--star);
+  }
+}
+/* The subject stops short of the star; its box covers (star + 16) / 2 of the text column. On a touch screen the box goes down the row, so the
+   preview line (and its chips) stops short of it too. */
+.ml-item[data-star='true'] .ml-subject {
+  padding-right: calc((var(--ml-star) + 16px) / 2 + 4px);
+}
+@media (max-width: 900px), (pointer: coarse) {
+  .ml-item[data-star='true'] .ml-line3 {
+    padding-right: calc((var(--ml-star) + 16px) / 2 + 4px);
+  }
+}
+
+/* ---------- Swipe to archive (phone board) ---------- */
+
+.ml-swipe {
+  position: relative;
+  overflow: hidden;
+  list-style: none;
+}
+.ml-swipe[data-revealed='true'] {
+  background: var(--accent);
+}
+.ml-swipe-reveal {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: #fff;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+}
+.ml-swipe-pane {
+  position: relative;
+  background: var(--surface);
+  transition: transform var(--motion-base) ease-out;
+}
+.ml-swipe-pane[data-swipeable='true'] {
+  touch-action: pan-y;
+}
+.ml-swipe-pane[data-dragging='true'] {
+  transition: none;
+}
+.ml-swipe-pane[data-revealed='true'] {
+  box-shadow: var(--shadow-md);
+}
+
+/* ---------- Loading, empty, failed, load more ---------- */
+
+/* The loading rows (ui ListSkeleton) are the rows that replace them, so nothing jumps when the mail arrives: they start under the room of the
+   first date heading (32px), their bars start where a row's text starts (after the column of the unread dot), and each bar sits in the middle of
+   the 20px line it stands for (sender, subject, preview), so a placeholder row is exactly as high as a row (77px with a mouse, 85px on a phone). */
+.ml-skel {
+  padding-top: 32px;
+}
+.ml-skel .ui-skel-row {
+  gap: 6px;
+  padding: calc(var(--ml-pad-y) + 3px) 16px calc(var(--ml-pad-y) + 5px) 32px;
+}
+/* An empty, unmatched or failed list: in the middle of the room under the filters (it takes what the rows would, a Load more under it stays in
+   view), like the reader's own states; a short pane scrolls to it. */
+.ml-scroll .ml-empty {
+  flex: 1 0 auto;
+  justify-content: center;
+  padding: 48px 24px;
+  overflow-wrap: anywhere;
+}
+/* The phone's Compose button floats over the bottom of the list: the middle is taken above it. */
+.ml-root[data-compact='true'] .ml-scroll .ml-empty {
+  padding-bottom: var(--ml-fab-clear, 120px);
+}
+.ml-scroll .ml-empty .ui-empty-description {
+  text-wrap: balance;
+}
+.ml-more {
+  padding: 8px 12px 16px;
+}
+.ml-root[data-compact='true'] .ml-more {
+  padding: 12px 16px var(--ml-fab-clear, 120px);
+}
+
+/* ---------- Snooze: the button's menu, the date-time form, the chip ---------- */
+
+/* The toolbar of the reader sizes this wrapper (index.css, .nm-bar > div); the button fills it. */
+.ml-snooze {
+  display: flex;
+}
+.ml-snooze-pop {
+  width: 272px;
+}
+.ml-snooze-item {
+  justify-content: space-between;
+}
+.ml-snooze-hint {
+  flex: none;
+  font-size: 13px;
+  color: var(--text2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ml-snooze-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 8px 4px;
+}
+.ml-snooze-form .ui-input:has(> [aria-invalid='true']) {
+  border-color: var(--danger);
+}
+.ml-snooze-form .ui-input-el {
+  font-variant-numeric: tabular-nums;
+}
+.ml-snooze-problem {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--danger);
+}
+.ml-snooze-problem svg {
+  flex: none;
+  margin-top: 3px;
+}
+
+/* Reduced motion: a state change is just there. */
+@media (prefers-reduced-motion: reduce) {
+  .ml-row,
+  .ml-swipe-pane {
+    transition: none;
+  }
+}

@@ -7,7 +7,8 @@ import { sharedDeviceStart } from '../../lib/crypto/sharedDevice';
 import { useT } from '../../lib/i18n';
 import { pushForSignOut } from '../../lib/push';
 import { useAction } from '../../lib/useAction';
-import { AuthButton, AuthCard, CheckboxRow, ErrorLine, Field, TextButton, inputStyle } from './authUi';
+import { TextField } from '../../ui';
+import { AuthButton, AuthCard, CheckboxRow, ErrorLine, TextButton } from './authUi';
 
 /**
  * The session is valid but this browser holds no key: the page was reloaded after a "shared device" sign-in, the stored key was older than
@@ -56,19 +57,17 @@ export const UnlockScreen: React.FC<{ t: ThemeTokens; user: SessionUser }> = ({ 
         void submit(event);
       }}
     >
-      <Field t={t} id="unlock-password" label={tr('term.password')}>
-        <input
-          id="unlock-password"
-          ref={inputRef}
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          autoComplete="current-password"
-          aria-invalid={action.error !== null}
-          aria-describedby={action.error === null ? undefined : 'unlock-error'}
-          style={inputStyle(t)}
-        />
-      </Field>
+      <TextField
+        id="unlock-password"
+        ref={inputRef}
+        label={tr('term.password')}
+        type="password"
+        value={password}
+        onChange={(event) => setPassword(event.target.value)}
+        autoComplete="current-password"
+        aria-invalid={action.error !== null}
+        aria-describedby={action.error === null ? undefined : 'unlock-error'}
+      />
       <ErrorLine t={t} id="unlock-error" text={action.error} />
       <CheckboxRow
         t={t}

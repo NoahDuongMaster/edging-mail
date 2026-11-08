@@ -1,23 +1,14 @@
 import React from 'react';
-import { Archive, CheckCheck, FileText, Inbox, Loader2, Paperclip, RefreshCw, Star } from 'lucide-react';
+import { Archive, CheckCheck, Paperclip, RefreshCw, Star } from 'lucide-react';
 import type { Message } from '../types';
 import type { ThemeTokens } from '../theme';
-import { getChip, getLabelChip } from '../theme';
-import {
-  GROUP_ORDER,
-  displayName,
-  formatRowTime,
-  groupOf,
-  initialsOf,
-  labelsOf,
-  nonEmpty,
-  snippetOf,
-  stringHue,
-  subjectOf
-} from '../lib/mail';
+import { getLabelChip } from '../theme';
+import { GROUP_ORDER, displayName, formatRowTime, groupOf, labelsOf, nonEmpty, snippetOf, subjectOf } from '../lib/mail';
 import { SNOOZE_GROUP_ORDER, snoozeGroupOf } from '../lib/snooze';
 import { useT, type TFunction } from '../lib/i18n';
+import { Button, Chip, EmptyState, IconButton, ListSkeleton, SegmentedControl, VisuallyHidden } from '../ui';
 import { SnoozeChip } from './SnoozeMenu';
+import './messagelist.css';
 
 export type MailFilter = 'all' | 'unread' | 'starred' | 'attachments';
 
@@ -56,16 +47,16 @@ interface MessageListProps {
   onRetry?: () => void;
 }
 
-/** The filter chips in the UI language; the mobile board adds a Starred chip between Unread and Attachments. */
-function filterChips(compact: boolean, tr: TFunction): { id: MailFilter; label: string }[] {
-  const all = { id: 'all' as const, label: tr('list.filter_all') };
-  const unread = { id: 'unread' as const, label: tr('list.filter_unread') };
-  const attachments = { id: 'attachments' as const, label: tr('term.attachments') };
-  return compact ? [all, unread, { id: 'starred' as const, label: tr('folder.starred') }, attachments] : [all, unread, attachments];
+/** The filters in the UI language; the mobile board adds Starred between Unread and Attachments. */
+function filterOptions(compact: boolean, tr: TFunction): { value: MailFilter; label: string }[] {
+  const all = { value: 'all' as const, label: tr('list.filter_all') };
+  const unread = { value: 'unread' as const, label: tr('list.filter_unread') };
+  const attachments = { value: 'attachments' as const, label: tr('term.attachments') };
+  return compact ? [all, unread, { value: 'starred' as const, label: tr('folder.starred') }, attachments] : [all, unread, attachments];
 }
 
+/** How far (px) a row has to be dragged left before letting go archives it; also the width of the Archive label behind the row. */
 const SWIPE_REVEAL = 96;
-const SWIPE_ARCHIVE_BG = '#0F766E';
 
 /** What an empty folder says it holds; the Inbox's wording is the default (Drafts and Snoozed have their own lines below). */
 function emptyHint(folder: string, tr: TFunction): string {
@@ -120,31 +111,128 @@ function groupHeading(id: string, tr: TFunction): string {
 }
 
 /** How a row names the other side: the sender, or in Drafts the recipients (a "No recipient" text when none is set yet). */
-function partyOf(m: Message, isDrafts: boolean, tr: TFunction) {
+function partyLabel(m: Message, isDrafts: boolean, tr: TFunction): string {
   if (!isDrafts) {
-    return { label: displayName(m), seed: m.from_address, avatar: initialsOf(m.from_name, m.from_address) };
+    return displayName(m);
   }
   const recipients = nonEmpty(m.to_address.trim());
-  const first = recipients?.split(/[,;]/, 1)[0].trim();
-  return {
-    label: recipients === undefined ? tr('list.no_recipient') : tr('list.draft_to', { recipients }),
-    seed: first ?? '',
-    avatar: first === undefined || first === '' ? <FileText size={16} strokeWidth={1.8} aria-hidden="true" /> : initialsOf(undefined, first)
-  };
+  return recipients === undefined ? tr('list.no_recipient') : tr('list.draft_to', { recipients });
 }
+
+interface RowButtonProps {
+  t: ThemeTokens;
+  message: Message;
+  sender: string;
+  subject: string;
+  timestamp: number;
+  /** Wake time of a snoozed mail: shown in place of the date on the phone board, because that is what matters in the Snoozed folder. */
+  snoozedUntil: number | null;
+  preview: string;
+  labels: string[];
+  unread: boolean;
+  selected: boolean;
+  /** The phone board: no label chips, and a snoozed row shows its wake time where the date is. */
+  compact: boolean;
+  onSelect: (id: string) => void;
+}
+
+/**
+ * The button of one row: the unread dot, the sender and date, the subject, then the preview with the chips (labels, snooze time) on the
+ * same line. The star is a separate button beside it (a button cannot hold a button), see StarButton.
+ */
+const RowButton: React.FC<RowButtonProps> = ({
+  t,
+  message: m,
+  sender,
+  subject,
+  timestamp,
+  snoozedUntil,
+  preview,
+  labels,
+  unread,
+  selected,
+  compact,
+  onSelect
+}) => {
+  const tr = useT();
+  const chips = !compact && (labels.length > 0 || snoozedUntil !== null);
+  return (
+    <button
+      type="button"
+      className="ml-row"
+      data-unread={unread ? 'true' : undefined}
+      aria-current={selected ? 'true' : undefined}
+      onClick={() => onSelect(m.id)}
+    >
+      <span aria-hidden="true" className="ml-dot" />
+      <span className="ml-main">
+        {unread ? <VisuallyHidden>{tr('list.unread_sr')}</VisuallyHidden> : null}
+        <span className="ml-line">
+          <span className="ml-sender">{sender}</span>
+          {m.has_attachments === 1 ? (
+            <Paperclip role="img" aria-label={tr('list.has_attachments')} size={14} strokeWidth={1.75} className="ml-clip" />
+          ) : null}
+          {compact && snoozedUntil !== null ? (
+            <span className="ml-time-slot">
+              <SnoozeChip t={t} until={snoozedUntil} bare />
+            </span>
+          ) : (
+            <span className="ml-time">{formatRowTime(timestamp)}</span>
+          )}
+        </span>
+        <span className="ml-subject">{subject}</span>
+        {preview !== '' || chips ? (
+          <span className="ml-line3">
+            {preview === '' ? null : <span className="ml-preview">{preview}</span>}
+            {chips ? (
+              <span className="ml-chips">
+                {snoozedUntil === null ? null : <SnoozeChip t={t} until={snoozedUntil} selected={selected} />}
+                {labels.map((label) => (
+                  <Chip key={label} colors={getLabelChip(label, t)}>
+                    {label}
+                  </Chip>
+                ))}
+              </span>
+            ) : null}
+          </span>
+        ) : null}
+      </span>
+    </button>
+  );
+};
+
+interface StarButtonProps {
+  message: Message;
+  sender: string;
+  starred: boolean;
+  onToggleStar: (message: Message) => void;
+}
+
+/** The star of a row, on its subject line. Quiet (an outline) until the mail is starred. */
+const StarButton: React.FC<StarButtonProps> = ({ message: m, sender, starred, onToggleStar }) => {
+  const tr = useT();
+  return (
+    <button
+      type="button"
+      className="ml-star"
+      aria-label={tr('list.star_from', { sender })}
+      aria-pressed={starred}
+      onClick={() => onToggleStar(m)}
+    >
+      <Star size={16} strokeWidth={1.75} fill={starred ? 'currentColor' : 'none'} aria-hidden="true" />
+    </button>
+  );
+};
 
 interface CompactRowProps {
   t: ThemeTokens;
   message: Message;
   sender: string;
-  /** Initials, or an icon for a draft without recipient. */
-  avatarContent: React.ReactNode;
   subject: string;
   timestamp: number;
   /** Wake time of a snoozed mail: shown in place of the date, because that is what matters in the Snoozed folder. */
   snoozedUntil: number | null;
   preview: string;
-  avatar: { bg: string; fg: string };
   unread: boolean;
   starred: boolean;
   onSelect: (id: string) => void;
@@ -157,12 +245,10 @@ const CompactRow: React.FC<CompactRowProps> = ({
   t,
   message: m,
   sender,
-  avatarContent,
   subject,
   timestamp,
   snoozedUntil,
   preview,
-  avatar,
   unread,
   starred,
   onSelect,
@@ -233,32 +319,24 @@ const CompactRow: React.FC<CompactRowProps> = ({
   const revealed = dx < 0;
 
   return (
-    <li ref={rowRef} style={{ position: 'relative', overflow: 'hidden', background: revealed ? SWIPE_ARCHIVE_BG : 'transparent' }}>
+    <li
+      ref={rowRef}
+      className="ml-item ml-swipe"
+      data-revealed={revealed ? 'true' : undefined}
+      // Only a starred row has a star (the phone has no room for an empty one); the subject makes room for it.
+      data-star={starred ? 'true' : undefined}
+    >
       {revealed ? (
-        <span
-          aria-hidden="true"
-          style={{
-            position: 'absolute',
-            right: 0,
-            top: 0,
-            bottom: 0,
-            width: SWIPE_REVEAL,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 4,
-            color: '#FFFFFF',
-            fontSize: 12,
-            lineHeight: '16px',
-            fontWeight: 600
-          }}
-        >
-          <Archive size={22} strokeWidth={1.8} />
+        <span aria-hidden="true" className="ml-swipe-reveal" style={{ width: SWIPE_REVEAL }}>
+          <Archive size={22} strokeWidth={1.75} />
           {tr('action.archive')}
         </span>
       ) : null}
       <div
+        className="ml-swipe-pane"
+        data-swipeable={onSwipeArchive ? 'true' : undefined}
+        data-dragging={dragging ? 'true' : undefined}
+        data-revealed={revealed ? 'true' : undefined}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -271,163 +349,23 @@ const CompactRow: React.FC<CompactRowProps> = ({
             swiped.current = false;
           }
         }}
-        style={{
-          position: 'relative',
-          background: t.surface,
-          touchAction: onSwipeArchive ? 'pan-y' : undefined,
-          transform: dx !== 0 ? `translateX(${dx}px)` : undefined,
-          transition: dragging ? 'none' : 'transform 0.16s ease-out',
-          boxShadow: revealed ? '8px 0 16px -8px rgba(16,24,40,0.24)' : undefined
-        }}
+        style={dx === 0 ? undefined : { transform: `translateX(${dx}px)` }}
       >
-        <button
-          type="button"
-          onClick={() => onSelect(m.id)}
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: 10,
-            padding: '12px 16px 12px 8px',
-            border: 0,
-            borderBottom: `1px solid ${t.divider}`,
-            background: 'transparent',
-            color: t.text,
-            font: 'inherit',
-            textAlign: 'left',
-            cursor: 'pointer'
-          }}
-        >
-          <span aria-hidden="true" style={{ width: 8, flex: 'none', display: 'flex', paddingTop: 16 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: unread ? t.unreadDot : 'transparent' }} />
-          </span>
-          <span
-            aria-hidden="true"
-            style={{
-              width: 40,
-              height: 40,
-              flex: 'none',
-              borderRadius: '50%',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: avatar.bg,
-              color: avatar.fg,
-              fontSize: 14,
-              fontWeight: 600
-            }}
-          >
-            {avatarContent}
-          </span>
-          <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              {unread ? (
-                <span
-                  style={{
-                    position: 'absolute',
-                    width: 1,
-                    height: 1,
-                    margin: -1,
-                    overflow: 'hidden',
-                    clip: 'rect(0, 0, 0, 0)',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  {tr('list.unread_sr')}
-                </span>
-              ) : null}
-              <span
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  fontSize: 15,
-                  lineHeight: '22px',
-                  fontWeight: unread ? 600 : 500
-                }}
-              >
-                {sender}
-              </span>
-              {m.has_attachments === 1 ? (
-                <Paperclip
-                  role="img"
-                  aria-label={tr('list.has_attachments')}
-                  size={14}
-                  strokeWidth={2}
-                  color={t.text3}
-                  style={{ flex: 'none' }}
-                />
-              ) : null}
-              {snoozedUntil === null ? (
-                <span
-                  style={{
-                    flex: 'none',
-                    fontSize: 12,
-                    lineHeight: '16px',
-                    fontWeight: unread ? 600 : 400,
-                    color: unread ? t.text : t.text3
-                  }}
-                >
-                  {formatRowTime(timestamp)}
-                </span>
-              ) : (
-                <span style={{ flex: '0 1 auto', minWidth: 0, display: 'flex' }}>
-                  <SnoozeChip t={t} until={snoozedUntil} bare />
-                </span>
-              )}
-            </span>
-            <span
-              style={{
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                fontWeight: unread ? 600 : 400
-              }}
-            >
-              {subject}
-            </span>
-            <span
-              style={{
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                paddingRight: 24,
-                fontSize: 13,
-                lineHeight: '18px',
-                color: t.text2
-              }}
-            >
-              {preview}
-            </span>
-          </span>
-        </button>
-        {starred ? (
-          <button
-            type="button"
-            aria-label={tr('list.star_from', { sender })}
-            aria-pressed={starred}
-            onClick={() => onToggleStar(m)}
-            style={{
-              position: 'absolute',
-              // A 44px touch target; the 16px star stays centred where it was.
-              right: 2,
-              top: 45,
-              width: 44,
-              height: 44,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: 0,
-              background: 'transparent',
-              color: t.star,
-              cursor: 'pointer'
-            }}
-          >
-            <Star size={16} strokeWidth={1.8} fill={t.star} aria-hidden="true" />
-          </button>
-        ) : null}
+        <RowButton
+          t={t}
+          message={m}
+          sender={sender}
+          subject={subject}
+          timestamp={timestamp}
+          snoozedUntil={snoozedUntil}
+          preview={preview}
+          labels={[]}
+          unread={unread}
+          selected={false}
+          compact
+          onSelect={onSelect}
+        />
+        {starred ? <StarButton message={m} sender={sender} starred={starred} onToggleStar={onToggleStar} /> : null}
       </div>
     </li>
   );
@@ -492,167 +430,45 @@ export const MessageList: React.FC<MessageListProps> = ({
   }, [messages, isDrafts, isSnoozed]);
 
   const searching = searchQuery !== undefined && searchQuery !== '';
-  // An empty Inbox with no search, filter or failed load is the "all caught up" screen, which Edgar owns.
+  // An empty Inbox with no search, filter or failed load is the "all caught up" screen, which Edgar owns; so is a list that could not load.
   const caughtUp = folder === 'inbox' && filter === 'all' && !loadFailed && !searching;
 
   return (
-    <section
-      aria-label={title}
-      style={{
-        flex: '1 1 400px',
-        minWidth: 0,
-        minHeight: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        background: t.surface,
-        border: compact ? 0 : `1px solid ${t.border}`,
-        borderRadius: compact ? 0 : 14,
-        overflow: 'hidden',
-        boxShadow: compact ? 'none' : t.shadow
-      }}
-    >
+    <section aria-label={title} className="ml-root" data-compact={compact ? 'true' : undefined}>
       {compact ? null : (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 8,
-            // Drafts have no filter row below, so the header closes the list head itself.
-            padding: isDrafts ? '12px 8px 8px 20px' : '12px 8px 4px 20px',
-            borderBottom: isDrafts ? `1px solid ${t.border}` : undefined
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
-            <h1
-              id="list-title"
-              style={{ margin: 0, fontSize: 20, lineHeight: '28px', fontWeight: 600, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}
-            >
+        <div className="ml-head">
+          <div className="ml-heading">
+            <h1 id="list-title" className="ml-title">
               {title}
             </h1>
-            <span style={{ fontSize: 13, color: t.text2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {subtitle}
-            </span>
+            <span className="ml-subtitle">{subtitle}</span>
           </div>
-          <div style={{ display: 'flex', gap: 2 }}>
+          <div className="ml-actions">
             {/* Drafts are never unread, so there is nothing to mark. */}
             {isDrafts ? null : (
-              <button
-                type="button"
-                aria-label={tr('list.mark_all_read')}
-                title={tr('list.mark_all_read')}
-                onClick={onMarkAllRead}
-                style={{
-                  width: 40,
-                  height: 40,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: 0,
-                  borderRadius: 10,
-                  background: 'transparent',
-                  color: t.text2,
-                  cursor: 'pointer'
-                }}
-              >
-                <CheckCheck size={20} strokeWidth={1.8} aria-hidden="true" />
-              </button>
+              <IconButton label={tr('list.mark_all_read')} size="sm" onClick={onMarkAllRead}>
+                <CheckCheck size={16} strokeWidth={1.75} aria-hidden="true" />
+              </IconButton>
             )}
-            <button
-              type="button"
-              aria-label={tr('list.refresh')}
-              title={tr('list.refresh')}
-              onClick={onRefresh}
-              style={{
-                width: 40,
-                height: 40,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: 0,
-                borderRadius: 10,
-                background: 'transparent',
-                color: t.text2,
-                cursor: 'pointer'
-              }}
-            >
-              <RefreshCw size={20} strokeWidth={1.8} className={isLoading ? 'nm-spin' : undefined} aria-hidden="true" />
-            </button>
+            <IconButton label={tr('list.refresh')} size="sm" onClick={onRefresh}>
+              <RefreshCw size={16} strokeWidth={1.75} className={isLoading ? 'nm-spin' : undefined} aria-hidden="true" />
+            </IconButton>
           </div>
         </div>
       )}
 
-      {/* Drafts are always read, unstarred and without attachments, so none of the filters could match anything there. */}
+      {/* Drafts are always read, unstarred and without attachments, so none of the filters could match anything there. The filters stay
+          toggle buttons (aria-pressed), each a Tab stop, as they were. */}
       {isDrafts ? null : (
-        <div
-          style={
-            compact
-              ? // The chips wrap onto a second line instead of scrolling sideways, so every folder name is visible at 320 px in every language.
-                { display: 'flex', flexWrap: 'wrap', gap: '0 2px', padding: '4px 12px 4px' }
-              : { display: 'flex', gap: 8, flexWrap: 'wrap', padding: '8px 16px 12px 20px', borderBottom: `1px solid ${t.border}` }
-          }
-        >
-          {filterChips(compact, tr).map((f) => {
-            const on = filter === f.id;
-            if (compact) {
-              // 44px touch target around a 34px pill, as on the mobile board.
-              return (
-                <button
-                  key={f.id}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => onFilterChange(f.id)}
-                  style={{
-                    flex: 'none',
-                    height: 44,
-                    padding: '0 2px',
-                    border: 0,
-                    background: 'transparent',
-                    font: 'inherit',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      height: 34,
-                      padding: '0 14px',
-                      border: `1px solid ${on ? t.text : t.borderStrong}`,
-                      borderRadius: 999,
-                      background: on ? t.text : 'transparent',
-                      color: on ? t.surface : t.text2,
-                      fontSize: 13,
-                      fontWeight: 500
-                    }}
-                  >
-                    {f.label}
-                  </span>
-                </button>
-              );
-            }
-            return (
-              <button
-                key={f.id}
-                type="button"
-                aria-pressed={on}
-                onClick={() => onFilterChange(f.id)}
-                style={{
-                  height: 32,
-                  padding: '0 14px',
-                  border: `1px solid ${on ? t.text : t.borderStrong}`,
-                  borderRadius: 999,
-                  background: on ? t.text : 'transparent',
-                  color: on ? t.surface : t.text2,
-                  fontSize: 13,
-                  fontWeight: 500,
-                  cursor: 'pointer'
-                }}
-              >
-                {f.label}
-              </button>
-            );
-          })}
+        <div className="ml-filters">
+          <SegmentedControl
+            label={tr('list.filter_label')}
+            mode="toggle"
+            wrap
+            options={filterOptions(compact, tr)}
+            value={filter}
+            onChange={onFilterChange}
+          />
         </div>
       )}
 
@@ -666,59 +482,22 @@ export const MessageList: React.FC<MessageListProps> = ({
               }
             : undefined
         }
-        className={compact ? 'nm-hide-scrollbar' : undefined}
-        style={{
-          flex: 1,
-          minHeight: 0,
-          overflowY: 'auto',
-          padding: compact ? '0' : '4px 8px 12px',
-          borderTop: compact ? `1px solid ${t.divider}` : undefined
-        }}
+        className={compact ? 'ml-scroll nm-hide-scrollbar' : 'ml-scroll'}
+        data-compact={compact ? 'true' : undefined}
       >
-        {isLoading && groups.length === 0 ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '72px 24px', color: t.text2 }}>
-            <Loader2 size={18} className="nm-spin" aria-hidden="true" />
-            <span>{tr('list.loading')}</span>
-          </div>
-        ) : null}
+        {isLoading && groups.length === 0 ? <ListSkeleton className="ml-skel" label={tr('list.loading')} lines={3} /> : null}
 
         {groups.map((g) => (
-          <div key={g.id}>
-            <h2
-              style={{
-                margin: 0,
-                padding: compact ? '14px 16px 6px' : '14px 12px 6px 28px',
-                fontSize: 12,
-                lineHeight: '16px',
-                fontWeight: 600,
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                color: t.text2
-              }}
-            >
-              {groupHeading(g.id, tr)}
-            </h2>
-            <ul
-              role="list"
-              style={{
-                listStyle: 'none',
-                margin: 0,
-                // Clearance for the floating Compose button under the last group (120px on the board); the Load more button carries it when shown.
-                padding: compact && g === groups.at(-1) && !hasMore ? '0 0 120px' : 0,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: compact ? 0 : 2
-              }}
-            >
+          <div key={g.id} className="ml-group">
+            <h2 className="ml-group-title">{groupHeading(g.id, tr)}</h2>
+            <ul role="list" className="ml-list" data-clear={compact && g === groups.at(-1) && !hasMore ? 'true' : undefined}>
               {g.items.map((m) => {
                 const selected = m.id === selectedId;
                 const unread = m.is_read === 0;
                 const starred = m.is_starred === 1;
-                const party = partyOf(m, isDrafts, tr);
-                const avatar = getChip(stringHue(party.seed), t);
                 const labels = labelsOf(m);
                 const preview = snippetOf(m, 120);
-                const sender = party.label;
+                const sender = partyLabel(m, isDrafts, tr);
                 const timestamp = isDrafts ? m.updated_at : m.created_at;
                 const subject = subjectOf(m, tr('list.no_subject'));
                 const snoozedUntil = m.folder === 'snoozed' && typeof m.snoozed_until === 'number' ? m.snoozed_until : null;
@@ -730,12 +509,10 @@ export const MessageList: React.FC<MessageListProps> = ({
                       t={t}
                       message={m}
                       sender={sender}
-                      avatarContent={party.avatar}
                       subject={subject}
                       timestamp={timestamp}
                       snoozedUntil={snoozedUntil}
                       preview={preview}
-                      avatar={avatar}
                       unread={unread}
                       starred={starred}
                       onSelect={onSelect}
@@ -746,208 +523,22 @@ export const MessageList: React.FC<MessageListProps> = ({
                 }
 
                 return (
-                  <li key={m.id} style={{ position: 'relative' }}>
-                    <button
-                      type="button"
-                      onClick={() => onSelect(m.id)}
-                      aria-current={selected ? 'true' : undefined}
-                      style={{
-                        width: '100%',
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: 8,
-                        padding: '12px 12px 12px 8px',
-                        border: 0,
-                        borderBottom: 0,
-                        borderRadius: 10,
-                        background: selected ? t.selBg : 'transparent',
-                        color: t.text,
-                        textAlign: 'left',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <span aria-hidden="true" style={{ width: 8, flex: 'none', display: 'flex', paddingTop: 14 }}>
-                        <span
-                          style={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: '50%',
-                            background: unread ? t.unreadDot : 'transparent'
-                          }}
-                        />
-                      </span>
-                      <span
-                        aria-hidden="true"
-                        style={{
-                          width: 36,
-                          height: 36,
-                          flex: 'none',
-                          marginRight: 4,
-                          borderRadius: '50%',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          background: avatar.bg,
-                          color: avatar.fg,
-                          fontSize: 13,
-                          fontWeight: 600
-                        }}
-                      >
-                        {party.avatar}
-                      </span>
-                      <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        {unread ? (
-                          <span
-                            style={{
-                              position: 'absolute',
-                              width: 1,
-                              height: 1,
-                              margin: -1,
-                              overflow: 'hidden',
-                              clip: 'rect(0, 0, 0, 0)',
-                              whiteSpace: 'nowrap'
-                            }}
-                          >
-                            {tr('list.unread_sr')}
-                          </span>
-                        ) : null}
-                        <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                          <span
-                            style={{
-                              flex: 1,
-                              minWidth: 0,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                              fontWeight: unread ? 600 : 500
-                            }}
-                          >
-                            {sender}
-                          </span>
-                          <span
-                            style={{
-                              flex: 'none',
-                              fontSize: 12,
-                              lineHeight: '16px',
-                              color: unread ? t.text : selected ? t.text2 : t.text3,
-                              fontWeight: unread ? 600 : 400,
-                              fontVariantNumeric: 'tabular-nums'
-                            }}
-                          >
-                            {formatRowTime(timestamp)}
-                          </span>
-                        </span>
-                        <span
-                          style={{
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            paddingRight: 32,
-                            fontWeight: unread ? 600 : 400
-                          }}
-                        >
-                          {subject}
-                        </span>
-                        {preview ? (
-                          <span
-                            style={{
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                              paddingRight: 8,
-                              fontSize: 13,
-                              lineHeight: '18px',
-                              color: t.text2
-                            }}
-                          >
-                            {preview}
-                          </span>
-                        ) : null}
-                        {labels.length > 0 || m.has_attachments === 1 || snoozedUntil !== null ? (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, minWidth: 0, overflow: 'hidden' }}>
-                            {snoozedUntil === null ? null : <SnoozeChip t={t} until={snoozedUntil} selected={selected} />}
-                            {labels.map((label) => {
-                              const chip = getLabelChip(label, t);
-                              return (
-                                <span
-                                  key={label}
-                                  style={{
-                                    flex: '0 1 auto',
-                                    minWidth: 0,
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 6,
-                                    height: 22,
-                                    padding: '0 8px',
-                                    borderRadius: 6,
-                                    background: chip.bg,
-                                    color: chip.fg,
-                                    fontSize: 12,
-                                    lineHeight: '16px',
-                                    fontWeight: 500
-                                  }}
-                                >
-                                  <span
-                                    aria-hidden="true"
-                                    style={{ flex: 'none', width: 6, height: 6, borderRadius: 2, background: chip.dot }}
-                                  />
-                                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {label}
-                                  </span>
-                                </span>
-                              );
-                            })}
-                            {m.has_attachments === 1 ? (
-                              <span
-                                style={{
-                                  minWidth: 0,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 6,
-                                  height: 22,
-                                  padding: '0 8px',
-                                  borderRadius: 6,
-                                  border: `1px solid ${t.border}`,
-                                  color: t.text2,
-                                  fontSize: 12,
-                                  lineHeight: '16px'
-                                }}
-                              >
-                                <Paperclip size={12} strokeWidth={2} aria-hidden="true" style={{ flex: 'none' }} />
-                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {tr('list.attachment')}
-                                </span>
-                              </span>
-                            ) : null}
-                          </span>
-                        ) : null}
-                      </span>
-                    </button>
-                    {isDrafts ? null : (
-                      <button
-                        type="button"
-                        aria-label={tr('list.star_from', { sender })}
-                        aria-pressed={starred}
-                        onClick={() => onToggleStar(m)}
-                        style={{
-                          position: 'absolute',
-                          right: 8,
-                          top: 26,
-                          width: 32,
-                          height: 32,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          border: 0,
-                          borderRadius: 8,
-                          background: 'transparent',
-                          color: starred ? t.star : t.text3,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <Star size={16} strokeWidth={1.8} fill={starred ? t.star : 'none'} aria-hidden="true" />
-                      </button>
-                    )}
+                  <li key={m.id} className="ml-item" data-star={isDrafts ? undefined : 'true'}>
+                    <RowButton
+                      t={t}
+                      message={m}
+                      sender={sender}
+                      subject={subject}
+                      timestamp={timestamp}
+                      snoozedUntil={snoozedUntil}
+                      preview={preview}
+                      labels={labels}
+                      unread={unread}
+                      selected={selected}
+                      compact={false}
+                      onSelect={onSelect}
+                    />
+                    {isDrafts ? null : <StarButton message={m} sender={sender} starred={starred} onToggleStar={onToggleStar} />}
                   </li>
                 );
               })}
@@ -956,31 +547,11 @@ export const MessageList: React.FC<MessageListProps> = ({
         ))}
 
         {!isLoading && groups.length === 0 ? (
-          <div
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '72px 24px', textAlign: 'center' }}
-          >
-            {caughtUp ? (
-              <img src="/edgar.svg" alt="" width={120} height={117} style={{ display: 'block', maxWidth: '100%', height: 'auto' }} />
-            ) : (
-              <span
-                aria-hidden="true"
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 16,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: t.raised,
-                  border: `1px solid ${t.border}`,
-                  color: t.text2
-                }}
-              >
-                <Inbox size={24} strokeWidth={1.8} />
-              </span>
-            )}
-            <p style={{ margin: '8px 0 0', fontSize: 15, fontWeight: 600, overflowWrap: 'anywhere' }}>
-              {loadFailed
+          <EmptyState
+            className="ml-empty"
+            illustration={caughtUp || loadFailed}
+            title={
+              loadFailed
                 ? tr('list.load_failed')
                 : filter === 'all'
                   ? searching
@@ -988,10 +559,10 @@ export const MessageList: React.FC<MessageListProps> = ({
                     : tr('list.empty_in', { folder: title })
                   : searching
                     ? tr('list.no_match_search')
-                    : tr('list.no_match')}
-            </p>
-            <p style={{ margin: 0, maxWidth: 280, color: t.text2, textWrap: 'balance' }}>
-              {loadFailed
+                    : tr('list.no_match')
+            }
+            description={
+              loadFailed
                 ? tr('list.load_failed_hint')
                 : filter === 'all'
                   ? searching
@@ -1003,58 +574,27 @@ export const MessageList: React.FC<MessageListProps> = ({
                         : emptyHint(folder, tr)
                   : searching
                     ? tr('list.hint_clear_filter')
-                    : tr('list.hint_switch_all')}
-            </p>
-            {loadFailed ? (
-              <button
-                type="button"
-                onClick={onRetry}
-                style={{
-                  height: 44,
-                  marginTop: 8,
-                  padding: '0 20px',
-                  border: `1px solid ${t.borderStrong}`,
-                  borderRadius: 10,
-                  background: 'transparent',
-                  color: t.text2,
-                  font: 'inherit',
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: 'pointer'
-                }}
-              >
-                {tr('common.retry')}
-              </button>
-            ) : null}
-          </div>
+                    : tr('list.hint_switch_all')
+            }
+            action={loadFailed ? <Button onClick={onRetry}>{tr('common.retry')}</Button> : undefined}
+          />
         ) : null}
 
         {hasMore ? (
-          <div style={{ padding: compact ? '12px 16px 120px' : '8px 0 0' }}>
-            <button
-              type="button"
-              // aria-disabled, not disabled: the button keeps keyboard focus while it loads.
-              aria-disabled={loadingMore || undefined}
+          <div className="ml-more">
+            {/* `loading` sets aria-disabled, not disabled: the button keeps keyboard focus while it loads. */}
+            <Button
+              variant="ghost"
+              fullWidth
+              loading={loadingMore}
               onClick={() => {
                 if (!loadingMore) {
                   onLoadMore?.();
                 }
               }}
-              style={{
-                width: '100%',
-                height: 44,
-                border: `1px solid ${t.borderStrong}`,
-                borderRadius: 10,
-                background: 'transparent',
-                color: t.text2,
-                font: 'inherit',
-                fontSize: 14,
-                fontWeight: 500,
-                cursor: loadingMore ? 'default' : 'pointer'
-              }}
             >
               {loadingMore ? tr('common.loading') : tr('list.load_more')}
-            </button>
+            </Button>
           </div>
         ) : null}
       </div>

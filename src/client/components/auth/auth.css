@@ -1,0 +1,508 @@
+/* The screens before the mailbox (components/auth/**, PasswordField, LanguagePicker): sign-in, Setup, unlock, forgot password, the second step,
+   the three gates, break-glass and the screens that show a secret once. A Configure surface: one centred column on --bg (400px, 520px wide),
+   a row with the mark and the language list over one card, both as wide as the card. Classes are `au-*`. Colours, radii and control
+   heights are the variables of ui.css and index.css: nothing here names a colour.
+
+   Order: main.tsx imports index.css (and with it ui.css) before App, so this file comes later in the cascade: a rule here wins over a ui
+   primitive's rule of the same specificity (`.ui-btn[data-size]` is 0,2,0) and has to be more specific only to beat a stronger one. */
+
+/* ---------- The page ---------- */
+
+/* These screens scroll as a normal web page: the window scrolls, with the scrollbar at the window's edge, the trackpad's bounce, and
+   Space / Page Down working without clicking into the page first. index.html keeps <body> at the window's height with overflow hidden for
+   the mailbox (it scrolls its own panes), so while one of these screens is shown the body is let scroll again. The column's auto margins
+   centre it while it fits and fall to 0 when it does not, so its top is never cut off. A browser without :has() scrolls the page box. */
+.au-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 20px;
+}
+body:has(.au-page) {
+  overflow-y: auto;
+}
+/* A field scrolled back into view from above the window (a press of Continue sends the keyboard up to the first field to fix, or Shift+Tab)
+   keeps a little room over its label instead of touching the window's top edge. */
+html:has(.au-page) {
+  scroll-padding-top: 16px;
+}
+@supports not selector(:has(a)) {
+  /* The page box is the scroller here: it is also the containing block of the visually hidden live regions (the Copy button's status),
+     which otherwise sit at their place in the static layout, outside the scroller, and make the window taller than itself. */
+  .au-page {
+    position: relative;
+    height: 100%;
+    overflow-y: auto;
+    /* Setup's docked footer (below): a field reached with Tab is scrolled above it. */
+    scroll-padding-top: 16px;
+    scroll-padding-bottom: 96px;
+  }
+}
+/* While the stored key is checked: the page colour, nothing else (no flash of the unlock screen). */
+.au-blank {
+  height: 100%;
+  background: var(--bg);
+}
+
+/* The mark on the left, the quiet action (Sign out) and the language list on the right: one row as wide as the card, so nothing on it
+   overshoots the card's edges. On a narrow phone with Sign out too, the actions wrap under the mark, still right-aligned. */
+.au-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  min-height: var(--ui-h-sm);
+}
+.au-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+/* The compact picker: as wide as the chosen name and the chevron (its list is at least that wide and grows for the longest name), as high
+   as a small control (32px with a mouse, 44px on touch). */
+.au-top .au-lang {
+  flex: none;
+}
+.au-top .ui-select {
+  min-height: var(--ui-h-sm);
+  gap: 6px;
+  padding-inline: 10px 8px;
+}
+.au-top .ui-btn.au-text-btn[data-size] {
+  min-height: var(--ui-h-sm);
+  padding-block: 4px;
+  padding-inline: 10px;
+}
+
+.au-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  /* 400px (520px wide) and the 16px on each side. */
+  max-width: 432px;
+  margin: auto;
+  padding: 24px 16px 40px;
+}
+.au-column[data-wide='true'] {
+  max-width: 552px;
+}
+
+/* The card's edge is the stronger hairline: on the light page the plain border all but vanished (about 1.15:1), and in the dark theme a
+   shadow does not read at all on the near-black page. */
+.au-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding: 32px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+}
+
+.au-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.au-head-text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.au-eyebrow {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--text3);
+}
+.au-title {
+  margin: 0;
+  font-size: 22px;
+  line-height: 30px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+.au-lead {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text2);
+}
+/* Edgar, small (96px), beside the title of a screen that reports a blocked state (Setup not ready); above it on a phone. Decorative. */
+.au-art {
+  flex: none;
+  width: 96px;
+  height: auto;
+}
+
+/* A phone: no card round the form, the page is the surface and the column starts at the top. */
+@media (max-width: 480px) {
+  .au-page {
+    background: var(--surface);
+  }
+  /* The window's own background shows when a phone bounces past the end of the page: the same colour as the page. */
+  body:has(.au-page) {
+    background: var(--surface);
+  }
+  .au-column {
+    margin: 0 auto;
+    padding: 24px 16px 32px;
+  }
+  .au-card {
+    padding: 0;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  /* Edgar (96px) goes above the title, so the title and the lead keep the whole width of the column (beside him they had about 250px). */
+  .au-head {
+    flex-direction: column;
+  }
+  .au-art {
+    order: -1;
+  }
+}
+
+/* ---------- Forms ---------- */
+
+/* A field with the error line under it. */
+.au-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+/* Two short fields that belong together (Setup's address and name): stacked on a phone, one row of two equal columns from 641px (the wide
+   card is 456px inside, 220px a column: both labels stay on one line in en, vi and zh). Aligned at the top, so labels and boxes share a
+   line whatever the length of the hints under them. */
+.au-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+@media (min-width: 641px) {
+  .au-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+/* The last row of a long form (Setup step 1: its error line and Continue). From 641px it is the card's footer and stays docked at the
+   bottom edge of the window while the fields scroll under it: a hairline above, the card's own surface behind, the card's side padding;
+   at the end of the page it is simply the bottom of the card. The window keeps 96px of scroll padding at its bottom, so a field reached
+   with Tab is scrolled above the footer, never under it. A phone keeps the plain column (the footer would sit on top of the keyboard). */
+.au-sticky {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+@media (min-width: 641px) {
+  .au-sticky {
+    position: sticky;
+    bottom: 0;
+    z-index: var(--z-raise);
+    margin: 8px -32px -32px;
+    padding: 16px 32px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-radius: 0 0 calc(var(--radius-card) - 1px) calc(var(--radius-card) - 1px);
+  }
+  /* While docked over the fields, they fade into it instead of being cut by a line; at the end the fade lies on the empty gap above. */
+  .au-sticky::before {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 1px);
+    left: 0;
+    height: 16px;
+    background: linear-gradient(to top, var(--surface), transparent);
+    pointer-events: none;
+  }
+  html:has(.au-sticky) {
+    scroll-padding-bottom: 96px;
+  }
+}
+/* The fields of these screens are as high as their buttons (44px), so the column has one height from top to bottom. */
+.au-card .ui-input,
+.au-card .ui-select {
+  min-height: var(--ui-h-lg);
+}
+/* The screens and the password field set aria-invalid themselves (their error lines are alerts of their own): the box turns red with it. */
+.au-card .ui-input:has(> .ui-input-el[aria-invalid='true']),
+.au-pw .ui-input:has(> .ui-input-el[aria-invalid='true']) {
+  border-color: var(--danger);
+}
+/* Hints and leads break before a lone last word ('language.' alone on a line under the Setup fields). */
+.au-card :is(.ui-hint, .au-lead, .au-muted, .au-status) {
+  text-wrap: pretty;
+}
+/* Keys, codes and the recovery key groups: mono, a little apart. */
+.ui-input-el.au-key-input {
+  letter-spacing: 0.04em;
+}
+.ui-input-el.au-otp {
+  letter-spacing: 0.2em;
+}
+/* The six digits of the enrolment: large and centred (16px on a phone, index.css). */
+.ui-input-el.au-otp-large {
+  font-size: 20px;
+  letter-spacing: 0.3em;
+  text-align: center;
+}
+
+.au-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.au-error svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* The shared-device and "codes saved" rows (ui/Checkbox, one label of 44px on touch). The label is the name; the hint under it explains. */
+.au-check-label {
+  font-weight: 500;
+}
+/* A choice the server made (ticked and locked): the box says it cannot change, the explanation stays readable. */
+.au-card .ui-check[data-disabled='true'] {
+  opacity: 1;
+  cursor: default;
+}
+.au-card .ui-check[data-disabled='true'] .ui-check-input {
+  opacity: 0.6;
+}
+
+/* AuthButton and TextButton: 44px (size lg, C-12), and a long label (vi, zh) wraps inside the column instead of leaving it. */
+.ui-btn.au-btn[data-size] {
+  height: auto;
+  min-height: var(--ui-h-lg);
+  padding-block: 10px;
+  white-space: normal;
+  text-align: center;
+}
+.ui-btn.au-text-btn[data-size] {
+  height: auto;
+  min-height: var(--ui-h-lg);
+  min-width: 44px;
+  padding-block: 10px;
+  white-space: normal;
+  text-align: center;
+}
+.au-text-btn {
+  align-self: center;
+}
+/* The quiet ways out under the main button (Forgot password, Back, Sign out): one centred row that wraps. */
+.au-alt {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 8px;
+  margin-top: -8px;
+}
+/* Copy and Download side by side: one pair (both secondary, each with its icon). */
+.au-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.au-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+.au-strong {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
+.au-muted {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text2);
+}
+.au-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text3);
+}
+.au-card .ui-divider,
+.au-stack .ui-divider {
+  margin: 0;
+}
+/* A panel that is also shown in Settings (the recovery key, the recovery codes, the two-factor enrolment): its own column. */
+.au-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.au-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text2);
+}
+
+/* ---------- Setup not ready ---------- */
+
+.au-secrets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.au-secret {
+  font-size: 12px;
+  color: var(--text);
+}
+/* A secret's name inside a sentence (the APP_PASSWORD note): the same mono as the badges above, without the badge. */
+.au-code {
+  font-size: 12px;
+  color: var(--text);
+}
+/* A link inside a sentence (the deployment guide): the accent's text colour, underlined, with the out-of-app arrow after the words. */
+.au-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--accent-text);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  border-radius: 2px;
+}
+.au-link svg {
+  flex: none;
+}
+@media (hover: hover) {
+  .au-link:hover {
+    text-decoration-thickness: 2px;
+  }
+}
+
+/* ---------- Secrets shown once: the recovery key, the recovery codes, the two-factor secret (ui SecretBox) ---------- */
+
+/* The three groups typed back, side by side. */
+.au-groups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+/* The heading of the recovery codes takes the focus from script (C-9b): it is not a control. */
+.au-subtitle {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  outline: none;
+}
+
+/* The QR code: black on white in both themes so every scanner reads it, 208px or the width there is. */
+.au-qr {
+  display: block;
+  align-self: center;
+  width: min(208px, 100%);
+  height: auto;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-card);
+}
+.au-qr[data-state='loading'] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* ---------- PasswordField, LanguagePicker ---------- */
+
+.au-pw,
+.au-lang {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+/* The show/hide button fills the height of the box (44px on touch) without making the box taller. */
+.au-pw .ui-adorn .ui-icon-btn {
+  margin-block: -1px;
+}
+/* The strength meter: four thin segments, coloured by the level, with the words under it (the colour is never the only cue). */
+.au-meter {
+  display: flex;
+  gap: 4px;
+}
+.au-meter-seg {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-strong);
+  transition: background-color var(--motion-fast) ease-out;
+}
+.au-meter[data-tone='danger'] .au-meter-seg[data-on='true'] {
+  background: var(--danger);
+}
+.au-meter[data-tone='warning'] .au-meter-seg[data-on='true'] {
+  background: var(--warning);
+}
+.au-meter[data-tone='success'] .au-meter-seg[data-on='true'] {
+  background: var(--success);
+}
+.au-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text2);
+}
+.au-status[data-tone='danger'] {
+  color: var(--danger);
+}
+.au-status[data-tone='success'] {
+  color: var(--success);
+}
+.au-suggest {
+  align-self: flex-start;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .au-meter-seg {
+    transition: none;
+  }
+}

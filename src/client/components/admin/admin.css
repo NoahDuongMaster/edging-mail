@@ -1,0 +1,662 @@
+/* The admin console (components/admin/*): an Operate surface. Classes are `ad-*`.
+   Colours, radii and heights are the variables of the theme (see ui/ui.css); the only inline style left is the width of a dialog, which is a
+   prop. main.tsx imports index.css (and with it ui.css) before App, so this file comes later in the cascade: a rule here wins over a `ui-*`
+   rule of the same specificity, and has to be more specific only to beat a stronger one (a hover or a size rule).
+
+   Phones (640px and less): every table becomes a stacked list (one block per row, no column headers on screen, nothing scrolls sideways);
+   the cells are written so that they say what they are without their header. Every button is 44px high there: the ui controls do it with
+   --ui-h-*, and `.nm-admin button` (index.css) holds the rest. */
+
+/* ---------- Frame: title, tabs, the panel that scrolls ---------- */
+
+.ad-console {
+  /* The content sits in a centred column of at most --ad-max (960px: the People table then keeps a person and their role within one look,
+     the same width on every tab, the title and the tabs on its edges); --ad-inset is the side padding that puts it there. */
+  --ad-gutter: 24px;
+  --ad-max: 960px;
+  --ad-inset: max(var(--ad-gutter), calc((100% - var(--ad-max)) / 2));
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-console);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+}
+
+.ad-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  padding: calc(12px + env(safe-area-inset-top)) var(--ad-inset) 4px;
+}
+.ad-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+}
+/* The icon of the close button lines up with the right edge of the content. */
+.ad-head .ui-icon-btn {
+  margin-inline-end: calc((18px - var(--ui-h-md)) / 2);
+}
+
+/* The tab row runs the full width (its hairline is the edge of the header); the first label lines up with the title. */
+.ui-tabs.ad-tabs {
+  flex: none;
+  padding-inline: calc(var(--ad-inset) - 12px);
+}
+
+.ad-main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+.ad-main > .ui-tabpanel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px var(--ad-inset) calc(24px + env(safe-area-inset-bottom));
+  outline-offset: -2px;
+}
+
+/* One tab's content. */
+.ad-pane {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+/* People and the audit log fill the panel: their table scrolls inside its box, under a header row that stays. Below 320px of height the
+   panel scrolls instead. */
+.ad-pane[data-fill='true'] {
+  flex: 1 1 auto;
+  min-height: 320px;
+}
+.ad-pane[data-fill='true'] > .ui-table-wrap {
+  min-height: 0;
+}
+.ad-pane > .ui-empty {
+  padding: 40px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.ad-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.ad-toolbar > .ui-field {
+  flex: 1 1 240px;
+  max-width: 400px;
+}
+.ad-toolbar > .ui-btn {
+  margin-inline-start: auto;
+}
+
+/* Under a table: the count, Load more, an error. */
+.ad-foot {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text2);
+  font-variant-numeric: tabular-nums;
+}
+
+.ad-setting {
+  max-width: 400px;
+}
+
+/* ---------- Text ---------- */
+
+.ad-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+.ad-muted {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text2);
+}
+.ad-muted[data-tone='danger'] {
+  color: var(--danger);
+}
+.ad-note {
+  max-width: 72ch;
+}
+.ad-strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.ad-wrap {
+  overflow-wrap: anywhere;
+}
+/* What went wrong: an icon and the words, in the danger colour. */
+.ad-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+}
+.ad-error > svg {
+  flex: none;
+  margin-top: 2px;
+}
+.ad-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--text2);
+  font-size: 13px;
+  line-height: 20px;
+}
+/* A field whose value is refused paints its box in the danger colour (the error line under it says why). */
+.nm-admin .ui-input:has(> .ui-input-el[aria-invalid='true']) {
+  border-color: var(--danger);
+}
+
+/* ---------- Tables ---------- */
+
+.ad-table .ad-end {
+  text-align: right;
+}
+.ad-table .ad-shrink {
+  width: 1%;
+  white-space: nowrap;
+}
+.ad-table .ad-nowrap {
+  white-space: nowrap;
+}
+.ad-table .ad-quiet {
+  color: var(--text2);
+}
+/* The audit log's "who → whom" pair: a third of the row on a wide screen, so two addresses and the arrow stay on one line instead of
+   breaking after the arrow (with automatic widths the action took 60% and the pair had about 216px). */
+@media (min-width: 641px) {
+  .ad-table .ad-cell-who {
+    width: 34%;
+  }
+}
+/* Explanations under a field or a table break before a lone last word. */
+.ad-console :is(.ui-hint, .ad-muted) {
+  text-wrap: pretty;
+}
+.ad-cell-title {
+  display: block;
+  color: var(--text);
+  font-weight: 500;
+}
+.ad-sub {
+  display: block;
+  color: var(--text2);
+  font-size: 12px;
+  line-height: 16px;
+}
+/* The date alone under its header on a desktop; the whole sentence in the stacked list of a phone. */
+.ad-narrow {
+  display: none;
+}
+
+/* The name of a person: the button that opens their dialog. It looks like the text it is and underlines on hover. */
+.ad-person {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  max-width: 100%;
+  margin: 0;
+  padding: 2px 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ad-person .ad-cell-title {
+  text-decoration: underline transparent;
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--motion-fast) ease-out;
+}
+.ad-person:active .ad-cell-title {
+  color: var(--accent-text);
+}
+@media (hover: hover) {
+  .ad-person:hover .ad-cell-title {
+    text-decoration-color: currentcolor;
+  }
+}
+
+.ad-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+/* A domain row with its DNS answer or its setup steps open: the detail row below belongs to it, so no hairline between them. */
+.ad-table tr[data-open='true'] > td {
+  border-bottom-color: transparent;
+}
+.ui-table-wrap .ad-table .ad-detail > td {
+  padding: 0 12px 16px;
+}
+@media (hover: hover) {
+  .ui-table-wrap .ad-table tbody tr.ad-detail:hover > td {
+    background: transparent;
+  }
+}
+.ad-detail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.ad-detail-body > * + * {
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* ---------- Domains: the DNS answer and the setup steps ---------- */
+
+.ad-dns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 16px 32px;
+}
+.ad-dns-part {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.ad-dns-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.ad-dns-title {
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.ad-dns-when {
+  grid-column: 1 / -1;
+}
+.ad-mono-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+/* The records Email Sending needs, one a line: the record in mono, then whether the check found it, as a word in a Badge. */
+.ad-records {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ad-record {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  min-width: 0;
+}
+.ad-record-name {
+  min-width: 0;
+  color: var(--text2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.ad-guide {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 80ch;
+  overflow-wrap: anywhere;
+}
+.ad-guide-title {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.ad-guide-title:first-child {
+  margin-top: 0;
+}
+.ad-code {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* ---------- Dialogs (ModalFrame: a ui Dialog whose panel is .ad-dialog) ---------- */
+
+.ad-dialog > .ui-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.ad-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  margin: 0;
+}
+/* The buttons of a dialog, right-aligned under a hairline that runs from edge to edge of the panel (to the scrollbar's lane on the right:
+   ui.css --ui-dialog-end), so they end where the content and the close button end. */
+.ad-dialog-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0 calc(-1 * var(--ui-dialog-end)) 0 -20px;
+  padding: 16px var(--ui-dialog-end) 0 20px;
+  border-top: 1px solid var(--border);
+}
+
+/* The parts of a person's dialog, separated by hairlines. */
+.ad-dsec {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+}
+.ad-dsec + .ad-dsec {
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.ad-dsec-title {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.ad-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+.ad-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+/* A field and its button on one line (the button lines up with the box, not with the label). */
+.ad-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+.ad-inline > .ui-field {
+  flex: 1 1 220px;
+}
+.ad-pane > form .ad-inline {
+  max-width: 560px;
+}
+/* A question that replaced the row of buttons (Make admin, Disable account, ...): Cancel and the action right-aligned under the text, as in
+   every other confirmation. */
+.ad-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+.ad-confirm-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+/* The result of an action under its form (the name was saved): words with an icon, in the success colour. */
+.ad-feedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: var(--success);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+}
+.ad-feedback > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* New account: the part before the @, the @, the domain. */
+.ad-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ad-address {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+.ad-address > .ui-field {
+  flex: 1 1 140px;
+}
+.ad-at {
+  display: inline-flex;
+  align-items: center;
+  height: var(--ui-h-md);
+  color: var(--text2);
+}
+.ad-domain-name {
+  display: inline-flex;
+  flex: 1 1 140px;
+  align-items: center;
+  min-width: 0;
+  min-height: var(--ui-h-md);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.ad-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text2);
+  font-size: 13px;
+  line-height: 20px;
+}
+/* The six digits of the authenticator code. */
+.ui-input-el.ad-otp {
+  letter-spacing: 0.3em;
+  text-align: center;
+}
+
+/* ---------- Phones: tables become stacked lists ---------- */
+
+@media (max-width: 640px) {
+  .ad-console {
+    --ad-gutter: 16px;
+  }
+  /* The four tabs do not fit side by side in every language (vi is 415px wide): a 2x2 grid of segments (ui/Tabs `grid`, ui.css) in the
+     column of the content, and a hairline where the panel starts, as in Settings. */
+  .ui-tabs.ad-tabs {
+    margin: 8px var(--ad-inset) 0;
+    padding: 4px;
+  }
+  .ad-main {
+    margin-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .ad-pane[data-fill='true'] {
+    flex: none;
+    min-height: 0;
+  }
+  .ad-toolbar > .ui-field {
+    max-width: none;
+  }
+  .ad-toolbar > .ui-btn {
+    flex: 1 1 100%;
+  }
+  .ad-dialog-foot > .ui-btn,
+  .ad-confirm-foot > .ui-btn {
+    flex: 1 1 0;
+  }
+  .ad-dialog > .ui-dialog-body {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+
+  /* The header row is still there for screen readers, but not on screen. */
+  .ad-table > thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .ad-table,
+  .ad-table > tbody {
+    display: block;
+  }
+  .ad-table > tbody > tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .ad-table > tbody > tr:last-child,
+  .ad-table > tbody > tr[data-open='true'] {
+    border-bottom: 0;
+  }
+  .ui-table-wrap .ui-table.ad-table td {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+  }
+  .ad-table .ad-end {
+    text-align: left;
+  }
+  .ad-table .ad-shrink {
+    width: auto;
+  }
+  .ad-wide {
+    display: none;
+  }
+  .ad-narrow {
+    display: inline;
+  }
+
+  /* People: the name on its own line, then the role and the status, then the last sign-in on a line of its own, so every row has one shape
+     whatever the length of its badges' words. */
+  .ad-table .ad-cell-person,
+  .ad-table .ad-cell-when {
+    flex: 1 1 100%;
+  }
+  .ad-table .ad-cell-when {
+    white-space: normal;
+  }
+
+  /* Domains: the name, then its buttons, then what they opened. */
+  .ad-table .ad-cell-domain,
+  .ad-table .ad-cell-actions,
+  .ad-table .ad-detail > td {
+    flex: 1 1 100%;
+  }
+  /* The buttons are one group across the row: the quiet ones start where the name starts (their 10px of padding is taken back) and Remove
+     keeps to the right end, on the first line when it fits, alone at the right of the next one when the labels are long (vi, zh at 320). */
+  .ad-cell-actions .ad-actions {
+    display: flex;
+    justify-content: flex-start;
+    margin-inline-start: -10px;
+  }
+  .ad-cell-actions .ad-actions > .ui-btn[data-variant='danger'] {
+    margin-inline-start: auto;
+  }
+  .ad-table > tbody > tr.ad-detail {
+    padding-top: 0;
+  }
+
+  /* Audit log: what was done and when on the first line, who under it. */
+  .ad-table .ad-cell-action {
+    flex: 1 1 0;
+  }
+  .ad-table .ad-cell-at {
+    flex: none;
+    align-self: flex-start;
+  }
+  .ad-table .ad-cell-who {
+    order: 1;
+    flex: 1 1 100%;
+  }
+
+  /* Extra addresses: one line each, the remove button at the end. */
+  .ad-table-aliases > tbody > tr {
+    flex-wrap: nowrap;
+    padding: 0 4px 0 12px;
+  }
+  .ad-table .ad-cell-alias {
+    flex: 1 1 0;
+  }
+  .ad-table .ad-cell-remove {
+    flex: none;
+  }
+}
+@media (max-width: 640px) and (hover: hover) {
+  .ad-table > tbody > tr:not(.ad-detail):hover {
+    background: var(--hover);
+  }
+  .ui-table-wrap .ui-table.ad-table tbody tr:hover td {
+    background: transparent;
+  }
+}
+
+/* Reduced motion: nothing turns or fades. */
+@media (prefers-reduced-motion: reduce) {
+  .ad-person .ad-cell-title {
+    transition: none;
+  }
+}

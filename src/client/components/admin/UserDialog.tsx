@@ -1,5 +1,5 @@
 import React from 'react';
-import { Loader2 } from 'lucide-react';
+import { CircleCheck } from 'lucide-react';
 import type { ThemeTokens } from '../../theme';
 import { deriveAccountAuth } from '../../lib/credentials';
 import { TEMP_PASSWORD_HOURS, type AdminUser, type Role } from '../../lib/admin/types';
@@ -8,8 +8,9 @@ import { usePatchUser, useReissueTempPassword, useResetTwoFactor, type TwoFactor
 import { formatWhen } from '../../lib/activity';
 import { useT } from '../../lib/i18n';
 import { generateTempPassword } from '../../lib/password/random';
+import { Badge, Button, TextField } from '../../ui';
 import { AliasEditor } from './AliasEditor';
-import { Badge, ModalFrame, adminStyles } from './adminUi';
+import { ErrorText, ModalFrame } from './adminUi';
 import { useAdminAction } from './useAdminAction';
 
 interface UserDialogProps {
@@ -21,6 +22,8 @@ interface UserDialogProps {
   onDelete: () => void;
   /** A new temporary password was issued: it is handed over here, once, and kept nowhere else. */
   onReissued: (account: { address: string; password: string }) => void;
+  /** Opened again by Cancel in Delete account: the keyboard goes back to the Delete account button, not to the close button. */
+  focusDelete?: boolean;
 }
 
 type Confirming = 'disable' | 'reset2fa' | 'promote' | 'demote' | 'reissue' | null;
@@ -32,16 +35,26 @@ type Confirming = 'disable' | 'reset2fa' | 'promote' | 'demote' | 'reissue' | nu
  */
 const BUTTON_PLACE: Record<Exclude<Confirming, null>, number> = { promote: 0, demote: 0, disable: 1, reset2fa: 2, reissue: 3 };
 
-export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose, onDelete, onReissued }) => {
+export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose, onDelete, onReissued, focusDelete = false }) => {
   const tr = useT();
-  const s = adminStyles(t);
   const patch = usePatchUser();
   const reset = useResetTwoFactor();
   const reissue = useReissueTempPassword();
   const action = useAdminAction();
   const [name, setName] = React.useState(user.display_name);
+  // "Saved" under the name once the new one is stored, as in Settings; typing again takes it away.
+  const [nameSaved, setNameSaved] = React.useState(false);
   const [confirming, setConfirming] = React.useState<Confirming>(null);
   const actionsRef = React.useRef<HTMLElement | null>(null);
+  const deleteRef = React.useRef<HTMLButtonElement | null>(null);
+  // Back from Delete account (its Cancel remounts this dialog): the frame gave the focus to its first control (a child's effect runs first), and
+  // it goes on to the button that asked, as after a confirmation (D-6).
+  React.useEffect(() => {
+    if (focusDelete) {
+      deleteRef.current?.focus({ preventScroll: true });
+      deleteRef.current?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [focusDelete]);
   // The confirmation on screen at the last render. When one appears, the button that asked for it is gone, so focus goes to the first control marked for it, the
   // Cancel button (the least destructive control: a held Enter must not land on the action); when it goes away (Cancel, Escape, or done) focus goes back to the
   // button that asked, never to the page.
@@ -56,6 +69,11 @@ export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose
       target = actionsRef.current?.querySelectorAll<HTMLElement>('button').item(BUTTON_PLACE[before]);
     }
     target?.focus({ preventScroll: true });
+    // On a phone sheet a confirmation can open under the fold: it is brought into view with its Cancel button (at once, nothing glides).
+    if (confirming !== null) {
+      target?.closest('.ad-confirm')?.scrollIntoView({ block: 'nearest' });
+      target?.scrollIntoView({ block: 'nearest' });
+    }
   }, [confirming]);
   // When an admin's two-factor reset was scheduled for (it is not done yet): said under the buttons, not as a success.
   const [scheduledDue, setScheduledDue] = React.useState<number | null>(null);
@@ -74,7 +92,10 @@ export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose
   const saveName = (event: React.SyntheticEvent) => {
     event.preventDefault();
     if (nameChanged && !action.busy) {
-      void apply(() => patch.mutateAsync({ id: user.id, patch: { display_name: name.trim() } }));
+      void apply(async () => {
+        await patch.mutateAsync({ id: user.id, patch: { display_name: name.trim() } });
+        setNameSaved(true);
+      });
     }
   };
 
@@ -153,146 +174,123 @@ export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose
   };
   const pending = confirming === null ? null : confirmCopy[confirming];
 
-  const row: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' };
-  const busyIcon = action.busy ? <Loader2 size={16} className="nm-spin" aria-hidden="true" /> : null;
-
   return (
     <ModalFrame t={t} title={user.email} onClose={onClose} locked={action.busy} maxWidth={560}>
-      <div style={row}>
-        <Badge t={t} tone="neutral">
-          {user.role === 'admin' ? tr('term.admin') : tr('term.member')}
-        </Badge>
-        <Badge t={t} tone={user.status === 'active' ? 'good' : 'warn'}>
+      <div className="ad-badges">
+        <Badge tone={user.role === 'admin' ? 'accent' : 'neutral'}>{user.role === 'admin' ? tr('term.admin') : tr('term.member')}</Badge>
+        <Badge tone={user.status === 'active' ? 'success' : 'warning'}>
           {user.status === 'active' ? tr('users.status_active') : tr('users.status_disabled')}
         </Badge>
-        {isSelf ? <span style={s.muted}>{tr('users.this_is_you')}</span> : null}
-        {notSignedInYet ? (
-          <Badge t={t} tone="warn">
-            {tr('users.not_signed_in_yet')}
-          </Badge>
-        ) : null}
+        {isSelf ? <span className="ad-muted">{tr('users.this_is_you')}</span> : null}
+        {notSignedInYet ? <Badge tone="warning">{tr('users.not_signed_in_yet')}</Badge> : null}
       </div>
 
-      <form onSubmit={saveName} style={{ ...s.card, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <label htmlFor="user-name" style={s.label}>
-          {tr('term.display_name')}
-        </label>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <input
+      <form onSubmit={saveName} className="ad-dsec">
+        <div className="ad-inline">
+          <TextField
             id="user-name"
+            label={tr('term.display_name')}
             maxLength={100}
             autoComplete="off"
             value={name}
-            onChange={(e) => setName(e.target.value)}
-            style={{ ...s.input, flex: '1 1 200px', minWidth: 0, width: 'auto' }}
-          />
-          <button
-            type="submit"
-            disabled={!nameChanged || action.busy}
-            style={{
-              ...s.button,
-              height: 44,
-              opacity: nameChanged ? 1 : 0.5,
-              cursor: action.busy ? 'progress' : nameChanged ? 'pointer' : 'not-allowed'
+            onChange={(e) => {
+              setName(e.target.value);
+              setNameSaved(false);
             }}
-          >
+          />
+          <Button type="submit" disabled={!nameChanged || action.busy}>
             {tr('users.save_name')}
-          </button>
+          </Button>
         </div>
+        {nameSaved ? (
+          <p role="status" className="ad-feedback">
+            <CircleCheck size={16} aria-hidden="true" />
+            {tr('settings.saved')}
+          </p>
+        ) : null}
       </form>
 
       <AliasEditor t={t} user={user} />
 
-      <section ref={actionsRef} aria-labelledby="user-actions" style={{ ...s.card, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <h3 id="user-actions" style={s.h3}>
+      <section ref={actionsRef} aria-labelledby="user-actions" className="ad-dsec">
+        <h3 id="user-actions" className="ad-dsec-title">
           {tr('term.account')}
         </h3>
         {pending === null ? (
-          <div style={row}>
+          <div className="ad-row">
             {user.role === 'member' ? (
-              <button type="button" disabled={action.busy} onClick={() => setConfirming('promote')} style={s.button}>
+              <Button disabled={action.busy} onClick={() => setConfirming('promote')}>
                 {tr('users.make_admin')}
-              </button>
+              </Button>
             ) : (
-              <button type="button" disabled={action.busy} onClick={() => setConfirming('demote')} style={s.button}>
+              <Button disabled={action.busy} onClick={() => setConfirming('demote')}>
                 {tr('users.make_member')}
-              </button>
+              </Button>
             )}
             {isSelf ? null : (
               <>
                 {user.status === 'active' ? (
-                  <button type="button" disabled={action.busy} onClick={() => setConfirming('disable')} style={s.button}>
+                  <Button disabled={action.busy} onClick={() => setConfirming('disable')}>
                     {tr('admin.disable')}
-                  </button>
+                  </Button>
                 ) : (
-                  <button
-                    type="button"
+                  <Button
                     disabled={action.busy}
+                    loading={action.busy}
                     onClick={() => {
                       void apply(() => patch.mutateAsync({ id: user.id, patch: { status: 'active' } }));
                     }}
-                    style={s.button}
                   >
-                    {busyIcon}
                     {tr('admin.enable')}
-                  </button>
+                  </Button>
                 )}
-                <button type="button" disabled={action.busy} onClick={() => setConfirming('reset2fa')} style={s.button}>
+                <Button disabled={action.busy} onClick={() => setConfirming('reset2fa')}>
                   {tr('users.reset_two_factor')}
-                </button>
+                </Button>
                 {notSignedInYet ? (
-                  <button type="button" disabled={action.busy} onClick={() => setConfirming('reissue')} style={s.button}>
+                  <Button disabled={action.busy} onClick={() => setConfirming('reissue')}>
                     {tr('users.reissue_temp_password')}
-                  </button>
+                  </Button>
                 ) : null}
-                <button type="button" disabled={action.busy} onClick={onDelete} style={s.dangerButton}>
+                <Button ref={deleteRef} variant="danger" disabled={action.busy} onClick={onDelete}>
                   {tr('admin.delete_account')}
-                </button>
+                </Button>
               </>
             )}
           </div>
         ) : (
           // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Escape is a shortcut for the Cancel button inside this group; the buttons are the controls
-          <div
-            role="group"
-            aria-label={tr('common.confirm')}
-            onKeyDown={confirmKey}
-            style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
-          >
+          <div role="group" aria-label={tr('common.confirm')} onKeyDown={confirmKey} className="ad-confirm">
             {pending.paragraphs.map((paragraph) => (
-              <p key={paragraph} style={{ margin: 0, fontSize: 13.5, lineHeight: '20px' }}>
+              <p key={paragraph} className="ad-text">
                 {paragraph}
               </p>
             ))}
-            <div style={row}>
-              <button
-                type="button"
+            {/* Cancel, then the action, right-aligned, as in every other confirmation; Cancel is the one that takes the focus. */}
+            <div className="ad-confirm-foot">
+              <Button data-autofocus disabled={action.busy} onClick={() => setConfirming(null)}>
+                {tr('common.cancel')}
+              </Button>
+              <Button
+                variant={pending.danger ? 'danger' : 'primary'}
                 disabled={action.busy}
+                loading={action.busy}
                 onClick={() => {
                   void pending.run();
                 }}
-                style={pending.danger ? s.dangerButton : s.primary}
               >
-                {busyIcon}
                 {pending.action}
-              </button>
-              <button type="button" data-autofocus disabled={action.busy} onClick={() => setConfirming(null)} style={s.button}>
-                {tr('common.cancel')}
-              </button>
+              </Button>
             </div>
           </div>
         )}
         {scheduledDue === null ? null : (
-          <p role="status" style={s.muted}>
+          <p role="status" className="ad-muted">
             {tr('users.reset_scheduled', { due: formatWhen(scheduledDue) })}
           </p>
         )}
-        {action.error === null ? null : (
-          <p role="alert" style={{ ...s.muted, color: s.danger }}>
-            {action.error}
-          </p>
-        )}
-        {isSelf ? <p style={s.muted}>{tr('users.self_note')}</p> : null}
+        {action.error === null ? null : <ErrorText>{action.error}</ErrorText>}
+        {isSelf ? <p className="ad-muted">{tr('users.self_note')}</p> : null}
       </section>
     </ModalFrame>
   );

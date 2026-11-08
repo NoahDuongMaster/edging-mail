@@ -1,18 +1,20 @@
 import React from 'react';
-import { Cloud, Loader2, LogOut, ShieldCheck, X } from 'lucide-react';
+import { CircleAlert, CircleCheck, LogOut, ShieldCheck } from 'lucide-react';
 import { BRAND_NAME } from '../../shared/i18n';
 import type { ThemeTokens } from '../theme';
 import { useIsAdmin, useLogout } from '../lib/auth';
-import { trapTab } from '../lib/focusTrap';
 import { useT, type MessageKey } from '../lib/i18n';
 import { useSaveLanguage } from '../lib/language';
 import { useSecretHeld } from '../lib/secretHold';
 import { pushForSignOut, usePushNotifications } from '../lib/push';
 import { useSaveSettings, useSettings, type Settings, type SettingsPatch } from '../lib/settings';
+import { Button, Dialog, RadioGroup, Section, Spinner, Switch, TabPanel, Tabs, TextArea, TextField } from '../ui';
 import { AccountActivity } from './AccountActivity';
 import { LanguagePicker } from './LanguagePicker';
+import { ErrorLine } from './auth/authUi';
 import { DeveloperDocs, DOCS_TABS, type DocsTab } from './settings/DeveloperDocs';
 import { SecuritySection } from './security/SecuritySection';
+import './settings/settings.css';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -30,99 +32,30 @@ const ACCOUNT_TAB: { id: Tab; labelKey: MessageKey } = { id: 'account', labelKey
 const ADMIN_TABS: { id: Tab; labelKey: MessageKey }[] = [ACCOUNT_TAB, ...DOCS_TABS];
 const MEMBER_TABS: { id: Tab; labelKey: MessageKey }[] = [ACCOUNT_TAB];
 
-// Arrow keys wrap around; Home and End jump to the ends. null = not a tab key.
-function tabAfterKey(key: string, current: number, count: number): number | null {
-  switch (key) {
-    case 'ArrowRight': {
-      return (current + 1) % count;
-    }
-    case 'ArrowLeft': {
-      return (current + count - 1) % count;
-    }
-    case 'Home': {
-      return 0;
-    }
-    case 'End': {
-      return count - 1;
-    }
-    default: {
-      return null;
-    }
-  }
-}
+// The ids of the tabs and their panels are `settings-tab-<id>` and `settings-panel-<id>` (ui/Tabs builds them from this prefix).
+const TABS_ID = 'settings';
 
 const SETTING_KEYS: (keyof SettingsPatch)[] = ['display_name', 'signature'];
 
 type Feedback = { type: 'saved' } | { type: 'offline' } | { type: 'error'; text: string } | null;
 
-interface SwitchProps {
-  t: ThemeTokens;
-  checked: boolean;
-  /** Names the switch: the id of the element that holds its label. */
-  labelledBy: string;
-  onClick: () => void;
-  busy?: boolean;
-}
-
-// A 44px target around a 44x26 track, as used for every on/off setting in this dialog.
-const Switch: React.FC<SwitchProps> = ({ t, checked, labelledBy, onClick, busy = false }) => (
-  <button
-    type="button"
-    role="switch"
-    aria-checked={checked}
-    aria-labelledby={labelledBy}
-    className="nm-tap"
-    disabled={busy}
-    onClick={onClick}
-    style={{
-      flex: 'none',
-      width: 52,
-      height: 44,
-      display: 'inline-flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 0,
-      border: 0,
-      background: 'transparent',
-      cursor: busy ? 'progress' : 'pointer'
-    }}
-  >
-    <span
-      aria-hidden="true"
-      style={{
-        position: 'relative',
-        width: 44,
-        height: 26,
-        borderRadius: 13,
-        background: checked ? t.accent : t.text3,
-        opacity: busy ? 0.6 : 1,
-        transition: 'background 120ms ease'
-      }}
-    >
-      <span
-        style={{
-          position: 'absolute',
-          top: 3,
-          left: checked ? 21 : 3,
-          width: 20,
-          height: 20,
-          borderRadius: '50%',
-          background: '#FFFFFF',
-          boxShadow: '0 1px 2px rgba(16,24,40,0.3)',
-          transition: 'left 120ms ease'
-        }}
-      />
-    </span>
-  </button>
-);
+/**
+ * Where focus goes when Settings closes and the button that opened it is gone: on a phone the opener sits in the mailbox drawer, which
+ * unmounts when Settings opens (the browser then reports BODY as the focused element), and the header button that opens the drawer takes
+ * over (found by its data attribute, never by its label). Looked up when the dialog closes, never earlier.
+ */
+const NAV_TOGGLE: React.RefObject<HTMLElement | null> = {
+  get current(): HTMLElement | null {
+    return document.querySelector<HTMLElement>('button[data-nav-toggle="mailboxes"]');
+  }
+};
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose, onToggleDark, onOpenAdmin }) => {
   const tr = useT();
   const isAdmin = useIsAdmin();
   const [tab, setTab] = React.useState<Tab>('account');
+  // The dialog element itself takes focus when Settings opens (not its first field, which on a phone would raise the keyboard).
   const dialogRef = React.useRef<HTMLDivElement | null>(null);
-  // Whether the latest press began on the backdrop itself: a drag that starts in a field and ends outside the card must not close the dialog.
-  const pressedBackdrop = React.useRef(false);
 
   const settingsQuery = useSettings();
   const { mutate: saveSettings, isPending: isSaving } = useSaveSettings();
@@ -142,7 +75,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
       onClose();
     }
   }, [secretHeld, onClose]);
-  const heldLook: React.CSSProperties = secretHeld ? { opacity: 0.45, cursor: 'not-allowed' } : {};
 
   // Each time the dialog opens, start from the saved settings on the Account tab (adjusting state while rendering, not in an effect).
   const [wasOpen, setWasOpen] = React.useState(isOpen);
@@ -155,35 +87,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
       setSignOutError(null);
     }
   }
-
-  React.useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !e.defaultPrevented) {
-        leave();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isOpen, leave]);
-
-  // Move focus into the dialog on open and hand it back to the opener on close.
-  React.useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-    const opener = document.activeElement as HTMLElement | null;
-    dialogRef.current?.focus({ preventScroll: true });
-    return () => {
-      // On a phone the opener sits in the mailbox drawer, which unmounts when Settings opens (the browser then reports BODY as the
-      // focused element): the header button that opens the drawer takes over (found by its data attribute, never by its label).
-      const openerGone = !opener || opener === document.body || !opener.isConnected;
-      const target = openerGone ? document.querySelector<HTMLElement>('button[data-nav-toggle="mailboxes"]') : opener;
-      target?.focus({ preventScroll: true });
-    };
-  }, [isOpen]);
 
   if (!isOpen) {
     return null;
@@ -222,27 +125,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
     );
   };
 
-  const onTabKeyDown = (event: React.KeyboardEvent) => {
-    if (event.altKey || event.ctrlKey || event.metaKey) {
-      return;
-    }
-    const next = tabAfterKey(
-      event.key,
-      tabs.findIndex((item) => item.id === shownTab),
-      tabs.length
-    );
-    const target = next === null ? undefined : tabs[next];
-    if (target === undefined) {
-      return;
-    }
-    event.preventDefault();
-    if (secretHeld) {
-      return;
-    }
-    setTab(target.id);
-    document.querySelector<HTMLElement>(`#settings-tab-${target.id}`)?.focus();
-  };
-
   const signOut = async () => {
     // Disabled from the first click on, so a second click cannot start another round.
     setSigningOut(true);
@@ -259,417 +141,221 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
     }
   };
 
-  const danger = t.dark ? '#F97066' : '#B42318';
-  const card: React.CSSProperties = {
-    padding: 12,
-    borderRadius: 12,
-    border: `1px solid ${t.border}`,
-    background: t.raised,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 6
-  };
-  const muted: React.CSSProperties = { color: t.text2, fontSize: 12.5, lineHeight: '19px', margin: 0 };
-  const button: React.CSSProperties = {
-    width: 36,
-    height: 36,
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    border: 0,
-    borderRadius: 10,
-    background: 'transparent',
-    color: t.text2,
-    cursor: 'pointer'
-  };
-  const secondaryButton: React.CSSProperties = {
-    height: 38,
-    padding: '0 16px',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    border: `1px solid ${t.borderStrong}`,
-    borderRadius: 10,
-    background: t.surface,
-    color: t.text,
-    fontSize: 13,
-    fontWeight: 500,
-    cursor: 'pointer'
-  };
-  const fieldLabel: React.CSSProperties = { fontSize: 13, fontWeight: 500, color: t.text2 };
-  const fieldInput: React.CSSProperties = {
-    width: '100%',
-    padding: '0 12px',
-    border: `1px solid ${t.borderStrong}`,
-    borderRadius: 10,
-    background: t.surface,
-    color: t.text,
-    font: 'inherit',
-    fontSize: 16
-  };
+  const pushStatus = push.busy
+    ? tr('settings.push_working')
+    : push.permission === 'denied'
+      ? tr('settings.push_blocked')
+      : push.subscribed
+        ? tr('settings.push_on')
+        : tr('settings.push_off');
+
+  const account = (
+    <>
+      <Section>
+        {values === undefined ? (
+          settingsQuery.isError ? (
+            <div className="st-inline">
+              <ErrorLine t={t} id="settings-load-error" text={tr('settings.load_failed')} />
+              <Button
+                size="sm"
+                onClick={() => {
+                  void settingsQuery.refetch();
+                }}
+              >
+                {tr('common.retry')}
+              </Button>
+            </div>
+          ) : (
+            <p role="status" className="st-status">
+              <Spinner decorative /> {tr('common.loading')}
+            </p>
+          )
+        ) : (
+          <form onSubmit={submit} className="st-form">
+            <TextField
+              id="settings-name"
+              label={tr('term.display_name')}
+              type="text"
+              autoComplete="name"
+              value={values.display_name}
+              onChange={(e) => edit('display_name', e.target.value)}
+              maxLength={100}
+              placeholder={tr('settings.display_name_placeholder')}
+            />
+            <TextField
+              id="settings-from"
+              label={tr('settings.your_address')}
+              type="email"
+              readOnly
+              value={values.email}
+              hint={tr('settings.address_hint')}
+            />
+            <TextArea
+              id="settings-signature"
+              label={tr('term.signature')}
+              rows={4}
+              value={values.signature}
+              onChange={(e) => edit('signature', e.target.value)}
+              maxLength={2000}
+              placeholder={tr('settings.signature_placeholder')}
+            />
+            <div className="st-actions">
+              <Button type="submit" variant="primary" loading={isSaving} disabled={!dirty}>
+                {isSaving ? tr('settings.saving') : tr('common.save')}
+              </Button>
+              {feedback?.type === 'saved' ? (
+                <p role="status" className="st-feedback" data-tone="success">
+                  <CircleCheck size={16} aria-hidden="true" />
+                  {tr('settings.saved')}
+                </p>
+              ) : null}
+              {feedback?.type === 'error' || feedback?.type === 'offline' ? (
+                <p role="alert" className="st-feedback" data-tone="danger">
+                  <CircleAlert size={16} aria-hidden="true" />
+                  {feedback.type === 'offline' ? tr('settings.save_offline') : feedback.text}
+                </p>
+              ) : null}
+            </div>
+          </form>
+        )}
+      </Section>
+
+      <AccountActivity t={t} />
+      <SecuritySection t={t} />
+
+      {isAdmin ? (
+        <Section headingLevel={3} title={tr('term.admin_console')} description={tr('settings.admin_hint')}>
+          <Button size="sm" leadingIcon={<ShieldCheck size={16} aria-hidden="true" />} onClick={onOpenAdmin} disabled={secretHeld}>
+            {tr('settings.open_admin')}
+          </Button>
+        </Section>
+      ) : null}
+
+      <Section headingLevel={3} title={tr('settings.appearance')}>
+        {/* onToggleDark flips the theme: it runs only for the choice that is not the theme on screen. */}
+        <RadioGroup
+          className="st-theme"
+          label={tr('settings.appearance')}
+          options={[
+            { value: 'light', label: tr('settings.light_theme') },
+            { value: 'dark', label: tr('settings.dark_theme') }
+          ]}
+          value={t.dark ? 'dark' : 'light'}
+          onChange={(value) => {
+            if ((value === 'dark') !== t.dark) {
+              onToggleDark();
+            }
+          }}
+        />
+      </Section>
+
+      <Section headingLevel={3} title={tr('lang.label')}>
+        <LanguagePicker t={t} id="settings-language-select" onChosen={saveLanguage} />
+      </Section>
+
+      <Section headingLevel={3} title={tr('term.notifications')}>
+        {push.supported ? (
+          <>
+            {/* The status line under the label is read out when it changes (working, blocked, on, off): the region is polite and reads only what
+                changed. The switch stays usable when the browser blocks notifications: a click asks again (Notification.requestPermission). */}
+            <div className="st-push" data-denied={push.permission === 'denied' ? 'true' : undefined} aria-live="polite" aria-atomic="false">
+              <Switch
+                id="settings-push"
+                label={tr('settings.push_device')}
+                hint={pushStatus}
+                checked={push.subscribed}
+                disabled={push.busy}
+                onChange={() => {
+                  void (push.subscribed ? push.disable() : push.enable());
+                }}
+              />
+            </div>
+            <ErrorLine t={t} id="settings-push-error" text={push.error} />
+            <div className="st-actions">
+              <Button
+                size="sm"
+                disabled={!push.subscribed || push.busy}
+                onClick={() => {
+                  void push.sendTest();
+                }}
+              >
+                {tr('settings.push_test')}
+              </Button>
+            </div>
+          </>
+        ) : (
+          <p className="st-muted">{tr('settings.push_unsupported', { brand: BRAND_NAME })}</p>
+        )}
+      </Section>
+    </>
+  );
+
+  const content = shownTab === 'account' ? account : <DeveloperDocs t={t} tab={shownTab} />;
 
   return (
-    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- backdrop click is a pointer shortcut; Escape (window keydown) and the Close button are the keyboard routes
-    <div
+    // Rendered in place (no portal): Settings sits under the toast and renders on the server too, where the C-7 test counts its buttons.
+    // While a secret is held (C-7) the X shows disabled and Escape and the scrim do nothing; every way out still goes through `leave`.
+    <Dialog
+      inline
+      open
+      onClose={leave}
+      closeDisabled={secretHeld}
+      title={tr('term.settings')}
+      size="lg"
       ref={dialogRef}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="settings-title"
-      tabIndex={-1}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 60,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
-        background: t.dark ? 'rgba(0,0,0,0.6)' : 'rgba(16,24,40,0.45)',
-        outline: 'none'
-      }}
-      onKeyDown={(e) => trapTab(e, dialogRef.current)}
-      onPointerDown={(e) => {
-        pressedBackdrop.current = e.target === e.currentTarget;
-      }}
-      onClick={() => {
-        if (pressedBackdrop.current) {
-          pressedBackdrop.current = false;
-          leave();
-        }
-      }}
-    >
-      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- only stops clicks from reaching the backdrop; not an interactive control */}
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="nm-fade-in"
-        style={{
-          width: '100%',
-          maxWidth: 640,
-          maxHeight: '88vh',
-          display: 'flex',
-          flexDirection: 'column',
-          background: t.surface,
-          border: `1px solid ${t.border}`,
-          borderRadius: 16,
-          boxShadow: '0 24px 64px -24px rgba(16,24,40,0.32)',
-          overflow: 'hidden'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', borderBottom: `1px solid ${t.divider}` }}>
-          <Cloud size={18} color={t.accent} aria-hidden="true" />
-          <h2 id="settings-title" style={{ margin: 0, fontSize: 15, fontWeight: 600, flex: 1 }}>
-            {tr('term.settings')}
-          </h2>
-          <button
-            type="button"
-            className="nm-tap"
-            onClick={leave}
-            disabled={secretHeld}
-            aria-label={tr('common.close')}
-            style={{ ...button, ...heldLook }}
-          >
-            <X size={18} strokeWidth={1.8} aria-hidden="true" />
-          </button>
-        </div>
-
-        {tabs.length > 1 ? (
-          <div
-            className="nm-settings-tabs"
-            role="tablist"
-            aria-label={tr('settings.sections_label')}
-            style={{ display: 'flex', gap: 4, padding: '8px 16px', borderBottom: `1px solid ${t.divider}` }}
-          >
-            {tabs.map((item) => {
-              const on = shownTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  id={`settings-tab-${item.id}`}
-                  type="button"
-                  role="tab"
-                  aria-selected={on}
-                  aria-controls={on ? `settings-panel-${item.id}` : undefined}
-                  tabIndex={on ? 0 : -1}
-                  className="nm-tap-h nm-settings-tab"
-                  onClick={() => setTab(item.id)}
-                  disabled={secretHeld}
-                  onKeyDown={onTabKeyDown}
-                  style={{
-                    height: 34,
-                    padding: '0 10px',
-                    border: 0,
-                    borderRadius: 8,
-                    background: on ? t.selBg : 'transparent',
-                    color: on ? t.selText : t.text2,
-                    fontSize: 13,
-                    fontWeight: on ? 600 : 500,
-                    cursor: 'pointer'
-                  }}
-                >
-                  {tr(item.labelKey)}
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
-
-        <div
-          id={`settings-panel-${shownTab}`}
-          role="tabpanel"
-          aria-labelledby={tabs.length > 1 ? `settings-tab-${shownTab}` : 'settings-title'}
-          style={{ padding: 20, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}
-        >
-          {shownTab === 'account' ? (
-            <>
-              {values === undefined ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <p style={{ ...muted, color: settingsQuery.isError ? danger : t.text2 }}>
-                    {settingsQuery.isError ? tr('settings.load_failed') : tr('common.loading')}
-                  </p>
-                  {settingsQuery.isError ? (
-                    <button
-                      type="button"
-                      className="nm-tap-h"
-                      onClick={() => {
-                        void settingsQuery.refetch();
-                      }}
-                      style={secondaryButton}
-                    >
-                      {tr('common.retry')}
-                    </button>
-                  ) : null}
-                </div>
-              ) : (
-                <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <label htmlFor="settings-name" style={fieldLabel}>
-                      {tr('term.display_name')}
-                    </label>
-                    <input
-                      id="settings-name"
-                      className="nm-tap-h"
-                      type="text"
-                      autoComplete="name"
-                      value={values.display_name}
-                      onChange={(e) => edit('display_name', e.target.value)}
-                      maxLength={100}
-                      placeholder={tr('settings.display_name_placeholder')}
-                      style={{ ...fieldInput, height: 44 }}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <label htmlFor="settings-from" style={fieldLabel}>
-                      {tr('settings.your_address')}
-                    </label>
-                    <input
-                      id="settings-from"
-                      type="email"
-                      readOnly
-                      value={values.email}
-                      aria-describedby="settings-from-hint"
-                      style={{ ...fieldInput, height: 44, background: t.raised, color: t.text2 }}
-                    />
-                    <p id="settings-from-hint" style={muted}>
-                      {tr('settings.address_hint')}
-                    </p>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <label htmlFor="settings-signature" style={fieldLabel}>
-                      {tr('term.signature')}
-                    </label>
-                    <textarea
-                      id="settings-signature"
-                      rows={4}
-                      value={values.signature}
-                      onChange={(e) => edit('signature', e.target.value)}
-                      maxLength={2000}
-                      placeholder={tr('settings.signature_placeholder')}
-                      style={{ ...fieldInput, padding: '10px 12px', lineHeight: '22px', resize: 'vertical' }}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                    <button
-                      type="submit"
-                      className="nm-tap-h"
-                      disabled={!dirty || isSaving}
-                      style={{
-                        ...secondaryButton,
-                        border: 0,
-                        background: t.accent,
-                        color: '#FFFFFF',
-                        fontWeight: 600,
-                        cursor: isSaving ? 'progress' : dirty ? 'pointer' : 'not-allowed',
-                        opacity: dirty || isSaving ? 1 : 0.5
-                      }}
-                    >
-                      {isSaving ? <Loader2 size={16} className="nm-spin" aria-hidden="true" /> : null}
-                      {isSaving ? tr('settings.saving') : tr('common.save')}
-                    </button>
-                    {feedback?.type === 'saved' ? (
-                      <span role="status" style={{ fontSize: 13, color: t.dark ? '#4ADE80' : '#15803D' }}>
-                        {tr('settings.saved')}
-                      </span>
-                    ) : null}
-                    {feedback?.type === 'error' || feedback?.type === 'offline' ? (
-                      <span role="alert" style={{ fontSize: 13, color: danger }}>
-                        {feedback.type === 'offline' ? tr('settings.save_offline') : feedback.text}
-                      </span>
-                    ) : null}
-                  </div>
-                </form>
-              )}
-
-              <AccountActivity t={t} />
-              <SecuritySection t={t} />
-
-              {isAdmin ? (
-                <section aria-labelledby="settings-admin" style={card}>
-                  <h3 id="settings-admin" style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>
-                    {tr('term.admin_console')}
-                  </h3>
-                  <p style={muted}>{tr('settings.admin_hint')}</p>
-                  <div>
-                    <button
-                      type="button"
-                      className="nm-tap-h"
-                      onClick={onOpenAdmin}
-                      disabled={secretHeld}
-                      style={{ ...secondaryButton, ...heldLook }}
-                    >
-                      <ShieldCheck size={16} aria-hidden="true" />
-                      {tr('settings.open_admin')}
-                    </button>
-                  </div>
-                </section>
-              ) : null}
-
-              <section aria-labelledby="settings-appearance" style={card}>
-                <h3 id="settings-appearance" style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>
-                  {tr('settings.appearance')}
-                </h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div id="settings-dark-label" style={{ flex: 1, minWidth: 0, fontSize: 13 }}>
-                    {tr('settings.dark_theme')}
-                  </div>
-                  <Switch t={t} checked={t.dark} labelledBy="settings-dark-label" onClick={onToggleDark} />
-                </div>
-              </section>
-
-              <section aria-labelledby="settings-language" style={card}>
-                <h3 id="settings-language" style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>
-                  {tr('lang.label')}
-                </h3>
-                <LanguagePicker t={t} id="settings-language-select" onChosen={saveLanguage} />
-              </section>
-
-              <section aria-labelledby="settings-notifications" style={card}>
-                <h3 id="settings-notifications" style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>
-                  {tr('term.notifications')}
-                </h3>
-                {push.supported ? (
-                  <>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div id="settings-push-label" style={{ fontSize: 13 }}>
-                          {tr('settings.push_device')}
-                        </div>
-                        <p role="status" style={{ ...muted, color: push.permission === 'denied' ? danger : t.text2 }}>
-                          {push.busy
-                            ? tr('settings.push_working')
-                            : push.permission === 'denied'
-                              ? tr('settings.push_blocked')
-                              : push.subscribed
-                                ? tr('settings.push_on')
-                                : tr('settings.push_off')}
-                        </p>
-                      </div>
-                      <Switch
-                        t={t}
-                        checked={push.subscribed}
-                        busy={push.busy}
-                        labelledBy="settings-push-label"
-                        onClick={() => {
-                          void (push.subscribed ? push.disable() : push.enable());
-                        }}
-                      />
-                    </div>
-                    {push.error === null ? null : (
-                      <p role="alert" style={{ ...muted, color: danger }}>
-                        {push.error}
-                      </p>
-                    )}
-                    <div>
-                      <button
-                        type="button"
-                        className="nm-tap-h"
-                        disabled={!push.subscribed || push.busy}
-                        onClick={() => {
-                          void push.sendTest();
-                        }}
-                        style={{
-                          ...secondaryButton,
-                          cursor: push.subscribed && !push.busy ? 'pointer' : 'not-allowed',
-                          opacity: push.subscribed ? 1 : 0.5
-                        }}
-                      >
-                        {tr('settings.push_test')}
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <p style={muted}>{tr('settings.push_unsupported', { brand: BRAND_NAME })}</p>
-                )}
-              </section>
-            </>
-          ) : null}
-
-          {shownTab === 'account' ? null : <DeveloperDocs t={t} tab={shownTab} />}
-        </div>
-
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '8px 12px',
-            flexWrap: 'wrap',
-            padding: 16,
-            borderTop: `1px solid ${t.divider}`
-          }}
-        >
-          <button
-            type="button"
-            className="nm-tap-h"
+      initialFocusRef={dialogRef}
+      returnFocusRef={NAV_TOGGLE}
+      rootClassName="st-root"
+      className="st-dialog"
+      toolbar={
+        tabs.length > 1 ? (
+          <Tabs
+            id={TABS_ID}
+            className="st-tabs"
+            grid
+            label={tr('settings.sections_label')}
+            // While a secret is held the tabs do not move either: the screen that shows it stays where it is.
+            tabs={tabs.map((item) => ({ value: item.id, label: tr(item.labelKey), disabled: secretHeld }))}
+            value={shownTab}
+            onChange={(value) => {
+              const next = tabs.find((item) => item.id === value);
+              if (next !== undefined && !secretHeld) {
+                setTab(next.id);
+              }
+            }}
+          />
+        ) : undefined
+      }
+      footer={
+        <>
+          <Button
             disabled={signingOut || secretHeld}
+            leadingIcon={<LogOut size={16} aria-hidden="true" />}
             onClick={() => {
               void signOut();
             }}
-            style={{ ...secondaryButton, flex: 'none', whiteSpace: 'nowrap', cursor: signingOut ? 'progress' : 'pointer', ...heldLook }}
           >
-            <LogOut size={16} style={{ flex: 'none' }} aria-hidden="true" />
             {signingOut ? tr('settings.signing_out') : tr('auth.sign_out')}
-          </button>
+          </Button>
           {signOutError === null ? null : (
-            <span
-              role="alert"
-              className="nm-settings-foot-msg"
-              style={{ flex: '1 1 0', minWidth: 0, fontSize: 13, color: danger, overflowWrap: 'anywhere' }}
-            >
-              {signOutError}
-            </span>
+            <p role="alert" className="st-foot-msg">
+              <CircleAlert size={16} aria-hidden="true" />
+              <span>{signOutError}</span>
+            </p>
           )}
-          <button
-            type="button"
-            className="nm-tap-h"
-            onClick={leave}
-            disabled={secretHeld}
-            style={{ ...secondaryButton, flex: 'none', whiteSpace: 'nowrap', ...heldLook }}
-          >
+          <Button onClick={leave} disabled={secretHeld}>
             {tr('common.close')}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </>
+      }
+    >
+      {tabs.length > 1 ? (
+        <TabPanel tabsId={TABS_ID} value={shownTab} selected={shownTab}>
+          {content}
+        </TabPanel>
+      ) : (
+        <div id={`${TABS_ID}-panel-account`}>{content}</div>
+      )}
+    </Dialog>
   );
 };

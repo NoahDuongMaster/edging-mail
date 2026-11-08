@@ -3,138 +3,122 @@ import type { ThemeTokens } from '../../theme';
 import { useSession } from '../../lib/auth';
 import type { SessionUser } from '../../lib/auth';
 import { useT } from '../../lib/i18n';
-import { AuthButton } from '../auth/authUi';
+import { Button } from '../../ui';
 import { ChangePasswordView } from './ChangePasswordView';
 import { RecoveryKeyView } from './RecoveryKeyView';
 import { TwoFactorView } from './TwoFactorView';
-import { cardStyle, mutedStyle } from './securityUi';
+import '../settings/settings.css';
 
 type View = 'password' | 'key_test' | 'key_new' | 'two_factor_on' | 'two_factor_codes' | 'two_factor_off';
 
 interface RowProps {
-  t: ThemeTokens;
   id: string;
   label: string;
   /** Plain lines under the label. */
   hints?: readonly string[];
-  first?: boolean;
   children?: React.ReactNode;
 }
 
 const NO_HINTS: readonly string[] = [];
 
-/** One line of the card: what it is on the left, what can be done on the right (under it on a narrow screen). */
-const Row: React.FC<RowProps> = ({ t, id, label, hints = NO_HINTS, first = false, children }) => (
-  <div
-    role="group"
-    aria-labelledby={`${id}-label`}
-    style={{
-      display: 'flex',
-      flexWrap: 'wrap',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 8,
-      padding: '12px 0',
-      borderTop: first ? 0 : `1px solid ${t.divider}`
-    }}
-  >
-    <div style={{ flex: '1 1 220px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <div id={`${id}-label`} style={{ fontSize: 14, fontWeight: 500 }}>
+/** One setting: what it is on the left, what can be done on the right (under it on a narrow screen). Rows are split by hairlines. */
+const Row: React.FC<RowProps> = ({ id, label, hints = NO_HINTS, children }) => (
+  <div role="group" aria-labelledby={`${id}-label`} className="st-setting">
+    <div className="st-setting-text">
+      <div id={`${id}-label`} className="st-setting-label">
         {label}
       </div>
       {hints.map((hint) => (
-        <p key={hint} style={mutedStyle(t)}>
+        <p key={hint} className="st-muted">
           {hint}
         </p>
       ))}
     </div>
-    {children === undefined ? null : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{children}</div>}
+    {children === undefined ? null : <div className="st-setting-actions">{children}</div>}
   </div>
 );
 
 interface RowsProps {
-  t: ThemeTokens;
   user: SessionUser;
   open: (view: View) => void;
 }
 
-const Rows: React.FC<RowsProps> = ({ t, user, open }) => {
+const Rows: React.FC<RowsProps> = ({ user, open }) => {
   const tr = useT();
   // Only a member of an organisation that does not require it can turn it off: the same rule the Worker applies.
   const canTurnOff = user.role !== 'admin' && !user.require_2fa;
   const reason = user.role === 'admin' ? tr('security.cannot_turn_off_admin') : tr('security.cannot_turn_off_required');
   return (
     <div>
-      <Row t={t} id="security-password" label={tr('term.password')} first>
-        <AuthButton
-          t={t}
-          type="button"
-          quiet
-          label={tr('security.change_password')}
+      <Row id="security-password" label={tr('term.password')}>
+        <Button
+          size="sm"
+          data-view="password"
           onClick={() => {
             open('password');
           }}
-        />
+        >
+          {tr('security.change_password')}
+        </Button>
       </Row>
-      <Row t={t} id="security-key" label={tr('term.recovery_key')} hints={[tr('security.recovery_hint')]}>
-        <AuthButton
-          t={t}
-          type="button"
-          quiet
-          label={tr('security.test_key')}
+      <Row id="security-key" label={tr('term.recovery_key')} hints={[tr('security.recovery_hint')]}>
+        <Button
+          size="sm"
+          data-view="key_test"
           onClick={() => {
             open('key_test');
           }}
-        />
-        <AuthButton
-          t={t}
-          type="button"
-          quiet
-          label={tr('security.new_key')}
+        >
+          {tr('security.test_key')}
+        </Button>
+        <Button
+          size="sm"
+          data-view="key_new"
           onClick={() => {
             open('key_new');
           }}
-        />
+        >
+          {tr('security.new_key')}
+        </Button>
       </Row>
       {user.totp_enabled ? (
         <Row
-          t={t}
           id="security-two-factor"
           label={tr('term.two_factor')}
           hints={canTurnOff ? [tr('security.status_on')] : [tr('security.status_on'), reason]}
         >
-          <AuthButton
-            t={t}
-            type="button"
-            quiet
-            label={tr('security.new_codes')}
+          <Button
+            size="sm"
+            data-view="two_factor_codes"
             onClick={() => {
               open('two_factor_codes');
             }}
-          />
+          >
+            {tr('security.new_codes')}
+          </Button>
           {canTurnOff ? (
-            <AuthButton
-              t={t}
-              type="button"
-              quiet
-              label={tr('security.turn_off')}
+            <Button
+              size="sm"
+              data-view="two_factor_off"
               onClick={() => {
                 open('two_factor_off');
               }}
-            />
+            >
+              {tr('security.turn_off')}
+            </Button>
           ) : null}
         </Row>
       ) : (
-        <Row t={t} id="security-two-factor" label={tr('term.two_factor')} hints={[tr('security.status_off')]}>
-          <AuthButton
-            t={t}
-            type="button"
-            quiet
-            label={tr('security.turn_on')}
+        <Row id="security-two-factor" label={tr('term.two_factor')} hints={[tr('security.status_off')]}>
+          <Button
+            size="sm"
+            data-view="two_factor_on"
             onClick={() => {
               open('two_factor_on');
             }}
-          />
+          >
+            {tr('security.turn_on')}
+          </Button>
         </Row>
       )}
     </div>
@@ -167,6 +151,7 @@ function renderView(view: View, t: ThemeTokens, user: SessionUser, close: () => 
 /**
  * Settings > Account > Security: the password, the recovery key and two-factor sign-in, as plain rows. A button swaps the rows for that action
  * (only one at a time); going back unmounts it, and with it everything it held (a typed password, an opened key, a new recovery key).
+ * A section of the Account tab like the others (ui-section): its title is its own element because it takes the focus.
  */
 export const SecuritySection: React.FC<{ t: ThemeTokens }> = ({ t }) => {
   const tr = useT();
@@ -174,13 +159,19 @@ export const SecuritySection: React.FC<{ t: ThemeTokens }> = ({ t }) => {
   const user = session.data?.user;
   const [view, setView] = React.useState<View | null>(null);
   const heading = React.useRef<HTMLHeadingElement>(null);
+  const section = React.useRef<HTMLElement>(null);
   const shown = React.useRef<View | null>(null);
 
-  // The body of the card changes under the person: the heading takes the focus so a keyboard or a screen reader starts at the top of it.
+  // The body of the section changes under the person. Into a view: the heading takes the focus, so a keyboard or a screen reader starts at
+  // the top of it. Back to the rows: the focus returns to the button that opened the view, or to the heading when the row no longer offers it
+  // (after two-factor sign-in was turned on or off, its row has other buttons).
   React.useEffect(() => {
-    if (shown.current !== view) {
+    const before = shown.current;
+    if (before !== view) {
       shown.current = view;
-      heading.current?.focus();
+      const back = view === null && before !== null;
+      const opener = back ? section.current?.querySelector<HTMLElement>(`[data-view="${CSS.escape(before)}"]`) : null;
+      (opener ?? heading.current)?.focus();
     }
   }, [view]);
 
@@ -188,11 +179,15 @@ export const SecuritySection: React.FC<{ t: ThemeTokens }> = ({ t }) => {
     return null;
   }
   return (
-    <section aria-labelledby="security-title" style={cardStyle(t)}>
-      <h3 id="security-title" ref={heading} tabIndex={-1} style={{ margin: 0, fontWeight: 600, fontSize: 13, outline: 'none' }}>
-        {tr('security.title')}
-      </h3>
-      {view === null ? <Rows t={t} user={user} open={setView} /> : renderView(view, t, user, () => setView(null))}
+    <section ref={section} aria-labelledby="security-title" className="ui-section">
+      <div className="ui-section-head">
+        <div className="ui-section-heading">
+          <h3 id="security-title" ref={heading} tabIndex={-1} className="ui-section-title st-focus-title">
+            {tr('security.title')}
+          </h3>
+        </div>
+      </div>
+      {view === null ? <Rows user={user} open={setView} /> : renderView(view, t, user, () => setView(null))}
     </section>
   );
 };

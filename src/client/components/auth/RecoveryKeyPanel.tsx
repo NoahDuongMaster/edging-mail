@@ -1,10 +1,12 @@
 import React from 'react';
+import { Download } from 'lucide-react';
 import type { ThemeTokens } from '../../theme';
 import { drawChallenge } from '../../lib/crypto/recoveryDraft';
 import type { RecoveryKeyDraft } from '../../lib/crypto/recoveryDraft';
 import { credentialErrorText } from '../../lib/crypto/errors';
 import { useT } from '../../lib/i18n';
-import { AuthButton, ErrorLine, Field, inputStyle } from './authUi';
+import { CopyButton, Divider, SecretBox, TextField } from '../../ui';
+import { AuthButton, ErrorLine, TextButton } from './authUi';
 
 interface RecoveryKeyPanelProps {
   t: ThemeTokens;
@@ -30,7 +32,7 @@ export const RecoveryKeyPanel: React.FC<RecoveryKeyPanelProps> = ({ t, draft, ad
   const tr = useT();
   const [challenge, setChallenge] = React.useState(() => drawChallenge(draft.text));
   const [typed, setTyped] = React.useState<readonly string[]>(NO_TYPING);
-  const [copied, setCopied] = React.useState<'idle' | 'done' | 'failed'>('idle');
+  const [copyFailed, setCopyFailed] = React.useState(false);
   const [mismatch, setMismatch] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [failure, setFailure] = React.useState<string | null>(null);
@@ -41,15 +43,6 @@ export const RecoveryKeyPanel: React.FC<RecoveryKeyPanelProps> = ({ t, draft, ad
       alive.current = false;
     };
   }, []);
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(draft.text);
-      setCopied('done');
-    } catch {
-      setCopied('failed');
-    }
-  };
 
   const download = () => {
     const body = `${tr('recovery.file_title', { address })}\n\n${draft.text}\n\n${tr('recovery.claim')}\n`;
@@ -91,7 +84,6 @@ export const RecoveryKeyPanel: React.FC<RecoveryKeyPanelProps> = ({ t, draft, ad
 
   const [first, second, third] = challenge.numbers;
   const complete = typed.every((group) => group.trim() !== '');
-  const quiet: React.CSSProperties = { margin: 0, fontSize: 13, lineHeight: '18px', color: t.text2 };
 
   return (
     <form
@@ -99,65 +91,43 @@ export const RecoveryKeyPanel: React.FC<RecoveryKeyPanelProps> = ({ t, draft, ad
         void confirm(event);
       }}
       noValidate
-      style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
+      className="au-stack"
     >
-      <p style={{ margin: 0, fontSize: 14, lineHeight: '20px', fontWeight: 500 }}>{tr('recovery.claim')}</p>
-      <p style={quiet}>{tr('recovery.shown_once')}</p>
-      {replaces ? <p style={quiet}>{tr('recovery.old_stops')}</p> : null}
+      <p className="au-strong">{tr('recovery.claim')}</p>
+      <p className="au-muted">{tr('recovery.shown_once')}</p>
+      {replaces ? <p className="au-muted">{tr('recovery.old_stops')}</p> : null}
 
-      <ol
-        translate="no"
-        style={{
-          margin: 0,
-          padding: 12,
-          listStyle: 'none',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-          gap: 10,
-          border: `1px solid ${t.borderStrong}`,
-          borderRadius: 10,
-          background: t.raised
-        }}
-      >
-        {draft.groups.map((group, index) => (
-          <li key={`${index + 1}`} style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-            <span style={{ fontSize: 11, color: t.text3 }}>{tr('recovery.group_label', { number: index + 1 })}</span>
-            <span
-              style={{
-                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-                fontSize: 16,
-                letterSpacing: '0.04em',
-                userSelect: 'all',
-                overflowWrap: 'anywhere'
-              }}
-            >
-              {group}
-            </span>
-          </li>
-        ))}
-      </ol>
+      <SecretBox
+        label={tr('term.recovery_key')}
+        value={draft.groups}
+        columns={3}
+        partLabel={(index) => tr('recovery.group_label', { number: index + 1 })}
+      />
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      <div className="au-actions">
+        <CopyButton text={draft.text} size="lg" className="au-btn" onResult={(result) => setCopyFailed(result === 'failed')} />
         <AuthButton
           t={t}
           type="button"
-          label={copied === 'done' ? tr('common.copied') : tr('common.copy')}
-          onClick={() => {
-            void copy();
-          }}
+          quiet
+          icon={<Download size={16} aria-hidden="true" />}
+          label={tr('recovery.download')}
+          onClick={download}
         />
-        <AuthButton t={t} type="button" quiet label={tr('recovery.download')} onClick={download} />
       </div>
-      {copied === 'failed' ? <ErrorLine t={t} id="recovery-copy-error" text={tr('recovery.copy_failed')} /> : null}
-      <p style={quiet}>{tr('recovery.download_warning')}</p>
+      {copyFailed ? <ErrorLine t={t} id="recovery-copy-error" text={tr('recovery.copy_failed')} /> : null}
+      <p className="au-muted">{tr('recovery.download_warning')}</p>
 
-      <p style={{ margin: '4px 0 0', fontSize: 14, lineHeight: '20px', fontWeight: 500 }}>
-        {tr('recovery.confirm_lead', { first, second, third })}
-      </p>
-      {[first, second, third].map((number, position) => (
-        <Field key={number} t={t} id={`recovery-group-${position}`} label={tr('recovery.group_label', { number })}>
-          <input
+      <Divider />
+      <p className="au-strong">{tr('recovery.confirm_lead', { first, second, third })}</p>
+      <div className="au-groups">
+        {[first, second, third].map((number, position) => (
+          <TextField
+            key={number}
             id={`recovery-group-${position}`}
+            label={tr('recovery.group_label', { number })}
+            mono
+            className="au-key-input"
             value={typed[position]}
             onChange={(event) => setTyped((current) => current.map((group, index) => (index === position ? event.target.value : group)))}
             autoComplete="off"
@@ -165,15 +135,17 @@ export const RecoveryKeyPanel: React.FC<RecoveryKeyPanelProps> = ({ t, draft, ad
             autoCorrect="off"
             spellCheck={false}
             translate="no"
-            style={{ ...inputStyle(t), fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', letterSpacing: '0.04em' }}
           />
-        </Field>
-      ))}
+        ))}
+      </div>
       <ErrorLine t={t} id="recovery-mismatch" text={mismatch ? tr('recovery.confirm_mismatch') : null} />
       <ErrorLine t={t} id="recovery-failure" text={failure} />
       <AuthButton t={t} busy={busy} disabled={!complete} label={tr('recovery.confirm_button')} />
       {onCancel === undefined ? null : (
-        <AuthButton t={t} type="button" quiet disabled={busy} label={cancelLabel ?? tr('common.cancel')} onClick={onCancel} />
+        // A way back is a quiet text button under the main one, as on the other screens before the mailbox.
+        <div className="au-alt">
+          <TextButton t={t} label={cancelLabel ?? tr('common.cancel')} onClick={onCancel} disabled={busy} />
+        </div>
       )}
     </form>
   );

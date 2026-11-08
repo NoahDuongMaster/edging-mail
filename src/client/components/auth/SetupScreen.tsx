@@ -1,6 +1,8 @@
 import React from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { ArrowUpRight } from 'lucide-react';
 import { canonicalAddress } from '../../../shared/crypto/client';
+import { DEPLOY_GUIDE_URL } from '../../../worker/site/links';
 import type { ThemeTokens } from '../../theme';
 import { ApiError } from '../../lib/api';
 import { adminClaimLimits } from '../../lib/admin/claims';
@@ -9,15 +11,17 @@ import type { Session } from '../../lib/auth';
 import { credentialErrorText, retryAfterOf } from '../../lib/crypto/errors';
 import { RecoveryKeyDraft } from '../../lib/crypto/recoveryDraft';
 import type { SetupFields } from '../../lib/crypto/requests';
-import { completeSetup, DISPLAY_NAME_MAX, hasProblems, validateSetupFields } from '../../lib/crypto/setup';
+import { completeSetup, DISPLAY_NAME_MAX, validateSetupFields } from '../../lib/crypto/setup';
 import type { SetupProblems } from '../../lib/crypto/setup';
-import { LANGUAGE_NAMES, LOCALES, useLocale, useT } from '../../lib/i18n';
+import { firstInvalid, useFieldFocus } from '../../lib/fieldFocus';
+import { LANGUAGE_NAMES, LOCALES, tRich, useLocale, useT } from '../../lib/i18n';
 import type { Locale, MessageKey } from '../../lib/i18n';
 import { contextWords } from '../../lib/password/policy';
 import { usePasswordCheck } from '../../lib/password/usePasswordCheck';
 import { PasswordField } from '../PasswordField';
+import { Badge, Banner, Select, Step, Steps, TextField } from '../../ui';
 import { RecoveryKeyPanel } from './RecoveryKeyPanel';
-import { AuthButton, AuthCard, ErrorLine, Field, inputStyle } from './authUi';
+import { AuthButton, AuthCard, ErrorLine } from './authUi';
 
 // First-run Setup: the first admin. Step 1 collects the setup key, the address, the name, the organisation language and the password
 // (nothing is derived or sent yet); step 2 shows the recovery key and, once three of its groups were typed back, makes the key set and
@@ -32,63 +36,73 @@ interface Held {
   password: string;
 }
 
+/** The fields whose error shows: the ones left once, and all of them after a press of Continue (an empty password only then). */
 interface Touched {
   setupKey: boolean;
   email: boolean;
   displayName: boolean;
+  password: boolean;
   confirm: boolean;
 }
 
-const UNTOUCHED: Touched = { setupKey: false, email: false, displayName: false, confirm: false };
-const ALL_TOUCHED: Touched = { setupKey: true, email: true, displayName: true, confirm: true };
+const UNTOUCHED: Touched = { setupKey: false, email: false, displayName: false, password: false, confirm: false };
+const ALL_TOUCHED: Touched = { setupKey: true, email: true, displayName: true, password: true, confirm: true };
 
-const rowStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 6 };
+/** An input is described by its error text while there is one (TextField adds the id of its hint itself). */
+const errorId = (id: string, error: string | null): string | undefined => (error === null ? undefined : `${id}-error`);
 
-/** An input is described by its hint, and by its error text while there is one. */
-const describedBy = (id: string, error: string | null): string => (error === null ? `${id}-hint` : `${id}-hint ${id}-error`);
+// The organisation's language, each by its own name in its own script.
+const LANGUAGE_OPTIONS = LOCALES.map((tag) => ({ value: tag, label: LANGUAGE_NAMES[tag] }));
 
-const stepLine = (t: ThemeTokens): React.CSSProperties => ({
-  margin: 0,
-  fontSize: 12.5,
-  lineHeight: '17px',
-  color: t.text3,
-  textAlign: 'center'
-});
+/** The secret that is the setup key (a name, never translated). */
+const SETUP_KEY_SECRET = 'APP_PASSWORD';
 
+/**
+ * The deployment lacks secrets: a blocked state, so it says which ones (names only) and what to do, in order, with Reload as the one action.
+ * Step 1 links to the deployment guide; what APP_PASSWORD is (a fact, not a step) is a note under the steps.
+ */
 const NotReady: React.FC<{ t: ThemeTokens; names: readonly string[] }> = ({ t, names }) => {
   const tr = useT();
-  const quiet: React.CSSProperties = { margin: 0, fontSize: 13, lineHeight: '19px', color: t.text2 };
+  // One secret reads "Missing secret" / "Add it"; an empty list (names unknown) reads as several.
+  const count = names.length === 0 ? 2 : names.length;
+  const guide = (
+    <a href={DEPLOY_GUIDE_URL} target="_blank" rel="noreferrer" className="au-link">
+      {tr('setup.deploy_guide')}
+      <ArrowUpRight size={14} aria-hidden="true" />
+    </a>
+  );
   return (
-    <AuthCard t={t} title={tr('setup.not_ready_title')} lead={tr('setup.not_ready_lead')} picker wide>
+    <AuthCard t={t} title={tr('setup.not_ready_title')} lead={tr('setup.not_ready_lead', { count })} picker wide illustration>
       {names.length === 0 ? null : (
-        <div style={rowStyle}>
-          <p style={{ ...quiet, fontWeight: 500 }}>{tr('setup.not_ready_list')}</p>
-          <ul data-setup-missing="" style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <Banner tone="warning" title={tr('setup.not_ready_list', { count })}>
+          <ul data-setup-missing="" className="au-secrets">
             {names.map((name) => (
               <li key={name}>
-                <code
-                  translate="no"
-                  style={{
-                    display: 'inline-block',
-                    padding: '4px 8px',
-                    border: `1px solid ${t.borderStrong}`,
-                    borderRadius: 8,
-                    background: t.raised,
-                    color: t.text,
-                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-                    fontSize: 13,
-                    overflowWrap: 'anywhere'
-                  }}
-                >
-                  {name}
-                </code>
+                <Badge>
+                  <code translate="no" className="nm-mono au-secret">
+                    {name}
+                  </code>
+                </Badge>
               </li>
             ))}
           </ul>
-        </div>
+        </Banner>
       )}
-      {names.includes('APP_PASSWORD') ? <p style={quiet}>{tr('setup.not_ready_app_password')}</p> : null}
-      <p style={quiet}>{tr('setup.not_ready_next')}</p>
+      <Steps>
+        <Step>{tRich('setup.not_ready_step_add', { guide }, { count })}</Step>
+        <Step>{tr('setup.not_ready_step_reload')}</Step>
+      </Steps>
+      {names.includes(SETUP_KEY_SECRET) ? (
+        <p className="au-muted">
+          {tRich('setup.not_ready_app_password', {
+            name: (
+              <code translate="no" className="nm-mono au-code">
+                {SETUP_KEY_SECRET}
+              </code>
+            )
+          })}
+        </p>
+      ) : null}
       <AuthButton
         t={t}
         type="button"
@@ -131,7 +145,16 @@ const SetupFlow: React.FC<{ t: ThemeTokens; session: Session }> = ({ t, session 
   const check = usePasswordCheck(password, 'admin', words);
   const fields: SetupFields = { setupKey, email, displayName, language };
   const problems = validateSetupFields(fields, password, confirm);
-  const valid = !hasProblems(problems) && password !== '' && check.assessment?.ok === true;
+  // Continue can always be pressed: a press with something missing shows every field's error and takes the keyboard to the first of them. The
+  // password counts as missing while it is empty, refused or not judged yet (its check still loading or failed to load): its line says which.
+  const toFix = firstInvalid([
+    ['setup-key', problems.setupKey !== undefined],
+    ['setup-email', problems.email !== undefined],
+    ['setup-name', problems.displayName !== undefined],
+    ['setup-password', check.assessment?.ok !== true || password === ''],
+    ['setup-confirm', problems.confirm !== undefined]
+  ]);
+  const focusLater = useFieldFocus();
 
   React.useEffect(() => {
     alive.current = true;
@@ -159,7 +182,11 @@ const SetupFlow: React.FC<{ t: ThemeTokens; session: Session }> = ({ t, session 
 
   const begin = async (): Promise<void> => {
     setTouched(ALL_TOUCHED);
-    if (!valid || starting) {
+    if (starting) {
+      return;
+    }
+    if (toFix !== undefined) {
+      focusLater(toFix);
       return;
     }
     setStarting(true);
@@ -244,8 +271,14 @@ const SetupFlow: React.FC<{ t: ThemeTokens; session: Session }> = ({ t, session 
 
   if (step === 'recovery' && draft !== null) {
     return (
-      <AuthCard t={t} title={tr('recovery.title_first')} lead={adminClaimLimits().join(' ')} picker wide>
-        <p style={stepLine(t)}>{tr('setup.step', { current: 2, total: STEPS })}</p>
+      <AuthCard
+        t={t}
+        eyebrow={tr('setup.step', { current: 2, total: STEPS })}
+        title={tr('recovery.title_first')}
+        lead={adminClaimLimits().join(' ')}
+        picker
+        wide
+      >
         <RecoveryKeyPanel
           t={t}
           draft={draft}
@@ -256,26 +289,23 @@ const SetupFlow: React.FC<{ t: ThemeTokens; session: Session }> = ({ t, session 
           cancelLabel={tr('common.back')}
         />
         {wait !== null && wait > 0 ? (
-          <p role="status" style={{ margin: 0, fontSize: 13, lineHeight: '18px', color: t.text2 }}>
+          <p role="status" className="au-muted">
             {tr('auth.try_again_in', { seconds: wait })}
           </p>
         ) : null}
         {keyWrong ? (
-          <div style={rowStyle}>
-            <Field t={t} id="setup-key-retry" label={tr('setup.key_label')} hint={tr('setup.wrong_key_retry')}>
-              <input
-                id="setup-key-retry"
-                type="password"
-                autoComplete="off"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                value={retryKey}
-                onChange={(event) => setRetryKey(event.target.value)}
-                style={inputStyle(t)}
-              />
-            </Field>
-          </div>
+          <TextField
+            id="setup-key-retry"
+            label={tr('setup.key_label')}
+            hint={tr('setup.wrong_key_retry')}
+            type="password"
+            autoComplete="off"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            value={retryKey}
+            onChange={(event) => setRetryKey(event.target.value)}
+          />
         ) : null}
       </AuthCard>
     );
@@ -289,6 +319,7 @@ const SetupFlow: React.FC<{ t: ThemeTokens; session: Session }> = ({ t, session 
   return (
     <AuthCard
       t={t}
+      eyebrow={tr('setup.step', { current: 1, total: STEPS })}
       title={tr('setup.title')}
       lead={tr('setup.lead')}
       picker
@@ -298,32 +329,33 @@ const SetupFlow: React.FC<{ t: ThemeTokens; session: Session }> = ({ t, session 
         void begin();
       }}
     >
-      <p style={stepLine(t)}>{tr('setup.step', { current: 1, total: STEPS })}</p>
-
-      <div style={rowStyle}>
-        <Field t={t} id="setup-key" label={tr('setup.key_label')} hint={tr('setup.key_hint')}>
-          <input
-            id="setup-key"
-            type="password"
-            autoComplete="off"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            value={setupKey}
-            onChange={(event) => setSetupKey(event.target.value)}
-            onBlur={touch('setupKey')}
-            aria-invalid={keyError !== null}
-            aria-describedby={describedBy('setup-key', keyError)}
-            style={inputStyle(t)}
-          />
-        </Field>
+      <div className="au-row">
+        <TextField
+          id="setup-key"
+          label={tr('setup.key_label')}
+          hint={tr('setup.key_hint')}
+          type="password"
+          autoComplete="off"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          value={setupKey}
+          onChange={(event) => setSetupKey(event.target.value)}
+          onBlur={touch('setupKey')}
+          aria-invalid={keyError !== null}
+          aria-describedby={errorId('setup-key', keyError)}
+        />
         <ErrorLine t={t} id="setup-key-error" text={keyError} />
       </div>
 
-      <div style={rowStyle}>
-        <Field t={t} id="setup-email" label={tr('auth.email_label')} hint={tr('setup.address_hint')}>
-          <input
+      {/* The address and the name side by side from 641px (one row instead of two; both labels are one line in every language), stacked on a
+          phone. Their hints differ in length, so the pair is aligned at the top: labels and boxes share one line. */}
+      <div className="au-pair">
+        <div className="au-row">
+          <TextField
             id="setup-email"
+            label={tr('auth.email_label')}
+            hint={tr('setup.address_hint')}
             type="text"
             inputMode="email"
             autoComplete="username"
@@ -334,17 +366,16 @@ const SetupFlow: React.FC<{ t: ThemeTokens; session: Session }> = ({ t, session 
             onChange={(event) => setEmail(event.target.value)}
             onBlur={touch('email')}
             aria-invalid={emailError !== null}
-            aria-describedby={describedBy('setup-email', emailError)}
-            style={inputStyle(t)}
+            aria-describedby={errorId('setup-email', emailError)}
           />
-        </Field>
-        <ErrorLine t={t} id="setup-email-error" text={emailError} />
-      </div>
+          <ErrorLine t={t} id="setup-email-error" text={emailError} />
+        </div>
 
-      <div style={rowStyle}>
-        <Field t={t} id="setup-name" label={tr('term.display_name')} hint={tr('setup.name_hint')}>
-          <input
+        <div className="au-row">
+          <TextField
             id="setup-name"
+            label={tr('term.display_name')}
+            hint={tr('setup.name_hint')}
             type="text"
             autoComplete="name"
             maxLength={DISPLAY_NAME_MAX}
@@ -352,33 +383,27 @@ const SetupFlow: React.FC<{ t: ThemeTokens; session: Session }> = ({ t, session 
             onChange={(event) => setDisplayName(event.target.value)}
             onBlur={touch('displayName')}
             aria-invalid={nameError !== null}
-            aria-describedby={describedBy('setup-name', nameError)}
-            style={inputStyle(t)}
+            aria-describedby={errorId('setup-name', nameError)}
           />
-        </Field>
-        <ErrorLine t={t} id="setup-name-error" text={nameError} />
+          <ErrorLine t={t} id="setup-name-error" text={nameError} />
+        </div>
       </div>
 
-      <Field t={t} id="setup-language" label={tr('lang.org_default')} hint={tr('lang.org_default_hint')}>
-        <select
-          id="setup-language"
-          value={language}
-          onChange={(event) => {
-            const next = LOCALES.find((tag) => tag === event.target.value);
-            if (next !== undefined) {
-              setChosenLanguage(next);
-            }
-          }}
-          aria-describedby="setup-language-hint"
-          style={inputStyle(t)}
-        >
-          {LOCALES.map((tag) => (
-            <option key={tag} value={tag} lang={tag}>
-              {LANGUAGE_NAMES[tag]}
-            </option>
-          ))}
-        </select>
-      </Field>
+      <Select
+        id="setup-language"
+        label={tr('lang.org_default')}
+        hint={tr('lang.org_default_hint')}
+        options={LANGUAGE_OPTIONS}
+        value={language}
+        onChange={(value) => {
+          const next = LOCALES.find((tag) => tag === value);
+          // Only a real change: choosing the language already shown keeps the organisation's language following the screen's (as the
+          // browser's own list, which fires on a change only, did).
+          if (next !== undefined && next !== language) {
+            setChosenLanguage(next);
+          }
+        }}
+      />
 
       <PasswordField
         t={t}
@@ -388,30 +413,34 @@ const SetupFlow: React.FC<{ t: ThemeTokens; session: Session }> = ({ t, session 
         onChange={setPassword}
         check={check}
         offerPassphrase
+        submitted={touched.password}
       />
 
-      <div style={rowStyle}>
-        <Field t={t} id="setup-confirm" label={tr('gate.repeat_password')}>
-          <input
-            id="setup-confirm"
-            type="password"
-            autoComplete="new-password"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            value={confirm}
-            onChange={(event) => setConfirm(event.target.value)}
-            onBlur={touch('confirm')}
-            aria-invalid={confirmError !== null}
-            aria-describedby={confirmError === null ? undefined : 'setup-confirm-error'}
-            style={inputStyle(t)}
-          />
-        </Field>
+      <div className="au-row">
+        <TextField
+          id="setup-confirm"
+          label={tr('gate.repeat_password')}
+          type="password"
+          autoComplete="new-password"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          value={confirm}
+          onChange={(event) => setConfirm(event.target.value)}
+          onBlur={touch('confirm')}
+          aria-invalid={confirmError !== null}
+          aria-describedby={errorId('setup-confirm', confirmError)}
+        />
         <ErrorLine t={t} id="setup-confirm-error" text={confirmError} />
       </div>
 
-      <ErrorLine t={t} id="setup-start-error" text={startError} />
-      <AuthButton t={t} busy={starting} disabled={!valid} label={tr('gate.continue')} />
+      {/* The longest form of these screens: from 641px its last row (an error about the whole form, and Continue) stays docked at the bottom
+          edge of the window while the fields scroll under it, so the next step is always in sight (at a 670px-high laptop window Continue was
+          about 400px below the fold). */}
+      <div className="au-sticky">
+        <ErrorLine t={t} id="setup-start-error" text={startError} />
+        <AuthButton t={t} busy={starting} label={tr('gate.continue')} />
+      </div>
     </AuthCard>
   );
 };

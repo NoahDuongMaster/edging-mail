@@ -1,0 +1,1649 @@
+/* The component library (src/client/ui). Every colour, radius, height and duration is a variable that `applyTheme` (theme.ts) writes from
+   src/shared/design/tokens.ts, so a component never names a colour. States: hover (only where the pointer can hover), active (pressed),
+   disabled, and the focus ring (index.css: 2px accent, 2px away; never removed). Classes are `ui-*`; a variant or a size is a data attribute. */
+
+:root {
+  /* Control heights: 32, 36, 44 on a desktop; 44 for everything on a phone or a touch screen. */
+  --ui-h-sm: var(--control-sm);
+  --ui-h-md: var(--control-md);
+  --ui-h-lg: var(--control-touch);
+  /* Text inside a field is 16px on a phone, so iOS does not zoom in when it gets focus. */
+  --ui-field-size: 14px;
+  /* The chosen segment of a raised track (SegmentedControl, the tabs in `grid`): lifted onto a fill one step lighter than the track. */
+  --ui-lifted: var(--surface);
+
+  /* The stacking order of the whole app, from the bottom up, named here and used by every stylesheet (no other z-index number). A toast is
+     over every dialog, so its Undo can be pressed while a confirmation is open, and under the lists and tooltips that open from a control. */
+  --z-raise: 1; /* a part over its neighbours inside one component: a sticky table head, a focus ring, the drawer over its scrim */
+  --z-float: 5; /* a control that floats over its pane: the Compose button of a phone */
+  --z-console: 55; /* the admin console, a page over the mailbox */
+  --z-window: 60; /* Settings and the compose window */
+  --z-drawer: 70; /* the folders drawer of a phone */
+  --z-dialog: 90; /* a ui Dialog drawn at the end of <body>: a confirmation, the locked-mail dialog */
+  --z-toast: 95;
+  --z-popover: 100; /* Popover, Menu, the list of a Select */
+  --z-tooltip: 110;
+}
+/* In the dark theme the surface is darker than a raised fill, so the lifted segment takes the border step instead. */
+:root[data-theme='dark'] {
+  --ui-lifted: var(--border);
+}
+@media (max-width: 900px), (pointer: coarse) {
+  :root {
+    --ui-h-sm: var(--control-touch);
+    --ui-h-md: var(--control-touch);
+  }
+}
+@media (max-width: 900px) {
+  :root {
+    --ui-field-size: 16px;
+  }
+}
+
+.ui-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Button, IconButton ---------- */
+
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: var(--ui-h-md);
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--motion-fast) ease-out,
+    border-color var(--motion-fast) ease-out,
+    color var(--motion-fast) ease-out;
+}
+.ui-btn[data-size='sm'] {
+  height: var(--ui-h-sm);
+  padding: 0 10px;
+  font-size: 13px;
+}
+.ui-btn[data-size='lg'] {
+  height: var(--ui-h-lg);
+  padding: 0 18px;
+}
+.ui-btn-full {
+  width: 100%;
+}
+.ui-btn svg {
+  flex: none;
+}
+
+.ui-btn[data-variant='primary'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.ui-btn[data-variant='secondary'] {
+  background: var(--surface);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+.ui-btn[data-variant='ghost'] {
+  background: transparent;
+  color: var(--text2);
+}
+.ui-btn[data-variant='danger'] {
+  background: var(--surface);
+  border-color: color-mix(in srgb, var(--danger) 60%, var(--border));
+  color: var(--danger);
+}
+
+/* A pressed button, on a touch screen too. */
+.ui-btn[data-variant='primary']:active {
+  background: color-mix(in srgb, var(--accent-hover) 82%, #000);
+  border-color: color-mix(in srgb, var(--accent-hover) 82%, #000);
+}
+.ui-btn[data-variant='secondary']:active {
+  background: var(--border);
+}
+.ui-btn[data-variant='ghost']:active {
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+  color: var(--text);
+}
+.ui-btn[data-variant='danger']:active {
+  background: color-mix(in srgb, var(--danger) 14%, var(--surface));
+}
+
+/* A toggle that is on (a filter, a star). */
+.ui-btn[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+/* Disabled: see the rule after the hover states (it has to come after them to win over a hover). */
+.ui-btn:disabled,
+.ui-btn[aria-disabled='true'] {
+  cursor: not-allowed;
+}
+/* Busy: it keeps its place and its text, and says it is working. */
+.ui-btn[aria-busy='true'] {
+  opacity: 0.75;
+  cursor: progress;
+}
+
+@media (hover: hover) {
+  .ui-btn[data-variant='primary']:hover:not(:disabled, [aria-busy='true']) {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+  }
+  .ui-btn[data-variant='secondary']:hover:not(:disabled, [aria-busy='true']) {
+    background: var(--raised);
+  }
+  .ui-btn[data-variant='ghost']:hover:not(:disabled, [aria-busy='true']) {
+    background: var(--hover);
+    color: var(--text);
+  }
+  .ui-btn[data-variant='danger']:hover:not(:disabled, [aria-busy='true']) {
+    background: var(--danger-soft);
+    border-color: var(--danger);
+  }
+}
+
+/* Disabled, in every variant: a neutral raised box with a hairline edge and the quiet text colour, so it reads as unavailable and its label
+   stays readable (no opacity, which washed a primary button out to about 2:1). The ghost look has no box to grey out: only its text quiets.
+   A busy button (`loading`: aria-busy, which also says aria-disabled) is not disabled-looking: it keeps its look and says it is working. These
+   rules are as specific as the hover and pressed rules above and come after them, so a disabled button does not react to the pointer. */
+.ui-btn[data-variant]:is(:disabled, [aria-disabled='true']):not([aria-busy='true']) {
+  background: var(--raised);
+  border-color: var(--border);
+  color: var(--text3);
+}
+.ui-btn[data-variant='ghost']:is(:disabled, [aria-disabled='true']):not([aria-busy='true']) {
+  background: transparent;
+  border-color: transparent;
+  color: color-mix(in srgb, var(--text3) 70%, transparent);
+}
+
+.ui-icon-btn {
+  width: var(--ui-h-md);
+  padding: 0;
+}
+.ui-icon-btn[data-size='sm'] {
+  width: var(--ui-h-sm);
+}
+.ui-icon-btn[data-size='lg'] {
+  width: var(--ui-h-lg);
+}
+
+.ui-spinner {
+  display: inline-flex;
+  flex: none;
+}
+
+.ui-tooltip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: var(--z-tooltip);
+  max-width: 240px;
+  padding: 4px 8px;
+  border-radius: var(--radius-control);
+  background: var(--text);
+  color: var(--bg);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  pointer-events: none;
+  /* A long label (a file name, an address in "Remove ...") wraps inside the bubble instead of spilling out of it. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  box-shadow: var(--shadow-md);
+}
+
+/* ---------- Fields: TextField, TextArea, Select ---------- */
+
+.ui-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.ui-label {
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--text);
+}
+.ui-hint {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text2);
+}
+.ui-error {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--danger);
+}
+p.ui-hint {
+  margin: 0;
+}
+
+.ui-input,
+.ui-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: var(--ui-h-md);
+  padding: 0 10px;
+  background: var(--surface);
+  border: 1px solid var(--control);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  transition:
+    border-color var(--motion-fast) ease-out,
+    background-color var(--motion-fast) ease-out;
+}
+.ui-input[data-multiline] {
+  align-items: flex-start;
+  padding-block: 8px;
+}
+.ui-input[data-invalid='true'],
+.ui-select[data-invalid='true'] {
+  border-color: var(--danger);
+}
+.ui-input[data-disabled='true'],
+.ui-select[aria-disabled='true'] {
+  background: var(--raised);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+@media (hover: hover) {
+  .ui-input:hover:not([data-disabled='true'], [data-invalid='true']),
+  .ui-select:hover:not([aria-disabled='true'], [data-invalid='true']) {
+    border-color: var(--text3);
+  }
+}
+
+.ui-input-el {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--ui-field-size);
+  line-height: 20px;
+}
+.ui-input-el::placeholder {
+  color: var(--text3);
+  opacity: 1;
+}
+textarea.ui-input-el {
+  display: block;
+  min-height: 64px;
+  resize: vertical;
+}
+.ui-input-el:disabled {
+  cursor: not-allowed;
+}
+/* The browser's autofill paints its own background; keep the field's. */
+.ui-input-el:-webkit-autofill {
+  -webkit-text-fill-color: var(--text);
+  box-shadow: 0 0 0 100px var(--surface) inset;
+}
+.ui-adorn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--text3);
+}
+.ui-adorn .ui-btn {
+  margin-inline: -6px;
+}
+/* The ring goes round the whole box, not the bare input inside it. */
+@supports selector(:has(*)) {
+  .ui-input-el:focus-visible {
+    outline: none;
+  }
+  .ui-input:has(> .ui-input-el:focus-visible) {
+    border-color: var(--accent);
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+.ui-select {
+  justify-content: space-between;
+  font-size: var(--ui-field-size);
+  line-height: 20px;
+  cursor: pointer;
+  user-select: none;
+}
+.ui-select[aria-expanded='true'] {
+  border-color: var(--accent);
+}
+.ui-select svg {
+  flex: none;
+  color: var(--text3);
+  transition: transform var(--motion-fast) ease-out;
+}
+.ui-select[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+.ui-select-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ui-select-value[data-placeholder='true'] {
+  color: var(--text3);
+}
+
+/* ---------- Popover, Select list, Menu ---------- */
+
+.ui-popover {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: var(--z-popover);
+  max-width: calc(100vw - 16px);
+  padding: 4px;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-md);
+  animation: ui-fade var(--motion-fast) ease-out;
+}
+
+.ui-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: var(--ui-h-md);
+  padding: 6px 10px;
+  border-radius: var(--radius-control);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text);
+  cursor: pointer;
+}
+.ui-option[aria-selected='true'] {
+  font-weight: 500;
+}
+.ui-option[aria-selected='true'] svg {
+  flex: none;
+  color: var(--accent-text);
+}
+/* The row the arrows are on (or the pointer): it has the focus, in the sense of aria-activedescendant, so it needs the ring colour too. */
+.ui-option[data-active='true'] {
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+.ui-option[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.ui-menu {
+  min-width: 200px;
+}
+.ui-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: var(--ui-h-md);
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  text-align: left;
+  cursor: pointer;
+}
+.ui-menu-item svg {
+  flex: none;
+  color: var(--text3);
+}
+.ui-menu-item:hover,
+.ui-menu-item:focus {
+  background: var(--raised);
+}
+.ui-menu-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.ui-menu-item:active {
+  background: var(--border);
+}
+.ui-menu-item[data-danger='true'],
+.ui-menu-item[data-danger='true'] svg {
+  color: var(--danger);
+}
+.ui-menu-item:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.ui-menu-sep {
+  height: 1px;
+  margin: 4px -4px;
+  background: var(--border);
+}
+
+/* ---------- Checkbox, RadioGroup, Switch ---------- */
+
+.ui-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  /* 36px high on a desktop, 44px on touch, with the box on the first line of text. */
+  min-height: var(--ui-h-md);
+  padding-block: calc((var(--ui-h-md) - 20px) / 2);
+  cursor: pointer;
+}
+.ui-check[data-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ui-check-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text);
+}
+
+.ui-check-input,
+.ui-radio-input {
+  appearance: none;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  background-color: var(--surface);
+  border: 1px solid var(--control);
+  cursor: inherit;
+  transition:
+    background-color var(--motion-fast) ease-out,
+    border-color var(--motion-fast) ease-out;
+}
+.ui-check-input {
+  border-radius: 4px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 14px;
+}
+.ui-radio-input {
+  border-radius: 50%;
+}
+@media (hover: hover) {
+  .ui-check:hover .ui-check-input:not(:checked, :indeterminate, :disabled),
+  .ui-check:hover .ui-radio-input:not(:checked, :disabled) {
+    border-color: var(--text3);
+  }
+}
+.ui-check-input:checked,
+.ui-check-input:indeterminate {
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+.ui-check-input:checked {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14' fill='none'%3E%3Cpath d='M3 7.4l2.6 2.6L11 4.4' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.ui-check-input:indeterminate {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14' fill='none'%3E%3Cpath d='M3.5 7h7' stroke='%23fff' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+/* A ring of accent round a white centre. */
+.ui-radio-input:checked {
+  background-color: #fff;
+  border: 5px solid var(--accent);
+}
+.ui-radio-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.ui-radio-group legend {
+  margin-bottom: 4px;
+}
+/* A user who forces their own colours gets the browser's own controls back. */
+@media (forced-colors: active) {
+  .ui-check-input,
+  .ui-radio-input {
+    appearance: auto;
+  }
+}
+
+.ui-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: var(--ui-h-md);
+  padding-block: 4px;
+}
+.ui-switch-row[data-disabled='true'] {
+  opacity: 0.5;
+}
+.ui-switch-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+/* The label of a switch reads like the label of a checkbox. */
+.ui-switch-text .ui-label {
+  font-size: 14px;
+  font-weight: 400;
+}
+.ui-switch {
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: 20px;
+  padding: 0;
+  background: var(--raised);
+  border: 1px solid var(--control);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) ease-out,
+    border-color var(--motion-fast) ease-out;
+}
+/* The switch is small; its touch target is not. */
+.ui-switch::after {
+  content: '';
+  position: absolute;
+  inset: -12px -6px;
+}
+.ui-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: var(--text3);
+  border-radius: 50%;
+  transition:
+    transform var(--motion-fast) ease-out,
+    background-color var(--motion-fast) ease-out;
+}
+.ui-switch[aria-checked='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.ui-switch[aria-checked='true'] .ui-switch-thumb {
+  background: #fff;
+  transform: translateX(16px);
+}
+.ui-switch:disabled {
+  cursor: not-allowed;
+}
+@media (hover: hover) {
+  .ui-switch[aria-checked='false']:hover:not(:disabled) {
+    border-color: var(--text3);
+  }
+  .ui-switch[aria-checked='true']:hover:not(:disabled) {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+  }
+}
+
+/* ---------- Tabs ---------- */
+
+.ui-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  box-shadow: inset 0 -1px 0 var(--border);
+  scrollbar-width: none;
+}
+.ui-tabs::-webkit-scrollbar {
+  display: none;
+}
+.ui-tab {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--ui-h-md);
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text2);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--motion-fast) ease-out;
+}
+/* The underline of the selected tab. */
+.ui-tab::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  bottom: 0;
+  left: 12px;
+  height: 2px;
+  background: transparent;
+  border-radius: 2px 2px 0 0;
+}
+.ui-tab[aria-selected='true'] {
+  color: var(--text);
+}
+.ui-tab[aria-selected='true']::after {
+  background: var(--accent);
+}
+.ui-tab:active {
+  color: var(--text);
+}
+.ui-tab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* Inside the scrolling row an outside ring would be cut off. */
+.ui-tab:focus-visible,
+.ui-tabs:focus-visible {
+  outline-offset: -2px;
+}
+@media (hover: hover) {
+  .ui-tab:hover:not(:disabled) {
+    color: var(--text);
+  }
+}
+/* Tabs with `grid` (Settings, the admin console): on a phone the row does not scroll sideways and hide a tab, it is a grid of two columns of
+   44px segments in a raised track (four tabs: 2x2), and a label too long for its cell wraps onto a second line instead of being cut. At
+   320px a cell has 122px for its label: en 'Email routing & MX' is 116px at 13px (Geist 500), vi 'Nhật ký hoạt động' 114px; under 350px the
+   side padding is 4px, which leaves 130px (vi 'Định tuyến thư & MX' is 125px). The area sets the track's margin and padding. */
+@media (max-width: 640px) {
+  .ui-tabs[data-grid='true'] {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    padding: 4px;
+    overflow: visible;
+    background: var(--raised);
+    border-radius: var(--radius-card);
+    box-shadow: inset 0 0 0 1px var(--border);
+  }
+  .ui-tabs[data-grid='true'] .ui-tab {
+    justify-content: center;
+    padding: 4px 8px;
+    border-radius: var(--radius-control);
+    font-size: 13px;
+    line-height: 18px;
+    text-align: center;
+    white-space: normal;
+  }
+  .ui-tabs[data-grid='true'] .ui-tab::after {
+    display: none;
+  }
+  /* The chosen tab is the lifted segment, lighter than the track in both themes (as in SegmentedControl). */
+  .ui-tabs[data-grid='true'] .ui-tab[aria-selected='true'] {
+    background: var(--ui-lifted);
+    box-shadow:
+      var(--shadow-sm),
+      inset 0 0 0 1px var(--border-strong);
+  }
+}
+@media (max-width: 350px) {
+  .ui-tabs[data-grid='true'] .ui-tab {
+    padding-inline: 4px;
+  }
+}
+
+/* ---------- Badge, Avatar, Kbd, Divider ---------- */
+
+.ui-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 8px;
+  background: var(--raised);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentcolor 16%, transparent);
+  color: var(--text2);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ui-badge[data-tone='accent'] {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.ui-badge[data-tone='success'] {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.ui-badge[data-tone='warning'] {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.ui-badge[data-tone='danger'] {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.ui-avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--raised);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  color: var(--text2);
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 500;
+  user-select: none;
+}
+.ui-avatar[data-size='sm'] {
+  width: 28px;
+  height: 28px;
+  font-size: 12px;
+}
+.ui-avatar[data-size='lg'] {
+  width: 40px;
+  height: 40px;
+  font-size: 15px;
+}
+
+.ui-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  background: var(--raised);
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  color: var(--text2);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+}
+
+hr.ui-divider {
+  height: 0;
+  margin: 16px 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+.ui-divider[data-orientation='vertical'] {
+  display: inline-block;
+  align-self: center;
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: var(--border);
+}
+
+/* ---------- Banner ---------- */
+
+.ui-banner {
+  --tone: var(--accent-text);
+  --tone-bg: var(--accent-soft);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 12px;
+  padding: 12px 14px;
+  background: var(--tone-bg);
+  border: 1px solid color-mix(in srgb, var(--tone) 20%, var(--border));
+  border-radius: var(--radius-card);
+  color: var(--text);
+}
+.ui-banner[data-tone='success'] {
+  --tone: var(--success);
+  --tone-bg: var(--success-soft);
+}
+.ui-banner[data-tone='warning'] {
+  --tone: var(--warning);
+  --tone-bg: var(--warning-soft);
+}
+.ui-banner[data-tone='danger'] {
+  --tone: var(--danger);
+  --tone-bg: var(--danger-soft);
+}
+.ui-banner-icon {
+  flex: none;
+  margin-top: 1px;
+  color: var(--tone);
+}
+.ui-banner-body {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.ui-banner-title {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.ui-banner-text {
+  font-size: 14px;
+  line-height: 20px;
+}
+.ui-banner-action {
+  flex: none;
+  margin-left: auto;
+}
+/* A button is taller than a line of text: it grows into the banner's padding instead of pushing the text off its centre. */
+.ui-banner-action,
+.ui-banner > .ui-icon-btn {
+  margin-block: calc((20px - var(--ui-h-sm)) / 2);
+}
+/* With an action the layout is one of two, chosen by the width inside the banner, never by the length of a text: from 480px the action
+   stands beside the text on one row (the text takes what is left), under 480px it has a row of its own under the text. Only on one row does
+   the button grow into the padding; on its own row it is in the flow, so it never sticks out of the banner. (A percentage of a margin and of
+   a flex-basis is the width inside the banner, so the two switch at the same width.) */
+.ui-banner:has(> .ui-banner-action) > .ui-banner-body {
+  flex-basis: calc((480px - 100%) * 999);
+  max-width: calc(100% - 30px);
+}
+.ui-banner:has(> .ui-banner-action) > .ui-banner-action,
+.ui-banner:has(> .ui-banner-action) > .ui-icon-btn {
+  margin-block: clamp(calc((20px - var(--ui-h-sm)) / 2), (480px - 100%) * 999, 0px);
+}
+/* Dark: a secondary button on a tinted banner is lifted off it with a tint of the banner's own tone; the page's surface there is darker than
+   the banner and reads as a hole in it. Pressed and disabled keep their own look. */
+:root[data-theme='dark'] .ui-banner .ui-btn[data-variant='secondary']:not(:active, :disabled, [aria-disabled='true']) {
+  background: color-mix(in srgb, var(--tone) 16%, var(--tone-bg));
+  border-color: color-mix(in srgb, var(--tone) 45%, var(--border));
+}
+@media (hover: hover) {
+  :root[data-theme='dark'] .ui-banner .ui-btn[data-variant='secondary']:hover:not(:active, :disabled, [aria-disabled='true']) {
+    background: color-mix(in srgb, var(--tone) 24%, var(--tone-bg));
+  }
+}
+
+/* ---------- Section, Card ---------- */
+
+.ui-section + .ui-section {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+.ui-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.ui-section-heading {
+  min-width: 0;
+}
+.ui-section-title {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+}
+.ui-section-description {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text2);
+}
+.ui-section-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
+.ui-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+}
+.ui-card[data-padding='md'] {
+  padding: 20px;
+}
+.ui-card[data-padding='none'] > .ui-section-head {
+  margin: 0;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+@media (max-width: 640px) {
+  .ui-card[data-padding='md'] {
+    padding: 16px;
+  }
+}
+
+/* ---------- Table ---------- */
+
+.ui-table-wrap {
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+.ui-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+}
+.ui-table th {
+  padding: 8px 12px;
+  background: var(--raised);
+  border-bottom: 1px solid var(--border);
+  color: var(--text2);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+.ui-table[data-sticky='true'] th {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-raise);
+}
+.ui-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.ui-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.ui-table[data-dense='true'] th {
+  padding-block: 6px;
+}
+.ui-table[data-dense='true'] td {
+  padding-block: 6px;
+}
+.ui-table .ui-num {
+  text-align: right;
+}
+@media (hover: hover) {
+  .ui-table tbody tr:hover td {
+    background: var(--hover);
+  }
+}
+/* Rows are 44px high on touch. */
+@media (max-width: 900px), (pointer: coarse) {
+  .ui-table td,
+  .ui-table[data-dense='true'] td {
+    padding-block: 12px;
+  }
+}
+
+/* ---------- EmptyState, Skeleton ---------- */
+
+.ui-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 24px;
+  text-align: center;
+}
+.ui-empty-art {
+  margin-bottom: 8px;
+}
+.ui-empty-title {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+}
+.ui-empty-description {
+  max-width: 36ch;
+  margin: 0;
+  color: var(--text2);
+}
+.ui-empty-action {
+  margin-top: 8px;
+}
+
+.ui-skeleton {
+  display: block;
+  width: 100%;
+  height: 14px;
+  background: var(--border-strong);
+  border-radius: 4px;
+  animation: ui-pulse 1.4s ease-in-out infinite;
+}
+.ui-skeleton[data-circle='true'] {
+  border-radius: 50%;
+}
+
+/* ---------- Dialog ---------- */
+
+.ui-dialog-root {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: var(--scrim);
+  animation: ui-fade var(--motion-base) ease-out;
+}
+.ui-dialog {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 520px;
+  max-height: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-dialog);
+  box-shadow: var(--shadow-lg);
+  color: var(--text);
+  animation: nm-fade-in var(--motion-base) ease-out;
+}
+.ui-dialog[data-size='sm'] {
+  max-width: 400px;
+}
+.ui-dialog[data-size='lg'] {
+  max-width: 720px;
+}
+/* The dialog itself takes focus when it has no control to give it to; it is not a control, so it needs no ring. */
+.ui-dialog:focus {
+  outline: none;
+}
+.ui-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 20px 0;
+}
+.ui-dialog-title {
+  min-width: 0;
+  margin: 0;
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+/* The close button's box is taller than the title's line: it grows out of the padding so its centre is on the first line of the title,
+   and its icon (18px) lines up with the right edge of the content. */
+.ui-dialog-head .ui-btn {
+  margin: calc((26px - var(--ui-h-sm)) / 2) calc((18px - var(--ui-h-sm)) / 2) calc((26px - var(--ui-h-sm)) / 2) 0;
+}
+.ui-dialog-description {
+  margin: 4px 0 0;
+  padding: 0 20px;
+  color: var(--text2);
+  white-space: pre-line;
+}
+/* The row under the heading (the tabs of Settings) does not scroll with the content; what is in it sets its own spacing. */
+.ui-dialog-toolbar {
+  flex: none;
+}
+/* The content scrolls in a lane of its own at the right edge (scrollbar-gutter), kept whether it scrolls or not, so nothing shifts when it
+   starts to; the padding beside the lane is 20px less the lane (--ui-dialog-end), so the content, the footer buttons and the icon of the close
+   button end at one line. An area that sets the body's padding uses --ui-dialog-end for its right side. */
+.ui-dialog-body {
+  --ui-dialog-end: 20px;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 16px var(--ui-dialog-end) 16px 20px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+/* With a mouse in Chrome, Edge and Safari the lane is the 8px scrollbar of index.css (a rounded thumb, no track, no arrow buttons), and the
+   padding beside it is 12px. A touch screen keeps its overlay scrollbar, which has no lane. */
+@media (pointer: fine) {
+  @supports selector(::-webkit-scrollbar) {
+    .ui-dialog-body {
+      --ui-dialog-end: 12px;
+    }
+  }
+}
+.ui-dialog-body:empty {
+  padding: 0;
+}
+.ui-dialog-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 20px;
+}
+/* A hairline between the content and its buttons, unless there is no content (a confirmation). */
+.ui-dialog-body:not(:empty) + .ui-dialog-foot {
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* On a phone every dialog is a sheet from the bottom edge. */
+@media (max-width: 640px) {
+  .ui-dialog-root {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .ui-dialog,
+  .ui-dialog[data-size] {
+    max-width: none;
+    max-height: 92vh;
+    max-height: 92dvh;
+    border-bottom: 0;
+    border-radius: var(--radius-dialog) var(--radius-dialog) 0 0;
+    animation: ui-sheet var(--motion-base) ease-out;
+  }
+  .ui-dialog-foot {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+  .ui-dialog-foot > .ui-btn {
+    flex: 1 1 0;
+  }
+}
+
+/* ---------- Toast ---------- */
+
+/* The colours are the inverse of the theme and come from the component (ThemeTokens); the place is set there too. */
+.ui-toast {
+  position: fixed;
+  z-index: var(--z-toast);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: max-content;
+  padding: 6px 6px 6px 14px;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-md);
+  font-size: 14px;
+  line-height: 20px;
+}
+.ui-toast-text {
+  min-width: 0;
+  padding-block: 6px;
+}
+.ui-toast-action {
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ui-toast-action:active {
+  background: color-mix(in srgb, currentcolor 16%, transparent);
+}
+@media (hover: hover) {
+  .ui-toast-action:hover {
+    background: color-mix(in srgb, currentcolor 10%, transparent);
+  }
+}
+
+/* ---------- SegmentedControl ---------- */
+
+/* Two to four choices in one raised track; the chosen one is lifted onto a lighter fill (--ui-lifted). A segment is 28px (sm) or 32px (md)
+   high on a desktop and 44px on touch (the track grows with it to 50px), where its hit area also covers the padding and the border of the
+   track. */
+.ui-seg {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 2px;
+  max-width: 100%;
+  padding: 2px;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+.ui-seg[data-wrap='true'] {
+  flex-wrap: wrap;
+}
+/* A track that may wrap holds its segments in pairs (SegmentedControl `wrap`), so it breaks between pairs: four segments are one row, or two
+   rows of two, never three and one. On one row nothing grows: the track is as wide as its segments, each as wide as its label (a segment
+   never gets narrower than its label, and the pair is as wide as its two labels, so the equal shares below give each one its own width back).
+   On two rows each pair is a whole row, shared in two equal halves, so the two rows make two columns that line up. */
+.ui-seg-pair {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+.ui-seg-pair > .ui-seg-item {
+  flex: 1 1 0;
+}
+.ui-seg-item {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  height: calc(var(--ui-h-sm) - 4px);
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text2);
+  font: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--motion-fast) ease-out,
+    color var(--motion-fast) ease-out,
+    box-shadow var(--motion-fast) ease-out;
+}
+.ui-seg-item::after {
+  content: '';
+  position: absolute;
+  inset: -3px 0;
+}
+.ui-seg[data-size='md'] .ui-seg-item {
+  height: calc(var(--ui-h-md) - 4px);
+  padding: 0 12px;
+  font-size: 14px;
+}
+/* On touch (where --ui-h-* are 44px) a segment is the whole 44px target, not 4px less, and at least 44px wide: its label is never under 28px
+   (28 + 8 + 8 = 44 for the small size; a short label such as "All" sits in the middle). The label sets that width, not a min-width of the
+   segment, so a segment is still never narrower than its label (a min-width would replace that floor). The side padding is 8px there, so four
+   English filters still make one row at 320px. */
+@media (max-width: 900px), (pointer: coarse) {
+  .ui-seg-item,
+  .ui-seg[data-size='md'] .ui-seg-item {
+    height: var(--ui-h-sm);
+  }
+  .ui-seg-item {
+    padding: 0 8px;
+  }
+  .ui-seg-label {
+    min-width: 28px;
+    text-align: center;
+  }
+}
+/* The ring stays above the neighbouring segment. */
+.ui-seg-item:focus-visible {
+  z-index: var(--z-raise);
+}
+.ui-seg-item:active {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  color: var(--text);
+}
+.ui-seg-item[aria-checked='true'],
+.ui-seg-item[aria-pressed='true'] {
+  background: var(--ui-lifted);
+  color: var(--text);
+  box-shadow:
+    var(--shadow-sm),
+    inset 0 0 0 1px var(--border-strong);
+}
+.ui-seg-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+@media (hover: hover) {
+  .ui-seg-item:hover:not(:disabled) {
+    color: var(--text);
+  }
+}
+
+/* ---------- Disclosure ---------- */
+
+/* The text look has no box of its own: it takes the font and the colour of the line it sits in, which the area's own class sets
+   (`:where` keeps this rule weaker than any class). The ghost-button look is a ui Button. */
+:where(.ui-disclosure[data-look='text']) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .ui-disclosure[data-look='text']:hover {
+    color: var(--text);
+  }
+}
+.ui-disclosure-chevron {
+  flex: none;
+  transition: transform var(--motion-fast) ease-out;
+}
+.ui-disclosure[aria-expanded='true'] .ui-disclosure-chevron {
+  transform: rotate(180deg);
+}
+
+/* ---------- Chip ---------- */
+
+/* A static chip is 20px: a label (its colours are data, set inline, with a dot of its hue) or a quiet outline (a snooze time). */
+.ui-chip {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-control);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.ui-chip[data-kind='plain'] {
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-weight: 400;
+}
+.ui-chip-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+}
+.ui-chip-icon {
+  display: inline-flex;
+  flex: none;
+}
+.ui-chip-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* A token the person can take back (a recipient): 28px, the X inside the chip, and the whole text shown: it wraps instead of being cut,
+   because a recipient the person cannot read in full is a recipient they cannot check. */
+.ui-chip[data-removable='true'] {
+  gap: 2px;
+  height: auto;
+  min-height: 28px;
+  padding: 0 2px 0 8px;
+  background: var(--raised);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+  white-space: normal;
+}
+.ui-chip[data-removable='true'] .ui-chip-text {
+  padding-block: 3px;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.ui-chip .ui-chip-x[data-size] {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  min-height: 0;
+  border-radius: 4px;
+}
+/* On touch the X is a 44px target and only 24px high in the chip: its margin takes the rest back, so the chip keeps its size. */
+@media (max-width: 900px), (pointer: coarse) {
+  .ui-chip .ui-chip-x[data-size] {
+    width: 44px;
+    height: 44px;
+    margin: -10px;
+  }
+}
+
+/* ---------- SecretBox, CodeBlock ---------- */
+
+/* A secret shown once: mono on a raised fill; a click selects a whole part. */
+.ui-secret {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+.ui-secret-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ui-secret-part {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ui-secret-caption {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text3);
+}
+.ui-secret-value {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 16px;
+  line-height: 24px;
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.ui-secret-nowrap {
+  white-space: nowrap;
+}
+.ui-secret-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* CopyButton: Copy and Copied stand in one cell and the word not shown is kept invisible, so the button is as wide in both states and the
+   button beside it does not move when it says Copied. */
+.ui-copy-label {
+  display: inline-grid;
+  justify-items: start;
+  text-align: start;
+}
+.ui-copy-label > span {
+  grid-area: 1 / 1;
+}
+.ui-copy-label > [data-shown='false'] {
+  visibility: hidden;
+}
+
+/* Commands: never wrapped, a long line scrolls inside the block. */
+.ui-code {
+  margin: 0;
+  padding: 12px;
+  overflow-x: auto;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: pre;
+}
+
+/* ---------- Steps ---------- */
+
+/* An ordered list whose numbers stand in small circles level with the first line of each step. The text takes the size and colour of
+   where it sits. */
+.ui-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: ui-step;
+}
+.ui-step {
+  position: relative;
+  min-width: 0;
+  padding-left: 32px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+  counter-increment: ui-step;
+}
+.ui-step::before {
+  content: counter(ui-step);
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  color: var(--text2);
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+/* A step with a title and blocks under it (a command, a note) stands further from the next one. */
+.ui-step:has(> .ui-step-body) + .ui-step {
+  margin-top: 8px;
+}
+.ui-step-title {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.ui-step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 8px;
+}
+
+/* ---------- ListSkeleton, TableSkeleton ---------- */
+
+.ui-skel-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.ui-skel-table {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+.ui-skel-table .ui-skel-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 24px;
+  padding-inline: 12px;
+}
+.ui-skel-table .ui-skel-row:last-child {
+  border-bottom: 0;
+}
+
+/* ---------- Motion ---------- */
+
+@keyframes ui-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ui-sheet {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes ui-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* Reduced motion: nothing moves or fades; a state change is just there. */
+@media (prefers-reduced-motion: reduce) {
+  .ui-btn,
+  .ui-input,
+  .ui-select,
+  .ui-select svg,
+  .ui-check-input,
+  .ui-radio-input,
+  .ui-switch,
+  .ui-switch-thumb,
+  .ui-tab,
+  .ui-seg-item,
+  .ui-disclosure-chevron {
+    transition: none;
+  }
+  .ui-popover,
+  .ui-dialog-root,
+  .ui-dialog,
+  .ui-skeleton {
+    animation: none;
+  }
+}

@@ -1,0 +1,452 @@
+/* The compose window (ComposeModal and components/compose/*). Classes are `cp-*`. Colours, radii and control heights are the theme variables
+   (ui.css, index.css): nothing here names a colour. Above 900px it is a 720px window over a veil; at 900px and below (the width where controls
+   become 44px) it is the whole screen. */
+
+.cp-root {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-window);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--scrim);
+  color: var(--text);
+  /* The root takes focus from a press on the veil or from script (the dialog itself): it is not a control. */
+  outline: none;
+}
+
+.cp-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 720px;
+  /* A steady window: as tall as the screen allows up to 720px, whatever is typed. */
+  height: min(100%, 720px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-dialog);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+/* Right padding: the Close icon (18px in its button) ends on the content edge of the rows below (24px), as the trash icon of the footer does. */
+.cp-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px calc(24px - (var(--ui-h-md) - 18px) / 2) 8px 24px;
+  border-bottom: 1px solid var(--border);
+}
+.cp-title {
+  flex: none;
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* The draft's status: always in the page (empty while idle), so a change never moves anything and a screen reader hears it. */
+.cp-draft {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 16px;
+  text-align: right;
+  color: var(--text3);
+  overflow-wrap: anywhere;
+}
+.cp-draft[data-state='error'] {
+  color: var(--danger);
+  font-weight: 500;
+}
+
+/* A validation hint, a failed send, a sent mail. Pinned under the header so it is seen wherever the body is scrolled to. */
+.cp-notice {
+  flex: none;
+  padding: 12px 24px;
+}
+.cp-notice .ui-banner-text {
+  overflow-wrap: anywhere;
+}
+
+.cp-main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+.cp-form {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Fields, toolbar, editor and attachments scroll; the footer below stays. */
+.cp-scroll {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.cp-scroll > * {
+  flex: none;
+}
+
+/* ---------- The fields: one group, a hairline under each row ---------- */
+
+.cp-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 4px 24px;
+  border-bottom: 1px solid var(--border);
+}
+.cp-label {
+  display: flex;
+  flex: none;
+  align-items: center;
+  width: 68px;
+  min-height: var(--ui-h-md);
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text2);
+}
+.cp-field {
+  display: flex;
+  flex: 1 1 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 6px;
+  min-width: 0;
+  min-height: var(--ui-h-md);
+}
+.cp-input {
+  flex: 1 1 140px;
+  min-width: 120px;
+  height: var(--ui-h-md);
+  margin: 0;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--ui-field-size);
+  line-height: 20px;
+  text-overflow: ellipsis;
+}
+.cp-input::placeholder {
+  color: var(--text3);
+  opacity: 1;
+}
+/* The browser's autofill paints its own background on the sender field; keep the row's. */
+.cp-input:-webkit-autofill {
+  -webkit-text-fill-color: var(--text);
+  box-shadow: 0 0 0 100px var(--surface) inset;
+}
+.cp-subject {
+  font-weight: 500;
+}
+/* A placeholder is not a subject: it keeps the weight of the other fields' placeholders. */
+.cp-subject::placeholder {
+  font-weight: 400;
+}
+/* The ring goes round the whole row (inside it, so the scrolling pane does not cut it), not round a bare input among chips. */
+@supports selector(:has(*)) {
+  .cp-input:focus-visible {
+    outline: none;
+  }
+  .cp-row:has(.cp-input:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+}
+/* Its text, not its box, ends on the content edge, where the Close and trash icons end: the 1px border and 10px padding go into the row's own. */
+.cp-toggle {
+  flex: none;
+  margin-left: auto;
+  margin-right: -11px;
+}
+/* A recipient that is not an address: the row's hairline turns red and the error stands on a line of its own under the field, in the flow, so
+   it never covers the row below (the rows under it move down once when it comes and back once when it goes). It stays until that field
+   holds only addresses (ComposeModal), not one keystroke. It is an alert, and the field is described by it. */
+.cp-row:has(.cp-input[aria-invalid='true']) {
+  border-bottom-color: var(--danger);
+}
+.cp-error {
+  display: flex;
+  flex: 1 0 100%;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0 4px 8px;
+  color: var(--danger);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.cp-error svg {
+  flex: none;
+  margin-top: 3px;
+}
+
+/* The quiet lines under the recipients (what this message will be; where a reply really goes). Information, not a warning. */
+.cp-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 24px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text2);
+  overflow-wrap: anywhere;
+}
+.cp-note svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* ---------- The formatting toolbar: one row, scrolling sideways when it does not fit ---------- */
+
+/* The style list (the one framed control of the row) starts at the column of the field labels above it. */
+.cp-fmt {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 16px 4px 24px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-bottom: 1px solid var(--border);
+}
+.cp-fmt > * {
+  flex: none;
+}
+/* With its scrollbar hidden, the row shows that it scrolls by fading out the edge that still has buttons beyond it: the right one at the
+   start, both in between, the left one at the end. The fade follows the scroll position (a scroll-driven animation of the mask's two
+   lengths); where a browser has no scroll timeline, or the row fits and does not scroll, nothing fades and nothing moves. A mask is not a
+   colour: only its alpha counts. */
+@property --cp-fade-start {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --cp-fade-end {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes cp-fmt-fade {
+  0% {
+    --cp-fade-start: 0px;
+    --cp-fade-end: 24px;
+  }
+  10% {
+    --cp-fade-start: 24px;
+  }
+  90% {
+    --cp-fade-end: 24px;
+  }
+  100% {
+    --cp-fade-start: 24px;
+    --cp-fade-end: 0px;
+  }
+}
+@supports (animation-timeline: scroll()) {
+  .cp-fmt {
+    /* Focus scrolls a button clear of the fade, so its ring is never faded out. */
+    scroll-padding-inline: 24px;
+    mask-image: linear-gradient(to right, transparent, black var(--cp-fade-start), black calc(100% - var(--cp-fade-end)), transparent);
+    animation: cp-fmt-fade linear both;
+    animation-timeline: scroll(self inline);
+  }
+}
+.cp-style {
+  width: 144px;
+}
+.cp-style .ui-select {
+  min-height: var(--ui-h-sm);
+  padding: 0 8px;
+  font-size: 13px;
+}
+
+/* ---------- The body ---------- */
+
+/* What the person writes is what is sent (the sent mail is wrapped at 15px/24px), so the editor keeps that size. */
+.cp-editor {
+  display: block;
+  flex: 1 0 auto;
+  width: 100%;
+  min-height: 240px;
+  padding: 16px 24px;
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 24px;
+  /* The ring of :focus-visible, drawn inside: the scrolling pane around the editor would cut it outside. */
+  outline-offset: -2px;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Attachments ---------- */
+
+.cp-files {
+  margin: 0;
+  padding: 0 24px;
+  list-style: none;
+  border-top: 1px solid var(--border);
+}
+.cp-file {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--ui-h-md);
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+.cp-file:last-child {
+  border-bottom: 0;
+}
+/* The type badges are one column: PDF and DOCX are as wide as each other. */
+.cp-file .ui-badge {
+  flex: none;
+  justify-content: center;
+  min-width: 44px;
+}
+.cp-file-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cp-file-size {
+  flex: none;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text3);
+  font-variant-numeric: tabular-nums;
+}
+.cp-file-note {
+  margin: 0;
+  padding: 8px 24px 16px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text3);
+}
+
+/* ---------- The footer: Send, then the tools ---------- */
+
+.cp-foot {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  padding: 12px calc(24px - (var(--ui-h-md) - 18px) / 2) 12px 24px;
+  border-top: 1px solid var(--border);
+}
+.cp-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text2);
+}
+.cp-keys {
+  display: inline-flex;
+  gap: 2px;
+}
+.cp-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+/* The first press on the trash only asks: the same button turns into "Discard?" (it keeps focus). */
+.cp-discard[data-confirming='true'] {
+  width: auto;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* No keyboard to press Ctrl+Enter on a touch screen, and no room for the hint on a narrow one. */
+@media (max-width: 900px), (hover: none) {
+  .cp-hint {
+    display: none;
+  }
+}
+
+/* Recipients: on a phone the Cc/Bcc button shares the line of the first address field, so that field may start narrow. */
+@media (max-width: 640px) {
+  .cp-row-to .cp-input {
+    flex-basis: 72px;
+    min-width: 72px;
+  }
+}
+
+/* Phone and narrow window: the whole screen, no window chrome. */
+@media (max-width: 900px) {
+  .cp-root {
+    padding: 0;
+    background: var(--surface);
+  }
+  .cp-panel {
+    max-width: none;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .cp-head {
+    padding: max(8px, env(safe-area-inset-top)) calc(16px - (var(--ui-h-md) - 18px) / 2) 8px 16px;
+  }
+  .cp-notice {
+    padding: 8px 16px;
+  }
+  .cp-row {
+    gap: 8px;
+    padding: 0 16px;
+  }
+  .cp-note {
+    padding: 8px 16px;
+  }
+  .cp-fmt {
+    padding: 4px 8px 4px 16px;
+  }
+  .cp-editor {
+    padding: 16px;
+  }
+  .cp-files {
+    padding: 0 16px;
+  }
+  .cp-file-note {
+    padding: 8px 16px 16px;
+  }
+  /* A touch screen scrolls by dragging; the 8px custom scrollbar would cut a strip off the pane. */
+  .cp-scroll {
+    scrollbar-width: none;
+  }
+  .cp-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  /* Send starts on the column of the labels (16px), the trash icon ends on the content edge, as in the header. */
+  .cp-foot {
+    gap: 4px;
+    padding: 8px calc(16px - (var(--ui-h-md) - 18px) / 2) calc(8px + env(safe-area-inset-bottom)) 16px;
+  }
+}

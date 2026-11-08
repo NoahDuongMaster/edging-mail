@@ -19,6 +19,16 @@
     "context": "Settings > Account > Account activity: red alert next to the Try again button when the sign-in history could not be loaded.",
     "security": true
   },
+  "account.signins_show_all": {
+    "context": "Button under Recent sign-ins (Settings > Account > Account activity) when the history has more than three rows: shows the whole list. {count} = how many sign-ins it will show (a number, never 1, 2 or 3). Short: it sits under the list on a phone.",
+    "security": true,
+    "max": 24
+  },
+  "account.signins_show_fewer": {
+    "context": "Button under Recent sign-ins (Settings > Account > Account activity) once the whole list is shown: goes back to the three latest. Same place as account.signins_show_all, which it replaces.",
+    "security": true,
+    "max": 24
+  },
   "account.signins_title": {
     "context": "Settings > Account > Account activity: sub-heading of the history of recent sign-ins (newest first).",
     "security": true
@@ -176,6 +186,11 @@
     "context": "aria-label of the icon-only close (X) button in the admin console header. Screen reader only.",
     "security": false
   },
+  "admin.col_actions": {
+    "context": "Admin console tables (Domains, and the extra addresses in a person's dialog): header of the column of row buttons. Screen reader only (the header is not shown).",
+    "security": false,
+    "max": 16
+  },
   "admin.sections_label": {
     "context": "aria-label of the tab list of the admin console (People, Domains, Audit log). Screen reader only.",
     "security": false
@@ -319,20 +334,12 @@
     "security": false,
     "max": 24
   },
-  "app.theme_dark": {
-    "context": "Tooltip of the header theme button while the light theme is on (the button switches to dark)",
-    "security": false
-  },
-  "app.theme_light": {
-    "context": "Tooltip of the header theme button while the dark theme is on (the button switches to light)",
-    "security": false
-  },
   "app.theme_to_dark": {
-    "context": "Screen-reader label of the header theme button while the light theme is on",
+    "context": "Name and tooltip of the header theme button while the light theme is on (the button switches to dark)",
     "security": false
   },
   "app.theme_to_light": {
-    "context": "Screen-reader label of the header theme button while the dark theme is on",
+    "context": "Name and tooltip of the header theme button while the dark theme is on (the button switches to light)",
     "security": false
   },
   "audit.action.2fa_disabled": {
@@ -486,6 +493,21 @@
     "context": "Audit log row: who did it and to whom. {actor} and {target} are email addresses (or a domain name).",
     "security": false
   },
+  "audit.col_action": {
+    "context": "Audit log table: header of the column that says what was done (Account created, Sign-in failed, ...).",
+    "security": false,
+    "max": 16
+  },
+  "audit.col_when": {
+    "context": "Audit log table: header of the column with the date and time of each entry.",
+    "security": false,
+    "max": 16
+  },
+  "audit.col_who": {
+    "context": "Audit log table: header of the column with the admin who did it and, after an arrow, the account or domain it was done to.",
+    "security": false,
+    "max": 20
+  },
   "audit.detail_aliases": {
     "context": "Audit log row detail name: how many extra addresses the first admin set up (lower case, before a colon).",
     "security": false
@@ -543,7 +565,7 @@
     "security": false
   },
   "auth.address_invalid": {
-    "context": "Shown when the typed address is not a full email address (checked in the browser). name@example.com is only an example.",
+    "context": "Shown when the typed address is not a full email address (checked in the browser), and under the address field of Restore an admin account (break-glass) when Continue was pressed with it empty. name@example.com is only an example.",
     "security": true
   },
   "auth.code_label": {
@@ -788,13 +810,8 @@
     "context": "Browser prompt dialog asking for the web address of an image",
     "security": false
   },
-  "compose.insert_image": {
-    "context": "Screen-reader label of the compose toolbar button that inserts an image from a web address",
-    "security": false,
-    "max": 22
-  },
   "compose.insert_image_url": {
-    "context": "Tooltip of the same button (the image comes from a web address, not from a file)",
+    "context": "Compose toolbar icon button that inserts an image from a web address (not from a file): tooltip and screen-reader label",
     "security": false,
     "max": 22
   },
@@ -809,7 +826,7 @@
     "max": 22
   },
   "compose.invalid_address": {
-    "context": "Error under the compose header when a recipient is not a plain email address; name@example.com is an example address",
+    "context": "Error shown under the compose recipient field (To, Cc or Bcc) whose typed text is not a plain email address; name@example.com is an example address",
     "security": false
   },
   "compose.italic": {
@@ -1078,7 +1095,7 @@
     "max": 210
   },
   "docs.deploy_step1": {
-    "context": "Step heading, followed by a shell command shown as code: creates the database and the storage bucket.",
+    "context": "Step heading, followed by a shell command shown as code: creates the database and the storage bucket. No number in the text: the list draws it.",
     "security": false,
     "max": 60
   },
@@ -1088,12 +1105,12 @@
     "max": 130
   },
   "docs.deploy_step2": {
-    "context": "Step heading, followed by a shell command: applies the database migrations.",
+    "context": "Step heading, followed by a shell command: applies the database migrations. No number in the text: the list draws it.",
     "security": false,
     "max": 40
   },
   "docs.deploy_step3": {
-    "context": "Step heading, followed by three shell commands that set the three secrets.",
+    "context": "Step heading, followed by three shell commands that set the three secrets. No number in the text: the list draws it.",
     "security": true,
     "max": 40
   },
@@ -1103,7 +1120,7 @@
     "max": 360
   },
   "docs.deploy_step4": {
-    "context": "Step heading, followed by the deploy command.",
+    "context": "Step heading, followed by the deploy command. No number in the text: the list draws it.",
     "security": false,
     "max": 20
   },
@@ -1113,7 +1130,7 @@
     "max": 90
   },
   "docs.deploy_step5": {
-    "context": "Step heading: the first-run Setup screen.",
+    "context": "Step heading: the first-run Setup screen. No number in the text: the list draws it.",
     "security": false,
     "max": 20
   },
@@ -1306,6 +1323,10 @@
     "context": "DNS check result, receiving: no MX records.",
     "security": false
   },
+  "domains.note_mx_null": {
+    "context": "DNS check result, receiving: the domain publishes a null MX record (RFC 7505: one MX record '0 .', meaning the domain accepts no mail). 'null MX' is the technical name; keep MX and Cloudflare Email Routing as they are.",
+    "security": false
+  },
   "domains.note_mx_other": {
     "context": "DNS check result, receiving: the MX records point to another provider. {hosts} is a comma-separated list of host names.",
     "security": false
@@ -1328,13 +1349,15 @@
     "security": false,
     "max": 24
   },
-  "domains.record_found": {
-    "context": "DNS check result, one record of the sending list. {type} is the record type (MX, TXT), {name} the record name.",
-    "security": false
+  "domains.record_absent": {
+    "context": "DNS check result, a badge after one record of the sending list (shown as type and name, e.g. 'TXT cf-bounce.example.com'): the check did not find the record.",
+    "security": false,
+    "max": 14
   },
-  "domains.record_missing": {
-    "context": "DNS check result, one record of the sending list. {type} is the record type (MX, TXT), {name} the record name.",
-    "security": false
+  "domains.record_ok": {
+    "context": "DNS check result, a badge after one record of the sending list (shown as type and name, e.g. 'TXT cf-bounce.example.com'): the check found the record.",
+    "security": false,
+    "max": 14
   },
   "domains.remove_body": {
     "context": "Body of the confirmation dialog before a domain is removed.",
@@ -2094,6 +2117,11 @@
     "security": false,
     "max": 14
   },
+  "list.filter_label": {
+    "context": "Not shown: the name screen readers give the row of filter buttons above the message list (All, Unread, Starred, Attachments).",
+    "security": false,
+    "max": 30
+  },
   "list.filter_unread": {
     "context": "Filter chip above the message list: show only unread messages",
     "security": false,
@@ -2434,6 +2462,10 @@
     "context": "Password field status line while typing: the password is too short. {count} = characters still missing, {min} = the minimum for this account.",
     "security": true
   },
+  "password.required": {
+    "context": "Password field status line, in red, after the person pressed Continue (or Change password) with the new password still empty. The rules sentence (password.rules) follows it on the same line.",
+    "security": true
+  },
   "password.rules": {
     "context": "Password field status line while nothing is typed: the password rules, fixed by the Product Owner. {min} = minimum length for members (12), {adminMin} = minimum length for admins (16); both are numbers from constants.",
     "security": true
@@ -2520,7 +2552,7 @@
     "security": false
   },
   "reader.back_to_list": {
-    "context": "Reader toolbar, phone only: aria-label of the icon button that goes back to the message list (tooltip is common.back). Icon-only: no visible text, tooltip/screen reader.",
+    "context": "Reader toolbar, phone only: aria-label and tooltip of the icon button that goes back to the message list. Icon-only: no visible text.",
     "security": false,
     "max": 24
   },
@@ -2529,13 +2561,8 @@
     "security": false,
     "max": 24
   },
-  "reader.download": {
-    "context": "Reader attachments: tooltip of the download icon on each attachment row.",
-    "security": false,
-    "max": 24
-  },
   "reader.download_file": {
-    "context": "Reader attachments: aria-label of the download icon of one attachment; {name} is the file name. Screen reader only.",
+    "context": "Reader attachments: aria-label and tooltip of the download icon of one attachment (a long name wraps in the tooltip); {name} is the file name.",
     "security": false
   },
   "reader.label_added": {
@@ -2568,13 +2595,8 @@
     "security": false,
     "max": 20
   },
-  "reader.newer": {
-    "context": "Reader toolbar (desktop): tooltip of the icon button that opens the next newer message.",
-    "security": false,
-    "max": 24
-  },
   "reader.newer_message": {
-    "context": "Reader toolbar (desktop): aria-label of the icon button that opens the next newer message. Screen reader only.",
+    "context": "Reader toolbar (desktop): aria-label and tooltip of the icon button that opens the next newer message. Icon-only: no visible text.",
     "security": false,
     "max": 24
   },
@@ -2590,13 +2612,8 @@
     "context": "Reader pane hint under the empty-state title.",
     "security": false
   },
-  "reader.older": {
-    "context": "Reader toolbar (desktop): tooltip of the icon button that opens the next older message.",
-    "security": false,
-    "max": 24
-  },
   "reader.older_message": {
-    "context": "Reader toolbar (desktop): aria-label of the icon button that opens the next older message. Screen reader only.",
+    "context": "Reader toolbar (desktop): aria-label and tooltip of the icon button that opens the next older message. Icon-only: no visible text.",
     "security": false,
     "max": 24
   },
@@ -2612,6 +2629,11 @@
     "context": "Reader: segmented switch above the body (shown only when the message has both forms): formatted (HTML) version. Technical word, may stay \"HTML\".",
     "security": false,
     "max": 12
+  },
+  "reader.view_label": {
+    "context": "Not shown: the name screen readers give the segmented switch between the HTML and the plain-text view of an open message.",
+    "security": false,
+    "max": 40
   },
   "reader.view_plain": {
     "context": "Reader: segmented switch above the body: plain-text version of the message.",
@@ -2803,6 +2825,10 @@
     "context": "Plain note under the Change password button: what changing the password does and does not do.",
     "security": true
   },
+  "security.password_required": {
+    "context": "Settings > Security: red line under the (current) password field after the person pressed the action's button with the field empty (change password, a new recovery key, turn two-factor sign-in on or off, new recovery codes).",
+    "security": true
+  },
   "security.recovery_hint": {
     "context": "Settings > Account > Security: line under the 'Recovery key' row label: what the recovery key is for (forgot-password flow keeps the mail readable).",
     "security": true
@@ -2930,11 +2956,15 @@
     "security": false
   },
   "settings.dark_theme": {
-    "context": "Settings, Account tab: label of the dark-theme on/off switch.",
+    "context": "Settings, Account tab, Appearance: the dark choice of the two theme options (radio button, next to settings.light_theme).",
     "security": false
   },
   "settings.display_name_placeholder": {
     "context": "Settings, Account tab: placeholder of the Display name field.",
+    "security": false
+  },
+  "settings.light_theme": {
+    "context": "Settings, Account tab, Appearance: the light choice of the two theme options (radio button, next to settings.dark_theme).",
     "security": false
   },
   "settings.load_failed": {
@@ -3005,6 +3035,10 @@
     "context": "First-run Setup screen, step 1: small hint under the email address field (the label is auth.email_label). It is the first admin's sign-in address.",
     "security": false
   },
+  "setup.deploy_guide": {
+    "context": "First-run Setup screen when the deployment lacks secrets: the words of the link to the deployment guide (docs/deployment.md on GitHub), put in place of {guide} in setup.not_ready_step_add. Lower case, it sits inside a sentence.",
+    "security": false
+  },
   "setup.err_address_invalid": {
     "context": "First-run Setup screen, step 1: red text under the address field when it is not an address the app can host: only letters, digits and the three characters . _ - are allowed before the @. Keep the example and the characters as they are.",
     "security": false
@@ -3014,7 +3048,7 @@
     "security": false
   },
   "setup.err_key_required": {
-    "context": "First-run Setup screen, step 1: red text under the setup key field when it is empty.",
+    "context": "First-run Setup screen, step 1, and Restore an admin account (break-glass): red text under the setup key field when it is empty.",
     "security": true
   },
   "setup.err_name_invalid": {
@@ -3039,20 +3073,36 @@
     "security": false
   },
   "setup.not_ready_app_password": {
-    "context": "First-run Setup screen when the deployment lacks secrets: shown only when APP_PASSWORD is in the list. Says that this secret is the setup key asked for on the next screen. Keep APP_PASSWORD untranslated.",
+    "context": "First-run Setup screen when the deployment lacks secrets: a note under the numbered steps, shown only when APP_PASSWORD is in the list. {name} is the secret name APP_PASSWORD, shown as code. Says that this secret is the setup key asked for on the next screen.",
     "security": true
   },
-  "setup.not_ready_lead": {
-    "context": "First-run Setup screen when the deployment lacks secrets: one sentence under the heading. The names of the missing secrets follow as code-styled labels.",
+  "setup.not_ready_lead#one": {
+    "context": "First-run Setup screen when the deployment lacks secrets: one sentence under the heading, when one secret is missing. The names of the missing secrets follow as code-styled labels.",
     "security": true
   },
-  "setup.not_ready_list": {
-    "context": "First-run Setup screen when the deployment lacks secrets: caption above the list of missing secret names (JWT_SECRET, APP_PASSWORD, DATA_KEY).",
+  "setup.not_ready_lead#other": {
+    "context": "Plural form of setup.not_ready_lead#one",
     "security": true
   },
-  "setup.not_ready_next": {
-    "context": "First-run Setup screen when the deployment lacks secrets: what to do next (add the secrets as the deployment guide describes), then the Reload button.",
+  "setup.not_ready_list#one": {
+    "context": "First-run Setup screen when the deployment lacks secrets: heading of the warning notice that lists the missing secret names (JWT_SECRET, APP_PASSWORD, DATA_KEY), when one secret is missing.",
     "security": true
+  },
+  "setup.not_ready_list#other": {
+    "context": "Plural form of setup.not_ready_list#one",
+    "security": true
+  },
+  "setup.not_ready_step_add#one": {
+    "context": "First-run Setup screen when the deployment lacks secrets: step 1 of a numbered list under the missing secret names, when one secret is missing. \"It\" is that secret. {guide} is a link whose words are setup.deploy_guide.",
+    "security": true
+  },
+  "setup.not_ready_step_add#other": {
+    "context": "Plural form of setup.not_ready_step_add#one",
+    "security": true
+  },
+  "setup.not_ready_step_reload": {
+    "context": "First-run Setup screen when the deployment lacks secrets: step 2 of the numbered list, after adding the secrets; the Reload button follows the list.",
+    "security": false
   },
   "setup.not_ready_title": {
     "context": "First-run Setup screen when the deployment lacks secrets: heading of the card that replaces the form.",
@@ -3196,6 +3246,10 @@
     "context": "Two-factor enrolment screen: label of the input where the person types the six-digit code the authenticator app shows.",
     "security": true
   },
+  "twofa.code_required": {
+    "context": "Settings > Security: red line under the six-digit code field after the person pressed the action's button with fewer than six digits typed.",
+    "security": true
+  },
   "twofa.codes_keep": {
     "context": "Recovery codes panel, under the Copy and Download buttons: keep the codes somewhere safe; they are shown only this once.",
     "security": true
@@ -3287,6 +3341,16 @@
   "users.alias_remove": {
     "context": "aria-label of the icon-only X button that removes one extra address. {address} is that extra address.",
     "security": false
+  },
+  "users.col_last_sign_in": {
+    "context": "People table of the admin console: header of the column with the date of each person's last sign-in (or Never signed in).",
+    "security": false,
+    "max": 20
+  },
+  "users.col_status": {
+    "context": "People table of the admin console: header of the column that says Active or Disabled.",
+    "security": false,
+    "max": 16
   },
   "users.confirm_demote": {
     "context": "Account dialog: confirmation text before an admin is made a member again.",
@@ -3416,7 +3480,7 @@
     "security": false
   },
   "users.last_sign_in": {
-    "context": "User list row: when the person last signed in. {when} is a date and time already formatted for the language.",
+    "context": "People table of the admin console, phone layout (rows stacked, no column headers): when the person last signed in. {when} is a date and time already formatted for the language.",
     "security": false
   },
   "users.loading": {
@@ -3433,10 +3497,6 @@
     "security": false,
     "max": 20
   },
-  "users.never_signed_in": {
-    "context": "User list row: the person has not signed in yet.",
-    "security": false
-  },
   "users.new_account": {
     "context": "Button above the people list, and title of the dialog it opens.",
     "security": false,
@@ -3447,7 +3507,7 @@
     "security": false
   },
   "users.not_signed_in_yet": {
-    "context": "Badge in the account dialog: the person has never signed in with their own password and has no keys yet (the only state in which an admin can issue a new temporary password).",
+    "context": "Two places, one state: the Last sign-in cell of the People table when the person has never signed in, and the badge in the account dialog while the person has never signed in with their own password and has no keys yet (the only state in which an admin can issue a new temporary password).",
     "security": false,
     "max": 18
   },
@@ -3477,7 +3537,7 @@
     "max": 30
   },
   "users.role": {
-    "context": "New account dialog: legend of the radio group that picks Member or Admin.",
+    "context": "New account dialog: legend of the radio group that picks Member or Admin. Also the header of the Role column of the People table in the admin console.",
     "security": false,
     "max": 12
   },

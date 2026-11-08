@@ -1,5 +1,4 @@
 import React from 'react';
-import { Loader2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ThemeTokens } from '../../theme';
 import type { SessionUser } from '../../lib/auth';
@@ -9,9 +8,9 @@ import { afterLockedChange, isOwnAddress } from '../../lib/lockedMail';
 import type { LockedMail } from '../../lib/lockedMail';
 import { useAction } from '../../lib/useAction';
 import { useCountdown } from '../../lib/useCountdown';
-import { ModalFrame, adminStyles } from '../admin/adminUi';
-import { Field } from '../auth/authUi';
-import { CODE_LENGTH, CodeInput, Failure, PasswordInput, controlStyle } from './securityUi';
+import { Button, Dialog, TextField } from '../../ui';
+import { CODE_LENGTH, CodeInput, Failure, PasswordInput } from './securityUi';
+import '../settings/settings.css';
 
 interface LockedMailDialogProps {
   t: ThemeTokens;
@@ -21,16 +20,29 @@ interface LockedMailDialogProps {
 }
 
 /**
+ * Where focus goes when the dialog closes and the button that opened it is gone (the banner now shows the date and a Cancel): the account
+ * button that is on screen, as for the dialogs opened from Settings. Looked up when the dialog closes, never earlier.
+ */
+const ACCOUNT_BUTTON: React.RefObject<HTMLElement | null> = {
+  get current(): HTMLElement | null {
+    const buttons = [...document.querySelectorAll<HTMLElement>('button[data-account-button]')];
+    return buttons.find((button) => button.getClientRects().length > 0) ?? null;
+  }
+};
+
+const FORM_ID = 'locked-delete-form';
+
+/**
  * Deleting the locked old mail, asked in three steps of one form: the person types their own address (so a stray click cannot start it), the
  * password, and the six digits of the authenticator app when the account has two-factor sign-in. Nothing is deleted now; the server waits first and
  * the banner then shows the date and a Cancel. The password and the code are in this screen's state only until the request has answered.
  */
 export const LockedMailDialog: React.FC<LockedMailDialogProps> = ({ t, user, mail, onClose }) => {
   const tr = useT();
-  const s = adminStyles(t);
   const queryClient = useQueryClient();
   const action = useAction();
   const wait = useCountdown(action.retryAfter);
+  const confirmRef = React.useRef<HTMLInputElement | null>(null);
   const [typed, setTyped] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [code, setCode] = React.useState('');
@@ -51,33 +63,56 @@ export const LockedMailDialog: React.FC<LockedMailDialogProps> = ({ t, user, mai
     }
   };
 
+  // While the request runs the dialog cannot be dismissed (Escape, the scrim and the X do nothing) until it answers.
+  const dismiss = () => {
+    if (!action.busy) {
+      onClose();
+    }
+  };
+
   const blocked = !ready || wait > 0;
   return (
-    <ModalFrame t={t} title={tr('locked.dialog_title')} onClose={onClose} locked={action.busy} alert>
+    <Dialog
+      open
+      onClose={dismiss}
+      title={tr('locked.dialog_title')}
+      description={tr('locked.dialog_body', { count: mail.locked })}
+      role="alertdialog"
+      initialFocusRef={confirmRef}
+      returnFocusRef={ACCOUNT_BUTTON}
+      footer={
+        <>
+          <Button onClick={onClose} disabled={action.busy}>
+            {tr('common.cancel')}
+          </Button>
+          <Button type="submit" form={FORM_ID} variant="danger" loading={action.busy} disabled={blocked}>
+            {tr('locked.delete')}
+          </Button>
+        </>
+      }
+    >
       <form
+        id={FORM_ID}
         noValidate
         data-locked-dialog
         onSubmit={(event) => {
           void submit(event);
         }}
-        style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
+        className="st-dialog-form"
       >
-        <p style={{ margin: 0, fontSize: 13.5, lineHeight: '20px' }}>{tr('locked.dialog_body', { count: mail.locked })}</p>
-        <p style={s.muted}>{tr('locked.dialog_note')}</p>
-        <Field t={t} id="locked-confirm" label={tr('locked.confirm_label', { address: user.email })}>
-          <input
-            id="locked-confirm"
-            data-autofocus
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            autoComplete="off"
-            value={typed}
-            onChange={(event) => setTyped(event.target.value)}
-            placeholder={user.email}
-            style={controlStyle(t)}
-          />
-        </Field>
+        <p className="st-muted">{tr('locked.dialog_note')}</p>
+        <TextField
+          ref={confirmRef}
+          id="locked-confirm"
+          label={tr('locked.confirm_label', { address: user.email })}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          autoComplete="off"
+          value={typed}
+          onChange={(event) => setTyped(event.target.value)}
+          placeholder={user.email}
+        />
         <PasswordInput
           t={t}
           id="locked-password"
@@ -88,24 +123,7 @@ export const LockedMailDialog: React.FC<LockedMailDialogProps> = ({ t, user, mai
         />
         {user.totp_enabled ? <CodeInput t={t} id="locked-code" value={code} onChange={setCode} invalid={action.error !== null} /> : null}
         <Failure t={t} id="locked-error" error={action.error} wait={wait} />
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" onClick={onClose} disabled={action.busy} style={s.button}>
-            {tr('common.cancel')}
-          </button>
-          <button
-            type="submit"
-            disabled={blocked || action.busy}
-            style={{
-              ...s.dangerButton,
-              cursor: action.busy ? 'progress' : blocked ? 'not-allowed' : 'pointer',
-              opacity: blocked || action.busy ? 0.5 : 1
-            }}
-          >
-            {action.busy ? <Loader2 size={16} className="nm-spin" aria-hidden="true" /> : null}
-            {tr('locked.delete')}
-          </button>
-        </div>
       </form>
-    </ModalFrame>
+    </Dialog>
   );
 };

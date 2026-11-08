@@ -8,13 +8,15 @@ import { readGateCredentials } from '../../lib/crypto/gateCredentials';
 import type { GateCredentials } from '../../lib/crypto/gateCredentials';
 import { sharedDeviceStart } from '../../lib/crypto/sharedDevice';
 import { RecoveryKeyDraft } from '../../lib/crypto/recoveryDraft';
+import { firstInvalid, useFieldFocus } from '../../lib/fieldFocus';
 import { useT } from '../../lib/i18n';
 import { contextWords } from '../../lib/password/policy';
 import { usePasswordCheck } from '../../lib/password/usePasswordCheck';
 import { pushForSignOut } from '../../lib/push';
 import { useAction } from '../../lib/useAction';
 import { PasswordField } from '../PasswordField';
-import { AuthButton, AuthCard, CheckboxRow, ErrorLine, Field, TextButton, inputStyle } from './authUi';
+import { TextField } from '../../ui';
+import { AuthButton, AuthCard, CheckboxRow, ErrorLine, TextButton } from './authUi';
 import { RecoveryKeyPanel } from './RecoveryKeyPanel';
 import { TwoFactorEnrolment } from './TwoFactorEnrolment';
 
@@ -26,7 +28,11 @@ interface GateProps {
 const SignOutButton: React.FC<{ t: ThemeTokens }> = ({ t }) => {
   const tr = useT();
   const logout = useLogout({ push: pushForSignOut() });
-  return <TextButton t={t} label={tr('auth.sign_out')} disabled={logout.isPending} onClick={() => logout.mutate()} />;
+  return (
+    <div className="au-alt">
+      <TextButton t={t} label={tr('auth.sign_out')} disabled={logout.isPending} onClick={() => logout.mutate()} />
+    </div>
+  );
 };
 
 interface CurrentPasswordProps extends GateProps {
@@ -64,16 +70,14 @@ const CurrentPasswordStep: React.FC<CurrentPasswordProps> = ({ t, user, title, l
         void submit(event);
       }}
     >
-      <Field t={t} id="gate-current" label={label}>
-        <input
-          id="gate-current"
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          autoComplete="current-password"
-          style={inputStyle(t)}
-        />
-      </Field>
+      <TextField
+        id="gate-current"
+        label={label}
+        type="password"
+        value={password}
+        onChange={(event) => setPassword(event.target.value)}
+        autoComplete="current-password"
+      />
       <ErrorLine t={t} id="gate-current-error" text={action.error} />
       <CheckboxRow
         t={t}
@@ -137,6 +141,9 @@ export const FirstPasswordScreen: React.FC<GateProps> = ({ t, user }) => {
   );
   const check = usePasswordCheck(password, user.role, contextWords(user.email, user.display_name));
   const draft = useDraft(step === 'key');
+  // Continue can always be pressed: a press with something missing shows both fields' errors and takes the keyboard to the first of them.
+  const [submitted, setSubmitted] = React.useState(false);
+  const focusLater = useFieldFocus();
 
   if (credentials === null) {
     return (
@@ -175,8 +182,12 @@ export const FirstPasswordScreen: React.FC<GateProps> = ({ t, user }) => {
       </AuthCard>
     );
   }
-  const mismatch = repeat !== '' && repeat !== password;
-  const ready = check.assessment?.ok === true && repeat === password;
+  const mismatch = (repeat !== '' || submitted) && repeat !== password;
+  // The new password counts as missing while it is empty, refused or not judged yet (its check loading or failed): the line under it says which.
+  const toFix = firstInvalid([
+    ['gate-new', check.assessment?.ok !== true],
+    ['gate-repeat', repeat !== password]
+  ]);
   return (
     <AuthCard
       t={t}
@@ -184,12 +195,17 @@ export const FirstPasswordScreen: React.FC<GateProps> = ({ t, user }) => {
       lead={tr('gate.password_lead')}
       onSubmit={(event) => {
         event.preventDefault();
-        if (ready) {
-          chosen.current = password;
-          setPassword('');
-          setRepeat('');
-          setStep('key');
+        setSubmitted(true);
+        if (toFix !== undefined) {
+          focusLater(toFix);
+          return;
         }
+        chosen.current = password;
+        setPassword('');
+        setRepeat('');
+        // Back from the recovery key starts the step over: no error before the next press.
+        setSubmitted(false);
+        setStep('key');
       }}
     >
       <PasswordField
@@ -200,20 +216,22 @@ export const FirstPasswordScreen: React.FC<GateProps> = ({ t, user }) => {
         onChange={setPassword}
         check={check}
         offerPassphrase={user.role === 'admin'}
+        submitted={submitted}
       />
-      <Field t={t} id="gate-repeat" label={tr('gate.repeat_password')}>
-        <input
+      <div className="au-row">
+        <TextField
           id="gate-repeat"
+          label={tr('gate.repeat_password')}
           type="password"
           value={repeat}
           onChange={(event) => setRepeat(event.target.value)}
           autoComplete="new-password"
           aria-invalid={mismatch}
-          style={inputStyle(t)}
+          aria-describedby={mismatch ? 'gate-mismatch' : undefined}
         />
-      </Field>
-      <ErrorLine t={t} id="gate-mismatch" text={mismatch ? tr('gate.passwords_differ') : null} />
-      <AuthButton t={t} disabled={!ready} label={tr('gate.continue')} />
+        <ErrorLine t={t} id="gate-mismatch" text={mismatch ? tr('gate.passwords_differ') : null} />
+      </div>
+      <AuthButton t={t} label={tr('gate.continue')} />
       <SignOutButton t={t} />
     </AuthCard>
   );

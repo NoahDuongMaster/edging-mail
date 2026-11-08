@@ -1,0 +1,468 @@
+/* Settings: the dialog (SettingsModal), its tabs, the Account sections, the Security views (security/), the account activity and the
+   technical tabs (settings/DeveloperDocs). The dialog is ui/Dialog (inline, lg, the tabs in its toolbar row); everything is ui/ primitives
+   and this file only lays them out. Classes are `st-*`. */
+
+/* ---------- The dialog ---------- */
+
+/* Settings keeps its place in the stack (ui.css --z-*): over the mailbox, under the toast, the admin dialogs and the lists that open from it. */
+.ui-dialog-root.st-root {
+  z-index: var(--z-window);
+}
+/* One height for every tab, so the tabs and the footer do not move when the content under them changes. */
+.ui-dialog.st-dialog {
+  height: min(800px, 100%);
+}
+/* Without tabs (a member has only Account) the content follows the title at once: a hairline stands where the row of tabs would be. */
+.st-dialog > .ui-dialog-head + .ui-dialog-body {
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+}
+/* The row of tabs sits between the title and the content (the dialog's toolbar row, which does not scroll); the first label lines up with
+   the title. */
+.ui-tabs.st-tabs {
+  margin-top: 12px;
+  padding-inline: 8px;
+}
+.st-dialog > .ui-dialog-body {
+  padding: 20px var(--ui-dialog-end) 24px 20px;
+}
+.st-dialog > .ui-dialog-foot {
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px 12px;
+}
+.st-foot-msg {
+  display: flex;
+  flex: 1 1 0;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.st-foot-msg svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* A phone: the dialog is a sheet from the bottom edge (ui.css), always as high as it can be. */
+@media (max-width: 640px) {
+  .ui-dialog.st-dialog {
+    height: 92vh;
+    height: 92dvh;
+  }
+  /* The four tabs are a 2x2 grid of segments (ui/Tabs `grid`, ui.css) that never scrolls sideways: here it gets its place under the title. */
+  .ui-tabs.st-tabs {
+    margin: 12px 16px 0;
+    padding: 4px;
+  }
+  /* The grid is a box of its own: a hairline where the content starts. */
+  .st-dialog > .ui-dialog-toolbar + .ui-dialog-body {
+    margin-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  /* A sign-out message gets its own full-width row under Sign out and Close, so neither button is ever squeezed. */
+  .st-foot-msg {
+    order: 1;
+    flex-basis: 100%;
+  }
+}
+/* A short phone screen (320x568, a phone on its side): the sheet takes the whole height and its title, tabs and buttons sit closer, so the
+   content keeps about 350 of 568px (274 before). The 2x2 grid of tabs stays. */
+@media (max-width: 640px) and (max-height: 700px) {
+  .ui-dialog.st-dialog {
+    height: 100vh;
+    height: 100dvh;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+  }
+  .st-dialog > .ui-dialog-head {
+    padding-top: 14px;
+  }
+  .ui-tabs.st-tabs {
+    margin-top: 8px;
+  }
+  .st-dialog > .ui-dialog-toolbar + .ui-dialog-body {
+    margin-top: 8px;
+    padding-top: 16px;
+  }
+  .st-dialog > .ui-dialog-body + .ui-dialog-foot {
+    padding-top: 8px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ---------- Text ---------- */
+
+.st-lead {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text);
+}
+.st-muted {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text2);
+}
+.st-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text2);
+}
+/* The result of an action next to its button: saved (success), failed (danger). Always words, the icon is a second cue. */
+.st-feedback {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+}
+.st-feedback svg {
+  flex: none;
+  margin-top: 2px;
+}
+.st-feedback[data-tone='success'] {
+  color: var(--success);
+}
+.st-feedback[data-tone='danger'] {
+  color: var(--danger);
+}
+/* A line with a message and its button (Could not load ... Retry). */
+.st-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+/* Hints and quiet explanations break before a lone last word. */
+.st-dialog :is(.ui-hint, .st-muted, .st-lead) {
+  text-wrap: pretty;
+}
+
+/* ---------- Account: the profile form ---------- */
+
+.st-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.st-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+/* The address is shown, not edited. */
+.st-form .ui-input:has(> .ui-input-el[readonly]) {
+  background: var(--raised);
+  color: var(--text2);
+}
+
+/* ---------- Setting rows: what it is on the left, the control on the right (under it when the line is too narrow) ---------- */
+
+/* The action lines up with the row's label, not with the middle of a two- or three-line description (a centred button floated between the
+   lines of the two-factor row): top-aligned, and pulled up so a small button's centre sits on the label's line (at most 6px, so on touch,
+   where it is 44px high, it never meets the hairline above). When the actions wrap under the text, the 14px row gap less those 6px leaves
+   the usual 8px. */
+.st-setting {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px 16px;
+  padding-block: 12px;
+}
+.st-setting:first-child {
+  padding-top: 0;
+}
+.st-setting:last-child {
+  padding-bottom: 0;
+}
+.st-setting + .st-setting {
+  border-top: 1px solid var(--border);
+}
+.st-setting-text {
+  display: flex;
+  flex: 1 1 240px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.st-setting-label {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
+.st-setting-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: max(-6px, calc((20px - var(--ui-h-sm)) / 2));
+}
+/* The language list holds three names: as wide as a short field, not the whole dialog. */
+.st-dialog .au-lang {
+  max-width: 320px;
+}
+/* The notifications switch: its status line is the hint, red when the browser blocks notifications (the words say so too). */
+.st-push[data-denied='true'] .ui-hint {
+  color: var(--danger);
+}
+.st-push + .ui-error,
+.st-push + .st-actions {
+  margin-top: 12px;
+}
+.ui-error + .st-actions {
+  margin-top: 12px;
+}
+/* Light and dark side by side. The section title already says what they are: the legend is for screen readers only. */
+.ui-radio-group.st-theme {
+  flex-direction: row;
+  flex-wrap: wrap;
+  column-gap: 24px;
+}
+.ui-radio-group.st-theme > legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+/* A heading that takes the focus from script when the content under it changes (C-9b): it is not a control. */
+.st-focus-title:focus {
+  outline: none;
+}
+
+/* ---------- Account activity: hairline lists ---------- */
+
+.st-sub + .st-sub {
+  margin-top: 20px;
+}
+/* A group's heading inside a section (Notices, Recent sign-ins): the weight and colour of a field label, darker than the quiet text under it. */
+.st-subtitle {
+  margin: 0 0 4px;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--text);
+}
+.st-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.st-list > li + li {
+  border-top: 1px solid var(--border);
+}
+.st-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding-block: 10px;
+  font-size: 14px;
+  line-height: 20px;
+}
+.st-notice svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--danger);
+}
+.st-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-block: 10px;
+  font-size: 13px;
+  line-height: 20px;
+}
+.st-entry-top {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 12px;
+}
+.st-entry-kind {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+.st-entry-kind[data-ok='false'] {
+  color: var(--danger);
+}
+.st-entry-time {
+  color: var(--text2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.st-entry-device {
+  color: var(--text2);
+  overflow-wrap: anywhere;
+}
+/* Show all / Show fewer under the sign-ins (ui/Disclosure, a small ghost button): its words, not its box, start on the edge of the rows above
+   (the 1px border and 10px padding of the small size are taken back). It stays under the list, so only the list grows when it opens. */
+.ui-btn.st-more {
+  margin-inline-start: -11px;
+}
+
+/* ---------- Security: one action at a time in place of the rows ---------- */
+
+.st-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.st-view-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+/* Back is a ghost button as high as the view's other buttons (md: 36px with a mouse, 44px on touch); its chevron, not its box, starts at the
+   content edge. */
+.st-view-head .ui-btn {
+  margin-left: -14px;
+}
+.st-view-title {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+}
+.st-view-form {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+/* The views reuse the steps of the screens before the mailbox (the recovery key, the codes, the enrolment), whose buttons are 44px there
+   (AuthButton, TextButton and the CopyButton of size lg, auth.css C-12). Inside Settings they have the dialog's own height instead,
+   --ui-h-md: 36px with a mouse, like the other buttons of the dialog, and 44px on a phone or a touch screen, where --ui-h-md is 44px. The
+   fields of a view keep the ui height (--ui-h-md too), so a view has one height of control from top to bottom. A long label wraps. */
+.st-view .ui-btn.au-btn[data-size],
+.st-view .ui-btn.au-text-btn[data-size] {
+  height: auto;
+  min-height: var(--ui-h-md);
+  padding: 7px 14px;
+}
+/* The views set aria-invalid themselves (their error lines are alerts of their own): the box turns red with it. */
+.st-view .ui-input:has(> .ui-input-el[aria-invalid='true']),
+.st-dialog-form .ui-input:has(> .ui-input-el[aria-invalid='true']) {
+  border-color: var(--danger);
+}
+.ui-input-el.st-code {
+  letter-spacing: 0.2em;
+}
+.ui-input-el.st-key {
+  letter-spacing: 0.04em;
+}
+/* The submit button of a destructive step (turn two-factor sign-in off): as high as the others (--ui-h-md, above), a long label wraps. */
+.ui-btn.st-btn[data-size] {
+  height: auto;
+  min-height: var(--ui-h-md);
+  padding: 7px 14px;
+  white-space: normal;
+  text-align: center;
+}
+.st-result {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+.st-result[data-tone='success'] {
+  color: var(--success);
+}
+/* A copy of the address for the password manager: there, not seen, not reachable. */
+.st-username {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---------- The locked-mail dialog ---------- */
+
+.st-dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ---------- The technical tabs (admins) ---------- */
+
+.st-docs {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+/* A name in the text (a file, a secret, a record): a quiet mono chip; a chip that wraps is drawn on each of its lines. */
+.st-docs code,
+.st-defs code {
+  padding: 1px 4px;
+  background: var(--raised);
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+/* A dashboard path or the name of a button in a step: the text colour at 500, not a heavy bold inside the sentence. */
+.st-docs strong {
+  color: var(--text);
+  font-weight: 500;
+}
+.st-defs {
+  margin: 0;
+}
+.st-def {
+  padding-block: 12px;
+}
+.st-def:first-child {
+  padding-top: 0;
+}
+.st-def + .st-def {
+  border-top: 1px solid var(--border);
+}
+.st-def dt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.st-def dt svg {
+  flex: none;
+  color: var(--text2);
+}
+.st-def dd {
+  margin: 2px 0 0 24px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text2);
+}
+.st-docs-title {
+  margin: 8px 0 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+}

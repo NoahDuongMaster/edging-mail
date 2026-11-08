@@ -1,5 +1,6 @@
 import React from 'react';
-import { CheckCheck, Menu, Moon, PenLine, Search, Sun, User, X } from 'lucide-react';
+import { CheckCheck, Menu as MenuIcon, Moon, PenLine, Search, Sun, User, X } from 'lucide-react';
+import { BrandMark } from './components/BrandMark';
 import { Sidebar } from './components/Sidebar';
 import { MessageList, type MailFilter } from './components/MessageList';
 import { MessageView } from './components/MessageView';
@@ -11,7 +12,7 @@ import { NoticesBanner } from './components/NoticesBanner';
 import { SettingsModal } from './components/SettingsModal';
 import { AdminConsole } from './components/admin/AdminConsole';
 import { Toast, type ToastState } from './components/Toast';
-import { getTokens, type ThemeTokens } from './theme';
+import { applyTheme, getTokens, type ThemeTokens } from './theme';
 import { displayName, folderName, formatSender, labelsOf, nonEmpty, replyRedirect, SEARCH_MAX } from './lib/mail';
 import { isUnreadable } from './lib/mailcrypto/texts';
 import { ApiError } from './lib/api';
@@ -34,7 +35,9 @@ import { useRealtime } from './lib/realtime';
 import { ownerInitials, useSettings } from './lib/settings';
 import { shortcutOf } from './lib/shortcuts';
 import { canResnooze, formatSnoozeUntil } from './lib/snooze';
+import { Button, EmptyState, IconButton, Kbd, TextField } from './ui';
 import type { Attachment, FolderStats, Message } from './types';
+import './components/mailbox.css';
 
 const EMPTY_STATS: FolderStats = {};
 const EMPTY_MESSAGES: Message[] = [];
@@ -63,50 +66,16 @@ const QUOTED_DATE: Intl.DateTimeFormatOptions = {
   second: 'numeric'
 };
 
-/** The owner's round avatar in the header, desktop and phone: the one way into Settings (account, appearance, notifications, sign out). On phones `nm-tap` grows the hit area to 44px around the same 32px circle. */
-function AccountButton({ t, initials, onClick }: { t: ThemeTokens; initials: string; onClick: () => void }) {
+/** The owner's round avatar in the header, desktop and phone: the one way into Settings (account, appearance, notifications, sign out). On phones the button is 44px around the same 32px face. */
+function AccountButton({ initials, onClick }: { initials: string; onClick: () => void }) {
   const tr = useT();
   return (
-    <button
-      type="button"
-      className="nm-tap"
-      data-account-button=""
-      aria-label={tr('app.account_settings')}
-      title={tr('app.account_settings')}
-      onClick={onClick}
-      style={{
-        width: 32,
-        height: 32,
-        padding: 0,
-        border: 0,
-        borderRadius: '50%',
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'transparent',
-        marginLeft: 4,
-        cursor: 'pointer'
-      }}
-    >
-      <span
-        aria-hidden="true"
-        style={{
-          width: 32,
-          height: 32,
-          borderRadius: '50%',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: t.selBg,
-          color: t.selText,
-          fontSize: 12,
-          fontWeight: 600
-        }}
-      >
+    <IconButton label={tr('app.account_settings')} className="mb-account" data-account-button="" onClick={onClick}>
+      <span aria-hidden="true" className="ui-avatar" data-size="md">
         {/* No initials while the settings load (or failed to): a person icon instead of an empty circle. */}
-        {initials === '' ? <User size={16} strokeWidth={1.8} /> : initials}
+        {initials === '' ? <User size={16} strokeWidth={1.75} /> : initials}
       </span>
-    </button>
+    </IconButton>
   );
 }
 
@@ -140,7 +109,7 @@ export default function App() {
   const t = React.useMemo(() => getTokens(dark), [dark]);
 
   React.useEffect(() => {
-    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+    applyTheme(dark);
     document.body.style.background = t.bg;
     document.body.style.color = t.text;
     // The status bar of the installed app follows this choice, not the OS setting the static <meta> tags in index.html react to.
@@ -170,49 +139,23 @@ export default function App() {
     // useSession retries every 5 s while this lasts; the error screen stays up between attempts instead of flashing blank.
     if (!session.isError && session.errorUpdateCount === 0) {
       // Session check in flight: stay blank so a signed-in user never sees the login form flash by.
-      return <div style={{ height: '100%', background: t.bg }} />;
+      return <div className="mb-blank" />;
     }
     return (
-      <main
-        style={{
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 12,
-          background: t.bg,
-          color: t.text
-        }}
-      >
-        <img
-          src="/edgar.svg"
-          alt=""
-          width={140}
-          height={136}
-          style={{ display: 'block', margin: '0 auto 16px', maxWidth: '100%', height: 'auto' }}
+      <main className="mb-status">
+        <EmptyState
+          illustration
+          title={tr('app.server_unreachable')}
+          action={
+            <Button
+              onClick={() => {
+                void session.refetch();
+              }}
+            >
+              {tr('common.retry')}
+            </Button>
+          }
         />
-        <p style={{ margin: 0 }}>{tr('app.server_unreachable')}</p>
-        <button
-          type="button"
-          className="nm-tap-h"
-          onClick={() => {
-            void session.refetch();
-          }}
-          style={{
-            height: 38,
-            padding: '0 16px',
-            border: `1px solid ${t.borderStrong}`,
-            borderRadius: 10,
-            background: t.surface,
-            color: t.text,
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: 'pointer'
-          }}
-        >
-          {tr('common.retry')}
-        </button>
       </main>
     );
   }
@@ -860,112 +803,56 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
   const position = selectedIndex > -1 ? tr('app.position', { current: selectedIndex + 1, total: visibleMessages.length }) : '';
 
   const renderSearch = (mobile: boolean) => (
-    <form role="search" onSubmit={(e) => e.preventDefault()} style={{ position: 'relative', flex: '1 1 320px', maxWidth: 680, margin: 0 }}>
-      <label
-        htmlFor="mail-search"
-        style={{ position: 'absolute', width: 1, height: 1, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap' }}
-      >
-        {tr('app.search_mail')}
-      </label>
-      <span aria-hidden="true" style={{ position: 'absolute', left: 14, top: mobile ? 13 : 11, display: 'inline-flex', color: t.text2 }}>
-        <Search size={18} strokeWidth={1.8} />
-      </span>
-      <input
+    <form role="search" className="mb-search" onSubmit={(e) => e.preventDefault()}>
+      <TextField
         id="mail-search"
         ref={searchRef}
         type="text"
+        hideLabel
+        label={tr('app.search_mail')}
         autoComplete="off"
         spellCheck={false}
         maxLength={SEARCH_MAX}
         value={searchInput}
         onChange={(e) => setSearchInput(e.target.value)}
         placeholder={tr('app.search_mail')}
-        style={{
-          width: '100%',
-          height: mobile ? 44 : 40,
-          padding: mobile ? '0 44px 0 42px' : '0 48px 0 42px',
-          border: `1px solid ${t.borderStrong}`,
-          borderRadius: mobile ? 12 : 10,
-          background: mobile ? t.raised : t.surface,
-          color: t.text,
-          font: 'inherit',
-          fontSize: mobile ? 15 : 14
-        }}
+        leading={<Search size={16} strokeWidth={1.75} aria-hidden="true" />}
+        trailing={
+          searchInput === '' ? (
+            mobile ? undefined : (
+              <span aria-hidden="true">
+                <Kbd>/</Kbd>
+              </span>
+            )
+          ) : (
+            <IconButton
+              label={tr('app.clear_search')}
+              size="sm"
+              onClick={() => {
+                setSearchInput('');
+                searchRef.current?.focus();
+              }}
+            >
+              <X size={16} strokeWidth={1.75} aria-hidden="true" />
+            </IconButton>
+          )
+        }
       />
-      {searchInput ? (
-        <button
-          type="button"
-          aria-label={tr('app.clear_search')}
-          onClick={() => {
-            setSearchInput('');
-            searchRef.current?.focus();
-          }}
-          style={{
-            position: 'absolute',
-            right: mobile ? 0 : 4,
-            top: mobile ? 0 : 4,
-            width: mobile ? 44 : 32,
-            height: mobile ? 44 : 32,
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            border: 0,
-            borderRadius: 8,
-            background: 'transparent',
-            color: t.text2,
-            cursor: 'pointer'
-          }}
-        >
-          <X size={16} strokeWidth={1.8} aria-hidden="true" />
-        </button>
-      ) : mobile ? null : (
-        <kbd
-          aria-hidden="true"
-          style={{
-            position: 'absolute',
-            right: 10,
-            top: 10,
-            fontFamily: "'Geist Mono', ui-monospace, monospace",
-            fontSize: 11,
-            lineHeight: '20px',
-            padding: '0 7px',
-            borderRadius: 6,
-            background: t.kbdBg,
-            color: t.text2,
-            pointerEvents: 'none'
-          }}
-        >
-          /
-        </kbd>
-      )}
     </form>
   );
 
+  // Desktop header: the mark above the sidebar, the search in the middle, the theme and the account on the right.
   const header = (
-    <header style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minHeight: 64, padding: '12px 16px 12px 0' }}>
-      {renderSearch(false)}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 'auto' }}>
-        <button
-          type="button"
-          aria-label={dark ? tr('app.theme_to_light') : tr('app.theme_to_dark')}
-          title={dark ? tr('app.theme_light') : tr('app.theme_dark')}
-          onClick={onToggleDark}
-          style={{
-            width: 40,
-            height: 40,
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            border: 0,
-            borderRadius: 10,
-            background: 'transparent',
-            color: t.text2,
-            cursor: 'pointer'
-          }}
-        >
-          {dark ? <Sun size={20} strokeWidth={1.8} aria-hidden="true" /> : <Moon size={20} strokeWidth={1.8} aria-hidden="true" />}
-        </button>
-        <AccountButton t={t} initials={initials} onClick={() => setIsSettingsOpen(true)} />
+    <header className="mb-header">
+      <div className="mb-header-brand">
+        <BrandMark t={t} />
+      </div>
+      <div className="mb-header-search">{renderSearch(false)}</div>
+      <div className="mb-header-actions">
+        <IconButton label={dark ? tr('app.theme_to_light') : tr('app.theme_to_dark')} onClick={onToggleDark}>
+          {dark ? <Sun size={18} strokeWidth={1.75} aria-hidden="true" /> : <Moon size={18} strokeWidth={1.75} aria-hidden="true" />}
+        </IconButton>
+        <AccountButton initials={initials} onClick={() => setIsSettingsOpen(true)} />
       </div>
     </header>
   );
@@ -1047,226 +934,148 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
       hasNext={selectedIndex > -1 && selectedIndex < visibleMessages.length - 1}
       position={position}
       onBack={isMobile ? () => setMobilePane('list') : undefined}
+      listEmpty={visibleMessages.length === 0}
       compact={isMobile}
     />
   );
 
-  const cssVars: Record<`--${string}`, string> = {
-    '--accent': t.accent,
-    '--border': t.border,
-    '--border-strong': t.borderStrong,
-    '--line': t.divider,
-    '--placeholder': t.text3,
-    '--text2': t.text2
-  };
+  // Account notices and locked mail: above both panes on a desktop, under the header on a phone (the header stays the top of the screen).
+  const banners = (
+    <>
+      <NoticesBanner t={t} onOpenSettings={() => setIsSettingsOpen(true)} />
+      <LockedMailBanner t={t} />
+    </>
+  );
 
   return (
-    <div
-      style={{
-        height: '100%',
-        display: 'flex',
-        background: isMobile && mobilePane === 'list' ? t.surface : t.bg,
-        color: t.text,
-        fontSize: 14,
-        lineHeight: '20px',
-        position: 'relative',
-        overflow: 'hidden',
-        ...cssVars
-      }}
-    >
-      {!isMobile ? (
-        <Sidebar
-          t={t}
-          folder={folder}
-          onSelectFolder={selectFolder}
-          stats={stats}
-          labels={availableLabels}
-          onCompose={() => openCompose()}
-        />
-      ) : null}
+    <div className="mb-root" data-layout={isMobile ? 'phone' : 'desktop'}>
+      {isMobile ? null : header}
 
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <NoticesBanner t={t} onOpenSettings={() => setIsSettingsOpen(true)} />
-        <LockedMailBanner t={t} />
-        {isMobile ? (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '12px 8px 0' }}>
-              <button
-                ref={menuButtonRef}
-                type="button"
-                data-nav-toggle="mailboxes"
-                aria-label={tr('app.open_mailboxes')}
-                onClick={() => setSidebarOpen(true)}
-                style={{
-                  width: 44,
-                  height: 44,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: 0,
-                  borderRadius: 12,
-                  background: 'transparent',
-                  color: t.text,
-                  cursor: 'pointer'
-                }}
-              >
-                <Menu size={22} strokeWidth={1.8} aria-hidden="true" />
-              </button>
-              {/* The folder name is never cut: when the count does not fit beside it (a 320px phone, a long Vietnamese name), the count wraps below. */}
-              <div
-                style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: 8, paddingLeft: 4 }}
-              >
-                <h1
-                  title={title}
-                  style={{
-                    maxWidth: '100%',
-                    margin: 0,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    fontSize: 'clamp(19px, 6.2vw, 22px)',
-                    lineHeight: '28px',
-                    fontWeight: 600,
-                    letterSpacing: '-0.01em'
-                  }}
+      <div className="mb-body">
+        {!isMobile ? (
+          <Sidebar
+            t={t}
+            folder={folder}
+            onSelectFolder={selectFolder}
+            stats={stats}
+            labels={availableLabels}
+            onCompose={() => openCompose()}
+          />
+        ) : null}
+
+        <div className="mb-main">
+          {isMobile ? null : banners}
+          {isMobile ? (
+            <>
+              <div className="mb-phone-bar">
+                <IconButton
+                  ref={menuButtonRef}
+                  data-nav-toggle="mailboxes"
+                  label={tr('app.open_mailboxes')}
+                  onClick={() => setSidebarOpen(true)}
                 >
-                  {mobilePane === 'reader' ? tr('term.message') : title}
-                </h1>
-                {mobilePane === 'list' ? (
-                  <span style={{ flex: 'none', fontSize: 13, color: t.text2, whiteSpace: 'nowrap' }}>{subtitle}</span>
+                  <MenuIcon size={20} strokeWidth={1.75} aria-hidden="true" />
+                </IconButton>
+                {/* The folder name is never cut: when the count does not fit beside it (a 320px phone, a long Vietnamese name), the count wraps below. */}
+                <div className="mb-phone-title">
+                  <h1>{mobilePane === 'reader' ? tr('term.message') : title}</h1>
+                  {mobilePane === 'list' ? <span className="mb-phone-count">{subtitle}</span> : null}
+                </div>
+                {/* MessageList hides its own header on phones, so its Mark all as read lives here (Drafts have nothing unread). */}
+                {mobilePane === 'list' && folder !== 'drafts' ? (
+                  <IconButton
+                    label={tr('app.mark_all_read')}
+                    onClick={() => {
+                      void markAllRead();
+                    }}
+                  >
+                    <CheckCheck size={18} strokeWidth={1.75} aria-hidden="true" />
+                  </IconButton>
                 ) : null}
+                <AccountButton initials={initials} onClick={() => setIsSettingsOpen(true)} />
               </div>
-              {/* MessageList hides its own header on phones, so its Mark all as read lives here (Drafts have nothing unread). */}
-              {mobilePane === 'list' && folder !== 'drafts' ? (
-                <button
-                  type="button"
-                  aria-label={tr('app.mark_all_read')}
-                  title={tr('app.mark_all_read')}
-                  onClick={() => {
-                    void markAllRead();
-                  }}
-                  style={{
-                    width: 44,
-                    height: 44,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: 0,
-                    borderRadius: 12,
-                    background: 'transparent',
-                    color: t.text2,
-                    cursor: 'pointer'
-                  }}
-                >
-                  <CheckCheck size={20} strokeWidth={1.8} aria-hidden="true" />
-                </button>
+              {banners}
+              {mobilePane === 'list' ? (
+                <div className="mb-phone-search" data-closing={folder === 'drafts' ? '' : undefined}>
+                  {renderSearch(true)}
+                </div>
               ) : null}
-              <AccountButton t={t} initials={initials} onClick={() => setIsSettingsOpen(true)} />
-            </div>
-            {mobilePane === 'list' ? (
-              <div style={{ padding: folder === 'drafts' ? '4px 16px 8px' : '4px 16px 0' }}>{renderSearch(true)}</div>
-            ) : null}
-          </>
-        ) : (
-          header
-        )}
 
-        {isMobile ? (
-          <div
-            style={{
-              flex: 1,
-              minHeight: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              padding: mobilePane === 'list' ? '0 0 0' : '8px 0 0'
-            }}
-          >
-            {mobilePane === 'list' ? (
-              <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                <MessageList
-                  t={t}
-                  messages={visibleMessages}
-                  selectedId={selectedId}
-                  onSelect={selectRow}
-                  isDrafts={folder === 'drafts'}
-                  isSnoozed={folder === 'snoozed'}
-                  onToggleStar={(m) => {
-                    void toggleStar(m);
-                  }}
-                  onSwipeArchive={
-                    SWIPE_ARCHIVE_FOLDERS.has(folder) || folder.startsWith('label:')
-                      ? (m) => {
-                          void moveMessage(m, 'archive');
+              <div className="mb-phone-panes">
+                {mobilePane === 'list' ? (
+                  <>
+                    <div className="mb-pane">
+                      <MessageList
+                        t={t}
+                        messages={visibleMessages}
+                        selectedId={selectedId}
+                        onSelect={selectRow}
+                        isDrafts={folder === 'drafts'}
+                        isSnoozed={folder === 'snoozed'}
+                        onToggleStar={(m) => {
+                          void toggleStar(m);
+                        }}
+                        onSwipeArchive={
+                          SWIPE_ARCHIVE_FOLDERS.has(folder) || folder.startsWith('label:')
+                            ? (m) => {
+                                void moveMessage(m, 'archive');
+                              }
+                            : undefined
                         }
-                      : undefined
-                  }
-                  title={title}
-                  folder={folder}
-                  subtitle={subtitle}
-                  filter={filter}
-                  onFilterChange={setFilter}
-                  onMarkAllRead={() => {
-                    void markAllRead();
-                  }}
-                  onRefresh={refreshList}
-                  isLoading={isLoadingList}
-                  searchQuery={listSearch}
-                  compact
-                  scrollMemory={listScroll}
-                  hasMore={hasMore}
-                  loadingMore={messagesQuery.isFetchingNextPage}
-                  onLoadMore={() => {
-                    void loadMore();
-                  }}
-                  loadFailed={loadFailed}
-                  onRetry={refreshList}
-                />
-                <button
-                  type="button"
-                  data-compose-button=""
-                  onClick={() => openCompose()}
-                  style={{
-                    position: 'absolute',
-                    right: 16,
-                    bottom: 'calc(32px + env(safe-area-inset-bottom))',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    height: 56,
-                    padding: '0 22px 0 18px',
-                    border: 0,
-                    borderRadius: 18,
-                    background: t.accent,
-                    color: '#FFFFFF',
-                    fontSize: 15,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    boxShadow: '0 8px 20px rgba(16,24,40,0.22), 0 2px 4px rgba(16,24,40,0.12)'
-                  }}
-                >
-                  <PenLine size={20} strokeWidth={1.8} aria-hidden="true" />
-                  {tr('action.compose')}
-                </button>
+                        title={title}
+                        folder={folder}
+                        subtitle={subtitle}
+                        filter={filter}
+                        onFilterChange={setFilter}
+                        onMarkAllRead={() => {
+                          void markAllRead();
+                        }}
+                        onRefresh={refreshList}
+                        isLoading={isLoadingList}
+                        searchQuery={listSearch}
+                        compact
+                        scrollMemory={listScroll}
+                        hasMore={hasMore}
+                        loadingMore={messagesQuery.isFetchingNextPage}
+                        onLoadMore={() => {
+                          void loadMore();
+                        }}
+                        loadFailed={loadFailed}
+                        onRetry={refreshList}
+                      />
+                    </div>
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      data-compose-button=""
+                      className="mb-fab"
+                      leadingIcon={<PenLine size={20} strokeWidth={1.75} aria-hidden="true" />}
+                      onClick={() => openCompose()}
+                    >
+                      {tr('action.compose')}
+                    </Button>
+                  </>
+                ) : (
+                  <div className="mb-pane">{readerPanel}</div>
+                )}
               </div>
-            ) : (
-              <div style={{ flex: 1, minHeight: 0, display: 'flex', padding: '0 8px 8px' }}>{readerPanel}</div>
-            )}
-          </div>
-        ) : (
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', gap: 12, padding: '0 16px 16px 0' }}>
-            <div style={{ flex: '1 1 400px', minWidth: 0, display: 'flex' }}>{listPanel}</div>
-            <div style={{ flex: '999 1 480px', minWidth: 0, display: 'flex' }}>{readerPanel}</div>
-          </div>
-        )}
+            </>
+          ) : (
+            <div className="mb-panes">
+              <div className="mb-pane" data-pane="list">
+                {listPanel}
+              </div>
+              <div className="mb-pane" data-pane="reader">
+                {readerPanel}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {isMobile && sidebarOpen ? (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 70, display: 'flex' }}>
-          <div
-            role="presentation"
-            onClick={() => setSidebarOpen(false)}
-            style={{ position: 'absolute', inset: 0, background: t.dark ? 'rgba(0,0,0,0.6)' : 'rgba(16,24,40,0.45)' }}
-          />
+        <div className="mb-drawer-root">
+          <div role="presentation" className="mb-drawer-scrim" onClick={() => setSidebarOpen(false)} />
           {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the handler only keeps Tab inside the modal drawer; the panel is not a control */}
           <div
             ref={drawerRef}
@@ -1275,15 +1084,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
             aria-label={tr('sidebar.mailboxes')}
             tabIndex={-1}
             onKeyDown={(e) => trapTab(e, drawerRef.current)}
-            style={{
-              position: 'relative',
-              zIndex: 1,
-              width: 280,
-              height: '100%',
-              background: t.bg,
-              boxShadow: '0 12px 32px rgba(16,24,40,0.24)',
-              outline: 'none'
-            }}
+            className="mb-drawer"
           >
             <Sidebar
               t={t}

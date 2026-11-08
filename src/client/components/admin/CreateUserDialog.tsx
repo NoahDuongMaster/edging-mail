@@ -1,5 +1,4 @@
 import React from 'react';
-import { Loader2 } from 'lucide-react';
 import type { ThemeTokens } from '../../theme';
 import { deriveAccountAuth } from '../../lib/credentials';
 import { useT } from '../../lib/i18n';
@@ -9,8 +8,9 @@ import { useAdminDomains } from '../../lib/admin/domains';
 import { useCreateUser } from '../../lib/admin/users';
 import type { Role } from '../../lib/admin/types';
 import { generateTempPassword } from '../../lib/password/random';
+import { Banner, Button, RadioGroup, Select, TextField } from '../../ui';
 import { Loading } from './TempPasswordDialog';
-import { ModalFrame, adminStyles } from './adminUi';
+import { ErrorText, ModalFrame } from './adminUi';
 import { useAdminAction } from './useAdminAction';
 
 interface CreateUserDialogProps {
@@ -23,7 +23,6 @@ interface CreateUserDialogProps {
 
 export const CreateUserDialog: React.FC<CreateUserDialogProps> = ({ t, onClose, onCreated, onGoToDomains }) => {
   const tr = useT();
-  const s = adminStyles(t);
   const domains = useAdminDomains();
   const create = useCreateUser();
   const action = useAdminAction();
@@ -59,29 +58,32 @@ export const CreateUserDialog: React.FC<CreateUserDialogProps> = ({ t, onClose, 
   let body: React.ReactNode;
   if (domains.isError) {
     body = (
-      <p role="alert" style={{ ...s.muted, color: s.danger }}>
-        {tr('users.create_domains_failed')}{' '}
-        <button
-          type="button"
-          onClick={() => {
-            void domains.refetch();
-          }}
-          style={{ ...s.button, height: 32, padding: '0 10px' }}
-        >
-          {tr('common.retry')}
-        </button>
-      </p>
+      <Banner
+        tone="danger"
+        action={
+          <Button
+            size="sm"
+            onClick={() => {
+              void domains.refetch();
+            }}
+          >
+            {tr('common.retry')}
+          </Button>
+        }
+      >
+        {tr('users.create_domains_failed')}
+      </Banner>
     );
   } else if (domains.data === undefined) {
     body = <Loading t={t} label={tr('common.loading')} />;
   } else if (list.length === 0) {
     body = (
       <>
-        <p style={{ margin: 0, fontSize: 13.5, lineHeight: '20px' }}>{tr('users.create_no_domain')}</p>
-        <div>
-          <button type="button" onClick={onGoToDomains} style={s.primary}>
+        <p className="ad-text">{tr('users.create_no_domain')}</p>
+        <div className="ad-dialog-foot">
+          <Button variant="primary" onClick={onGoToDomains}>
             {tr('domains.add_a_domain')}
-          </button>
+          </Button>
         </div>
       </>
     );
@@ -92,15 +94,13 @@ export const CreateUserDialog: React.FC<CreateUserDialogProps> = ({ t, onClose, 
         onSubmit={(event) => {
           void submit(event);
         }}
-        style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
+        className="ad-form"
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label htmlFor="new-user-local" style={s.label}>
-            {tr('term.address')}
-          </label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <input
+        <div className="ad-field-group">
+          <div className="ad-address">
+            <TextField
               id="new-user-local"
+              label={tr('term.address')}
               data-autofocus
               autoCapitalize="none"
               autoCorrect="off"
@@ -112,80 +112,53 @@ export const CreateUserDialog: React.FC<CreateUserDialogProps> = ({ t, onClose, 
               onBlur={() => setTouched(true)}
               aria-invalid={problem !== null}
               aria-describedby={problem === null ? undefined : 'new-user-local-error'}
-              style={{ ...s.input, flex: '1 1 140px', minWidth: 0, width: 'auto' }}
             />
-            <span aria-hidden="true" style={{ color: t.text2 }}>
+            <span aria-hidden="true" className="ad-at">
               @
             </span>
             {list.length === 1 ? (
-              <span style={{ flex: '1 1 140px', minWidth: 0, overflowWrap: 'anywhere', fontSize: 15 }}>{list[0].name}</span>
+              <span className="ad-domain-name">{list[0].name}</span>
             ) : (
-              <select
-                aria-label={tr('term.domain')}
+              <Select
+                label={tr('term.domain')}
+                hideLabel
+                options={list.map((item) => ({ value: item.name, label: item.name }))}
                 value={chosenDomain}
-                onChange={(e) => setDomain(e.target.value)}
-                style={{ ...s.input, flex: '1 1 140px', minWidth: 0, width: 'auto' }}
-              >
-                {list.map((item) => (
-                  <option key={item.id} value={item.name}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setDomain}
+              />
             )}
           </div>
-          {problem === null ? null : (
-            <p id="new-user-local-error" role="alert" style={{ ...s.muted, color: s.danger }}>
-              {problem}
-            </p>
-          )}
+          {problem === null ? null : <ErrorText id="new-user-local-error">{problem}</ErrorText>}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label htmlFor="new-user-name" style={s.label}>
-            {tr('term.display_name')}
-          </label>
-          <input
-            id="new-user-name"
-            autoComplete="off"
-            maxLength={100}
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            style={s.input}
-          />
-          <p style={s.muted}>{tr('users.create_name_hint')}</p>
-        </div>
-        <fieldset style={{ margin: 0, padding: 0, border: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <legend style={{ ...s.label, padding: 0, marginBottom: 6 }}>{tr('users.role')}</legend>
-          {(['member', 'admin'] as const).map((value) => (
-            <label
-              key={value}
-              className="nm-tap-h"
-              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', fontSize: 14 }}
-            >
-              <input type="radio" name="new-user-role" checked={role === value} onChange={() => setRole(value)} />
-              {value === 'member' ? tr('term.member') : tr('term.admin')}
-            </label>
-          ))}
-        </fieldset>
-        {role === 'admin' ? <p style={s.muted}>{adminClaim().join(' ')}</p> : null}
-        <p style={s.muted}>{tr('users.create_password_note')}</p>
-        {action.error === null ? null : (
-          <p role="alert" style={{ ...s.muted, color: s.danger }}>
-            {action.error}
-          </p>
-        )}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" onClick={onClose} disabled={action.busy} style={s.button}>
+        <TextField
+          id="new-user-name"
+          label={tr('term.display_name')}
+          hint={tr('users.create_name_hint')}
+          autoComplete="off"
+          maxLength={100}
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
+        />
+        <RadioGroup
+          label={tr('users.role')}
+          name="new-user-role"
+          options={[
+            { value: 'member', label: tr('term.member') },
+            { value: 'admin', label: tr('term.admin') }
+          ]}
+          value={role}
+          onChange={(value) => setRole(value === 'admin' ? 'admin' : 'member')}
+        />
+        {role === 'admin' ? <p className="ad-muted">{adminClaim().join(' ')}</p> : null}
+        <p className="ad-muted">{tr('users.create_password_note')}</p>
+        {action.error === null ? null : <ErrorText>{action.error}</ErrorText>}
+        <div className="ad-dialog-foot">
+          <Button onClick={onClose} disabled={action.busy}>
             {tr('common.cancel')}
-          </button>
-          <button
-            type="submit"
-            disabled={action.busy}
-            style={{ ...s.primary, cursor: action.busy ? 'progress' : 'pointer', opacity: action.busy ? 0.7 : 1 }}
-          >
-            {action.busy ? <Loader2 size={16} className="nm-spin" aria-hidden="true" /> : null}
+          </Button>
+          <Button type="submit" variant="primary" disabled={action.busy} loading={action.busy}>
             {action.busy ? tr('users.creating') : tr('users.create_account')}
-          </button>
+          </Button>
         </div>
       </form>
     );

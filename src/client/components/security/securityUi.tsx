@@ -1,33 +1,17 @@
 import React from 'react';
+import { ChevronLeft } from 'lucide-react';
 import type { ThemeTokens } from '../../theme';
 import { useT } from '../../lib/i18n';
-import { AuthButton, ErrorLine, Field, inputStyle } from '../auth/authUi';
+import { Banner, Button, TextField } from '../../ui';
+import { AuthButton, ErrorLine } from '../auth/authUi';
 import { sixDigits } from '../auth/TwoFactorEnrolment';
+import '../settings/settings.css';
 
-// The small pieces the three views of the Security card share: the card look of Settings (the same padding, border and colours as its other
-// sections), a frame with a Back button, the fields for a password and a six-digit code, and the closing line of a finished action.
+// The small pieces the views of the Security section share: a frame with a Back button and the name of the action, the fields for a
+// password and a six-digit code (ui/TextField), the closing line of a finished action and the last failure. The look is in settings.css
+// (`st-view*`); the steps shown once (the recovery key, the codes, the enrolment) come from auth/ and look the same here as there.
 
-export const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace';
 export const CODE_LENGTH = 6;
-
-export const cardStyle = (t: ThemeTokens): React.CSSProperties => ({
-  padding: 12,
-  borderRadius: 12,
-  border: `1px solid ${t.border}`,
-  background: t.raised,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 4
-});
-
-export const mutedStyle = (t: ThemeTokens): React.CSSProperties => ({ margin: 0, color: t.text2, fontSize: 12.5, lineHeight: '19px' });
-
-export const leadStyle = (t: ThemeTokens): React.CSSProperties => ({ margin: 0, color: t.text, fontSize: 13.5, lineHeight: '20px' });
-
-/** A 16 px, 44 px high input that stands out from the raised card it sits in. */
-export const controlStyle = (t: ThemeTokens): React.CSSProperties => ({ ...inputStyle(t), background: t.surface });
-
-export const formStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 12, position: 'relative' };
 
 interface ViewFrameProps {
   t: ThemeTokens;
@@ -37,8 +21,8 @@ interface ViewFrameProps {
   children: React.ReactNode;
 }
 
-/** What replaces the rows of the card while one action is open: a Back button, the name of the action, and the action itself. */
-export const ViewFrame: React.FC<ViewFrameProps> = ({ t, title, onBack, children }) => {
+/** What replaces the rows of the section while one action is open: a Back button, the name of the action, and the action itself. */
+export const ViewFrame: React.FC<ViewFrameProps> = ({ title, onBack, children }) => {
   const tr = useT();
   const heading = React.useRef<HTMLHeadingElement>(null);
   const first = React.useRef(title);
@@ -49,10 +33,14 @@ export const ViewFrame: React.FC<ViewFrameProps> = ({ t, title, onBack, children
     }
   }, [title]);
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 8 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        {onBack === null ? null : <AuthButton t={t} type="button" quiet label={tr('common.back')} onClick={onBack} />}
-        <h4 ref={heading} tabIndex={-1} style={{ margin: 0, fontSize: 14, fontWeight: 600, outline: 'none' }}>
+    <div className="st-view">
+      <div className="st-view-head">
+        {onBack === null ? null : (
+          <Button variant="ghost" size="md" leadingIcon={<ChevronLeft size={16} aria-hidden="true" />} onClick={onBack}>
+            {tr('common.back')}
+          </Button>
+        )}
+        <h4 ref={heading} tabIndex={-1} className="st-view-title st-focus-title">
           {title}
         </h4>
       </div>
@@ -65,10 +53,8 @@ export const ViewFrame: React.FC<ViewFrameProps> = ({ t, title, onBack, children
 export const DoneNote: React.FC<{ t: ThemeTokens; text: string; onBack: () => void }> = ({ t, text, onBack }) => {
   const tr = useT();
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <p role="status" style={{ margin: 0, fontSize: 14, lineHeight: '20px', color: t.dark ? '#4ADE80' : '#15803D' }}>
-        {text}
-      </p>
+    <div className="st-view-form">
+      <Banner tone="success">{text}</Banner>
       <div>
         <AuthButton t={t} type="button" label={tr('common.back')} onClick={onBack} />
       </div>
@@ -83,7 +69,7 @@ export const Failure: React.FC<{ t: ThemeTokens; id: string; error: string | nul
     <>
       <ErrorLine t={t} id={id} text={error} />
       {error !== null && wait > 0 ? (
-        <p role="status" style={mutedStyle(t)}>
+        <p role="status" className="st-muted">
           {tr('auth.try_again_in', { seconds: wait })}
         </p>
       ) : null}
@@ -100,9 +86,34 @@ interface PasswordInputProps {
   autoComplete?: 'current-password' | 'new-password';
   invalid?: boolean;
   describedBy?: string;
+  /** What is missing, as an alert under the field (`${id}-error`). A form that uses it always passes it (null while nothing is missing), so the
+   * field never moves into another box when the line appears and keeps the keyboard. */
+  error?: string | null;
 }
 
-/** A password typed into a plain input: it is handed to a function by the screen and never kept anywhere else. */
+const showsError = (error: string | null | undefined): error is string => error !== undefined && error !== null;
+
+/** The field and, for a form that passes `error`, the line under it, 6px apart like a field's own hint. */
+const WithError: React.FC<{ t: ThemeTokens; id: string; error: string | null | undefined; children: React.ReactElement }> = ({
+  t,
+  id,
+  error,
+  children
+}) =>
+  error === undefined ? (
+    children
+  ) : (
+    <div className="au-row">
+      {children}
+      <ErrorLine t={t} id={`${id}-error`} text={error} />
+    </div>
+  );
+
+/** The ids that describe a field: the caller's, then its error line while it shows. */
+const describedIds = (id: string, describedBy: string | undefined, error: string | null | undefined): string | undefined =>
+  showsError(error) ? [describedBy, `${id}-error`].filter((ref) => ref !== undefined).join(' ') : describedBy;
+
+/** A password typed into a plain field: it is handed to a function by the screen and never kept anywhere else. */
 export const PasswordInput: React.FC<PasswordInputProps> = ({
   t,
   id,
@@ -111,11 +122,13 @@ export const PasswordInput: React.FC<PasswordInputProps> = ({
   onChange,
   autoComplete = 'current-password',
   invalid = false,
-  describedBy
+  describedBy,
+  error
 }) => (
-  <Field t={t} id={id} label={label}>
-    <input
+  <WithError t={t} id={id} error={error}>
+    <TextField
       id={id}
+      label={label}
       type="password"
       value={value}
       onChange={(event) => onChange(event.target.value)}
@@ -123,26 +136,30 @@ export const PasswordInput: React.FC<PasswordInputProps> = ({
       autoCapitalize="none"
       autoCorrect="off"
       spellCheck={false}
-      aria-invalid={invalid}
-      aria-describedby={describedBy}
-      style={controlStyle(t)}
+      aria-invalid={invalid || showsError(error)}
+      aria-describedby={describedIds(id, describedBy, error)}
     />
-  </Field>
+  </WithError>
 );
 
-/** The six digits of the authenticator app (a pasted "123 456" keeps only the digits). */
-export const CodeInput: React.FC<{ t: ThemeTokens; id: string; value: string; onChange: (value: string) => void; invalid?: boolean }> = ({
-  t,
-  id,
-  value,
-  onChange,
-  invalid = false
-}) => {
+/** The six digits of the authenticator app (a pasted "123 456" keeps only the digits). `error` as for PasswordInput. */
+export const CodeInput: React.FC<{
+  t: ThemeTokens;
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  invalid?: boolean;
+  error?: string | null;
+}> = ({ t, id, value, onChange, invalid = false, error }) => {
   const tr = useT();
   return (
-    <Field t={t} id={id} label={tr('twofa.code_label')} hint={tr('twofa.code_hint')}>
-      <input
+    <WithError t={t} id={id} error={error}>
+      <TextField
         id={id}
+        label={tr('twofa.code_label')}
+        hint={tr('twofa.code_hint')}
+        mono
+        className="st-code"
         value={value}
         onChange={(event) => onChange(sixDigits(event.target.value))}
         inputMode="numeric"
@@ -150,10 +167,9 @@ export const CodeInput: React.FC<{ t: ThemeTokens; id: string; value: string; on
         autoCapitalize="off"
         autoCorrect="off"
         spellCheck={false}
-        aria-invalid={invalid}
-        aria-describedby={`${id}-hint`}
-        style={{ ...controlStyle(t), fontFamily: MONO, letterSpacing: '0.2em' }}
+        aria-invalid={invalid || showsError(error)}
+        aria-describedby={describedIds(id, undefined, error)}
       />
-    </Field>
+    </WithError>
   );
 };

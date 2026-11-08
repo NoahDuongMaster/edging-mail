@@ -1,9 +1,9 @@
 import React from 'react';
-import { Check, Copy, Loader2 } from 'lucide-react';
 import type { ThemeTokens } from '../../theme';
 import { tRich, useT } from '../../lib/i18n';
 import { TEMP_PASSWORD_HOURS } from '../../lib/admin/types';
-import { ModalFrame, adminStyles } from './adminUi';
+import { Button, CopyButton, SecretBox, Spinner, type CopyResult } from '../../ui';
+import { ModalFrame } from './adminUi';
 
 interface TempPasswordDialogProps {
   t: ThemeTokens;
@@ -20,17 +20,13 @@ interface TempPasswordDialogProps {
  */
 export const TempPasswordDialog: React.FC<TempPasswordDialogProps> = ({ t, address, password, reissued = false, onDone }) => {
   const tr = useT();
-  const s = adminStyles(t);
-  const [copied, setCopied] = React.useState<'idle' | 'copied' | 'failed'>('idle');
+  const [copyFailed, setCopyFailed] = React.useState(false);
   const codeRef = React.useRef<HTMLElement | null>(null);
 
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(password);
-      setCopied('copied');
-    } catch {
+  const onCopied = (result: CopyResult) => {
+    setCopyFailed(result === 'failed');
+    if (result === 'failed') {
       // No clipboard permission (or an insecure page): select the text so Ctrl+C / long-press works.
-      setCopied('failed');
       const range = document.createRange();
       if (codeRef.current) {
         range.selectNodeContents(codeRef.current);
@@ -43,58 +39,30 @@ export const TempPasswordDialog: React.FC<TempPasswordDialogProps> = ({ t, addre
 
   return (
     <ModalFrame t={t} title={tr(reissued ? 'users.reissued_title' : 'users.created_title')} onClose={onDone} locked maxWidth={460}>
-      <p style={{ margin: 0, fontSize: 13.5, lineHeight: '20px' }}>
-        {tRich('users.created_give', { address: <strong style={{ overflowWrap: 'anywhere' }}>{address}</strong> })}
-      </p>
-      <div style={{ ...s.card, background: t.raised, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <code
-          ref={codeRef}
-          aria-label={tr('term.temporary_password')}
-          style={{
-            fontFamily: "'Geist Mono', ui-monospace, monospace",
-            fontSize: 18,
-            letterSpacing: '0.03em',
-            userSelect: 'all',
-            overflowWrap: 'anywhere'
-          }}
-        >
-          {password}
-        </code>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            data-autofocus
-            className="nm-tap-h"
-            onClick={() => {
-              void copy();
-            }}
-            style={s.button}
-          >
-            {copied === 'copied' ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
-            {copied === 'copied' ? tr('common.copied') : tr('common.copy')}
-          </button>
-          <span role="status" style={{ ...s.muted, color: copied === 'failed' ? s.danger : t.text2 }}>
-            {copied === 'failed' ? tr('users.copy_failed') : ''}
-          </span>
-        </div>
-      </div>
-      <ul style={{ ...s.muted, margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <p className="ad-text">{tRich('users.created_give', { address: <strong className="ad-strong ad-wrap">{address}</strong> })}</p>
+      <SecretBox label={tr('term.temporary_password')} value={password} valueRef={codeRef}>
+        <CopyButton data-autofocus text={password} onResult={onCopied} />
+        <span role="status" className="ad-muted" data-tone={copyFailed ? 'danger' : undefined}>
+          {copyFailed ? tr('users.copy_failed') : ''}
+        </span>
+      </SecretBox>
+      <ul className="ad-list">
         <li>{tr('users.created_note_once')}</li>
         <li>{tr('users.created_note_expiry', { hours: TEMP_PASSWORD_HOURS })}</li>
         <li>{tr('users.created_note_send')}</li>
       </ul>
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button type="button" onClick={onDone} style={s.primary}>
+      <div className="ad-dialog-foot">
+        <Button variant="primary" onClick={onDone}>
           {tr('users.password_saved')}
-        </button>
+        </Button>
       </div>
     </ModalFrame>
   );
 };
 
 /** A spinner line for a panel that is loading. */
-export const Loading: React.FC<{ t: ThemeTokens; label: string }> = ({ t, label }) => (
-  <p role="status" style={{ ...adminStyles(t).muted, display: 'flex', alignItems: 'center', gap: 8 }}>
-    <Loader2 size={14} className="nm-spin" aria-hidden="true" /> {label}
+export const Loading: React.FC<{ t: ThemeTokens; label: string }> = ({ label }) => (
+  <p role="status" className="ad-loading">
+    <Spinner size={14} decorative /> {label}
   </p>
 );

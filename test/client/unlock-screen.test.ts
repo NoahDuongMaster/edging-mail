@@ -55,7 +55,12 @@ describe('the unlock screen', () => {
     const signOut = html.indexOf('data-action="unlock-sign-out"');
     expect(signOut).toBeGreaterThan(-1);
     expect(html.indexOf('<button')).toBe(html.lastIndexOf('<button', signOut));
-    expect(signOut).toBeLessThan(html.indexOf('<select'));
+    // The language list is the app's own (ui/Select, a combobox), not the browser's <select>; Sign out comes before it too.
+    expect(html).not.toContain('<select');
+    const picker = html.indexOf('id="auth-language"');
+    expect(picker).toBeGreaterThan(-1);
+    expect(html.slice(picker, html.indexOf('>', picker))).toContain('role="combobox"');
+    expect(signOut).toBeLessThan(picker);
     expect(signOut).toBeLessThan(html.indexOf('id="unlock-password"'));
     // One Sign out, not a second one under the Unlock button.
     expect(html.split('data-action="unlock-sign-out"')).toHaveLength(2);

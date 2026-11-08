@@ -9,7 +9,7 @@ import { useT } from '../../lib/i18n';
 import { RecoveryCodesPanel } from '../auth/RecoveryCodesPanel';
 import { TwoFactorEnrolment } from '../auth/TwoFactorEnrolment';
 import { CredentialForm } from './CredentialForm';
-import { DoneNote, ViewFrame, leadStyle } from './securityUi';
+import { DoneNote, ViewFrame } from './securityUi';
 
 export type TwoFactorMode = 'on' | 'codes' | 'off';
 
@@ -41,6 +41,8 @@ const TurnOn: React.FC<InnerProps> = ({ t, user, onBack }) => {
           t={t}
           credentials={credentials}
           onCancel={onBack}
+          // The codes at the end are a part of this view, whose title is an h4 (ViewFrame).
+          headingLevel={5}
           onDone={() => {
             setCredentials(null);
             setDone(true);
@@ -73,8 +75,8 @@ const NewCodes: React.FC<InnerProps> = ({ t, user, onBack }) => {
   if (codes !== null) {
     return (
       <ViewFrame t={t} title={tr('term.two_factor')} onBack={null}>
-        <p style={leadStyle(t)}>{tr('security.codes_replace_note')}</p>
-        <RecoveryCodesPanel t={t} codes={codes} onDone={onBack} />
+        <p className="st-lead">{tr('security.codes_replace_note')}</p>
+        <RecoveryCodesPanel t={t} codes={codes} onDone={onBack} headingLevel={5} />
       </ViewFrame>
     );
   }
@@ -116,6 +118,7 @@ const TurnOff: React.FC<InnerProps> = ({ t, user, onBack }) => {
         submitLabel={tr('security.turn_off')}
         note={tr('security.other_devices_note')}
         withCode
+        danger
         work={(password, code) => disableTwoFactor(user, password, code)}
         onResult={(next) => {
           setDone(true);

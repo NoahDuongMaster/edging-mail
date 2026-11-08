@@ -1,4 +1,16 @@
 import { stringHue } from './lib/mail';
+import {
+  CONTROL_HEIGHT,
+  DARK,
+  FONT_FACE_CSS,
+  FONT_MONO,
+  FONT_SANS,
+  LIGHT,
+  MOTION,
+  RADIUS,
+  paletteToCssVars,
+  type Palette
+} from '../shared/design/tokens';
 
 export interface ThemeTokens {
   dark: boolean;
@@ -41,73 +53,116 @@ export function mix(a: string, b: string, w: number): string {
     .join('')}`;
 }
 
-export function getTokens(dark: boolean, accent?: string): ThemeTokens {
-  const a = accent !== undefined && /^#[0-9a-fA-F]{6}/.test(accent) ? accent.slice(0, 7) : '#2F5BEA';
-  if (dark) {
-    return {
-      dark: true,
-      accent: a,
-      bg: '#0D0F13',
-      surface: '#14171C',
-      raised: '#1A1E25',
-      border: '#262B33',
-      borderStrong: '#363C47',
-      track: '#262B33',
-      text: '#ECEEF2',
-      text2: '#A6ADBA',
-      text3: '#8C93A0',
-      selBg: mix(a, '#14171C', 0.76),
-      selText: mix(a, '#FFFFFF', 0.55),
-      navSelBg: mix(a, '#0D0F13', 0.76),
-      link: mix(a, '#FFFFFF', 0.5),
-      unreadDot: mix(a, '#FFFFFF', 0.35),
-      star: '#F2B636',
-      kbdBg: '#232830',
-      toastBg: '#ECEEF2',
-      toastText: '#15171C',
-      toastAction: mix(a, '#000000', 0.12),
-      shadow: '0 1px 0 rgba(255,255,255,0.02)',
-      divider: '#1F242B',
-      hover: 'rgba(255,255,255,0.06)'
-    };
+/** The palette with another accent: the colours that come from the accent follow it, the greys stay. (No caller passes one today.) */
+function withAccent(base: Palette, dark: boolean, accent: string): Palette {
+  if (accent.toUpperCase() === base.accent.toUpperCase()) {
+    return base;
   }
   return {
-    dark: false,
-    accent: a,
-    bg: '#F4F5F7',
-    surface: '#FFFFFF',
-    raised: '#F7F8FA',
-    border: '#E3E6EB',
-    borderStrong: '#D2D6DD',
-    track: '#E3E6EB',
-    text: '#15171C',
-    text2: '#535A66',
-    text3: '#6A717D',
-    selBg: mix(a, '#FFFFFF', 0.9),
-    selText: mix(a, '#000000', 0.18),
-    navSelBg: mix(a, '#F4F5F7', 0.86),
-    link: mix(a, '#000000', 0.12),
-    unreadDot: a,
-    star: '#B97800',
-    kbdBg: '#EEF0F3',
-    toastBg: '#15171C',
-    toastText: '#FFFFFF',
-    toastAction: mix(a, '#FFFFFF', 0.55),
-    shadow: '0 1px 2px rgba(16,24,40,0.05)',
-    divider: '#ECEEF1',
-    hover: 'rgba(16,24,40,0.05)'
+    ...base,
+    accent,
+    accentHover: mix(accent, '#000000', 0.12),
+    accentSoft: mix(accent, base.surface, dark ? 0.76 : 0.9),
+    accentText: dark ? mix(accent, '#FFFFFF', 0.5) : mix(accent, '#000000', 0.18)
   };
+}
+
+/**
+ * The colours of the app as real hex strings (the mail frame and the error screen need values, not `var(...)`), taken from the palettes
+ * in src/shared/design/tokens.ts: the same values the CSS variables of `applyTheme` carry.
+ */
+export function getTokens(dark: boolean, accent?: string): ThemeTokens {
+  const custom = accent !== undefined && /^#[0-9a-fA-F]{6}/.test(accent) ? accent.slice(0, 7) : undefined;
+  const base = dark ? DARK : LIGHT;
+  const c = custom === undefined ? base : withAccent(base, dark, custom);
+  // The toast is the inverse of the theme (dark on light, light on dark), so its action is the accent of the other palette.
+  const inverse = dark ? LIGHT : DARK;
+  return {
+    dark,
+    accent: c.accent,
+    bg: c.bg,
+    surface: c.surface,
+    raised: c.raised,
+    border: c.border,
+    borderStrong: c.borderStrong,
+    track: c.border,
+    text: c.text,
+    text2: c.text2,
+    text3: c.text3,
+    selBg: c.accentSoft,
+    selText: c.accentText,
+    navSelBg: mix(c.bg, c.text, 0.08),
+    link: c.accentText,
+    unreadDot: c.accent,
+    star: c.star,
+    kbdBg: c.raised,
+    toastBg: c.text,
+    toastText: c.bg,
+    toastAction: inverse.accentText,
+    shadow: c.shadowSm,
+    divider: c.border,
+    hover: c.hover
+  };
+}
+
+const THEME_STYLE_ID = 'nm-tokens';
+
+/** The key under which the choice of theme is stored ('dark' or 'light'). The app does not follow `prefers-color-scheme`. */
+export const THEME_STORAGE_KEY = 'edging-mail-theme';
+
+/** True when the stored choice is dark. A browser that refuses storage gets the light theme. */
+export function storedThemeIsDark(): boolean {
+  try {
+    return window.localStorage.getItem(THEME_STORAGE_KEY) === 'dark';
+  } catch {
+    return false;
+  }
+}
+
+/** The CSS of the `nm-tokens` style: the font faces, the variables of the light palette, then the dark ones under `[data-theme='dark']`. */
+function themeCss(): string {
+  const shared = [
+    `--font-sans:${FONT_SANS}`,
+    `--font-mono:${FONT_MONO}`,
+    `--radius-control:${RADIUS.control}px`,
+    `--radius-card:${RADIUS.card}px`,
+    `--radius-dialog:${RADIUS.dialog}px`,
+    `--control-sm:${CONTROL_HEIGHT.sm}px`,
+    `--control-md:${CONTROL_HEIGHT.md}px`,
+    `--control-touch:${CONTROL_HEIGHT.touch}px`,
+    `--motion-fast:${MOTION.fast}ms`,
+    `--motion-base:${MOTION.base}ms`
+  ].join(';');
+  return `${FONT_FACE_CSS}\n:root{${paletteToCssVars(LIGHT)};${shared}}\n:root[data-theme='dark']{${paletteToCssVars(DARK)}}`;
+}
+
+/**
+ * Makes the theme visible to CSS: `data-theme` and `color-scheme` on <html>, and (once) the `<style id="nm-tokens">` that holds the
+ * variables (`--surface`, `--accent-text`, ...) and the font faces. Call it before the first render and whenever the theme changes.
+ */
+export function applyTheme(dark: boolean): void {
+  const root = document.documentElement;
+  root.dataset.theme = dark ? 'dark' : 'light';
+  root.style.colorScheme = dark ? 'dark' : 'light';
+  if (document.querySelector(`#${THEME_STYLE_ID}`) === null) {
+    const style = document.createElement('style');
+    style.id = THEME_STYLE_ID;
+    style.textContent = themeCss();
+    // Not .append(): @cloudflare/workers-types overrides Element.append with the HTMLRewriter signature.
+    // eslint-disable-next-line unicorn/prefer-dom-node-append -- see above
+    document.head.appendChild(style);
+  }
 }
 
 export function getChip(hue: string, t: ThemeTokens): { bg: string; fg: string; dot: string } {
   return t.dark
     ? {
-        bg: mix(hue, '#14171C', 0.76),
+        bg: mix(hue, t.surface, 0.76),
         fg: mix(hue, '#FFFFFF', 0.6),
         dot: mix(hue, '#FFFFFF', 0.3)
       }
     : {
-        bg: mix(hue, '#FFFFFF', 0.87),
+        bg: mix(hue, t.surface, 0.87),
         fg: mix(hue, '#000000', 0.28),
         dot: hue
       };

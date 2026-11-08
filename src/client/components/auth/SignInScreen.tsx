@@ -7,7 +7,8 @@ import type { SignInOutcome } from '../../lib/crypto/signIn';
 import { useT } from '../../lib/i18n';
 import { useAction } from '../../lib/useAction';
 import { useCountdown } from '../../lib/useCountdown';
-import { AuthButton, AuthCard, CheckboxRow, ErrorLine, Field, TextButton, inputStyle } from './authUi';
+import { TextField } from '../../ui';
+import { AuthButton, AuthCard, CheckboxRow, ErrorLine, TextButton } from './authUi';
 
 interface SignInScreenProps {
   t: ThemeTokens;
@@ -91,48 +92,46 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ t, onForgot }) => {
           void submitCode(event);
         }}
       >
-        <Field
-          t={t}
+        <TextField
           id="signin-code"
+          ref={codeRef}
           label={recoveryMode ? tr('auth.recovery_code_label') : tr('auth.code_label')}
           hint={recoveryMode ? tr('auth.recovery_code_hint') : undefined}
-        >
-          <input
-            id="signin-code"
-            ref={codeRef}
-            value={code}
-            onChange={(event) => setCode(recoveryMode ? event.target.value : event.target.value.replaceAll(/\D/g, '').slice(0, 6))}
-            autoComplete={recoveryMode ? 'off' : 'one-time-code'}
-            inputMode={recoveryMode ? 'text' : 'numeric'}
-            autoCapitalize="off"
-            spellCheck={false}
-            aria-invalid={errorText !== null}
-            aria-describedby={errorText === null ? undefined : 'signin-error'}
-            style={{ ...inputStyle(t), letterSpacing: recoveryMode ? undefined : '0.2em' }}
-          />
-        </Field>
+          mono
+          className={recoveryMode ? undefined : 'au-otp'}
+          value={code}
+          onChange={(event) => setCode(recoveryMode ? event.target.value : event.target.value.replaceAll(/\D/g, '').slice(0, 6))}
+          autoComplete={recoveryMode ? 'off' : 'one-time-code'}
+          inputMode={recoveryMode ? 'text' : 'numeric'}
+          autoCapitalize="off"
+          spellCheck={false}
+          aria-invalid={errorText !== null}
+          aria-describedby={errorText === null ? undefined : 'signin-error'}
+        />
         <ErrorLine t={t} id="signin-error" text={errorText} />
         <AuthButton t={t} busy={action.busy} disabled={code.trim() === ''} label={tr('auth.verify')} />
-        <TextButton
-          t={t}
-          label={recoveryMode ? tr('auth.use_app_code') : tr('auth.use_recovery_code')}
-          onClick={() => {
-            setRecoveryMode((current) => !current);
-            setCode('');
-            action.clear();
-          }}
-        />
-        <TextButton
-          t={t}
-          label={tr('common.back')}
-          onClick={() => {
-            abandonSignIn();
-            setChallenge(null);
-            setCode('');
-            setRecoveryMode(false);
-            action.clear();
-          }}
-        />
+        <div className="au-alt">
+          <TextButton
+            t={t}
+            label={recoveryMode ? tr('auth.use_app_code') : tr('auth.use_recovery_code')}
+            onClick={() => {
+              setRecoveryMode((current) => !current);
+              setCode('');
+              action.clear();
+            }}
+          />
+          <TextButton
+            t={t}
+            label={tr('common.back')}
+            onClick={() => {
+              abandonSignIn();
+              setChallenge(null);
+              setCode('');
+              setRecoveryMode(false);
+              action.clear();
+            }}
+          />
+        </div>
       </AuthCard>
     );
   }
@@ -146,31 +145,27 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ t, onForgot }) => {
         void submitCredentials(event);
       }}
     >
-      <Field t={t} id="signin-email" label={tr('auth.email_label')}>
-        <input
-          id="signin-email"
-          ref={firstRef}
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          autoComplete="username"
-          autoCapitalize="off"
-          spellCheck={false}
-          style={inputStyle(t)}
-        />
-      </Field>
-      <Field t={t} id="signin-password" label={tr('term.password')}>
-        <input
-          id="signin-password"
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          autoComplete="current-password"
-          aria-invalid={errorText !== null}
-          aria-describedby={errorText === null ? undefined : 'signin-error'}
-          style={inputStyle(t)}
-        />
-      </Field>
+      <TextField
+        id="signin-email"
+        ref={firstRef}
+        label={tr('auth.email_label')}
+        type="email"
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+        autoComplete="username"
+        autoCapitalize="off"
+        spellCheck={false}
+      />
+      <TextField
+        id="signin-password"
+        label={tr('term.password')}
+        type="password"
+        value={password}
+        onChange={(event) => setPassword(event.target.value)}
+        autoComplete="current-password"
+        aria-invalid={errorText !== null}
+        aria-describedby={errorText === null ? undefined : 'signin-error'}
+      />
       <ErrorLine t={t} id="signin-error" text={errorText} />
       <CheckboxRow
         t={t}
@@ -186,7 +181,9 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ t, onForgot }) => {
         disabled={wait > 0 || email.trim() === '' || password === ''}
         label={action.busy ? tr('login.signing_in') : tr('auth.sign_in')}
       />
-      <TextButton t={t} label={tr('auth.forgot_password')} onClick={onForgot} />
+      <div className="au-alt">
+        <TextButton t={t} label={tr('auth.forgot_password')} onClick={onForgot} />
+      </div>
     </AuthCard>
   );
 };

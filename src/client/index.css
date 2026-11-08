@@ -1,9 +1,8 @@
 @import 'tailwindcss';
+@import './ui/ui.css';
 
-:root {
-  --accent: #2f5bea;
-  --line: #e3e6eb;
-}
+/* The colours, the fonts and the sizes are CSS variables (--bg, --surface, --accent, --font-sans, ...). `applyTheme` in theme.ts writes them
+   from src/shared/design/tokens.ts before the first render and flips them with `data-theme` on <html>: this file only uses them. */
 
 html,
 body,
@@ -11,20 +10,19 @@ body,
   height: 100%;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
-  font-family:
-    'Geist',
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   line-height: 20px;
+  color: var(--text);
+  background: var(--bg);
   -webkit-font-smoothing: antialiased;
-  background: #f4f5f7;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 *,
@@ -33,8 +31,15 @@ body {
   box-sizing: border-box;
 }
 
-button {
+button,
+input,
+select,
+textarea {
   font-family: inherit;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
 :focus-visible {
@@ -42,10 +47,70 @@ button {
   outline-offset: 2px;
 }
 
-/* Thin, quiet scrollbars that follow the active theme */
+/* Type classes (src/shared/design/tokens.ts, TYPE). Size and line height go together; from 20px up the letters sit a little closer. */
+.nm-h1 {
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.nm-h2 {
+  font-size: 22px;
+  line-height: 30px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.nm-h3 {
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+}
+.nm-lead {
+  font-size: 16px;
+  line-height: 24px;
+}
+.nm-body {
+  font-size: 14px;
+  line-height: 20px;
+}
+.nm-sm {
+  font-size: 13px;
+  line-height: 20px;
+}
+.nm-caption {
+  font-size: 12px;
+  line-height: 16px;
+}
+.nm-muted {
+  color: var(--text2);
+}
+.nm-subtle {
+  color: var(--text3);
+}
+/* Counts, dates and sizes line up in a column. */
+.nm-num {
+  font-variant-numeric: tabular-nums;
+}
+/* Keys, codes and addresses in a technical context only. */
+.nm-mono {
+  font-family: var(--font-mono);
+}
+
+/* Thin, quiet scrollbars that follow the active theme. Firefox draws the standard ones (thin, in the border colour). Chrome, Edge and Safari
+   draw the 8px rounded thumb below (no track, no arrow buttons) everywhere with a mouse: they ignore ::-webkit-scrollbar wherever the standard
+   scrollbar-width or scrollbar-color is set, so those are set back to auto there. A touch screen keeps its overlay scrollbar. A class that
+   hides a scrollbar (scrollbar-width: none) still wins over these. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--border, #e3e6eb) transparent;
+  scrollbar-color: var(--border) transparent;
+}
+@media (pointer: fine) {
+  @supports selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: auto;
+      scrollbar-color: auto;
+    }
+  }
 }
 *::-webkit-scrollbar {
   width: 8px;
@@ -55,11 +120,11 @@ button {
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background: var(--border, #e3e6eb);
+  background: var(--border);
   border-radius: 999px;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: var(--border-strong, #d2d6dd);
+  background: var(--border-strong);
 }
 
 .nm-hide-scrollbar {
@@ -67,11 +132,6 @@ button {
 }
 .nm-hide-scrollbar::-webkit-scrollbar {
   display: none;
-}
-
-/* On short screens the sidebar scrolls instead of squashing its buttons */
-.nm-sidebar > * {
-  flex-shrink: 0;
 }
 
 @keyframes nm-spin {
@@ -86,7 +146,7 @@ button {
 @keyframes nm-fade-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -94,7 +154,7 @@ button {
   }
 }
 .nm-fade-in {
-  animation: nm-fade-in 0.18s ease-out;
+  animation: nm-fade-in 0.16s ease-out;
 }
 
 /* Reduced motion (C-11): nothing slides in and nothing turns or pulses. A busy button still says so: its text, `aria-busy`, the progress cursor and
@@ -109,46 +169,6 @@ button {
 @media (max-width: 640px) {
   .nm-hide-sm {
     display: none !important;
-  }
-  .nm-compose-head {
-    flex-wrap: nowrap !important;
-  }
-  /* Four tab labels do not fit side by side on a phone: a 2x2 grid instead of a scrolling row */
-  .nm-settings-tabs {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  /* Settings footer: a sign-out message gets its own full-width row under Sign out and Close, so neither button is ever squeezed */
-  .nm-settings-foot-msg {
-    order: 1;
-    flex: 1 1 100% !important;
-  }
-}
-
-/* At 320px a tab cell is 125px wide: 'Email routing & MX' (118.6px selected, 13px Geist 600) needs 2 lines. 12px with 4px
-   side padding needs 109.5 of 117px. The selected label stops fitting 13px/10px below 348px, hence 350. */
-@media (max-width: 350px) {
-  .nm-settings-tab {
-    font-size: 12px !important;
-    padding-inline: 4px !important;
-  }
-}
-
-/* Touch screens scroll by dragging; the 8px custom scrollbar would cut a strip off the compose card */
-@media (max-width: 900px) {
-  .nm-compose-scroll {
-    scrollbar-width: none;
-  }
-  .nm-compose-scroll::-webkit-scrollbar {
-    display: none;
-  }
-  /* Compose formatting toolbar: nine 44px buttons do not fit 390px, so the row scrolls sideways instead of wrapping or shrinking */
-  .nm-compose-fmt {
-    flex-wrap: nowrap !important;
-    overflow-x: auto;
-  }
-  .nm-compose-fmt > * {
-    flex: none;
   }
 }
 
@@ -177,8 +197,7 @@ h1[tabindex='-1']:focus {
   }
 }
 
-/* The admin console and its dialogs on a phone (C-12): every button is 44px high. `min-height` wins over the inline `height: 40`, so the buttons
-   keep their look on a desktop. */
+/* The admin console and its dialogs on a phone (C-12): every button is 44px high, whatever size its ui Button has on a desktop. */
 @media (max-width: 900px) {
   .nm-admin button {
     min-height: 44px;
@@ -228,14 +247,14 @@ h1[tabindex='-1']:focus {
 /* Rich-text compose editor */
 .nm-editor:empty::before {
   content: attr(data-placeholder);
-  color: var(--placeholder, #6a717d);
+  color: var(--text3);
   pointer-events: none;
 }
 .nm-editor blockquote {
   margin: 0 0 12px 12px;
   padding-left: 12px;
-  border-left: 2px solid var(--line);
-  color: var(--text2, #535a66);
+  border-left: 2px solid var(--border-strong);
+  color: var(--text2);
 }
 /* Tailwind's reset removes list markers and indent; the toolbar's bulleted and numbered lists need them back */
 .nm-editor ul,
@@ -262,14 +281,7 @@ h1[tabindex='-1']:focus {
 
 /* Email body rendering inside the reader (sandboxed iframe) */
 .nm-mail-body {
-  font-family:
-    'Geist',
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  font-family: var(--font-sans);
   font-size: 15px;
   line-height: 24px;
   color: inherit;

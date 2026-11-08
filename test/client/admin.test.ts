@@ -1,9 +1,57 @@
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { DnsResult } from '../../src/client/components/admin/DomainsPanel';
 import { describeAgent, describeKind, describeNotice } from '../../src/client/lib/activity';
 import { ApiError, errorText } from '../../src/client/lib/api';
 import { domainProblem, localPartProblem } from '../../src/client/lib/admin/address';
 import { adminClaim } from '../../src/client/lib/admin/claims';
 import { adminErrorText, detailPairs, isStepUpRequired } from '../../src/client/lib/admin/types';
+import type { DnsCheck } from '../../src/client/lib/admin/types';
+import { tr } from '../../src/client/lib/i18n';
+
+const dnsAnswer = (mx: DnsCheck['receiving']['mx']): DnsCheck => ({
+  domain: 'example.com',
+  checked_at: Date.UTC(2026, 10, 8, 10, 0),
+  receiving: { ready: false, via_cloudflare: false, mx, note: '' },
+  sending: {
+    ready: false,
+    records: [
+      { type: 'MX', name: 'cf-bounce.example.com', found: true, required: true },
+      { type: 'TXT', name: 'cf-bounce._domainkey.example.com', found: false, required: true },
+      { type: 'TXT', name: '_dmarc.example.com', found: false, required: false }
+    ],
+    note: ''
+  }
+});
+const renderDns = (check: DnsCheck): string => renderToStaticMarkup(createElement(DnsResult, { check }));
+
+describe('the DNS answer of a domain', () => {
+  it('says that a null MX (RFC 7505, "0 .") accepts no mail, and lists no empty host', () => {
+    const html = renderDns(dnsAnswer([{ priority: 0, host: '' }]));
+    expect(html).toContain(tr('domains.note_mx_null'));
+    expect(html).not.toContain('point to');
+    expect(html).not.toMatch(/<li>0 <\/li>/);
+    expect(html).not.toContain('ad-mono-list');
+    // Nor "No MX records found": the domain has one, and it says something.
+    expect(html).not.toContain(tr('domains.no_mx'));
+  });
+
+  it('still names the hosts of another provider, and only them', () => {
+    const html = renderDns(dnsAnswer([{ priority: 10, host: 'mx.other.example' }]));
+    expect(html).toContain(tr('domains.note_mx_other', { hosts: 'mx.other.example' }));
+    expect(html).toMatch(/<ul class="ad-mono-list"><li>10 mx\.other\.example<\/li><\/ul>/);
+  });
+
+  it('shows found and missing records of Email Sending as different badges with words: success, danger, warning when not required', () => {
+    const html = renderDns(dnsAnswer([]));
+    const badges = [...html.matchAll(/<span class="ui-badge" data-tone="(\w+)">[\s\S]*?<\/span>/g)].map((match) => match[1]);
+    // Receiving and sending not ready (danger), then the three records.
+    expect(badges).toEqual(['danger', 'danger', 'success', 'danger', 'warning']);
+    expect(html).toContain(tr('domains.record_ok'));
+    expect(html.match(new RegExp(tr('domains.record_absent'), 'g'))).toHaveLength(2);
+  });
+});
 
 describe('address rules the admin console checks before asking the server', () => {
   it.each(['a', 'mai', 'mai.nguyen', 'sales_team', 'it-support', 'a1.b2', '0'])('accepts the local part %s', (localPart) => {

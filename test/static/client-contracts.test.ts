@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { CONTROL_HEIGHT } from '../../src/shared/design/tokens';
 import { AUTH_FAILURE_CLOSE, SESSION_RENEWED_CLOSE } from '../../src/client/lib/sessionRenewal';
 import { ROOT, clientFiles } from './helpers/scan';
 
@@ -81,8 +82,17 @@ describe('the screens before the mailbox (truong C-9, C-11, C-12)', () => {
 
   it('C-9b: the panel of one-time codes takes the focus on its heading when it replaces a form, and so do the views of Security that change their title', () => {
     const panel = read('components', 'auth', 'RecoveryCodesPanel.tsx');
-    expect(panel).toMatch(/<h2\s+ref=\{heading\}\s+tabIndex=\{-1\}/);
+    // The heading is an h2 under the h1 of a screen before the mailbox, and one level under the view's h4 in Settings (`headingLevel`): at every
+    // level it is the element that takes the focus.
+    expect(panel).toMatch(/<Heading\s+ref=\{heading\}\s+tabIndex=\{-1\}/);
+    expect(panel).toMatch(/headingLevel = 2 \}/);
+    expect(panel).toMatch(/const Heading = `h\$\{headingLevel\}` as const;/);
     expect(panel).toMatch(/useEffect\(\(\) => \{\s*heading\.current\?\.focus\(\);\s*\}, \[\]\)/);
+    const views = read('components', 'security', 'TwoFactorView.tsx');
+    expect(views.match(/headingLevel=\{5\}/g)).toHaveLength(2);
+    expect(read('components', 'auth', 'TwoFactorEnrolment.tsx')).toContain(
+      '<RecoveryCodesPanel t={t} codes={codes} onDone={onDone} headingLevel={headingLevel} />'
+    );
     const frame = read('components', 'security', 'securityUi.tsx');
     expect(frame).toMatch(/<h4\s+ref=\{heading\}\s+tabIndex=\{-1\}/);
     expect(frame).toMatch(/first\.current !== title/);
@@ -92,13 +102,31 @@ describe('the screens before the mailbox (truong C-9, C-11, C-12)', () => {
     const ui = read('components', 'auth', 'authUi.tsx');
     expect(ui).not.toMatch(/minHeight: 36/);
     // A short label (vi "Hủy", zh "返回") is never under 44 px wide, and the locked-mail buttons have no inline minHeight (the scan of tap-targets.test.ts).
-    expect(ui).toMatch(/minHeight: 44,\s*minWidth: 44,/);
+    // The sizes live in the ui Button and auth.css now: TextButton is a ui Button of size lg (44 px on every screen: --ui-h-lg is the touch height),
+    // and auth.css keeps it at least 44 px wide and as high when a long label wraps.
+    expect(ui).toMatch(/<Button variant="ghost" size="lg" className="au-text-btn"/);
+    const authCss = read('components', 'auth', 'auth.css');
+    expect(authCss).toMatch(/\.ui-btn\.au-text-btn\[data-size\] \{[^}]*min-height: var\(--ui-h-lg\);[^}]*min-width: 44px;/);
+    const uiCss = read('ui', 'ui.css');
+    expect(uiCss).toMatch(/\.ui-btn\[data-size='lg'\] \{\s*height: var\(--ui-h-lg\);/);
+    expect(uiCss).toMatch(/--ui-h-lg: var\(--control-touch\);/);
+    expect(CONTROL_HEIGHT.touch).toBe(44);
     expect(read('components', 'LockedMailBanner.tsx')).not.toMatch(/minHeight:/);
-    expect(ui).toMatch(/<label\s+className="nm-tap-h"/);
-    // The admin console and its dialogs: every button 44 px high on a phone (min-height beats the inline height of 40).
+    // The checkbox row is the ui Checkbox: one <label> round the box, the text and the hint, at least --ui-h-md high (44 px on a phone or a touch screen).
+    expect(ui).toMatch(/<Checkbox\s/);
+    expect(ui).not.toMatch(/<input\b/);
+    expect(read('ui', 'Checkbox.tsx')).toMatch(/<label className=\{cx\('ui-check', className\)\}/);
+    expect(uiCss).toMatch(/\.ui-check \{[^}]*min-height: var\(--ui-h-md\);/);
+    expect(uiCss).toMatch(
+      /@media \(max-width: 900px\), \(pointer: coarse\) \{\s*:root \{\s*--ui-h-sm: var\(--control-touch\);\s*--ui-h-md: var\(--control-touch\);/
+    );
+    // The admin console and its dialogs: every button 44 px high on a phone. The ui controls are (--ui-h-*, above); `.nm-admin button` holds any other
+    // button there (the name button of a row of the People table), on the console's root and on the panel of every admin dialog (ModalFrame, a
+    // ui Dialog whose panel takes the classes it is given).
     expect(read('index.css')).toMatch(/@media \(max-width: 900px\) \{\s*\.nm-admin button \{\s*min-height: 44px;/);
-    expect(read('components', 'admin', 'AdminConsole.tsx')).toMatch(/className="nm-admin"/);
-    expect(read('components', 'admin', 'adminUi.tsx')).toMatch(/className="nm-fade-in nm-admin"/);
+    expect(read('components', 'admin', 'AdminConsole.tsx')).toMatch(/className="ad-console nm-admin"/);
+    expect(read('components', 'admin', 'adminUi.tsx')).toMatch(/<Dialog\b[^>]*\sclassName="nm-admin ad-dialog"/);
+    expect(read('ui', 'Dialog.tsx')).toMatch(/className=\{cx\('ui-dialog', className\)\}/);
     expect(read('components', 'E2eBadge.tsx')).not.toMatch(/minHeight:/);
   });
 });

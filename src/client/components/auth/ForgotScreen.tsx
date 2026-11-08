@@ -4,13 +4,15 @@ import type { ThemeTokens } from '../../theme';
 import { ForgotFlow } from '../../lib/crypto/forgot';
 import { RecoveryKeyDraft } from '../../lib/crypto/recoveryDraft';
 import { recoveryKeyProblemText } from '../../lib/crypto/errors';
+import { firstInvalid, useFieldFocus } from '../../lib/fieldFocus';
 import { useT } from '../../lib/i18n';
 import { contextWords } from '../../lib/password/policy';
 import { usePasswordCheck } from '../../lib/password/usePasswordCheck';
 import { useAction } from '../../lib/useAction';
 import { useCountdown } from '../../lib/useCountdown';
 import { PasswordField } from '../PasswordField';
-import { AuthButton, AuthCard, ErrorLine, Field, TextButton, inputStyle } from './authUi';
+import { TextField } from '../../ui';
+import { AuthButton, AuthCard, ErrorLine, TextButton } from './authUi';
 import { RecoveryKeyPanel } from './RecoveryKeyPanel';
 
 interface ForgotScreenProps {
@@ -21,8 +23,6 @@ interface ForgotScreenProps {
 }
 
 type Step = 'details' | 'password' | 'key' | 'done';
-
-const monospace: React.CSSProperties = { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', letterSpacing: '0.04em' };
 
 /** The typed key is read (length, alphabet, check characters) as soon as it is long enough: a typo is shown here, before any request. */
 function useKeyProblem(text: string): string | null {
@@ -111,11 +111,23 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
     }
   };
 
-  const mismatch = repeat !== '' && repeat !== password;
-  const ready = check.assessment?.ok === true && repeat === password;
+  // The password step's Continue can always be pressed: a press with something missing shows both fields' errors and takes the keyboard to the first.
+  const [submitted, setSubmitted] = React.useState(false);
+  const focusLater = useFieldFocus();
+  const mismatch = (repeat !== '' || submitted) && repeat !== password;
+  // The new password counts as missing while it is empty, refused or not judged yet (its check loading or failed): the line under it says which.
+  const toFix = firstInvalid([
+    ['forgot-new', check.assessment?.ok !== true],
+    ['forgot-repeat', repeat !== password]
+  ]);
   const toKey = async (event: React.SyntheticEvent) => {
     event.preventDefault();
-    if (!ready || action.busy) {
+    if (action.busy) {
+      return;
+    }
+    setSubmitted(true);
+    if (toFix !== undefined) {
+      focusLater(toFix);
       return;
     }
     const made = await action.run(() => RecoveryKeyDraft.create());
@@ -156,7 +168,7 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
             setStep('done');
           }}
         />
-        <p style={{ margin: 0, fontSize: 12, lineHeight: '17px', color: t.text3 }}>{tr('forgot.nothing_changed')}</p>
+        <p className="au-note">{tr('forgot.nothing_changed')}</p>
       </AuthCard>
     );
   }
@@ -179,22 +191,26 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
           onChange={setPassword}
           check={check}
           offerPassphrase={role === 'admin'}
+          submitted={submitted}
         />
-        <Field t={t} id="forgot-repeat" label={tr('gate.repeat_password')}>
-          <input
+        <div className="au-row">
+          <TextField
             id="forgot-repeat"
+            label={tr('gate.repeat_password')}
             type="password"
             value={repeat}
             onChange={(event) => setRepeat(event.target.value)}
             autoComplete="new-password"
             aria-invalid={mismatch}
-            style={inputStyle(t)}
+            aria-describedby={mismatch ? 'forgot-mismatch' : undefined}
           />
-        </Field>
-        <ErrorLine t={t} id="forgot-mismatch" text={mismatch ? tr('gate.passwords_differ') : null} />
+          <ErrorLine t={t} id="forgot-mismatch" text={mismatch ? tr('gate.passwords_differ') : null} />
+        </div>
         <ErrorLine t={t} id="forgot-error" text={action.error} />
-        <AuthButton t={t} busy={action.busy} disabled={!ready} label={tr('gate.continue')} />
-        <TextButton t={t} label={tr('common.cancel')} onClick={onBack} />
+        <AuthButton t={t} busy={action.busy} label={tr('gate.continue')} />
+        <div className="au-alt">
+          <TextButton t={t} label={tr('common.cancel')} onClick={onBack} />
+        </div>
       </AuthCard>
     );
   }
@@ -211,44 +227,43 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
         void verify(event);
       }}
     >
-      <Field t={t} id="forgot-email" label={tr('auth.email_label')}>
-        <input
-          id="forgot-email"
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          autoComplete="username"
-          autoCapitalize="off"
-          spellCheck={false}
-          style={inputStyle(t)}
-        />
-      </Field>
-      <Field t={t} id="forgot-key" label={tr('term.recovery_key')} hint={tr('forgot.key_hint')}>
-        <input
-          id="forgot-key"
-          value={recoveryText}
-          onChange={(event) => setRecoveryText(event.target.value)}
-          autoComplete="off"
-          autoCapitalize="characters"
-          autoCorrect="off"
-          spellCheck={false}
-          translate="no"
-          aria-invalid={keyProblem !== null}
-          aria-describedby={errorText === null ? 'forgot-key-hint' : 'forgot-error'}
-          style={{ ...inputStyle(t), ...monospace }}
-        />
-      </Field>
-      <Field t={t} id="forgot-code" label={tr('forgot.code_label')} hint={tr('forgot.code_hint')}>
-        <input
-          id="forgot-code"
-          value={factor}
-          onChange={(event) => setFactor(event.target.value)}
-          autoComplete="off"
-          autoCapitalize="off"
-          spellCheck={false}
-          style={inputStyle(t)}
-        />
-      </Field>
+      <TextField
+        id="forgot-email"
+        label={tr('auth.email_label')}
+        type="email"
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+        autoComplete="username"
+        autoCapitalize="off"
+        spellCheck={false}
+      />
+      <TextField
+        id="forgot-key"
+        label={tr('term.recovery_key')}
+        hint={tr('forgot.key_hint')}
+        mono
+        className="au-key-input"
+        value={recoveryText}
+        onChange={(event) => setRecoveryText(event.target.value)}
+        autoComplete="off"
+        autoCapitalize="characters"
+        autoCorrect="off"
+        spellCheck={false}
+        translate="no"
+        aria-invalid={keyProblem !== null}
+        aria-describedby={errorText === null ? undefined : 'forgot-error'}
+      />
+      <TextField
+        id="forgot-code"
+        label={tr('forgot.code_label')}
+        hint={tr('forgot.code_hint')}
+        mono
+        value={factor}
+        onChange={(event) => setFactor(event.target.value)}
+        autoComplete="off"
+        autoCapitalize="off"
+        spellCheck={false}
+      />
       <ErrorLine t={t} id="forgot-error" text={errorText} />
       <AuthButton
         t={t}
@@ -256,8 +271,10 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
         disabled={wait > 0 || keyProblem !== null || email.trim() === '' || recoveryText.trim() === ''}
         label={tr('gate.continue')}
       />
-      <TextButton t={t} label={tr('forgot.admin_link')} onClick={onBreakGlass} />
-      <TextButton t={t} label={tr('common.back')} onClick={onBack} />
+      <div className="au-alt">
+        <TextButton t={t} label={tr('forgot.admin_link')} onClick={onBreakGlass} />
+        <TextButton t={t} label={tr('common.back')} onClick={onBack} />
+      </div>
     </AuthCard>
   );
 };

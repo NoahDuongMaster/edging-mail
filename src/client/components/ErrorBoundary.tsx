@@ -1,6 +1,8 @@
 import React from 'react';
 import { getTokens } from '../theme';
 import { tr } from '../lib/i18n';
+import { Button, EmptyState } from '../ui';
+import './mailbox.css';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -26,43 +28,21 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     if (!this.state.failed) {
       return this.props.children;
     }
-    // App holds the theme state and just crashed, so read the stored choice directly.
+    // App holds the theme state and just crashed, so read the stored choice directly. The colours are real values, not variables: this
+    // screen must not depend on anything that may be what failed.
     const t = getTokens(window.localStorage.getItem('edging-mail-theme') === 'dark');
     return (
-      <main
-        style={{
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 12,
-          padding: 16,
-          textAlign: 'center',
-          background: t.bg,
-          color: t.text
-        }}
-      >
-        <img src="/edgar.svg" alt="" width={112} height={109} style={{ display: 'block', maxWidth: '100%', height: 'auto' }} />
-        <p style={{ margin: 0, fontWeight: 600 }}>{tr('common.something_wrong')}</p>
-        <p style={{ margin: 0, color: t.text2 }}>{tr('crash.reload_hint')}</p>
-        <button
-          type="button"
-          onClick={() => window.location.reload()}
-          style={{
-            height: 44,
-            padding: '0 16px',
-            border: `1px solid ${t.borderStrong}`,
-            borderRadius: 10,
-            background: t.surface,
-            color: t.text,
-            font: 'inherit',
-            fontWeight: 500,
-            cursor: 'pointer'
-          }}
-        >
-          {tr('crash.reload')}
-        </button>
+      <main className="mb-status" style={{ background: t.bg, color: t.text }}>
+        <EmptyState
+          illustration
+          title={tr('common.something_wrong')}
+          description={tr('crash.reload_hint')}
+          action={
+            <Button variant="primary" onClick={() => window.location.reload()}>
+              {tr('crash.reload')}
+            </Button>
+          }
+        />
       </main>
     );
   }

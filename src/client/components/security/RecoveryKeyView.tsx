@@ -6,10 +6,11 @@ import { NewRecoveryKeyFlow, stepUp, testRecoveryKey } from '../../lib/crypto/ac
 import { RecoveryKeyDraft } from '../../lib/crypto/recoveryDraft';
 import { useT } from '../../lib/i18n';
 import { useAction } from '../../lib/useAction';
-import { AuthButton, ErrorLine, Field } from '../auth/authUi';
+import { TextField } from '../../ui';
+import { AuthButton, ErrorLine } from '../auth/authUi';
 import { RecoveryKeyPanel } from '../auth/RecoveryKeyPanel';
 import { CredentialForm } from './CredentialForm';
-import { CODE_LENGTH, CodeInput, DoneNote, MONO, ViewFrame, controlStyle, formStyle, leadStyle } from './securityUi';
+import { CODE_LENGTH, CodeInput, DoneNote, ViewFrame } from './securityUi';
 
 export type RecoveryKeyMode = 'test' | 'new';
 
@@ -50,36 +51,33 @@ const TestKey: React.FC<InnerProps> = ({ t, user, onBack }) => {
         onSubmit={(event) => {
           void submit(event);
         }}
-        style={formStyle}
+        className="st-view-form"
       >
-        <p style={leadStyle(t)}>{tr('security.key_test_lead')}</p>
-        <Field t={t} id="security-key-test" label={tr('term.recovery_key')} hint={tr('security.key_test_hint')}>
-          <input
-            id="security-key-test"
-            value={typed}
-            onChange={(event) => {
-              setTyped(event.target.value);
-              setResult(null);
-              if (action.error !== null) {
-                action.clear();
-              }
-            }}
-            autoComplete="off"
-            autoCapitalize="characters"
-            autoCorrect="off"
-            spellCheck={false}
-            translate="no"
-            aria-invalid={action.error !== null}
-            aria-describedby="security-key-test-hint"
-            style={{ ...controlStyle(t), fontFamily: MONO, letterSpacing: '0.04em' }}
-          />
-        </Field>
+        <p className="st-lead">{tr('security.key_test_lead')}</p>
+        <TextField
+          id="security-key-test"
+          label={tr('term.recovery_key')}
+          hint={tr('security.key_test_hint')}
+          mono
+          className="st-key"
+          value={typed}
+          onChange={(event) => {
+            setTyped(event.target.value);
+            setResult(null);
+            if (action.error !== null) {
+              action.clear();
+            }
+          }}
+          autoComplete="off"
+          autoCapitalize="characters"
+          autoCorrect="off"
+          spellCheck={false}
+          translate="no"
+          aria-invalid={action.error !== null}
+        />
         <ErrorLine t={t} id="security-key-test-error" text={action.error} />
         {result === null ? null : (
-          <p
-            role="status"
-            style={{ margin: 0, fontSize: 14, lineHeight: '20px', color: result === 'ok' ? (t.dark ? '#4ADE80' : '#15803D') : t.text }}
-          >
+          <p role="status" className="st-result" data-tone={result === 'ok' ? 'success' : undefined}>
             {result === 'ok' ? tr('security.key_test_ok') : tr('security.key_test_wrong')}
           </p>
         )}
@@ -194,8 +192,8 @@ const NewKey: React.FC<InnerProps> = ({ t, user, onBack }) => {
     return (
       <ViewFrame t={t} title={tr('recovery.title_new')} onBack={null}>
         {needCode ? (
-          <div style={formStyle}>
-            <p style={leadStyle(t)}>{tr('security.step_up_lead')}</p>
+          <div className="st-view-form">
+            <p className="st-lead">{tr('security.step_up_lead')}</p>
             <CodeInput t={t} id="security-step-up" value={code} onChange={setCode} />
           </div>
         ) : null}

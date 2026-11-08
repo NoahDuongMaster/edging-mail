@@ -1,6 +1,8 @@
 import React from 'react';
 import type { ThemeTokens } from '../theme';
 import { LANGUAGE_NAMES, LOCALES, chooseLanguage, useLocale, useT, type Locale } from '../lib/i18n';
+import { Select } from '../ui';
+import './auth/auth.css';
 
 interface LanguagePickerProps {
   t: ThemeTokens;
@@ -11,12 +13,15 @@ interface LanguagePickerProps {
   id?: string;
 }
 
+// Each language by its own name, in its own script: the same list on every screen.
+const OPTIONS = LOCALES.map((tag) => ({ value: tag, label: LANGUAGE_NAMES[tag] }));
+
 /**
  * The language list: each language by its own name, in its own script, so a person who cannot read the current language still
- * finds theirs. A plain `<select>`: the phone and the desktop both give it their native, accessible list. The choice applies at
- * once and is kept on this device; `onChosen` saves it to the account.
+ * finds theirs. The app's own list (ui/Select: arrows, Home/End, letters, Escape, 44 px rows on touch). The choice applies at once and is
+ * kept on this device; `onChosen` saves it to the account.
  */
-export const LanguagePicker: React.FC<LanguagePickerProps> = ({ t, onChosen, showLabel = false, id = 'language-picker' }) => {
+export const LanguagePicker: React.FC<LanguagePickerProps> = ({ onChosen, showLabel = false, id = 'language-picker' }) => {
   const tr = useT();
   const locale = useLocale();
   const [busy, setBusy] = React.useState(false);
@@ -39,39 +44,24 @@ export const LanguagePicker: React.FC<LanguagePickerProps> = ({ t, onChosen, sho
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      {showLabel ? (
-        <label htmlFor={id} style={{ fontSize: 13, fontWeight: 500, color: t.text2 }}>
-          {tr('lang.label')}
-        </label>
-      ) : null}
-      <select
+    <div className="au-lang">
+      <Select
         id={id}
-        aria-label={showLabel ? undefined : tr('lang.picker_label')}
+        label={showLabel ? tr('lang.label') : tr('lang.picker_label')}
+        hideLabel={!showLabel}
+        options={OPTIONS}
         value={locale}
         disabled={busy}
-        onChange={(event) => {
-          void choose(event.target.value as Locale);
+        onChange={(value) => {
+          const next = LOCALES.find((tag) => tag === value);
+          // Choosing the language that is already on does nothing (as the browser's own list did): Settings does not save it again.
+          if (next !== undefined && next !== locale) {
+            void choose(next);
+          }
         }}
-        style={{
-          height: 44,
-          padding: '0 12px',
-          border: `1px solid ${t.borderStrong}`,
-          borderRadius: 10,
-          background: t.raised,
-          color: t.text,
-          font: 'inherit',
-          fontSize: 16
-        }}
-      >
-        {LOCALES.map((tag) => (
-          <option key={tag} value={tag} lang={tag}>
-            {LANGUAGE_NAMES[tag]}
-          </option>
-        ))}
-      </select>
+      />
       {problem !== '' && (
-        <p role="alert" style={{ margin: 0, fontSize: 12.5, color: t.dark ? '#F97066' : '#B42318' }}>
+        <p role="alert" className="ui-error">
           {problem}
         </p>
       )}

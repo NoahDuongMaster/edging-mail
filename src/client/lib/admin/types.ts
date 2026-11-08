@@ -41,7 +41,7 @@ export interface DnsCheck {
   domain: string;
   checked_at: number;
   receiving: { ready: boolean; via_cloudflare: boolean; mx: { priority: number; host: string }[]; note: string };
-  sending: { ready: boolean; records: { type: string; name: string; found: boolean }[]; note: string };
+  sending: { ready: boolean; records: { type: string; name: string; found: boolean; required?: boolean }[]; note: string };
 }
 
 export interface AuditEntry {

@@ -1,10 +1,10 @@
 import React from 'react';
-import { Loader2 } from 'lucide-react';
 import type { ThemeTokens } from '../../theme';
 import { apiPost } from '../../lib/api';
 import { adminErrorText, isStepUpRequired } from '../../lib/admin/types';
 import { useT } from '../../lib/i18n';
-import { ModalFrame, adminStyles } from './adminUi';
+import { Button, TextField } from '../../ui';
+import { ErrorText, ModalFrame } from './adminUi';
 
 /** The admin closed the code prompt instead of answering it: the action is simply not done, and that is not an error to show. */
 export class StepUpCancelled extends Error {
@@ -39,7 +39,6 @@ interface Pending {
 
 const StepUpDialog: React.FC<{ t: ThemeTokens; onDone: () => void; onCancel: () => void }> = ({ t, onDone, onCancel }) => {
   const tr = useT();
-  const s = adminStyles(t);
   const [code, setCode] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -66,16 +65,16 @@ const StepUpDialog: React.FC<{ t: ThemeTokens; onDone: () => void; onCancel: () 
         onSubmit={(event) => {
           void submit(event);
         }}
-        style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
+        className="ad-form"
       >
-        <p style={{ margin: 0, color: t.text2, fontSize: 13.5, lineHeight: '20px' }}>{tr('admin.step_up_body')}</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label htmlFor="step-up-code" style={s.label}>
-            {tr('admin.step_up_code')}
-          </label>
-          <input
+        <p className="ad-muted">{tr('admin.step_up_body')}</p>
+        <div className="ad-field-group">
+          <TextField
             id="step-up-code"
+            label={tr('admin.step_up_code')}
             data-autofocus
+            mono
+            className="ad-otp"
             inputMode="numeric"
             autoComplete="one-time-code"
             value={code}
@@ -83,30 +82,16 @@ const StepUpDialog: React.FC<{ t: ThemeTokens; onDone: () => void; onCancel: () 
             onChange={(e) => setCode(e.target.value.replaceAll(/\D/g, '').slice(0, 6))}
             aria-invalid={error !== null}
             aria-describedby={error === null ? undefined : 'step-up-error'}
-            style={{ ...s.input, letterSpacing: '0.3em', textAlign: 'center' }}
           />
-          {error === null ? null : (
-            <p id="step-up-error" role="alert" style={{ ...s.muted, color: s.danger }}>
-              {error}
-            </p>
-          )}
+          {error === null ? null : <ErrorText id="step-up-error">{error}</ErrorText>}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" onClick={onCancel} disabled={busy} style={s.button}>
+        <div className="ad-dialog-foot">
+          <Button onClick={onCancel} disabled={busy}>
             {tr('common.cancel')}
-          </button>
-          <button
-            type="submit"
-            disabled={busy || code.length !== 6}
-            style={{
-              ...s.primary,
-              opacity: busy || code.length !== 6 ? 0.6 : 1,
-              cursor: busy ? 'progress' : code.length === 6 ? 'pointer' : 'not-allowed'
-            }}
-          >
-            {busy ? <Loader2 size={16} className="nm-spin" aria-hidden="true" /> : null}
+          </Button>
+          <Button type="submit" variant="primary" disabled={busy || code.length !== 6} loading={busy}>
             {busy ? tr('admin.checking') : tr('common.confirm')}
-          </button>
+          </Button>
         </div>
       </form>
     </ModalFrame>

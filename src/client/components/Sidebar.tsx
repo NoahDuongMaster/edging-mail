@@ -5,7 +5,9 @@ import { getLabelChip } from '../theme';
 import type { FolderStats } from '../types';
 import { useT } from '../lib/i18n';
 import { folderName } from '../lib/mail';
+import { Button, IconButton, Kbd } from '../ui';
 import { BrandMark } from './BrandMark';
+import './mailbox.css';
 
 interface SidebarProps {
   t: ThemeTokens;
@@ -33,192 +35,97 @@ export const Sidebar: React.FC<SidebarProps> = ({ t, folder, onSelectFolder, sta
   const tr = useT();
   // Stats come from the API, so any folder can be missing.
   const folderStats: Partial<FolderStats> = stats;
-  const inboxUnread = folderStats.inbox?.unread ?? 0;
 
   const pick = (id: string) => {
     onSelectFolder(id);
     onCloseMobile?.();
   };
 
-  const navRow = (active: boolean) => ({
-    width: '100%',
-    height: 36,
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    padding: '0 12px',
-    border: 0,
-    borderRadius: 8,
-    background: active ? t.navSelBg : 'transparent',
-    color: active ? t.selText : t.text,
-    fontWeight: active ? 600 : 500,
-    fontSize: 14,
-    textAlign: 'left' as const,
-    cursor: 'pointer',
-    transition: 'background 120ms ease'
-  });
-
   return (
-    <aside
-      aria-label={tr('sidebar.navigation')}
-      className="nm-sidebar"
-      style={{
-        // In the mobile drawer the panel decides the width; on desktop it is the fixed 248px column.
-        width: onCloseMobile ? '100%' : 248,
-        flex: '0 0 248px',
-        height: '100%',
-        padding: '12px 12px 16px 16px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 20,
-        background: t.bg,
-        color: t.text,
-        overflowY: 'auto'
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 40, padding: '0 4px' }}>
-        <BrandMark t={t} />
-        {onCloseMobile ? (
-          <button
-            type="button"
-            aria-label={tr('sidebar.close_mailboxes')}
-            className="nm-tap"
-            onClick={onCloseMobile}
-            style={{
-              width: 36,
-              height: 36,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: 0,
-              borderRadius: 10,
-              background: 'transparent',
-              color: t.text2,
-              cursor: 'pointer'
-            }}
-          >
-            <X size={18} strokeWidth={2} />
-          </button>
-        ) : null}
-      </div>
+    <aside aria-label={tr('sidebar.navigation')} className="mb-sidebar" data-drawer={onCloseMobile ? '' : undefined}>
+      {/* The desktop header carries the mark; the drawer has no header, so it brings its own, with the way out. */}
+      {onCloseMobile ? (
+        <div className="mb-sidebar-top">
+          <BrandMark t={t} />
+          <IconButton label={tr('sidebar.close_mailboxes')} onClick={onCloseMobile}>
+            <X size={18} strokeWidth={1.75} aria-hidden="true" />
+          </IconButton>
+        </div>
+      ) : null}
 
-      <button
-        type="button"
-        data-compose-button=""
-        onClick={onCompose}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 8,
-          height: 44,
-          border: 0,
-          borderRadius: 12,
-          background: t.accent,
-          color: '#FFFFFF',
-          fontWeight: 600,
-          fontSize: 14,
-          cursor: 'pointer',
-          boxShadow: '0 1px 2px rgba(16,24,40,0.14), inset 0 1px 0 rgba(255,255,255,0.14)'
-        }}
-      >
-        <PenLine size={18} strokeWidth={1.8} aria-hidden="true" />
-        <span>{tr('action.compose')}</span>
-        {onCloseMobile ? null : (
-          <kbd
-            aria-hidden="true"
-            style={{
-              marginLeft: 4,
-              fontFamily: "'Geist Mono', ui-monospace, monospace",
-              fontSize: 11,
-              lineHeight: '16px',
-              padding: '0 6px',
-              borderRadius: 5,
-              background: 'rgba(0,0,0,0.22)',
-              color: '#FFFFFF'
-            }}
-          >
-            C
-          </kbd>
-        )}
-      </button>
+      <div className="mb-sidebar-scroll">
+        <Button
+          variant="primary"
+          fullWidth
+          data-compose-button=""
+          className="mb-compose"
+          leadingIcon={<PenLine size={18} strokeWidth={1.75} aria-hidden="true" />}
+          trailingIcon={
+            onCloseMobile ? undefined : (
+              <span aria-hidden="true" className="mb-compose-key">
+                <Kbd>C</Kbd>
+              </span>
+            )
+          }
+          onClick={onCompose}
+        >
+          {tr('action.compose')}
+        </Button>
 
-      <nav aria-label={tr('sidebar.mailboxes')}>
-        <ul role="list" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {NAV_ITEMS.map((item) => {
-            const active = folder === item.id;
-            // Drafts and Snoozed show their total (nothing there is new mail); every other folder shows its unread mail.
-            const count =
-              item.id === 'drafts' || item.id === 'snoozed' ? (folderStats[item.id]?.total ?? 0) : (folderStats[item.id]?.unread ?? 0);
-            const Icon = item.icon;
-            return (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  className="nm-tap-h"
-                  onClick={() => pick(item.id)}
-                  aria-current={active ? 'page' : undefined}
-                  style={navRow(active)}
-                >
-                  <span style={{ display: 'inline-flex', color: active ? t.selText : t.text2 }}>
-                    <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
-                  </span>
-                  <span style={{ flex: 1 }}>{folderName(item.id)}</span>
-                  {item.id === 'inbox' && inboxUnread > 0 ? (
-                    <span style={{ fontSize: 12, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{inboxUnread}</span>
-                  ) : item.id !== 'inbox' && count > 0 ? (
-                    <span style={{ fontSize: 12, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: t.text2 }}>{count}</span>
-                  ) : null}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-
-      {labels.length > 0 ? (
-        <section aria-labelledby="labels-heading" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px 0 12px' }}>
-            <h2
-              id="labels-heading"
-              style={{
-                margin: 0,
-                fontSize: 12,
-                lineHeight: '16px',
-                fontWeight: 600,
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                color: t.text2
-              }}
-            >
-              {tr('folder.labels')}
-            </h2>
-          </div>
-
-          <ul role="list" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {labels.map((name) => {
-              const active = folder === `label:${name}`;
-              const chip = getLabelChip(name, t);
+        <nav aria-label={tr('sidebar.mailboxes')}>
+          <ul role="list" className="mb-nav-list">
+            {NAV_ITEMS.map((item) => {
+              const active = folder === item.id;
+              // Drafts and Snoozed show their total (nothing there is new mail); every other folder shows its unread mail.
+              const count =
+                item.id === 'drafts' || item.id === 'snoozed' ? (folderStats[item.id]?.total ?? 0) : (folderStats[item.id]?.unread ?? 0);
+              const Icon = item.icon;
               return (
-                <li key={name}>
-                  <button
-                    type="button"
-                    className="nm-tap-h"
-                    onClick={() => pick(`label:${name}`)}
-                    aria-current={active ? 'page' : undefined}
-                    style={navRow(active)}
-                  >
-                    <span aria-hidden="true" style={{ width: 18, display: 'inline-flex', justifyContent: 'center' }}>
-                      <span style={{ width: 10, height: 10, borderRadius: 3, background: chip.dot }} />
-                    </span>
-                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                <li key={item.id}>
+                  <button type="button" className="mb-nav-item" onClick={() => pick(item.id)} aria-current={active ? 'page' : undefined}>
+                    <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
+                    <span className="mb-nav-label">{folderName(item.id)}</span>
+                    {count > 0 ? (
+                      <span className="mb-nav-count" data-unread={item.id === 'inbox' ? '' : undefined}>
+                        {count}
+                      </span>
+                    ) : null}
                   </button>
                 </li>
               );
             })}
           </ul>
-        </section>
-      ) : null}
+        </nav>
+
+        {labels.length > 0 ? (
+          <section aria-labelledby="labels-heading" className="mb-labels">
+            <h2 id="labels-heading" className="mb-labels-title">
+              {tr('folder.labels')}
+            </h2>
+            <ul role="list" className="mb-nav-list">
+              {labels.map((name) => {
+                const active = folder === `label:${name}`;
+                const chip = getLabelChip(name, t);
+                return (
+                  <li key={name}>
+                    <button
+                      type="button"
+                      className="mb-nav-item"
+                      onClick={() => pick(`label:${name}`)}
+                      aria-current={active ? 'page' : undefined}
+                    >
+                      <span aria-hidden="true" className="mb-label-swatch">
+                        <span style={{ background: chip.dot }} />
+                      </span>
+                      <span className="mb-nav-label">{name}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ) : null}
+      </div>
     </aside>
   );
 };

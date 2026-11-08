@@ -1,40 +1,26 @@
 import React from 'react';
 import { flushSync } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  AlertCircle,
-  ArrowLeft,
-  Bold,
-  CheckCircle2,
-  Image as ImageIcon,
-  Italic,
-  Link2,
-  List,
-  ListOrdered,
-  Loader2,
-  Paperclip,
-  Quote,
-  Send,
-  Signature,
-  Trash2,
-  Underline,
-  X
-} from 'lucide-react';
+import { Paperclip, Send, Signature, Trash2, X } from 'lucide-react';
 import type { ThemeTokens } from '../theme';
-import { getChip } from '../theme';
 import { ApiError, UnauthorizedError } from '../lib/api';
-import { fileTypeOf, formatBytes, initialsOf, nonEmpty, stringHue } from '../lib/mail';
+import { nonEmpty } from '../lib/mail';
 import { DraftSaver, newDraftId, sanitizeDraftHtml, type DraftSnapshot, type DraftStatus } from '../lib/drafts';
 import { trapTab } from '../lib/focusTrap';
 import { tRich, useT, type TFunction } from '../lib/i18n';
 import { queryKeys, useSendMessage } from '../lib/queries';
 import { SealedMailError, previewAddresses, sealedErrorText, type OutgoingAttachment } from '../lib/sealedmail';
 import { restoreSignatureDelimiter, signatureBlock } from '../lib/settings';
+import { Banner, Button, IconButton, Kbd } from '../ui';
+import { AttachmentList } from './compose/AttachmentList';
 import { ComposeState } from './compose/ComposeState';
+import { FormatToolbar } from './compose/FormatToolbar';
+import { RecipientField } from './compose/RecipientField';
 import { useComposePreview } from './compose/useComposePreview';
 import { useSendFlow } from './compose/useSendFlow';
 import { ReplyRedirectNote } from './compose/ReplyRedirectNote';
 import type { ReplyRedirect } from '../lib/mail';
+import './compose/compose.css';
 
 export interface ComposeDraft {
   /** Set when a draft from the Drafts folder is reopened: autosave goes on updating that same draft. */
@@ -84,9 +70,6 @@ const splitRecipients = (value: string): string[] => value.split(/[\s,;]+/).filt
 
 // The worker's rule (isEmail in src/worker/utils.ts): one plain address, no name part.
 const isAddress = (value: string) => /^[^\s@<>,"]+@[^\s@<>,"]+\.[^\s@<>,"]+$/.test(value);
-
-// What ends an address in the recipient fields (Enter or a separator).
-const isCommitKey = (key: string) => key === 'Enter' || [',', ';'].includes(key);
 
 // What the server accepts in one send (src/worker/services/email-sender.ts); it counts the base64 text of the attachments.
 const MAX_ATTACHMENTS = 32;
@@ -159,16 +142,6 @@ const wait = (ms: number) =>
     window.setTimeout(resolve, ms);
   });
 
-const useMedia = (query: string) =>
-  React.useSyncExternalStore(
-    (notify) => {
-      const mql = window.matchMedia(query);
-      mql.addEventListener('change', notify);
-      return () => mql.removeEventListener('change', notify);
-    },
-    () => window.matchMedia(query).matches
-  );
-
 // The editor as plain text.
 const plainTextOf = (editor: HTMLElement | null) => {
   // eslint-disable-next-line unicorn/prefer-dom-node-text-content -- innerText keeps the line breaks of <div>/<br>; textContent would flatten the plain-text part
@@ -221,75 +194,6 @@ const read = (file: File) =>
     reader.readAsDataURL(file);
   });
 
-const RecipientChip: React.FC<{ t: ThemeTokens; address: string; onRemove: () => void }> = ({ t, address, onRemove }) => {
-  const tr = useT();
-  const chip = getChip(stringHue(address), t);
-  const name = address.split('@', 1)[0];
-  // Phones: a 44px hit area. The button has no background, so the negative margin keeps the chip the size it is.
-  const touch = useMedia('(max-width: 900px)');
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 6,
-        maxWidth: '100%',
-        minWidth: 0,
-        height: 32,
-        padding: '0 2px 0 4px',
-        borderRadius: 999,
-        background: t.raised,
-        border: `1px solid ${t.border}`,
-        fontSize: 13,
-        fontWeight: 500
-      }}
-    >
-      <span
-        aria-hidden="true"
-        style={{
-          width: 24,
-          height: 24,
-          flex: 'none',
-          borderRadius: '50%',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: chip.bg,
-          color: chip.fg,
-          fontSize: 10,
-          fontWeight: 600
-        }}
-      >
-        {initialsOf(name, address)}
-      </span>
-      <span title={address} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {address}
-      </span>
-      <button
-        type="button"
-        aria-label={tr('compose.remove_recipient', { address })}
-        onClick={onRemove}
-        style={{
-          flex: 'none',
-          width: touch ? 44 : 26,
-          height: touch ? 44 : 26,
-          margin: touch ? -9 : 0,
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          border: 0,
-          borderRadius: '50%',
-          background: 'transparent',
-          color: t.text2,
-          cursor: 'pointer'
-        }}
-      >
-        <X size={14} strokeWidth={2} aria-hidden="true" />
-      </button>
-    </span>
-  );
-};
-
 export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, defaultFrom, signature, draft, onSuccess, onNotice }) => {
   const tr = useT();
   const [from, setFrom] = React.useState(defaultFrom);
@@ -305,6 +209,8 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
   const [files, setFiles] = React.useState<PendingFile[]>([]);
   const [isSending, setIsSending] = React.useState(false);
   const [status, setStatus] = React.useState<{ text: string; type: 'error' | 'success' } | null>(null);
+  // The recipient field whose typed text is not an address: the error is said under that field, not in the notice at the top.
+  const [badField, setBadField] = React.useState<'to' | 'cc' | 'bcc' | null>(null);
   const [draftStatus, setDraftStatus] = React.useState<DraftStatus>('idle');
   // The first click on the trash button only asks; the second one discards.
   const [confirmingDiscard, setConfirmingDiscard] = React.useState(false);
@@ -317,6 +223,15 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
     setSeenFormKey(formKey);
     if (status?.type === 'error') {
       setStatus(null);
+    }
+  }
+  // The error under a recipient field stays until that field holds only addresses (the bad text was corrected or deleted, or the bad chip
+  // removed), not one keystroke and not a change elsewhere: it is a line in the flow, and going away would move the fields under it.
+  const fieldParts = { to: [toList, toInput], cc: [ccList, ccInput], bcc: [bccList, bccInput] } as const;
+  if (badField !== null) {
+    const [list, typed] = fieldParts[badField];
+    if ([...list, ...splitRecipients(typed)].every((part) => isAddress(part))) {
+      setBadField(null);
     }
   }
 
@@ -337,13 +252,6 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
     fileSizes: files.map((file) => file.size)
   });
   const queryClient = useQueryClient();
-  // Same breakpoint as .nm-hide-sm: below it the header has no room for the status text, so it moves under the header.
-  const narrow = useMedia('(max-width: 640px)');
-  // The header's right slot is (width - 56px - title) / 2 wide, minus the draft status and the close button: 54px at 641px and
-  // 174px at 880px for 'New message', while 'Add at least one recipient.' needs 180px. Up to 900px the status gets its own line.
-  const statusBelow = useMedia('(max-width: 900px)');
-  // No keyboard to press Ctrl+Enter on a touch screen, whatever its width.
-  const touchOnly = useMedia('(hover: none)');
 
   // Drafts: one saver per time the compose opens. It outlives renders (and the close of the modal, while its last save
   // finishes), so it reads the form and calls back through `latest`.
@@ -519,6 +427,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
     setSubject(draft.subject ?? '');
     setFiles([]);
     setStatus(null);
+    setBadField(null);
     setDraftStatus('idle');
     setConfirmingDiscard(false);
     closingRef.current = false;
@@ -546,7 +455,8 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
   const commitRecipients = (
     raw: string,
     setList: React.Dispatch<React.SetStateAction<string[]>>,
-    setInput: React.Dispatch<React.SetStateAction<string>>
+    setInput: React.Dispatch<React.SetStateAction<string>>,
+    field: 'to' | 'cc' | 'bcc'
   ) => {
     const parts = splitRecipients(raw);
     if (parts.length === 0) {
@@ -564,10 +474,9 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
       return;
     }
     if (valid.length > 0) {
-      // Rendered first: the recipients changed, and that clears an error (see formKey), so the one below must come after it.
-      flushSync(add);
+      add();
     }
-    setStatus({ text: tr('compose.invalid_address'), type: 'error' });
+    setBadField(field);
   };
 
   const exec = (command: string, value?: string) => {
@@ -628,9 +537,11 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
       setStatus({ text: tr('compose.need_recipient'), type: 'error' });
       return;
     }
-    // Text left in a field after Enter / blur (or a chip from an old draft) that is not an address.
-    if ([...to, ...cc, ...bcc].some((address) => !isAddress(address))) {
-      setStatus({ text: tr('compose.invalid_address'), type: 'error' });
+    // Text left in a field after Enter / blur (or a chip from an old draft) that is not an address: said under the first such field.
+    const lists = { to, cc, bcc };
+    const wrongField = (['to', 'cc', 'bcc'] as const).find((field) => lists[field].some((address) => !isAddress(address)));
+    if (wrongField !== undefined) {
+      setBadField(wrongField);
       return;
     }
     if (!subject.trim()) {
@@ -737,107 +648,20 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
     onClose();
   };
 
-  const fieldRow: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    minHeight: 52,
-    padding: '6px 24px',
-    borderBottom: `1px solid ${t.divider}`
-  };
-  const labelStyle: React.CSSProperties = { width: 60, flex: 'none', color: t.text2 };
-  const inputStyle: React.CSSProperties = {
-    flex: 1,
-    minWidth: 0,
-    height: 36,
-    border: 0,
-    padding: '0 4px',
-    background: 'transparent',
-    color: t.text,
-    font: 'inherit',
-    fontSize: 14
-  };
-  const toolBtn: React.CSSProperties = {
-    width: 36,
-    height: 36,
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    border: 0,
-    borderRadius: 8,
-    background: 'transparent',
-    color: t.text2,
-    cursor: 'pointer'
-  };
-  // The key caps of the "to send" hint.
-  const kbdStyle: React.CSSProperties = {
-    fontFamily: "'Geist Mono', ui-monospace, monospace",
-    fontSize: 11,
-    lineHeight: '18px',
-    padding: '0 6px',
-    borderRadius: 5,
-    border: `1px solid ${t.borderStrong}`,
-    background: t.surface,
-    color: t.text2
-  };
-
   const missingFrom = from.trim() === '';
-  const danger = t.dark ? '#F97066' : '#B42318';
   // A sent mail (it closes in a moment) must not be sent again.
   const sent = status?.type === 'success';
   const noSignature = signatureBlock(signature) === '';
   // The empty-sender hint shows until the field is filled; other messages (validation, send result) take over.
   const shownStatus = status ?? (missingFrom ? { text: tr('compose.missing_from'), type: 'error' as const } : null);
 
-  const statusEl = shownStatus ? (
-    <span
-      role={shownStatus.type === 'error' ? 'alert' : 'status'}
-      style={{
-        display: 'inline-flex',
-        // A wrapped message keeps its icon beside the FIRST line (2px = (20px line - 16px icon) / 2), not centred on the block.
-        alignItems: 'flex-start',
-        gap: 6,
-        minWidth: 0,
-        fontSize: 13,
-        lineHeight: '20px',
-        color: shownStatus.type === 'error' ? danger : t.dark ? '#4ADE80' : '#15803D'
-      }}
-    >
-      {shownStatus.type === 'error' ? (
-        <AlertCircle size={16} style={{ flex: 'none', marginTop: 2 }} aria-hidden="true" />
-      ) : (
-        <CheckCircle2 size={16} style={{ flex: 'none', marginTop: 2 }} aria-hidden="true" />
-      )}
-      {/* Wraps instead of clipping: an error the user cannot read in full is no use at any width. */}
-      <span style={{ overflowWrap: 'anywhere' }}>{shownStatus.text}</span>
-    </span>
-  ) : null;
-
-  // Always rendered (empty when idle) so a status change never moves anything and screen readers hear it.
-  const draftStatusEl = (
-    <output
-      aria-live="polite"
-      style={{
-        flex: 'none',
-        marginLeft: statusBelow ? 'auto' : undefined,
-        minWidth: statusBelow ? undefined : 128,
-        textAlign: 'right',
-        fontSize: 12,
-        lineHeight: '16px',
-        whiteSpace: 'nowrap',
-        color: draftStatus === 'error' ? danger : t.text3
-      }}
-    >
-      {draftStatusText(draftStatus, tr)}
-    </output>
-  );
-
-  // Desktop: sits at the right end of the To row. Phones: at the end of the address input line, so chips keep the full width.
-  // Gone once both rows are showing.
+  // At the end of the line of the To field, on every width. Gone once both rows are showing.
   const ccBccToggle =
     showCc && showBcc ? null : (
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="sm"
+        className="cp-toggle"
         onClick={() => {
           const newRow = showCc ? bccInputRef : ccInputRef;
           flushSync(() => {
@@ -847,22 +671,9 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
           // This button is gone now: focus the new row, otherwise focus leaves the dialog and Escape / Ctrl+Enter stop working.
           newRow.current?.focus();
         }}
-        className="nm-tap-h"
-        style={{
-          flex: narrow ? 'none' : undefined,
-          height: 32,
-          padding: '0 10px',
-          border: 0,
-          borderRadius: 8,
-          background: 'transparent',
-          color: t.text2,
-          fontSize: 13,
-          fontWeight: 500,
-          cursor: 'pointer'
-        }}
       >
         {`${tr('term.cc')}/${tr('term.bcc')}`}
-      </button>
+      </Button>
     );
 
   return (
@@ -873,17 +684,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
       aria-modal="true"
       aria-labelledby="compose-title"
       tabIndex={-1}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 60,
-        display: 'flex',
-        flexDirection: 'column',
-        background: t.bg,
-        color: t.text,
-        outline: 'none'
-      }}
-      className="nm-fade-in"
+      className="cp-root"
       onKeyDown={(e) => {
         // The question dialog of a send (compose/useConfirm) lives inside this root: its keys are its own.
         if (e.target instanceof Element && e.target.closest('[role="alertdialog"]') !== null) {
@@ -899,607 +700,222 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
         }
       }}
     >
-      <header
-        className="nm-compose-head"
-        style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 64, padding: '10px 16px', flexWrap: 'wrap' }}
-      >
-        <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex' }}>
-          <button
-            type="button"
+      <div className="cp-panel nm-fade-in">
+        <header className="cp-head">
+          <h1 id="compose-title" className="cp-title">
+            {titleOf(draft, tr)}
+          </h1>
+          {/* Always rendered (empty when idle) so a status change never moves anything and screen readers hear it. */}
+          <output aria-live="polite" className="cp-draft" data-state={draftStatus}>
+            {draftStatusText(draftStatus, tr)}
+          </output>
+          <IconButton
+            label={tr('common.close')}
+            disabled={isSending}
             onClick={() => {
               void requestClose();
             }}
-            disabled={isSending}
-            aria-label={tr('common.back')}
-            className="nm-tap"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              height: 40,
-              padding: '0 12px 0 8px',
-              border: 0,
-              borderRadius: 10,
-              background: 'transparent',
-              color: t.text2,
-              fontWeight: 500,
-              cursor: isSending ? 'not-allowed' : 'pointer',
-              opacity: isSending ? 0.5 : 1
-            }}
           >
-            <ArrowLeft size={20} strokeWidth={1.8} aria-hidden="true" />
-            <span className="nm-hide-sm">{tr('common.back')}</span>
-          </button>
-        </div>
-        <h1 id="compose-title" style={{ margin: 0, fontSize: 16, lineHeight: '24px', fontWeight: 600, whiteSpace: 'nowrap' }}>
-          {titleOf(draft, tr)}
-        </h1>
-        <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
-          {statusBelow ? null : statusEl}
-          {statusBelow ? null : draftStatusEl}
-          <button
-            type="button"
-            onClick={() => {
-              void requestClose();
-            }}
-            disabled={isSending}
-            aria-label={tr('common.close')}
-            className="nm-tap"
-            title={tr('common.close')}
-            style={{
-              ...toolBtn,
-              flex: 'none',
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              cursor: isSending ? 'not-allowed' : 'pointer',
-              opacity: isSending ? 0.5 : 1
-            }}
-          >
-            <X size={20} strokeWidth={1.8} aria-hidden="true" />
-          </button>
-        </div>
-      </header>
-      {statusBelow ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 24, padding: '0 16px 4px' }}>
-          {statusEl}
-          {draftStatusEl}
-        </div>
-      ) : null}
+            <X size={18} strokeWidth={1.75} aria-hidden="true" />
+          </IconButton>
+        </header>
 
-      <main style={{ flex: 1, minHeight: 0, padding: '4px 16px 32px' }}>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void handleSend();
-          }}
-          style={{
-            maxWidth: 880,
-            maxHeight: '100%',
-            margin: '0 auto',
-            display: 'flex',
-            flexDirection: 'column',
-            background: t.surface,
-            border: `1px solid ${t.border}`,
-            borderRadius: 16,
-            boxShadow: '0 1px 2px rgba(16,24,40,0.05), 0 16px 40px -16px rgba(16,24,40,0.16)',
-            overflow: 'hidden'
-          }}
-        >
-          {/* Scroll region: fields, editor and attachments. The footer below stays pinned. */}
-          <div className="nm-compose-scroll" style={{ overflowY: 'auto' }}>
-            <div style={fieldRow}>
-              <label htmlFor="compose-from" style={labelStyle}>
-                {tr('term.sender')}
-              </label>
-              <input
-                id="compose-from"
-                className="nm-tap-h"
-                type="email"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-                onKeyDown={enterToBody}
-                style={{ ...inputStyle, height: 40, textOverflow: 'ellipsis' }}
-                placeholder={tr('compose.from_placeholder')}
-              />
-            </div>
-
-            <div style={{ ...fieldRow, padding: '6px 16px 6px 24px', ...(narrow ? { alignItems: 'flex-start' } : null) }}>
-              <label htmlFor="compose-to" style={narrow ? { ...labelStyle, paddingTop: toList.length > 0 ? 6 : 12 } : labelStyle}>
-                {tr('term.to')}
-              </label>
-              <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                {toList.map((address) => (
-                  <RecipientChip
-                    key={address}
-                    t={t}
-                    address={address}
-                    onRemove={() => setToList((prev) => prev.filter((a) => a !== address))}
-                  />
-                ))}
-                <input
-                  id="compose-to"
-                  ref={toInputRef}
-                  className="nm-tap-h"
-                  type="text"
-                  autoComplete="off"
-                  inputMode="email"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  placeholder={toList.length === 0 ? tr('compose.to_placeholder') : ''}
-                  value={toInput}
-                  onChange={(e) => setToInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (isCommitKey(e.key)) {
-                      e.preventDefault();
-                      commitRecipients(toInput, setToList, setToInput);
-                    }
-                    if (e.key === 'Backspace' && !toInput && toList.length > 0) {
-                      setToList((prev) => prev.slice(0, -1));
-                    }
-                  }}
-                  onBlur={() => commitRecipients(toInput, setToList, setToInput)}
-                  // Phones: the Cc/Bcc toggle shares the line with the input, so the input may start narrow (140px + the toggle does not fit at 320px).
-                  style={{ ...inputStyle, flex: narrow ? '1 1 72px' : '1 1 140px', minWidth: narrow ? 72 : 120 }}
-                />
-                {narrow ? ccBccToggle : null}
-              </div>
-              {narrow ? null : ccBccToggle}
-            </div>
-
-            {showCc ? (
-              <div style={fieldRow}>
-                <label htmlFor="compose-cc" style={labelStyle}>
-                  {tr('term.cc')}
-                </label>
-                <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                  {ccList.map((address) => (
-                    <RecipientChip
-                      key={address}
-                      t={t}
-                      address={address}
-                      onRemove={() => setCcList((prev) => prev.filter((a) => a !== address))}
-                    />
-                  ))}
-                  <input
-                    id="compose-cc"
-                    ref={ccInputRef}
-                    className="nm-tap-h"
-                    type="text"
-                    autoComplete="off"
-                    inputMode="email"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    value={ccInput}
-                    onChange={(e) => setCcInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (isCommitKey(e.key)) {
-                        e.preventDefault();
-                        commitRecipients(ccInput, setCcList, setCcInput);
-                      }
-                    }}
-                    onBlur={() => commitRecipients(ccInput, setCcList, setCcInput)}
-                    style={{ ...inputStyle, flex: '1 1 140px', minWidth: 120 }}
-                  />
-                </div>
-              </div>
-            ) : null}
-
-            {showBcc ? (
-              <div style={fieldRow}>
-                <label htmlFor="compose-bcc" style={labelStyle}>
-                  {tr('term.bcc')}
-                </label>
-                <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                  {bccList.map((address) => (
-                    <RecipientChip
-                      key={address}
-                      t={t}
-                      address={address}
-                      onRemove={() => setBccList((prev) => prev.filter((a) => a !== address))}
-                    />
-                  ))}
-                  <input
-                    id="compose-bcc"
-                    ref={bccInputRef}
-                    className="nm-tap-h"
-                    type="text"
-                    autoComplete="off"
-                    inputMode="email"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    value={bccInput}
-                    onChange={(e) => setBccInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (isCommitKey(e.key)) {
-                        e.preventDefault();
-                        commitRecipients(bccInput, setBccList, setBccInput);
-                      }
-                    }}
-                    onBlur={() => commitRecipients(bccInput, setBccList, setBccInput)}
-                    style={{ ...inputStyle, flex: '1 1 140px', minWidth: 120 }}
-                  />
-                </div>
-              </div>
-            ) : null}
-
-            <ReplyRedirectNote t={t} redirect={draft.replyRedirect} to={toList} />
-
-            <ComposeState t={t} preview={preview} />
-
-            <div style={fieldRow}>
-              <label htmlFor="compose-subject" style={labelStyle}>
-                {tr('term.subject')}
-              </label>
-              <input
-                id="compose-subject"
-                className="nm-tap-h"
-                type="text"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                onKeyDown={enterToBody}
-                placeholder={tr('term.subject')}
-                style={{ ...inputStyle, height: 40, fontSize: 15, fontWeight: 500, textOverflow: 'ellipsis' }}
-              />
-            </div>
-
-            <div
-              aria-label={tr('compose.format_group')}
-              className="nm-hide-scrollbar nm-compose-fmt"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 2,
-                flexWrap: 'wrap',
-                padding: '8px 16px',
-                borderBottom: `1px solid ${t.divider}`,
-                background: t.raised
-              }}
-            >
-              <select
-                aria-label={tr('compose.text_style')}
-                className="nm-tap-h"
-                onChange={(e) => exec('formatBlock', e.target.value)}
-                defaultValue="p"
-                style={{
-                  height: 36,
-                  padding: '0 8px',
-                  border: 0,
-                  borderRadius: 8,
-                  background: 'transparent',
-                  color: t.text,
-                  font: 'inherit',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  cursor: 'pointer'
-                }}
-              >
-                <option value="p">{tr('compose.style_normal')}</option>
-                <option value="h3">{tr('compose.style_heading')}</option>
-                <option value="h4">{tr('compose.style_subheading')}</option>
-              </select>
-              <span aria-hidden="true" className="nm-hide-sm" style={{ width: 1, height: 20, margin: '0 6px', background: t.border }} />
-              <button
-                type="button"
-                aria-label={tr('compose.bold')}
-                title={tr('compose.bold')}
-                className="nm-tap"
-                onClick={() => exec('bold')}
-                style={toolBtn}
-              >
-                <Bold size={18} strokeWidth={2.2} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                aria-label={tr('compose.italic')}
-                title={tr('compose.italic')}
-                className="nm-tap"
-                onClick={() => exec('italic')}
-                style={toolBtn}
-              >
-                <Italic size={18} strokeWidth={2} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                aria-label={tr('compose.underline')}
-                title={tr('compose.underline')}
-                className="nm-tap"
-                onClick={() => exec('underline')}
-                style={toolBtn}
-              >
-                <Underline size={18} strokeWidth={2} aria-hidden="true" />
-              </button>
-              <span aria-hidden="true" className="nm-hide-sm" style={{ width: 1, height: 20, margin: '0 6px', background: t.border }} />
-              <button
-                type="button"
-                aria-label={tr('compose.bulleted_list')}
-                title={tr('compose.bulleted_list')}
-                className="nm-tap"
-                onClick={() => exec('insertUnorderedList')}
-                style={toolBtn}
-              >
-                <List size={18} strokeWidth={2} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                aria-label={tr('compose.numbered_list')}
-                title={tr('compose.numbered_list')}
-                className="nm-tap"
-                onClick={() => exec('insertOrderedList')}
-                style={toolBtn}
-              >
-                <ListOrdered size={18} strokeWidth={2} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                aria-label={tr('compose.quote')}
-                title={tr('compose.quote')}
-                className="nm-tap"
-                onClick={() => exec('formatBlock', 'blockquote')}
-                style={toolBtn}
-              >
-                <Quote size={18} strokeWidth={2} aria-hidden="true" />
-              </button>
-              <span aria-hidden="true" className="nm-hide-sm" style={{ width: 1, height: 20, margin: '0 6px', background: t.border }} />
-              <button
-                type="button"
-                aria-label={tr('compose.insert_link')}
-                title={tr('compose.insert_link')}
-                className="nm-tap"
-                onClick={() => {
-                  // eslint-disable-next-line no-alert -- no custom dialog exists for the URL prompt
-                  const url = window.prompt(tr('compose.link_prompt'));
-                  if (url !== null && url !== '') {
-                    exec('createLink', url);
-                  }
-                }}
-                style={toolBtn}
-              >
-                <Link2 size={18} strokeWidth={2} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                aria-label={tr('compose.insert_image')}
-                title={tr('compose.insert_image_url')}
-                className="nm-tap"
-                onClick={() => {
-                  // eslint-disable-next-line no-alert -- no custom dialog exists for the URL prompt
-                  const url = window.prompt(tr('compose.image_prompt'));
-                  if (url !== null && url !== '') {
-                    exec('insertImage', url);
-                  }
-                }}
-                style={toolBtn}
-              >
-                <ImageIcon size={18} strokeWidth={2} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                aria-label={tr('action.attach_files')}
-                title={tr('action.attach_files')}
-                className="nm-tap"
-                onClick={() => fileRef.current?.click()}
-                style={toolBtn}
-              >
-                <Paperclip size={18} strokeWidth={2} aria-hidden="true" />
-              </button>
-            </div>
-
-            <input
-              ref={fileRef}
-              type="file"
-              multiple
-              hidden
-              onChange={(e) => {
-                void handleFiles(e);
-              }}
-            />
-
-            <div
-              ref={editorRef}
-              contentEditable
-              role="textbox"
-              aria-multiline="true"
-              aria-label={tr('compose.body_label')}
-              data-placeholder={tr('compose.body_placeholder')}
-              className="nm-editor"
-              onInput={() => {
-                readBody();
-                setStatus((prev) => (prev?.type === 'error' ? null : prev));
-                saverRef.current?.touch();
-              }}
-              style={{
-                display: 'block',
-                width: '100%',
-                minHeight: 320,
-                padding: '20px 24px 12px',
-                background: 'transparent',
-                color: t.text,
-                fontSize: 15,
-                lineHeight: '24px',
-                // The ring of :focus-visible, drawn inside: the scroll region around the editor would clip it outside.
-                outlineOffset: -2,
-                overflowY: 'auto'
-              }}
-            />
-
-            {files.length > 0 ? (
-              <ul
-                role="list"
-                aria-label={tr('term.attachments')}
-                style={{ listStyle: 'none', margin: 0, padding: '0 24px 20px', display: 'flex', flexWrap: 'wrap', gap: 12 }}
-              >
-                {files.map((file, index) => (
-                  <li
-                    // eslint-disable-next-line react/no-array-index-key -- the same file can be attached twice and rows have no id; the list is only appended to or filtered by index
-                    key={`${file.filename}-${index}`}
-                    style={{
-                      flex: '0 1 300px',
-                      minWidth: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 12,
-                      padding: '10px 6px 10px 10px',
-                      border: `1px solid ${t.border}`,
-                      borderRadius: 12,
-                      background: t.raised
-                    }}
-                  >
-                    <span
-                      aria-hidden="true"
-                      style={{
-                        width: 40,
-                        height: 40,
-                        flex: 'none',
-                        borderRadius: 8,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: getChip('#2F5BEA', t).bg,
-                        color: getChip('#2F5BEA', t).fg,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        letterSpacing: '0.04em'
-                      }}
-                    >
-                      {fileTypeOf(file.filename)}
-                    </span>
-                    <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, fontWeight: 500 }}>
-                        {file.filename}
-                      </span>
-                      <span style={{ fontSize: 12, lineHeight: '16px', color: t.text3 }}>{formatBytes(file.size)}</span>
-                    </span>
-                    <button
-                      type="button"
-                      aria-label={tr('compose.remove_file', { filename: file.filename })}
-                      title={tr('common.remove')}
-                      className="nm-tap"
-                      onClick={() => setFiles((prev) => prev.filter((_, i) => i !== index))}
-                      style={toolBtn}
-                    >
-                      <X size={16} strokeWidth={2} aria-hidden="true" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-
-            {files.length > 0 ? (
-              <p style={{ margin: '-8px 0 0', padding: '0 24px 16px', fontSize: 12, lineHeight: '16px', color: t.text3 }}>
-                {tr('compose.attachments_not_saved')}
-              </p>
-            ) : null}
+        {shownStatus ? (
+          <div className="cp-notice">
+            <Banner tone={shownStatus.type === 'error' ? 'danger' : 'success'}>{shownStatus.text}</Banner>
           </div>
+        ) : null}
 
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: narrow ? 8 : 16,
-              flexWrap: 'wrap',
-              padding: '16px 24px',
-              borderTop: `1px solid ${t.divider}`
+        <main className="cp-main">
+          <form
+            className="cp-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleSend();
             }}
           >
-            <div style={{ display: 'inline-flex', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 2px rgba(16,24,40,0.14)' }}>
-              <button
-                type="submit"
-                disabled={isSending || sent || missingFrom}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  height: 44,
-                  padding: '0 20px',
-                  border: 0,
-                  background: t.accent,
-                  color: '#FFFFFF',
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: isSending ? 'progress' : missingFrom || sent ? 'not-allowed' : 'pointer',
-                  opacity: isSending ? 0.8 : missingFrom || sent ? 0.5 : 1
+            {/* Scroll region: fields, editor and attachments. The footer below stays pinned. */}
+            <div className="cp-scroll">
+              <div className="cp-row">
+                <label htmlFor="compose-from" className="cp-label">
+                  {tr('term.sender')}
+                </label>
+                <div className="cp-field">
+                  <input
+                    id="compose-from"
+                    className="cp-input"
+                    type="email"
+                    value={from}
+                    onChange={(e) => setFrom(e.target.value)}
+                    onKeyDown={enterToBody}
+                    placeholder={tr('compose.from_placeholder')}
+                  />
+                </div>
+              </div>
+
+              <RecipientField
+                id="compose-to"
+                className="cp-row-to"
+                label={tr('term.to')}
+                list={toList}
+                input={toInput}
+                inputRef={toInputRef}
+                placeholder={toList.length === 0 ? tr('compose.to_placeholder') : ''}
+                onInput={setToInput}
+                onCommit={() => commitRecipients(toInput, setToList, setToInput, 'to')}
+                onRemove={(address) => setToList((prev) => prev.filter((a) => a !== address))}
+                onBackspace={() => setToList((prev) => prev.slice(0, -1))}
+                trailing={ccBccToggle}
+                error={badField === 'to' ? tr('compose.invalid_address') : undefined}
+              />
+
+              {showCc ? (
+                <RecipientField
+                  id="compose-cc"
+                  label={tr('term.cc')}
+                  list={ccList}
+                  input={ccInput}
+                  inputRef={ccInputRef}
+                  onInput={setCcInput}
+                  onCommit={() => commitRecipients(ccInput, setCcList, setCcInput, 'cc')}
+                  onRemove={(address) => setCcList((prev) => prev.filter((a) => a !== address))}
+                  error={badField === 'cc' ? tr('compose.invalid_address') : undefined}
+                />
+              ) : null}
+
+              {showBcc ? (
+                <RecipientField
+                  id="compose-bcc"
+                  label={tr('term.bcc')}
+                  list={bccList}
+                  input={bccInput}
+                  inputRef={bccInputRef}
+                  onInput={setBccInput}
+                  onCommit={() => commitRecipients(bccInput, setBccList, setBccInput, 'bcc')}
+                  onRemove={(address) => setBccList((prev) => prev.filter((a) => a !== address))}
+                  error={badField === 'bcc' ? tr('compose.invalid_address') : undefined}
+                />
+              ) : null}
+
+              <ReplyRedirectNote t={t} redirect={draft.replyRedirect} to={toList} />
+
+              <ComposeState t={t} preview={preview} />
+
+              <div className="cp-row">
+                <label htmlFor="compose-subject" className="cp-label">
+                  {tr('term.subject')}
+                </label>
+                <div className="cp-field">
+                  <input
+                    id="compose-subject"
+                    className="cp-input cp-subject"
+                    type="text"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    onKeyDown={enterToBody}
+                    placeholder={tr('term.subject')}
+                  />
+                </div>
+              </div>
+
+              <FormatToolbar exec={exec} />
+
+              <input
+                ref={fileRef}
+                type="file"
+                multiple
+                hidden
+                onChange={(e) => {
+                  void handleFiles(e);
                 }}
-              >
-                {isSending ? (
-                  <Loader2 size={18} className="nm-spin" aria-hidden="true" />
-                ) : (
-                  <Send size={18} strokeWidth={1.8} aria-hidden="true" />
-                )}
-                {isSending ? tr('compose.sending') : tr('action.send')}
-              </button>
+              />
+
+              <div
+                ref={editorRef}
+                contentEditable
+                role="textbox"
+                aria-multiline="true"
+                aria-label={tr('compose.body_label')}
+                data-placeholder={tr('compose.body_placeholder')}
+                className="nm-editor cp-editor"
+                onInput={() => {
+                  readBody();
+                  setStatus((prev) => (prev?.type === 'error' ? null : prev));
+                  saverRef.current?.touch();
+                }}
+              />
+
+              <AttachmentList files={files} onRemove={(index) => setFiles((prev) => prev.filter((_, i) => i !== index))} />
             </div>
-            {statusBelow || touchOnly ? null : (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, lineHeight: '16px', color: t.text2 }}>
+
+            <div className="cp-foot">
+              <Button
+                type="submit"
+                variant="primary"
+                loading={isSending}
+                disabled={sent || missingFrom}
+                leadingIcon={<Send size={16} strokeWidth={1.75} aria-hidden="true" />}
+              >
+                {isSending ? tr('compose.sending') : tr('action.send')}
+              </Button>
+              <span className="cp-hint">
                 {tRich('compose.send_shortcut', {
                   keys: (
-                    <>
-                      <kbd style={kbdStyle}>{tr('compose.key_ctrl')}</kbd>
-                      <kbd style={kbdStyle}>{tr('compose.key_enter')}</kbd>
-                    </>
+                    <span className="cp-keys">
+                      <Kbd>{tr('compose.key_ctrl')}</Kbd>
+                      <Kbd>{tr('compose.key_enter')}</Kbd>
+                    </span>
                   )
                 })}
               </span>
-            )}
-            <button
-              type="button"
-              aria-label={tr('compose.insert_signature')}
-              className="nm-tap"
-              disabled={noSignature}
-              title={noSignature ? tr('compose.no_signature') : tr('compose.insert_signature')}
-              onClick={() => {
-                editorRef.current?.focus();
-                const block = signatureBlock(signature);
-                if (block !== '') {
-                  // eslint-disable-next-line @typescript-eslint/no-deprecated -- no replacement exists for execCommand in a contentEditable editor
-                  document.execCommand('insertText', false, block);
-                }
-              }}
-              style={{
-                ...toolBtn,
-                marginLeft: 'auto',
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                cursor: noSignature ? 'not-allowed' : 'pointer',
-                opacity: noSignature ? 0.5 : 1
-              }}
-            >
-              <Signature size={20} strokeWidth={1.8} aria-hidden="true" />
-            </button>
-            <button
-              ref={discardRef}
-              type="button"
-              aria-label={confirmingDiscard ? tr('compose.confirm_discard') : tr('action.discard_draft')}
-              className="nm-tap"
-              title={tr('action.discard_draft')}
-              onClick={() => {
-                // Asks first when something would be lost: typed text, attachments, or a draft that is saved on the server.
-                const { empty } = readDraft();
-                const worthKeeping = files.length > 0 || (!empty && (draft.draftId !== undefined || !isPristine()));
-                if (confirmingDiscard || !worthKeeping) {
-                  void discardDraft();
-                } else {
-                  setConfirmingDiscard(true);
-                }
-              }}
-              onBlur={() => setConfirmingDiscard(false)}
-              style={{
-                ...toolBtn,
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                ...(confirmingDiscard ? { width: 'auto', padding: '0 8px', color: danger, fontSize: 14, fontWeight: 600 } : null)
-              }}
-            >
-              {confirmingDiscard ? tr('compose.discard_ask') : <Trash2 size={20} strokeWidth={1.8} aria-hidden="true" />}
-            </button>
-          </div>
-        </form>
-      </main>
+              <div className="cp-tools">
+                <IconButton label={tr('action.attach_files')} onClick={() => fileRef.current?.click()}>
+                  <Paperclip size={18} strokeWidth={1.75} aria-hidden="true" />
+                </IconButton>
+                {/* Not `disabled` without a signature: a disabled button cannot say why. It stays focusable and its label says what to do. */}
+                <IconButton
+                  label={noSignature ? tr('compose.no_signature') : tr('compose.insert_signature')}
+                  aria-disabled={noSignature ? true : undefined}
+                  onClick={() => {
+                    if (noSignature) {
+                      return;
+                    }
+                    editorRef.current?.focus();
+                    const block = signatureBlock(signature);
+                    if (block !== '') {
+                      // eslint-disable-next-line @typescript-eslint/no-deprecated -- no replacement exists for execCommand in a contentEditable editor
+                      document.execCommand('insertText', false, block);
+                    }
+                  }}
+                >
+                  <Signature size={18} strokeWidth={1.75} aria-hidden="true" />
+                </IconButton>
+                {/* The same button asks and then discards, so it keeps focus between the two presses. */}
+                <IconButton
+                  ref={discardRef}
+                  variant={confirmingDiscard ? 'danger' : 'ghost'}
+                  className="cp-discard"
+                  data-confirming={confirmingDiscard ? 'true' : undefined}
+                  label={confirmingDiscard ? tr('compose.confirm_discard') : tr('action.discard_draft')}
+                  onClick={() => {
+                    // Asks first when something would be lost: typed text, attachments, or a draft that is saved on the server.
+                    const { empty } = readDraft();
+                    const worthKeeping = files.length > 0 || (!empty && (draft.draftId !== undefined || !isPristine()));
+                    if (confirmingDiscard || !worthKeeping) {
+                      void discardDraft();
+                    } else {
+                      setConfirmingDiscard(true);
+                    }
+                  }}
+                  onBlur={() => setConfirmingDiscard(false)}
+                >
+                  {confirmingDiscard ? tr('compose.discard_ask') : <Trash2 size={18} strokeWidth={1.75} aria-hidden="true" />}
+                </IconButton>
+              </div>
+            </div>
+          </form>
+        </main>
+      </div>
       {sendFlow.dialog}
     </div>
   );

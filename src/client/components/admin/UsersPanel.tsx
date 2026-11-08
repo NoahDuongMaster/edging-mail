@@ -1,5 +1,5 @@
 import React from 'react';
-import { Loader2, Plus, Search } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import type { ThemeTokens } from '../../theme';
 import { useSession } from '../../lib/auth';
 import { fmt, useT } from '../../lib/i18n';
@@ -7,65 +7,54 @@ import { adminErrorText } from '../../lib/admin/types';
 import type { AdminUser } from '../../lib/admin/types';
 import { useAdminUsers } from '../../lib/admin/users';
 import { useDebounced } from '../../lib/useDebounced';
+import { Badge, Button, EmptyState, Table, TableSkeleton, TextField } from '../../ui';
 import { CreateUserDialog } from './CreateUserDialog';
 import { DeleteUserDialog } from './DeleteUserDialog';
-import { TempPasswordDialog, Loading } from './TempPasswordDialog';
+import { TempPasswordDialog } from './TempPasswordDialog';
 import { UserDialog } from './UserDialog';
-import { Badge, adminStyles } from './adminUi';
+import { ErrorText, LoadError } from './adminUi';
 
 type Dialog =
   | { kind: 'create' }
-  | { kind: 'manage'; id: string }
+  // `back`: opened again by Cancel in Delete account, so the person dialog puts the focus back on its Delete account button.
+  | { kind: 'manage'; id: string; back?: boolean }
   | { kind: 'delete'; id: string }
   | { kind: 'password'; address: string; password: string; reissued: boolean }
   | null;
 
-const UserRow: React.FC<{ t: ThemeTokens; user: AdminUser; onOpen: () => void }> = ({ t, user, onOpen }) => {
+/** One person: the name is the button that opens their dialog (every action on an account is asked and confirmed there). */
+const UserRow: React.FC<{ user: AdminUser; onOpen: () => void }> = ({ user, onOpen }) => {
   const tr = useT();
-  const s = adminStyles(t);
   const title = user.display_name === '' ? user.email : user.display_name;
+  const when = user.last_login_at === null ? null : fmt.dateTime(user.last_login_at);
   return (
-    <li>
-      <button
-        type="button"
-        className="nm-tap-h"
-        onClick={onOpen}
-        style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px 12px',
-          flexWrap: 'wrap',
-          padding: '10px 12px',
-          border: `1px solid ${t.border}`,
-          borderRadius: 12,
-          background: t.surface,
-          color: t.text,
-          font: 'inherit',
-          textAlign: 'left',
-          cursor: 'pointer'
-        }}
-      >
-        <span style={{ flex: '1 1 200px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, overflowWrap: 'anywhere' }}>{title}</span>
-          {user.display_name === '' ? null : <span style={{ ...s.muted, overflowWrap: 'anywhere' }}>{user.email}</span>}
-          {user.aliases.length === 0 ? null : <span style={s.muted}>{tr('users.extra_addresses', { count: user.aliases.length })}</span>}
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <Badge t={t} tone="neutral">
-            {user.role === 'admin' ? tr('term.admin') : tr('term.member')}
-          </Badge>
-          {user.status === 'disabled' ? (
-            <Badge t={t} tone="warn">
-              {tr('users.status_disabled')}
-            </Badge>
-          ) : null}
-        </span>
-        <span style={{ ...s.muted, flex: '1 1 100%' }}>
-          {user.last_login_at === null ? tr('users.never_signed_in') : tr('users.last_sign_in', { when: fmt.dateTime(user.last_login_at) })}
-        </span>
-      </button>
-    </li>
+    <tr>
+      <td className="ad-cell-person ad-wrap">
+        <button type="button" className="ad-person" onClick={onOpen}>
+          <span className="ad-cell-title">{title}</span>
+          {user.display_name === '' ? null : <span className="ad-sub">{user.email}</span>}
+          {user.aliases.length === 0 ? null : <span className="ad-sub">{tr('users.extra_addresses', { count: user.aliases.length })}</span>}
+        </button>
+      </td>
+      <td className="ad-shrink">
+        <Badge tone={user.role === 'admin' ? 'accent' : 'neutral'}>{user.role === 'admin' ? tr('term.admin') : tr('term.member')}</Badge>
+      </td>
+      <td className="ad-shrink">
+        <Badge tone={user.status === 'disabled' ? 'warning' : 'success'}>
+          {user.status === 'disabled' ? tr('users.status_disabled') : tr('users.status_active')}
+        </Badge>
+      </td>
+      <td className="ad-cell-when ad-shrink ad-end ad-quiet">
+        {when === null ? (
+          tr('users.not_signed_in_yet')
+        ) : (
+          <>
+            <span className="ad-wide">{when}</span>
+            <span className="ad-narrow">{tr('users.last_sign_in', { when })}</span>
+          </>
+        )}
+      </td>
+    </tr>
   );
 };
 
@@ -76,7 +65,6 @@ interface UsersPanelProps {
 
 export const UsersPanel: React.FC<UsersPanelProps> = ({ t, onGoToDomains }) => {
   const tr = useT();
-  const s = adminStyles(t);
   const [search, setSearch] = React.useState('');
   const debounced = useDebounced(search);
   const query = useAdminUsers(debounced);
@@ -93,81 +81,75 @@ export const UsersPanel: React.FC<UsersPanelProps> = ({ t, onGoToDomains }) => {
   let body: React.ReactNode;
   if (query.isError && query.data === undefined) {
     body = (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <p role="alert" style={{ ...s.muted, color: s.danger }}>
-          {adminErrorText(query.error)}
-        </p>
-        <button
-          type="button"
-          onClick={() => {
-            void query.refetch();
-          }}
-          style={s.button}
-        >
-          {tr('common.retry')}
-        </button>
-      </div>
+      <LoadError
+        error={query.error}
+        onRetry={() => {
+          void query.refetch();
+        }}
+      />
     );
   } else if (query.data === undefined) {
-    body = <Loading t={t} label={tr('users.loading')} />;
+    body = <TableSkeleton label={tr('users.loading')} />;
   } else if (users.length === 0) {
-    body = <p style={s.muted}>{debounced.trim() === '' ? tr('users.empty') : tr('users.no_match', { query: debounced.trim() })}</p>;
+    body = <EmptyState title={debounced.trim() === '' ? tr('users.empty') : tr('users.no_match', { query: debounced.trim() })} />;
   } else {
     body = (
       <>
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {users.map((user) => (
-            <UserRow key={user.id} t={t} user={user} onOpen={() => setDialog({ kind: 'manage', id: user.id })} />
-          ))}
-        </ul>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <Table label={tr('admin.tab_people')} dense className="ad-table">
+          <thead>
+            <tr>
+              <th scope="col">{tr('term.account')}</th>
+              <th scope="col">{tr('users.role')}</th>
+              <th scope="col">{tr('users.col_status')}</th>
+              <th scope="col" className="ad-end">
+                {tr('users.col_last_sign_in')}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((user) => (
+              <UserRow key={user.id} user={user} onOpen={() => setDialog({ kind: 'manage', id: user.id })} />
+            ))}
+          </tbody>
+        </Table>
+        <div className="ad-foot">
           {query.hasNextPage ? (
-            <button
-              type="button"
+            <Button
+              size="sm"
               disabled={query.isFetchingNextPage}
+              loading={query.isFetchingNextPage}
               onClick={() => {
                 void query.fetchNextPage();
               }}
-              style={{ ...s.button, cursor: query.isFetchingNextPage ? 'progress' : 'pointer' }}
             >
-              {query.isFetchingNextPage ? <Loader2 size={16} className="nm-spin" aria-hidden="true" /> : null}
               {tr('list.load_more')}
-            </button>
+            </Button>
           ) : null}
-          <span role="status" style={s.muted}>
-            {tr('users.showing', { shown: fmt.number(users.length), total: fmt.number(total) })}
-          </span>
-          {query.isError ? (
-            <span role="alert" style={{ ...s.muted, color: s.danger }}>
-              {adminErrorText(query.error)}
-            </span>
-          ) : null}
+          <span role="status">{tr('users.showing', { shown: fmt.number(users.length), total: fmt.number(total) })}</span>
+          {query.isError ? <ErrorText>{adminErrorText(query.error)}</ErrorText> : null}
         </div>
       </>
     );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ position: 'relative', flex: '1 1 220px', minWidth: 0 }}>
-          <Search size={16} aria-hidden="true" style={{ position: 'absolute', left: 12, top: 14, color: t.text3 }} />
-          <input
-            type="search"
-            aria-label={tr('users.search_label')}
-            placeholder={tr('users.search_placeholder')}
-            autoComplete="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ ...s.input, paddingLeft: 36 }}
-          />
-        </div>
-        <button type="button" onClick={() => setDialog({ kind: 'create' })} style={s.primary}>
-          <Plus size={16} aria-hidden="true" />
+    <div className="ad-pane" data-fill="true">
+      <div className="ad-toolbar">
+        <TextField
+          type="search"
+          label={tr('users.search_label')}
+          hideLabel
+          placeholder={tr('users.search_placeholder')}
+          leading={<Search size={16} aria-hidden="true" />}
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <Button variant="primary" leadingIcon={<Plus size={16} aria-hidden="true" />} onClick={() => setDialog({ kind: 'create' })}>
           {tr('users.new_account')}
-        </button>
+        </Button>
       </div>
       {body}
 
@@ -193,10 +175,16 @@ export const UsersPanel: React.FC<UsersPanelProps> = ({ t, onGoToDomains }) => {
           onClose={close}
           onDelete={() => setDialog({ kind: 'delete', id: managed.id })}
           onReissued={(account) => setDialog({ kind: 'password', ...account, reissued: true })}
+          focusDelete={dialog?.kind === 'manage' && dialog.back === true}
         />
       )}
       {deleting === undefined ? null : (
-        <DeleteUserDialog t={t} user={deleting} onClose={() => setDialog({ kind: 'manage', id: deleting.id })} onDeleted={close} />
+        <DeleteUserDialog
+          t={t}
+          user={deleting}
+          onClose={() => setDialog({ kind: 'manage', id: deleting.id, back: true })}
+          onDeleted={close}
+        />
       )}
     </div>
   );
