@@ -24,7 +24,7 @@ interface DomainRow {
 const check = async (cookie: string, name = 'example.com') => {
   const id = must(await db().select().from(domains).where(eq(domains.name, name)).get()).id;
   return call<{
-    receiving: { ready: boolean; state: string; mx: { priority: number; host: string }[] };
+    receiving: { ready: boolean; state: string; mx: { priority: number; host: string }[]; note: string };
     sending: { ready: boolean; records: { purpose: string; found: boolean }[] };
   }>(`/api/admin/domains/${id}/check`, { cookie });
 };
@@ -115,6 +115,18 @@ describe('DNS check: receiving ready + sending ready', () => {
     expect(answer.text).not.toMatch(/proton/i);
     fakeDns({});
     expect((await check(cookie, 'gmail.com')).json.receiving.state).toBe('no_records');
+  });
+
+  it('says a null MX (RFC 7505, "0 .") is a domain that accepts no mail, and never names an empty host', async () => {
+    const { cookie } = await adminSession();
+    fakeDns({ 'example.com': { MX: ['0 .'] } });
+    const answer = await check(cookie);
+    expect(answer.status).toBe(200);
+    expect(answer.json.receiving).toMatchObject({ ready: false, via_cloudflare: false, state: 'null_mx' });
+    // The record stays in the answer as it is (an empty host for the root); the note says what it means instead of listing it.
+    expect(answer.json.receiving.mx).toEqual([{ priority: 0, host: '' }]);
+    expect(answer.json.receiving.note).toMatch(/null MX/);
+    expect(answer.json.receiving.note).not.toMatch(/point to/);
   });
 
   it('answers a failed lookup as a failed lookup (502), never as "ready" or "not ready"', async () => {

@@ -535,9 +535,10 @@ Every admin answer also carries `success: true`; the shapes below leave it out. 
   request again until `{ "done": true }`. `400 confirm_mismatch`, `409 cannot_delete_self`, `409 last_admin`. Creating the address again later makes a new person with an empty mailbox.
 - `GET /api/admin/domains` → `{ "domains": [ { "id", "name", "created_at", "addresses_count" } ] }`; `POST /api/admin/domains` `{ "name" }` (`400 invalid_hostname`, `409 domain_exists`);
   `DELETE /api/admin/domains/:id` only when no address uses it (`409 domain_in_use`, `404 domain_not_found`).
-- `GET /api/admin/domains/:id/check` → `{ "domain", "checked_at", "receiving": { "ready", "via_cloudflare", "state": "ready" | "other_provider" | "no_records", "mx": [ { "priority", "host" } ],
+- `GET /api/admin/domains/:id/check` → `{ "domain", "checked_at", "receiving": { "ready", "via_cloudflare", "state": "ready" | "other_provider" | "no_records" | "null_mx", "mx": [ { "priority", "host" } ],
 "note" }, "sending": { "ready", "records": [ { "type", "name", "purpose": "bounce" | "spf" | "dkim" | "dmarc", "found", "required" } ], "note" } }`, from DNS-over-HTTPS lookups. A domain whose MX
-  points to another provider is "receiving not ready" with those hosts listed. A failed lookup is `502 dns_lookup_failed`, never reported as ready or not ready.
+  points to another provider is "receiving not ready" with those hosts listed. A domain that publishes the RFC 7505 null MX (`0 .`: it accepts no mail) is `null_mx`; that record
+  is in `mx` with an empty `host`, and no note names it as a host. A failed lookup is `502 dns_lookup_failed`, never reported as ready or not ready.
 - `GET /api/admin/settings` → `{ "settings": { "require_2fa": bool, "default_language": "…" } }`. `PUT /api/admin/settings` `{ "require_2fa"?, "default_language"?, "confirm"? }`: turning `require_2fa` **off** needs the
   step-up and the admin's own address as `confirm`, is audited and alerts the other admins; it never turns off anybody's enrolled 2FA. Turning it on gates every open session at
   once. `400 invalid_language`, `400 confirm_mismatch`, `403 step_up_required`.

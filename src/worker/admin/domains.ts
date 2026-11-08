@@ -135,11 +135,23 @@ adminDomainRoutes.get('/domains/:id/check', async (c) => {
     ]);
     const mx = rootMx.map(parseMx).toSorted((a, b) => a.priority - b.priority);
     const viaCloudflare = mx.length > 0 && mx.every((record) => CLOUDFLARE_MX.test(record.host));
+    // RFC 7505: a null MX ("0 .", which parseMx turns into an empty host) says the domain accepts no mail. It is not a host to name.
+    const nullMx = mx.some((record) => record.host === '');
+    const hosts = [...new Set(mx.map((record) => record.host).filter((host) => host !== ''))];
     const bounceReady = bounceMx.map(parseMx).some((record) => CLOUDFLARE_MX.test(record.host));
     const spfReady = bounceTxt.map(unquote).some((text) => /^v=spf1\b/i.test(text) && text.includes('_spf.mx.cloudflare.net'));
     const dkimReady = dkimTxt.map(unquote).some((text) => /\bp=/.test(text) || /v=DKIM1/i.test(text));
     const dmarcFound = dmarcTxt.map(unquote).some((text) => /^v=DMARC1\b/i.test(text));
-    const state = viaCloudflare ? 'ready' : mx.length === 0 ? 'no_records' : 'other_provider';
+    const state = viaCloudflare ? 'ready' : nullMx ? 'null_mx' : mx.length === 0 ? 'no_records' : 'other_provider';
+    let receivingNote = `The MX records point to ${hosts.join(', ')}, not to Cloudflare Email Routing.`;
+    if (viaCloudflare) {
+      receivingNote = "The MX records are Cloudflare Email Routing's.";
+    } else if (nullMx) {
+      receivingNote =
+        'The domain publishes a null MX record (RFC 7505), so it accepts no mail: replace it with the MX records of Cloudflare Email Routing.';
+    } else if (mx.length === 0) {
+      receivingNote = 'The domain has no MX records.';
+    }
     return c.json({
       success: true,
       domain: name,
@@ -149,11 +161,7 @@ adminDomainRoutes.get('/domains/:id/check', async (c) => {
         via_cloudflare: viaCloudflare,
         state,
         mx,
-        note: viaCloudflare
-          ? "The MX records are Cloudflare Email Routing's."
-          : mx.length === 0
-            ? 'The domain has no MX records.'
-            : `The MX records point to ${[...new Set(mx.map((record) => record.host))].join(', ')}, not to Cloudflare Email Routing.`
+        note: receivingNote
       },
       sending: {
         ready: bounceReady && spfReady && dkimReady,
