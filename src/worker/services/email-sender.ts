@@ -1,9 +1,12 @@
 import { createMimeMessage, Mailbox, MIMETextError } from 'mimetext';
 import { and, eq } from 'drizzle-orm';
 import type { Attachment, Env, Message, SendEmailPayload } from '../types';
+import { deleteBlobs, putBlob } from '../content';
 import { errorMessage, getDb } from '../db';
 import { attachments, messages } from '../db/schema';
-import { attachmentKey, isEmail, nonEmpty } from '../utils';
+import { sealMessage } from '../mail/seal';
+import type { Recipient } from '../mail/seal';
+import { errorClass, isEmail, nonEmpty } from '../utils';
 
 /** The mail was not sent: 400 = bad request, 502 = Cloudflare Email Service is missing or refused it. */
 export class SendError extends Error {
@@ -22,18 +25,18 @@ const toList = (value: string | string[] | undefined): string[] =>
 const byteLength = (value: string): number => new TextEncoder().encode(value).byteLength;
 
 // At most 998 bytes (RFC 5322 line limit), so that the first and the last id of a References header always fit in 2048 bytes.
-const isMessageId = (value: string): boolean => /^<[^<>\s]+>$/.test(value) && byteLength(value) <= 998;
+export const isMessageId = (value: string): boolean => /^<[^<>\s]+>$/.test(value) && byteLength(value) <= 998;
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const MAX_REFERENCES_BYTES = 2048;
 
 // The ids of a stored References header, oldest first; anything else in it is ignored.
-const parseReferences = (header: string | null | undefined): string[] => (header?.match(/<[^<>\s]+>/g) ?? []).filter(isMessageId);
+export const parseReferences = (header: string | null | undefined): string[] => (header?.match(/<[^<>\s]+>/g) ?? []).filter(isMessageId);
 
 // The answered mail's chain plus the answered mail, oldest first and without duplicates. When it does not fit in the
 // header, the oldest ids go first, except the root (first) and the answered mail (last).
-function buildReferences(known: string[], inReplyTo: string | undefined): string[] {
+export function buildReferences(known: string[], inReplyTo: string | undefined): string[] {
   const ids = [...new Set(known.filter((id) => id !== inReplyTo)), ...(inReplyTo === undefined ? [] : [inReplyTo])];
   if (ids.length === 0) {
     return [];
@@ -51,7 +54,7 @@ function buildReferences(known: string[], inReplyTo: string | undefined): string
   return [root, ...newest.toReversed()];
 }
 
-function decodeBase64(attachment: { filename: string; content_base64: string }): Uint8Array {
+function decodeBase64(attachment: { filename: string; content_base64: string }): Uint8Array<ArrayBuffer> {
   try {
     return Uint8Array.from(atob(attachment.content_base64), (char) => char.codePointAt(0) ?? 0);
   } catch {
@@ -74,7 +77,7 @@ async function deliver(env: Env, builder: EmailMessageBuilder): Promise<string> 
     const { messageId } = await env.SEND_EMAIL.send(builder);
     return messageId;
   } catch (error) {
-    console.error('[edging-mail] Email delivery failed:', error);
+    console.error('[edging-mail] Email delivery failed:', errorClass(error));
     const reason = error instanceof Error ? nonEmpty(error.message) : undefined;
     const code = error instanceof Error && 'code' in error && typeof error.code === 'string' ? ` [${error.code}]` : '';
     throw new SendError(`Email delivery failed: ${reason ?? 'unknown error'}${code}`, 502);
@@ -84,7 +87,10 @@ async function deliver(env: Env, builder: EmailMessageBuilder): Promise<string> 
 export async function sendEmail(
   payload: SendEmailPayload,
   env: Env,
-  sender: { address: string; name: string | null }
+  sender: { address: string; name: string | null },
+  userId: string,
+  // The sender's own key: the copy in Sent is sealed to it like every other mail the sender holds.
+  recipient: Recipient
 ): Promise<{ success: boolean; message: Message; note: string }> {
   const id = crypto.randomUUID();
   const now = Date.now();
@@ -114,13 +120,14 @@ export async function sendEmail(
   }
 
   const db = getDb(env.DB);
+  // The mail being answered, among the sender's own mail: another user's thread is neither read nor joined.
   const parent =
     inReplyTo === undefined
       ? undefined
       : await db
           .select({ thread_id: messages.thread_id, references_header: messages.references_header })
           .from(messages)
-          .where(eq(messages.message_id, inReplyTo))
+          .where(and(eq(messages.message_id, inReplyTo), eq(messages.user_id, userId)))
           .get();
   // The chain stored with the answered mail is the truth; the client's list only stands in when the mail is unknown.
   const knownChain = parseReferences(parent?.references_header);
@@ -221,45 +228,52 @@ export async function sendEmail(
 
   const rawBuffer = new TextEncoder().encode(archive.replace(pendingMessageId, () => messageId));
   const toStr = recipients.join(', ');
-  let rawKey: string | null = `sent/${id}.eml`;
-
-  // Store raw EML in R2, only now that the mail is really out
-  try {
-    await env.BUCKET.put(rawKey, rawBuffer, {
-      httpMetadata: { contentType: 'message/rfc822' },
-      customMetadata: { from: sender.address.slice(0, 256), to: toStr.slice(0, 256) }
-    });
-  } catch (error) {
-    console.error('Failed to store sent email in R2:', error);
-    rawKey = null;
-  }
-
   const snippet = (text ?? html?.replaceAll(/<[^>]+>/g, ' ') ?? '').trim().slice(0, 180);
 
-  // Attachments of the sent mail are stored like inbound ones; one that R2 refuses is left out (and logged).
-  const attachmentRecords: Attachment[] = [];
-  for (const { att, bytes } of files) {
-    const attId = crypto.randomUUID();
-    const attKey = attachmentKey(id, attId, att.filename);
-    const mimeType = nonEmpty(att.content_type) ?? 'application/octet-stream';
+  // The copy in Sent is sealed to the sender's key: plaintext is never stored. Objects first, then the rows in one batch.
+  const attachmentContents = files.map(({ att, bytes }) => ({
+    id: crypto.randomUUID(),
+    filename: nonEmpty(att.filename) ?? 'attachment',
+    mime_type: nonEmpty(att.content_type) ?? 'application/octet-stream',
+    content_id: null,
+    bytes
+  }));
+  const sealed = await sealMessage(
+    recipient,
+    userId,
+    id,
+    { subject, snippet, text: text ?? null, html: html ?? null },
+    rawBuffer,
+    attachmentContents
+  );
+  const written: string[] = [];
+  let rawKey = sealed.columns.r2_key;
+  for (const object of sealed.objects) {
     try {
-      await env.BUCKET.put(attKey, bytes, { httpMetadata: { contentType: mimeType } });
+      await putBlob(env, object.key, object.body);
+      written.push(object.key);
     } catch (error) {
-      console.error(`Failed to store sent attachment ${att.filename} to R2:`, error);
-      continue;
+      // The mail is already out: a part that cannot be kept is logged (ids and the error class only) and left out of Sent.
+      console.error('[edging-mail] Could not store a sent object in R2 (message', id, `): ${errorClass(error)}`);
+      if (object.key === rawKey) {
+        rawKey = null;
+      }
     }
-    attachmentRecords.push({
-      id: attId,
+  }
+  const attachmentRecords: Attachment[] = sealed.attachments
+    .filter((record) => written.includes(record.r2_key))
+    .map((record) => ({
+      id: record.id,
       message_id: id,
-      filename: nonEmpty(att.filename) ?? 'attachment',
-      mime_type: mimeType,
-      size: bytes.byteLength,
-      r2_key: attKey,
+      filename: '',
+      mime_type: '',
+      size: attachmentContents.find((content) => content.id === record.id)?.bytes.byteLength ?? 0,
+      r2_key: record.r2_key,
       content_id: null,
       is_inline: 0,
-      created_at: now
-    });
-  }
+      created_at: now,
+      meta_blob: record.meta_blob
+    }));
 
   const messageRecord: Message = {
     id,
@@ -272,10 +286,7 @@ export async function sendEmail(
     cc: ccList.length > 0 ? ccList.join(', ') : null,
     bcc: bccList.length > 0 ? bccList.join(', ') : null,
     reply_to: replyTo ?? null,
-    subject,
-    snippet,
-    body_text: text ?? null,
-    body_html: html ?? null,
+    ...sealed.columns,
     r2_key: rawKey,
     folder: 'sent',
     is_read: 1,
@@ -285,7 +296,8 @@ export async function sendEmail(
     created_at: now,
     updated_at: now,
     references_header: referencesHeader ?? null,
-    in_reply_to: inReplyTo ?? null
+    in_reply_to: inReplyTo ?? null,
+    user_id: userId
   };
 
   // Store in D1 messages table under 'sent' folder, with its attachment rows in the same batch
@@ -295,15 +307,16 @@ export async function sendEmail(
       ...attachmentRecords.map((record) => db.insert(attachments).values(record))
     ]);
   } catch (error) {
+    await deleteBlobs(env, written);
     throw new Error(`The email was sent but could not be saved to Sent: ${errorMessage(error)}`, { cause: error });
   }
 
-  // The draft this mail was written in is done: delete it, but only a drafts-folder row, never a real mail.
+  // The draft this mail was written in is done: delete it, but only the sender's own drafts-folder row, never a real mail.
   if (draftId !== undefined) {
     try {
-      await db.delete(messages).where(and(eq(messages.id, draftId), eq(messages.folder, 'drafts')));
+      await db.delete(messages).where(and(eq(messages.id, draftId), eq(messages.folder, 'drafts'), eq(messages.user_id, userId)));
     } catch (error) {
-      console.error('[edging-mail] Could not delete the draft of a sent mail:', errorMessage(error));
+      console.error('[edging-mail] Could not delete the draft of a sent mail:', errorClass(error));
     }
   }
 

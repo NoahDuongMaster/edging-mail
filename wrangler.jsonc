@@ -7,14 +7,19 @@
   "routes": [{ "pattern": "mail.duongnamtruong.com", "custom_domain": true }],
   "workers_dev": false,
   "preview_urls": false,
-  // `wrangler dev` only: without this the Worker is told its URL is mail.duongnamtruong.com (inferred from `routes`),
+  // `wrangler dev` only: without this the Worker is told its URL is the `routes` hostname (inferred from `routes`),
   // which makes the WebSocket Origin check refuse the Vite dev server (http://localhost:<port>).
   "dev": { "host": "localhost" },
   "assets": {
     "directory": "./dist/client",
     "binding": "ASSETS",
-    "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
+    // An unknown path is a plain 404, never the app shell (no soft-404 copies of the app for search engines).
+    // The app shell itself is served by the Worker at /app (src/worker/site/).
+    "not_found_handling": "none",
+    // The Worker answers these paths before the static files: the public site (src/worker/site/) and the API. "/" has to be
+    // listed because index.html is a real asset that would otherwise be served for it. A plain entry matches that path
+    // only, so it does not swallow /sw.js, /assets/* and the other static files; "/app/*" matches everything below /app.
+    "run_worker_first": ["/api/*", "/", "/en", "/en/", "/zh", "/zh/", "/app", "/app/*", "/robots.txt", "/sitemap.xml"]
   },
   "d1_databases": [
     {
@@ -42,6 +47,9 @@
   "triggers": { "crons": ["* * * * *"] },
   "vars": {
     "APP_NAME": "Edging Mail",
-    "DEFAULT_FROM": "hi@duongnamtruong.com"
+    "DEFAULT_FROM": "hi@duongnamtruong.com",
+    // "on" serves the public landing page at /, /en/ and /zh/ (and robots.txt + sitemap.xml). Anything else, or unset, turns it off:
+    // / then goes straight to /app. A fork leaves it unset unless it wants a public page.
+    "LANDING_PAGE": "on"
   }
 }

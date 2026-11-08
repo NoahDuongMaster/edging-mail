@@ -16,7 +16,10 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "tsc -b && npm run lint && npm run format:check"
+    "check": "tsc -b && npm run lint && npm run format:check && npm run check:bundle",
+    "test": "vitest run",
+    "check:bundle": "node scripts/check-worker-bundle.mjs",
+    "kat:browser": "node scripts/kat-browser.mjs"
   },
   "keywords": [
     "cloudflare",
@@ -39,16 +42,19 @@
     "url": "https://github.com/NoahDuongMaster/edging-mail/issues"
   },
   "dependencies": {
+    "@hpke/core": "1.10.0",
     "@tanstack/react-query": "^5.105.3",
     "drizzle-orm": "^0.45.4",
     "hono": "^4.13.16",
     "lucide-react": "^1.66.0",
     "mimetext": "^3.0.28",
     "postal-mime": "^4.2.0",
+    "qrcode-generator": "2.0.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.6.0",
     "@cloudflare/workers-types": "^5.20261103.1",
     "@eslint/js": "^9.39.5",
     "@tailwindcss/vite": "^4.3.4",
@@ -59,6 +65,7 @@
     "@vitejs/plugin-react": "^6.2.1",
     "autoprefixer": "^10.6.2",
     "drizzle-kit": "^0.31.11",
+    "esbuild": "0.28.2",
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import-x": "^4.17.1",
@@ -73,6 +80,7 @@
     "typescript": "^7.0.2",
     "typescript-eslint": "^8.72.1",
     "vite": "^8.3.5",
+    "vitest": "4.1.12",
     "wrangler": "^4.156.2"
   },
   "overrides": {

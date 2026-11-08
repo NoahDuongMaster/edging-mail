@@ -2,10 +2,15 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { and, desc, eq, inArray, notInArray, sql } from 'drizzle-orm';
-import { errorMessage, getDb, type Db } from './db';
-import { pushKeys, pushSubscriptions, settings } from './db/schema';
-import { appName, isEmail, nonEmpty } from './utils';
-import type { Env } from './types';
+import { currentUser } from './auth/middleware';
+import { dataKeysOf } from './auth/secrets';
+import { getDb, type Db } from './db';
+import { pushKeys, pushSubscriptions, users } from './db/schema';
+import { failed, statusError } from './errors';
+import { appName, errorClass, isEmail, nonEmpty } from './utils';
+import type { AppEnv, Env } from './types';
+import { openData, openLegacyVapidKey, sealData } from '../shared/crypto/server';
+import type { DataKeys } from '../shared/crypto/server';
 
 export interface PushPayload {
   title: string;
@@ -100,51 +105,68 @@ interface Vapid {
 }
 
 // There is nothing to configure: the VAPID key pair is created the first time push is needed and kept in `push_keys`. The private
-// half is sealed with AES-GCM under a key derived from JWT_SECRET (HKDF with its own label), so a copy of the database alone cannot
-// sign pushes. Changing JWT_SECRET makes the stored pair unreadable: it is replaced and the devices made for the old pair are dropped
-// (the push services would refuse them anyway), so every device turns notifications on again.
+// half is sealed under DATA_KEY (version, kid, AES-GCM), so a copy of the database alone cannot sign pushes. Changing DATA_KEY to a key
+// that cannot open the stored pair (and without DATA_KEY_PREVIOUS) makes it unreadable: it is replaced and the devices made for the old pair
+// are dropped (the push services would refuse them anyway), so every device turns notifications on again. A rotation keeps it readable.
+// A pair written by the single-user version (sealed under JWT_SECRET) is converted instead: see `unsealLegacy`.
 
 const VAPID_ROW_ID = 1;
-// RFC 8292 wants a mailto: or https: contact; the project page is the last resort when no sender address is known.
-const VAPID_FALLBACK_SUBJECT = 'https://github.com/NoahDuongMaster/edging-mail';
-const AES_IV_BYTES = 12;
 
 const decoder = new TextDecoder();
 
 type KeyPair = Omit<Vapid, 'subject'>;
 
-const sealingKey = async (secret: string, usage: KeyUsage): Promise<CryptoKey> =>
-  crypto.subtle.importKey(
-    'raw',
-    await hkdf(encoder.encode(secret), encoder.encode('edging-mail'), encoder.encode('vapid private key v1'), 32),
-    'AES-GCM',
-    false,
-    [usage]
-  );
-
-// The public key is the associated data, so a sealed value cannot be moved onto another key pair.
-async function seal(pair: KeyPair, secret: string): Promise<string> {
-  const iv = crypto.getRandomValues(new Uint8Array(AES_IV_BYTES));
-  const sealed = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv, additionalData: encoder.encode(pair.publicKey) },
-    await sealingKey(secret, 'encrypt'),
-    encoder.encode(pair.privateKey)
-  );
-  return toBase64Url(concat(iv, new Uint8Array(sealed)));
+// The public key is the authenticated context, so a sealed value cannot be moved onto another key pair.
+async function seal(pair: KeyPair, keys: DataKeys): Promise<string> {
+  return toBase64Url(await sealData(keys, 'vapid', pair.publicKey, encoder.encode(pair.privateKey)));
 }
 
-// undefined when the row was sealed under another JWT_SECRET or is damaged.
-async function unseal(row: typeof pushKeys.$inferSelect, secret: string): Promise<KeyPair | undefined> {
+// undefined when the row was sealed under a key we no longer hold, or is damaged.
+async function unseal(row: typeof pushKeys.$inferSelect, keys: DataKeys): Promise<KeyPair | undefined> {
   try {
-    const bytes = fromBase64Url(row.private_key_sealed);
-    const plain = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: bytes.slice(0, AES_IV_BYTES), additionalData: encoder.encode(row.public_key) },
-      await sealingKey(secret, 'decrypt'),
-      bytes.slice(AES_IV_BYTES)
-    );
+    const plain = await openData(keys, 'vapid', row.public_key, fromBase64Url(row.private_key_sealed));
     return { publicKey: row.public_key, privateKey: decoder.decode(plain) };
   } catch {
     return undefined;
+  }
+}
+
+// The single-user version sealed the private half under JWT_SECRET (`openLegacyVapidKey`, with the other server decrypts in data-key.ts). A pair like
+// that is sealed under DATA_KEY at once, so the devices made for it keep working across the upgrade (the guide says to keep JWT_SECRET); the
+// next read finds the current format. undefined for anything else. Remove with `openLegacyVapidKey` in the first release after the upgrade window.
+async function unsealLegacy(row: typeof pushKeys.$inferSelect, jwtSecret: string | undefined): Promise<KeyPair | undefined> {
+  if (jwtSecret === undefined || jwtSecret === '') {
+    return undefined;
+  }
+  try {
+    const plain = await openLegacyVapidKey(jwtSecret, row.public_key, fromBase64Url(row.private_key_sealed));
+    return plain === undefined ? undefined : { publicKey: row.public_key, privateKey: decoder.decode(plain) };
+  } catch {
+    return undefined;
+  }
+}
+
+// The signing key of a pair: its private scalar with the public point it must belong to. The runtime refuses a pair whose halves do not belong together
+// (DataError; test/data-key.test.ts pins that, so a runtime that stopped checking is noticed).
+function signingKey(pair: KeyPair): Promise<CryptoKey> {
+  const publicBytes = fromBase64Url(pair.publicKey);
+  return crypto.subtle.importKey(
+    'jwk',
+    { kty: 'EC', crv: 'P-256', x: toBase64Url(publicBytes.slice(1, 33)), y: toBase64Url(publicBytes.slice(33, 65)), d: pair.privateKey },
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    false,
+    ['sign']
+  );
+}
+
+// A private scalar that does not belong to its public key would sign requests no push service accepts, and the devices would be kept for a pair that
+// cannot work: before a pair that came from outside (the old format) is sealed again, it is imported as the signing key it will become.
+async function pairIsConsistent(pair: KeyPair): Promise<boolean> {
+  try {
+    await signingKey(pair);
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -157,21 +179,30 @@ async function generatePair(): Promise<KeyPair> {
   return { publicKey: toBase64Url(new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey))), privateKey: d };
 }
 
-async function loadKeyPair(db: Db, secret: string): Promise<KeyPair> {
+async function loadKeyPair(db: Db, keys: DataKeys, jwtSecret: string | undefined): Promise<KeyPair> {
   const read = () => db.select().from(pushKeys).where(eq(pushKeys.id, VAPID_ROW_ID)).get();
   const row = await read();
-  const existing = row === undefined ? undefined : await unseal(row, secret);
+  const existing = row === undefined ? undefined : await unseal(row, keys);
   if (existing !== undefined) {
     return existing;
   }
+  const legacy = row === undefined ? undefined : await unsealLegacy(row, jwtSecret);
+  if (row !== undefined && legacy !== undefined && (await pairIsConsistent(legacy))) {
+    // Sealed under DATA_KEY now, only while the row is still the one that was read; either way this is the pair the devices were made for.
+    await db
+      .update(pushKeys)
+      .set({ private_key_sealed: await seal(legacy, keys) })
+      .where(and(eq(pushKeys.id, VAPID_ROW_ID), eq(pushKeys.private_key_sealed, row.private_key_sealed)));
+    return legacy;
+  }
 
   const fresh = await generatePair();
-  const values = { id: VAPID_ROW_ID, public_key: fresh.publicKey, private_key_sealed: await seal(fresh, secret), created_at: Date.now() };
-  // Callers can race, so the first insert wins and everybody reads it back below. An unreadable pair (JWT_SECRET changed) is replaced
+  const values = { id: VAPID_ROW_ID, public_key: fresh.publicKey, private_key_sealed: await seal(fresh, keys), created_at: Date.now() };
+  // Callers can race, so the first insert wins and everybody reads it back below. An unreadable pair (DATA_KEY changed without DATA_KEY_PREVIOUS) is replaced
   // only while nobody else has (same public key). In the same batch the devices made for an older key are dropped, which also
   // covers a database that held devices before it held a key: the delete runs only while the new pair is the stored one, so the
   // loser of a race deletes nothing and no device made for the winner's key is touched.
-  await db.batch([
+  const [, dropped] = await db.batch([
     row === undefined
       ? db.insert(pushKeys).values(values).onConflictDoNothing()
       : db
@@ -181,36 +212,48 @@ async function loadKeyPair(db: Db, secret: string): Promise<KeyPair> {
     db
       .delete(pushSubscriptions)
       .where(sql`(select ${pushKeys.public_key} from ${pushKeys} where ${pushKeys.id} = ${VAPID_ROW_ID}) = ${fresh.publicKey}`)
+      .returning({ id: pushSubscriptions.id })
   ]);
   const stored = await read();
-  const pair = stored === undefined ? undefined : await unseal(stored, secret);
+  const pair = stored === undefined ? undefined : await unseal(stored, keys);
   if (pair === undefined) {
     throw new Error('Could not read the VAPID key pair');
+  }
+  if (row !== undefined && stored?.public_key === fresh.publicKey) {
+    // An operator cannot otherwise tell why notifications went off: one line, no value of any key.
+    console.warn(
+      `[edging-mail] push: the stored VAPID pair could not be opened; a new pair was made and ${dropped.length} device(s) removed`
+    );
   }
   return pair;
 }
 
-// The contact the push services may write to (RFC 8292): the sender address from Settings, else the DEFAULT_FROM var.
-async function vapidSubject(env: Env, db: Db): Promise<string> {
-  const saved = await db.select({ value: settings.value }).from(settings).where(eq(settings.key, 'default_from')).get();
-  const sender = [saved?.value, env.DEFAULT_FROM]
-    .map((value) => nonEmpty(value?.trim()))
-    .find((value) => value !== undefined && isEmail(value));
-  return sender === undefined ? VAPID_FALLBACK_SUBJECT : `mailto:${sender}`;
+// The contact the push services may write to (RFC 8292 wants a mailto: or https: URL): the DEFAULT_FROM var when it holds an address
+// (the deployment's own contact), otherwise the primary address of the person being notified. Never a value of the upstream project.
+async function vapidSubject(env: Env, db: Db, userId: string): Promise<string> {
+  const configured = nonEmpty(env.DEFAULT_FROM?.trim());
+  if (configured !== undefined && isEmail(configured)) {
+    return `mailto:${configured}`;
+  }
+  const owner = await db.select({ email: users.email }).from(users).where(eq(users.id, userId)).get();
+  if (owner === undefined) {
+    throw new Error('Push contact: the user does not exist');
+  }
+  return `mailto:${owner.email}`;
 }
 
-/** The key pair (created on first use) and the contact for the push services. undefined only without JWT_SECRET. */
-async function getVapid(env: Env): Promise<Vapid | undefined> {
-  const secret = nonEmpty(env.JWT_SECRET);
-  if (secret === undefined) {
+/** The key pair (created on first use) and the contact for the push services. undefined only without a usable DATA_KEY. */
+async function getVapid(env: Env, userId: string): Promise<Vapid | undefined> {
+  const keys = await dataKeysOf(env);
+  if (keys === undefined) {
     return undefined;
   }
   const db = getDb(env.DB);
-  return { ...(await loadKeyPair(db, secret)), subject: await vapidSubject(env, db) };
+  return { ...(await loadKeyPair(db, keys, env.JWT_SECRET)), subject: await vapidSubject(env, db, userId) };
 }
 
-async function requireVapid(env: Env): Promise<Vapid> {
-  const vapid = await getVapid(env);
+async function requireVapid(env: Env, userId: string): Promise<Vapid> {
+  const vapid = await getVapid(env, userId);
   if (vapid === undefined) {
     throw new HTTPException(503, { message: 'Push is not configured' });
   }
@@ -219,14 +262,7 @@ async function requireVapid(env: Env): Promise<Vapid> {
 
 /** RFC 8292: `Authorization: vapid t=<ES256 JWT>, k=<public key>`. */
 async function vapidAuthorization(vapid: Vapid, audience: string): Promise<string> {
-  const publicBytes = fromBase64Url(vapid.publicKey);
-  const key = await crypto.subtle.importKey(
-    'jwk',
-    { kty: 'EC', crv: 'P-256', x: toBase64Url(publicBytes.slice(1, 33)), y: toBase64Url(publicBytes.slice(33, 65)), d: vapid.privateKey },
-    { name: 'ECDSA', namedCurve: 'P-256' },
-    false,
-    ['sign']
-  );
+  const key = await signingKey(vapid);
   const header = toBase64Url(encoder.encode(JSON.stringify({ typ: 'JWT', alg: 'ES256' })));
   const claims = toBase64Url(
     encoder.encode(JSON.stringify({ aud: audience, exp: Math.floor(Date.now() / 1000) + VAPID_LIFETIME_SECONDS, sub: vapid.subject }))
@@ -275,7 +311,7 @@ async function sendToSubscription(vapid: Vapid, subscription: Subscription, payl
     const detail = await response.text();
     console.error(`[edging-mail] push: ${origin} answered HTTP ${response.status}:`, detail.slice(0, 200));
   } catch (error) {
-    console.error(`[edging-mail] push: sending to ${origin} failed: ${errorMessage(error)}`);
+    console.error(`[edging-mail] push: sending to ${origin} failed: ${errorClass(error)}`);
   }
   return 'failed';
 }
@@ -288,20 +324,21 @@ interface PushResult {
 
 const clip = (text: string, max: number): string => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
 
-async function deliver(env: Env, payload: PushPayload): Promise<PushResult> {
+async function deliver(env: Env, userId: string, payload: PushPayload): Promise<PushResult> {
   const result: PushResult = { sent: 0, failed: 0, removed: 0 };
   const db = getDb(env.DB);
+  const mine = eq(pushSubscriptions.user_id, userId);
   // No device, no key to create: installs that never turn notifications on stay out of push entirely.
-  const devices = await db.select({ id: pushSubscriptions.id }).from(pushSubscriptions).limit(1);
+  const devices = await db.select({ id: pushSubscriptions.id }).from(pushSubscriptions).where(mine).limit(1);
   if (devices.length === 0) {
     return result;
   }
-  const vapid = await getVapid(env);
+  const vapid = await getVapid(env, userId);
   if (vapid === undefined) {
     return result;
   }
-  // Read after the key: a reset key (JWT_SECRET changed) has just dropped the devices made for the old one.
-  const subscriptions = await db.select().from(pushSubscriptions);
+  // Read after the key: a reset key (DATA_KEY changed) has just dropped the devices made for the old one.
+  const subscriptions = await db.select().from(pushSubscriptions).where(mine);
   if (subscriptions.length === 0) {
     return result;
   }
@@ -327,18 +364,18 @@ async function deliver(env: Env, payload: PushPayload): Promise<PushResult> {
   return result;
 }
 
-/** Sends a notification to every subscribed device. Never throws: push is best-effort, the mail is already stored. */
-export async function notifyPush(env: Env, payload: PushPayload): Promise<void> {
+/** Sends a notification to every device subscribed by ONE user. Never throws: push is best-effort, the mail is already stored. */
+export async function notifyPush(env: Env, userId: string, payload: PushPayload): Promise<void> {
   try {
-    await deliver(env, payload);
+    await deliver(env, userId, payload);
   } catch (error) {
-    console.error('[edging-mail] push: notification failed:', error);
+    console.error('[edging-mail] push: notification failed:', errorClass(error));
   }
 }
 
 // --- HTTP API (mounted at /api/push) ---
 
-type PushContext = Context<{ Bindings: Env }>;
+type PushContext = Context<AppEnv>;
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -374,8 +411,12 @@ function parseEndpoint(value: unknown): string {
 const PUSH_SERVICE_HOST =
   /^(?:fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|(?:[a-z0-9-]+\.)+(?:push\.services\.mozilla\.com|push\.apple\.com|notify\.windows\.com))$/;
 
-// https to a push service only; plain http is allowed for loopback so a local fake push service can be used in development.
-function parseSubscriptionEndpoint(value: unknown): string {
+// https on port 443 to a push service, and nothing else (PX-4). A deployment that says it is local (ALLOW_LOCAL_PUSH is "on": `wrangler dev`, the
+// tests) also takes a loopback host over http or https on any port, for a fake push service. The URL parser has made `127.1` and `2130706433` into
+// 127.0.0.1 by now, so the loopback test is on the parsed host name.
+const isLoopback = (hostname: string): boolean => hostname === 'localhost' || hostname === '127.0.0.1';
+
+function parseSubscriptionEndpoint(env: Env, value: unknown): string {
   const endpoint = parseEndpoint(value);
   let url: URL;
   try {
@@ -383,14 +424,15 @@ function parseSubscriptionEndpoint(value: unknown): string {
   } catch {
     throw new HTTPException(400, { message: 'endpoint must be a valid URL' });
   }
-  const isLocalHttp = url.protocol === 'http:' && (url.hostname === 'localhost' || url.hostname === '127.0.0.1');
-  if (url.protocol !== 'https:' && !isLocalHttp) {
+  const local = env.ALLOW_LOCAL_PUSH?.trim().toLowerCase() === 'on' && isLoopback(url.hostname);
+  if (url.protocol !== 'https:' && !(local && url.protocol === 'http:')) {
     throw new HTTPException(400, { message: 'endpoint must be an https URL' });
   }
   if (url.username !== '' || url.password !== '') {
     throw new HTTPException(400, { message: 'endpoint must not contain credentials' });
   }
-  if (!isLocalHttp && !PUSH_SERVICE_HOST.test(url.hostname)) {
+  if (!local && (!PUSH_SERVICE_HOST.test(url.hostname) || url.port !== '')) {
+    // An empty port is the default one (443): `:443` is dropped by the parser, any other port stays.
     throw new HTTPException(400, { message: 'endpoint is not a known push service' });
   }
   return endpoint;
@@ -413,25 +455,25 @@ function parseKey(value: unknown, name: string, length: number): { bytes: Bytes;
   return { bytes, text: toBase64Url(bytes) };
 }
 
-export const pushRoutes = new Hono<{ Bindings: Env }>();
+export const pushRoutes = new Hono<AppEnv>();
 
 pushRoutes.onError((error, c) => {
   if (error instanceof HTTPException) {
-    return c.json({ success: false, error: error.message }, error.status);
+    return statusError(c, error.status, error.message);
   }
-  console.error('[edging-mail] push route failed:', error);
-  return c.json({ success: false, error: errorMessage(error) }, 500);
+  return failed(c, error);
 });
 
 pushRoutes.get('/public-key', async (c) => {
-  const { publicKey } = await requireVapid(c.env);
+  const { publicKey } = await requireVapid(c.env, currentUser(c).id);
   return c.json({ success: true, publicKey });
 });
 
 pushRoutes.post('/subscribe', async (c) => {
-  await requireVapid(c.env);
+  const userId = currentUser(c).id;
+  await requireVapid(c.env, userId);
   const body = await readBody(c);
-  const endpoint = parseSubscriptionEndpoint(body.endpoint);
+  const endpoint = parseSubscriptionEndpoint(c.env, body.endpoint);
   const keys = isRecord(body.keys) ? body.keys : {};
   const p256dh = parseKey(keys.p256dh, 'p256dh', 65);
   const auth = parseKey(keys.auth, 'auth', 16);
@@ -443,25 +485,34 @@ pushRoutes.post('/subscribe', async (c) => {
 
   const db = getDb(c.env.DB);
   const userAgent = c.req.header('User-Agent')?.slice(0, 300) ?? null;
+  // The endpoint identifies one browser profile. When somebody else subscribes from that same browser (a user switch on a shared device),
+  // the device moves to them: it must stop notifying the previous person. This conflict path is the one place a row of another user
+  // is taken over on purpose, and only ever by the holder of the endpoint's own keys.
   await db
     .insert(pushSubscriptions)
-    .values({ endpoint, p256dh: p256dh.text, auth: auth.text, user_agent: userAgent, created_at: Date.now() })
-    .onConflictDoUpdate({ target: pushSubscriptions.endpoint, set: { p256dh: p256dh.text, auth: auth.text, user_agent: userAgent } });
-  // Keep the newest MAX_SUBSCRIPTIONS rows; stale devices are normally pruned on 404/410, this is the backstop.
+    .values({ endpoint, p256dh: p256dh.text, auth: auth.text, user_agent: userAgent, user_id: userId, created_at: Date.now() })
+    .onConflictDoUpdate({
+      target: pushSubscriptions.endpoint,
+      set: { p256dh: p256dh.text, auth: auth.text, user_agent: userAgent, user_id: userId }
+    });
+  // Keep each user's newest MAX_SUBSCRIPTIONS rows; stale devices are normally pruned on 404/410, this is the backstop.
+  const mine = eq(pushSubscriptions.user_id, userId);
   const newest = db
     .select({ id: pushSubscriptions.id })
     .from(pushSubscriptions)
+    .where(mine)
     .orderBy(desc(pushSubscriptions.created_at), desc(pushSubscriptions.id))
     .limit(MAX_SUBSCRIPTIONS);
-  await db.delete(pushSubscriptions).where(notInArray(pushSubscriptions.id, newest));
+  await db.delete(pushSubscriptions).where(and(mine, notInArray(pushSubscriptions.id, newest)));
   return c.json({ success: true });
 });
 
+// Unsubscribe, status and test only ever touch the caller's own devices.
 pushRoutes.post('/unsubscribe', async (c) => {
   const { endpoint } = await readBody(c);
   await getDb(c.env.DB)
     .delete(pushSubscriptions)
-    .where(eq(pushSubscriptions.endpoint, parseEndpoint(endpoint)));
+    .where(and(eq(pushSubscriptions.endpoint, parseEndpoint(endpoint)), eq(pushSubscriptions.user_id, currentUser(c).id)));
   return c.json({ success: true });
 });
 
@@ -470,13 +521,14 @@ pushRoutes.post('/status', async (c) => {
   const row = await getDb(c.env.DB)
     .select({ id: pushSubscriptions.id })
     .from(pushSubscriptions)
-    .where(eq(pushSubscriptions.endpoint, parseEndpoint(endpoint)))
+    .where(and(eq(pushSubscriptions.endpoint, parseEndpoint(endpoint)), eq(pushSubscriptions.user_id, currentUser(c).id)))
     .get();
   return c.json({ success: true, subscribed: row !== undefined });
 });
 
 pushRoutes.post('/test', async (c) => {
-  await requireVapid(c.env);
-  const result = await deliver(c.env, { title: appName(c.env), body: 'Notifications are working', tag: 'test', url: '/' });
+  const userId = currentUser(c).id;
+  await requireVapid(c.env, userId);
+  const result = await deliver(c.env, userId, { title: appName(c.env), body: 'Notifications are working', tag: 'test', url: '/app' });
   return c.json({ success: true, ...result });
 });

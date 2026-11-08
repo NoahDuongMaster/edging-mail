@@ -1,0 +1,209 @@
+{
+  "_comment": "Source: Marketing's glossary (EN / VI / zh-CN). appKeys are the catalogue keys that carry the term; test/i18n checks that each equals the glossary string in its language. landing: the term is also used on the landing pages. Folder names are proper names and are never shortened.",
+  "rows": [
+    { "id": "folder.inbox", "en": "Inbox", "vi": "Hộp thư đến", "zh-CN": "收件箱", "appKeys": ["folder.inbox"], "landing": true },
+    { "id": "folder.sent", "en": "Sent", "vi": "Đã gửi", "zh-CN": "已发送", "appKeys": ["folder.sent"], "landing": true },
+    { "id": "folder.drafts", "en": "Drafts", "vi": "Thư nháp", "zh-CN": "草稿", "appKeys": ["folder.drafts"], "landing": true },
+    { "id": "folder.snoozed", "en": "Snoozed", "vi": "Đã tạm ẩn", "zh-CN": "已延后", "appKeys": ["folder.snoozed"], "landing": true },
+    { "id": "folder.starred", "en": "Starred", "vi": "Có gắn dấu sao", "zh-CN": "星标", "appKeys": ["folder.starred"], "landing": true },
+    {
+      "id": "folder.archive",
+      "en": "Archive",
+      "vi": "Lưu trữ",
+      "zh-CN": "归档",
+      "appKeys": ["folder.archive", "action.archive"],
+      "landing": true
+    },
+    { "id": "folder.spam", "en": "Spam", "vi": "Thư rác", "zh-CN": "垃圾邮件", "appKeys": ["folder.spam"], "landing": true },
+    { "id": "folder.trash", "en": "Trash", "vi": "Thùng rác", "zh-CN": "回收站", "appKeys": ["folder.trash"], "landing": true },
+    { "id": "folder.labels", "en": "Labels", "vi": "Nhãn", "zh-CN": "标签", "appKeys": ["folder.labels"] },
+
+    { "id": "action.reply", "en": "Reply", "vi": "Trả lời", "zh-CN": "回复", "appKeys": ["action.reply"] },
+    { "id": "action.reply_all", "en": "Reply all", "vi": "Trả lời tất cả", "zh-CN": "回复全部", "appKeys": ["action.reply_all"] },
+    { "id": "action.forward", "en": "Forward", "vi": "Chuyển tiếp", "zh-CN": "转发", "appKeys": ["action.forward"] },
+    {
+      "id": "action.move_to_trash",
+      "en": "Move to Trash",
+      "vi": "Chuyển vào Thùng rác",
+      "zh-CN": "移至回收站",
+      "appKeys": ["action.move_to_trash"]
+    },
+    {
+      "id": "action.move_to_spam",
+      "en": "Move to Spam",
+      "vi": "Chuyển vào Thư rác",
+      "zh-CN": "移至垃圾邮件",
+      "appKeys": ["action.move_to_spam"]
+    },
+    {
+      "id": "action.move_to_inbox",
+      "en": "Move to Inbox",
+      "vi": "Chuyển về Hộp thư đến",
+      "zh-CN": "移至收件箱",
+      "appKeys": ["action.move_to_inbox"]
+    },
+    {
+      "id": "action.delete_forever",
+      "en": "Delete forever",
+      "vi": "Xóa vĩnh viễn",
+      "zh-CN": "永久删除",
+      "appKeys": ["action.delete_forever"]
+    },
+    { "id": "action.snooze", "en": "Snooze", "vi": "Tạm ẩn", "zh-CN": "延后", "appKeys": ["action.snooze"] },
+    { "id": "action.unsnooze", "en": "Unsnooze", "vi": "Bỏ tạm ẩn", "zh-CN": "取消延后", "appKeys": ["action.unsnooze"] },
+    { "id": "action.mark_read", "en": "Mark as read", "vi": "Đánh dấu đã đọc", "zh-CN": "标为已读", "appKeys": ["action.mark_read"] },
+    {
+      "id": "action.mark_unread",
+      "en": "Mark as unread",
+      "vi": "Đánh dấu chưa đọc",
+      "zh-CN": "标为未读",
+      "appKeys": ["action.mark_unread"]
+    },
+    { "id": "action.star", "en": "Star", "vi": "Gắn dấu sao", "zh-CN": "加星标", "appKeys": ["action.star"] },
+    { "id": "action.unstar", "en": "Unstar", "vi": "Bỏ dấu sao", "zh-CN": "取消星标", "appKeys": ["action.unstar"] },
+    { "id": "action.search", "en": "Search", "vi": "Tìm kiếm", "zh-CN": "搜索", "appKeys": ["action.search"] },
+    { "id": "action.compose", "en": "Compose", "vi": "Soạn thư", "zh-CN": "写邮件", "appKeys": ["action.compose"] },
+    { "id": "action.send", "en": "Send", "vi": "Gửi", "zh-CN": "发送", "appKeys": ["action.send"] },
+    { "id": "action.discard_draft", "en": "Discard draft", "vi": "Hủy thư nháp", "zh-CN": "舍弃草稿", "appKeys": ["action.discard_draft"] },
+    { "id": "term.attachments", "en": "Attachments", "vi": "Tệp đính kèm", "zh-CN": "附件", "appKeys": ["term.attachments"] },
+    { "id": "action.attach_files", "en": "Attach files", "vi": "Đính kèm tệp", "zh-CN": "添加附件", "appKeys": ["action.attach_files"] },
+    { "id": "action.show_images", "en": "Show images", "vi": "Hiện hình ảnh", "zh-CN": "显示图片", "appKeys": ["action.show_images"] },
+
+    { "id": "auth.sign_in", "en": "Sign in", "vi": "Đăng nhập", "zh-CN": "登录", "appKeys": ["auth.sign_in"], "landing": true },
+    { "id": "auth.sign_out", "en": "Sign out", "vi": "Đăng xuất", "zh-CN": "退出登录", "appKeys": ["auth.sign_out"] },
+    { "id": "term.password", "en": "Password", "vi": "Mật khẩu", "zh-CN": "密码", "appKeys": ["term.password"] },
+    {
+      "id": "term.temporary_password",
+      "en": "Temporary password",
+      "vi": "Mật khẩu tạm",
+      "zh-CN": "临时密码",
+      "appKeys": ["term.temporary_password"],
+      "landing": true
+    },
+    {
+      "id": "term.recovery_key",
+      "en": "Recovery key",
+      "vi": "Khóa khôi phục",
+      "zh-CN": "恢复密钥",
+      "appKeys": ["term.recovery_key"],
+      "landing": true
+    },
+    {
+      "id": "term.two_factor",
+      "en": "Two-factor sign-in",
+      "vi": "Đăng nhập hai lớp",
+      "zh-CN": "双因素登录",
+      "appKeys": ["term.two_factor"],
+      "landing": true
+    },
+    {
+      "id": "term.authenticator_app",
+      "en": "Authenticator app",
+      "vi": "Ứng dụng xác thực",
+      "zh-CN": "验证器应用",
+      "appKeys": ["term.authenticator_app"],
+      "landing": true
+    },
+    {
+      "id": "term.recovery_codes",
+      "en": "Recovery codes",
+      "vi": "Mã khôi phục",
+      "zh-CN": "恢复码",
+      "appKeys": ["term.recovery_codes"],
+      "note": "single-use codes for two-factor sign-in; never the recovery key"
+    },
+    {
+      "id": "term.session",
+      "en": "Sign-in session",
+      "vi": "Phiên đăng nhập",
+      "zh-CN": "登录会话",
+      "appKeys": ["term.session"],
+      "note": "zh 会话 only ever means this"
+    },
+
+    { "id": "term.admin", "en": "Admin", "vi": "Quản trị viên", "zh-CN": "管理员", "appKeys": ["term.admin"], "landing": true },
+    { "id": "term.member", "en": "Member", "vi": "Thành viên", "zh-CN": "成员", "appKeys": ["term.member"] },
+    { "id": "term.domain", "en": "Domain", "vi": "Tên miền", "zh-CN": "域名", "appKeys": ["term.domain"] },
+    { "id": "term.alias", "en": "Alias", "vi": "Địa chỉ phụ", "zh-CN": "别名", "appKeys": ["term.alias"] },
+    {
+      "id": "admin.disable",
+      "en": "Disable account",
+      "vi": "Khóa tài khoản",
+      "zh-CN": "停用",
+      "appKeys": ["admin.disable"],
+      "note": "VI never a bare Khóa"
+    },
+    {
+      "id": "admin.enable",
+      "en": "Enable account",
+      "vi": "Mở lại tài khoản",
+      "zh-CN": "启用",
+      "appKeys": ["admin.enable"],
+      "note": "VI never Mở khóa"
+    },
+    {
+      "id": "admin.delete_account",
+      "en": "Delete account",
+      "vi": "Xóa tài khoản",
+      "zh-CN": "删除账号",
+      "appKeys": ["admin.delete_account"]
+    },
+    {
+      "id": "term.audit_log",
+      "en": "Audit log",
+      "vi": "Nhật ký hoạt động",
+      "zh-CN": "审计日志",
+      "appKeys": ["term.audit_log"],
+      "note": "PO: not Nhật ký kiểm tra"
+    },
+    { "id": "admin.check_dns", "en": "Check DNS", "vi": "Kiểm tra DNS", "zh-CN": "检查 DNS", "appKeys": ["admin.check_dns"] },
+    {
+      "id": "term.dns_check",
+      "en": "DNS check",
+      "vi": "Kiểm tra DNS",
+      "zh-CN": "DNS 检查",
+      "appKeys": [],
+      "note": "the noun, in a heading or a sentence; the button is admin.check_dns"
+    },
+    { "id": "term.admin_console", "en": "Admin console", "vi": "Trang quản trị", "zh-CN": "管理后台", "appKeys": ["term.admin_console"] },
+
+    {
+      "id": "term.message",
+      "en": "Message",
+      "vi": "Thư",
+      "zh-CN": "邮件",
+      "appKeys": ["term.message"],
+      "note": "never conversation / cuộc hội thoại / 对话"
+    },
+    {
+      "id": "term.mail",
+      "en": "mail",
+      "vi": "thư",
+      "zh-CN": "邮件",
+      "appKeys": [],
+      "note": "uncountable, inside a sentence (\"new mail\"); the countable noun is term.message"
+    },
+    {
+      "id": "e2e.badge",
+      "en": "End-to-end encrypted",
+      "vi": "Mã hóa đầu cuối",
+      "zh-CN": "端到端加密",
+      "appKeys": ["e2e.badge"],
+      "note": "only the badge key family e2e.badge*"
+    },
+    { "id": "term.mailbox", "en": "Mailbox", "vi": "Hộp thư", "zh-CN": "邮箱", "appKeys": ["term.mailbox"] },
+    { "id": "term.address", "en": "Address", "vi": "Địa chỉ", "zh-CN": "地址", "appKeys": ["term.address"] },
+    { "id": "term.account", "en": "Account", "vi": "Tài khoản", "zh-CN": "账号", "appKeys": ["term.account"] },
+    { "id": "term.sender", "en": "Sender", "vi": "Người gửi", "zh-CN": "发件人", "appKeys": ["term.sender"] },
+    { "id": "term.recipient", "en": "Recipient", "vi": "Người nhận", "zh-CN": "收件人", "appKeys": ["term.recipient"] },
+    { "id": "term.to", "en": "To", "vi": "Tới", "zh-CN": "收件人", "appKeys": ["term.to"] },
+    { "id": "term.cc", "en": "Cc", "vi": "Cc", "zh-CN": "抄送", "appKeys": ["term.cc"] },
+    { "id": "term.bcc", "en": "Bcc", "vi": "Bcc", "zh-CN": "密送", "appKeys": ["term.bcc"] },
+    { "id": "term.subject", "en": "Subject", "vi": "Tiêu đề", "zh-CN": "主题", "appKeys": ["term.subject"] },
+    { "id": "term.signature", "en": "Signature", "vi": "Chữ ký", "zh-CN": "签名", "appKeys": ["term.signature"] },
+    { "id": "term.display_name", "en": "Display name", "vi": "Tên hiển thị", "zh-CN": "显示名称", "appKeys": ["term.display_name"] },
+    { "id": "term.settings", "en": "Settings", "vi": "Cài đặt", "zh-CN": "设置", "appKeys": ["term.settings"] },
+    { "id": "term.notifications", "en": "Notifications", "vi": "Thông báo", "zh-CN": "通知", "appKeys": ["term.notifications"] }
+  ],
+  "unchangedNames": ["Edging Mail", "Edgar", "Cloudflare", "PWA", "TOTP", "DNS", "MX", "IMAP", "POP", "SMTP", "Outlook", "Gmail"]
+}

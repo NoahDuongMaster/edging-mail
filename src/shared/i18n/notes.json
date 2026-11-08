@@ -1,0 +1,3519 @@
+{
+  "account.activity_title": {
+    "context": "Settings > Account: heading of the card that lists account notices and recent sign-ins.",
+    "security": true
+  },
+  "account.notices_empty": {
+    "context": "Settings > Account > Account activity: shown under the Notices sub-heading when there is nothing to report.",
+    "security": true
+  },
+  "account.notices_title": {
+    "context": "Settings > Account > Account activity: sub-heading of the list of security notices about this account (recovery key used, two-factor sign-in reset...).",
+    "security": true
+  },
+  "account.signins_empty": {
+    "context": "Settings > Account > Account activity: shown under Recent sign-ins when the history is empty.",
+    "security": true
+  },
+  "account.signins_load_failed": {
+    "context": "Settings > Account > Account activity: red alert next to the Try again button when the sign-in history could not be loaded.",
+    "security": true
+  },
+  "account.signins_title": {
+    "context": "Settings > Account > Account activity: sub-heading of the history of recent sign-ins (newest first).",
+    "security": true
+  },
+  "activity.agent_on": {
+    "context": "Sign-in history row, second line: the browser and the operating system of the device, e.g. \"Firefox on Windows\". {browser} = browser name (Firefox, Chrome...), {system} = operating system name (Windows, macOS...); both are product names and stay as they are.",
+    "security": true
+  },
+  "activity.device_ip": {
+    "context": "Sign-in history row, second line: the device text and the IP address it signed in from. {device} = text such as \"Firefox on Windows\", {ip} = the IP address (kept as is).",
+    "security": true
+  },
+  "activity.kind.2fa_reset": {
+    "context": "Sign-in history row title: the two-factor sign-in of the account was reset (by an admin).",
+    "security": true
+  },
+  "activity.kind.2fa_reset_pending": {
+    "context": "Sign-in history row title: an admin scheduled a reset of the two-factor sign-in that has not taken effect yet.",
+    "security": true
+  },
+  "activity.kind.break_glass": {
+    "context": "Sign-in history row title: the administrator account was restored with the deployment's setup key.",
+    "security": true
+  },
+  "activity.kind.first_sign_in": {
+    "context": "Sign-in history row title: the first sign-in with the temporary password given by an admin, after which the person chooses a password.",
+    "security": true
+  },
+  "activity.kind.locked_delete_requested": {
+    "context": "Title of a row in the sign-in history: the deletion of the old mail that is locked under the replaced key was requested. vi and zh-CN are cyber's (overrides); no need to translate.",
+    "security": true,
+    "max": 50
+  },
+  "activity.kind.password_recovered": {
+    "context": "Sign-in history row title: the password was reset by the person with their recovery key (not by an admin).",
+    "security": true
+  },
+  "activity.kind.recovery_key_replaced": {
+    "context": "Sign-in history row title: the recovery key was replaced by a new one.",
+    "security": true
+  },
+  "activity.kind.recovery_started": {
+    "context": "Sign-in history row title: someone started a password reset with the recovery key.",
+    "security": true
+  },
+  "activity.kind.sign_in": {
+    "context": "Sign-in history row title: an ordinary successful sign-in.",
+    "security": true
+  },
+  "activity.kind_unknown": {
+    "context": "Sign-in history row title (and event name in a notice) for a kind of event this version does not know. {kind} = the raw code from the server (kept as is, e.g. brand_new).",
+    "security": true
+  },
+  "activity.notice_2fa_reset": {
+    "context": "Account notice (Settings > Account > Notices): the two-factor sign-in was reset and no admin is named. {date} = date and time of the reset.",
+    "security": true
+  },
+  "activity.notice_2fa_reset_by": {
+    "context": "Account notice (Settings > Account > Notices): an admin reset the two-factor sign-in. {admin} = the admin's address, {date} = date and time of the reset.",
+    "security": true
+  },
+  "activity.notice_2fa_reset_pending": {
+    "context": "Notice for an ADMIN: another admin asked to reset their two-factor sign-in; it takes effect at {due} (a date and time, 24 hours later) unless cancelled. {admin} is an email address.",
+    "security": true
+  },
+  "activity.notice_alert_2fa_reset": {
+    "context": "Alert for an admin: another admin reset someone's two-factor sign-in. {admin} and {target} are email addresses.",
+    "security": true
+  },
+  "activity.notice_alert_2fa_reset_cancelled": {
+    "context": "Alert for an admin: an admin cancelled the pending reset of their own two-factor sign-in. {target} is an email address.",
+    "security": true
+  },
+  "activity.notice_alert_2fa_reset_pending": {
+    "context": "Alert for an admin: another admin asked to reset the two-factor sign-in of an admin; it takes effect at {due} unless that person cancels.",
+    "security": true
+  },
+  "activity.notice_alert_account_delete": {
+    "context": "Alert for an admin: another admin deleted an account.",
+    "security": true
+  },
+  "activity.notice_alert_admin_created": {
+    "context": "Alert for an admin: another admin created a new admin account.",
+    "security": true
+  },
+  "activity.notice_alert_break_glass": {
+    "context": "Alert for an admin: an admin account was restored with the deployment's setup key (break-glass).",
+    "security": true
+  },
+  "activity.notice_alert_break_glass_failures": {
+    "context": "Notice for every ADMIN: {count} (a number, ten today) failed attempts to use the deployment setup key within one hour; the alert is raised at the TENTH failure, and {date} is the time of that tenth one (later failures are not added). Says what to check. Same facts as the push text push.alert_break_glass_failures.body. \"Setup key\" is the glossary term.",
+    "security": true,
+    "max": 215
+  },
+  "activity.notice_alert_require_2fa_relaxed": {
+    "context": "Alert for an admin: another admin turned off the organisation-wide requirement of two-factor sign-in.",
+    "security": true
+  },
+  "activity.notice_alert_role_change": {
+    "context": "Alert for an admin: another admin changed the role of an account. {role} is Admin or Member (already translated).",
+    "security": true
+  },
+  "activity.notice_alert_temp_password_reissued": {
+    "context": "Alert for an admin: another admin issued a new temporary password for an account that has not signed in yet.",
+    "security": true
+  },
+  "activity.notice_break_glass": {
+    "context": "Notice for an ADMIN whose password and keys were replaced with the setup key (break-glass). It must say that the password and keys were reset and that the earlier mail stays locked, like the push text of the same event. cyber CAT-6.",
+    "security": true
+  },
+  "activity.notice_generic": {
+    "context": "Account notice for a kind of event without its own sentence. {event} = the event title (a text such as \"Recovery key replaced\"), {date} = date and time.",
+    "security": true
+  },
+  "activity.notice_generic_by": {
+    "context": "Same as the generic account notice, when an admin did it. {event} = the event title, {admin} = the admin's address, {date} = date and time.",
+    "security": true
+  },
+  "activity.notice_locked_delete_requested": {
+    "context": "Notice (banner and account activity card) for the OWNER: somebody who knew the password and passed the second step asked to delete the old mail that is locked under the owner's previous (replaced) key. {date} is when it was asked, {due} when it will be deleted (a date and time); a Cancel button sits under the text. Same facts as the push text push.locked_delete_requested.body. vi and zh-CN are cyber's (overrides); no need to translate.",
+    "security": true,
+    "max": 245
+  },
+  "activity.notice_password_recovered": {
+    "context": "Account notice (Settings > Account > Notices): the password was reset with the recovery key. {date} = date and time. Asks the person to act if it was not them.",
+    "security": true
+  },
+  "activity.notice_recovery_key_replaced": {
+    "context": "Account notice (Settings > Account > Notices): the recovery key was replaced. {date} = date and time.",
+    "security": true
+  },
+  "activity.notice_recovery_started": {
+    "context": "Account notice (Settings > Account > Notices): someone used the recovery key to start a password reset. {date} = date and time. Asks the person to create a new recovery key if it was not them.",
+    "security": true
+  },
+  "activity.notice_second_factor_locked": {
+    "context": "Notice (banner and account activity card) for the OWNER of an account: after the password was right, wrong authenticator or recovery codes were entered too often, so sign-in with a code is paused for a while. {date} is a date and time. Tells the person what to do if it was not them. Same facts as the push text push.second_factor_locked.body.",
+    "security": true,
+    "max": 220
+  },
+  "activity.sign_in_failed": {
+    "context": "Sign-in history row title for a failed sign-in attempt (wrong password or code).",
+    "security": true
+  },
+  "activity.unknown_device": {
+    "context": "Sign-in history row, second line: shown when the browser and system could not be told from the device information.",
+    "security": true
+  },
+  "admin.checking": {
+    "context": "Button label while a check runs: the step-up code is being verified, or a domain DNS check is running.",
+    "security": false,
+    "max": 16
+  },
+  "admin.close_console": {
+    "context": "aria-label of the icon-only close (X) button in the admin console header. Screen reader only.",
+    "security": false
+  },
+  "admin.sections_label": {
+    "context": "aria-label of the tab list of the admin console (People, Domains, Audit log). Screen reader only.",
+    "security": false
+  },
+  "admin.step_up_body": {
+    "context": "Step-up dialog: explains why the code is asked.",
+    "security": true
+  },
+  "admin.step_up_code": {
+    "context": "Step-up dialog: label of the 6-digit code field.",
+    "security": true,
+    "max": 12
+  },
+  "admin.step_up_title": {
+    "context": "Title of the dialog that asks for an authenticator code before an admin change goes through.",
+    "security": true
+  },
+  "admin.tab_domains": {
+    "context": "Admin console tab: the domains the deployment offers addresses on (plural; the glossary term Domain is singular).",
+    "security": false,
+    "max": 12
+  },
+  "admin.tab_people": {
+    "context": "Admin console tab: the list of accounts.",
+    "security": false,
+    "max": 12
+  },
+  "app.account_settings": {
+    "context": "Tooltip and screen-reader label of the round avatar button in the header (opens Settings)",
+    "security": false
+  },
+  "app.action_failed": {
+    "context": "Toast when a mail action (archive, star, mark all read...) fails and the server gave no reason",
+    "security": false
+  },
+  "app.clear_search": {
+    "context": "Screen-reader label of the X button inside the search box",
+    "security": false
+  },
+  "app.draft_unavailable": {
+    "context": "Toast when a draft clicked in the Drafts folder cannot be opened",
+    "security": false
+  },
+  "app.file_badge": {
+    "context": "Badge on an attachment whose file name has no extension (otherwise the badge shows e.g. PDF); a 4-letter square",
+    "security": false,
+    "max": 4
+  },
+  "app.forward_header_date": {
+    "context": "Line of the forwarded-message header inside the OUTGOING mail body: the date of the original",
+    "security": false
+  },
+  "app.forward_header_from": {
+    "context": "Line of the forwarded-message header inside the OUTGOING mail body: the original sender, {sender} is 'Name <address>'",
+    "security": false
+  },
+  "app.forward_header_subject": {
+    "context": "Line of the forwarded-message header inside the OUTGOING mail body: the original subject",
+    "security": false
+  },
+  "app.forward_header_title": {
+    "context": "First line of the forwarded-message header inside the OUTGOING mail body (a divider line); keep the dashes",
+    "security": false
+  },
+  "app.labels_failed": {
+    "context": "Toast when adding or removing a label on a message fails",
+    "security": false
+  },
+  "app.load_more_failed": {
+    "context": "Toast when the 'Load more' button of the message list fails",
+    "security": false
+  },
+  "app.mark_all_read": {
+    "context": "Phone header icon button (tooltip and screen-reader label): marks every unread message of the list as read",
+    "security": false
+  },
+  "app.message_unavailable": {
+    "context": "Toast when the selected message cannot be loaded (deleted meanwhile, old notification link)",
+    "security": false
+  },
+  "app.no_connection": {
+    "context": "Toast when a request fails because the device is offline (also the prefix of every failed action)",
+    "security": false
+  },
+  "app.no_content": {
+    "context": "Shown in the reader in place of the body when a message has no text at all",
+    "security": false
+  },
+  "app.open_mailboxes": {
+    "context": "Screen-reader label of the hamburger button on phones that opens the folder drawer",
+    "security": false
+  },
+  "app.position": {
+    "context": "Reader toolbar: place of the open message in the list, e.g. '3 of 25'",
+    "security": false,
+    "max": 18
+  },
+  "app.refresh_failed": {
+    "context": "Toast when the Refresh button of the message list fails",
+    "security": false
+  },
+  "app.reply_quote_header": {
+    "context": "First line of the quoted original inside the OUTGOING reply body: 'On <date>, <name> wrote:' ({date} is a numeric date and time)",
+    "security": false
+  },
+  "app.search_mail": {
+    "context": "Placeholder of the search box and its hidden label",
+    "security": false,
+    "max": 30
+  },
+  "app.server_unreachable": {
+    "context": "Full-screen text when the first session check cannot reach the server (above a 'Try again' button); also the Settings > Notifications error when the server cannot be reached",
+    "security": false
+  },
+  "app.snooze_failed": {
+    "context": "Toast fallback when snoozing a message fails and the server gave no reason",
+    "security": false
+  },
+  "app.subtitle_drafts#one": {
+    "context": "Small text next to the Drafts title when nothing is unread: count of drafts ({more} is '+' when more pages exist, else empty)",
+    "security": false,
+    "max": 24
+  },
+  "app.subtitle_drafts#other": {
+    "context": "Plural form of app.subtitle_drafts#one",
+    "security": false,
+    "max": 24
+  },
+  "app.subtitle_messages#one": {
+    "context": "Small text next to the folder title when nothing is unread: count of messages ({more} is '+' when more pages exist, else empty)",
+    "security": false,
+    "max": 24
+  },
+  "app.subtitle_messages#other": {
+    "context": "Plural form of app.subtitle_messages#one",
+    "security": false,
+    "max": 24
+  },
+  "app.subtitle_unread": {
+    "context": "Small text next to the folder title: count of unread messages ({more} is '+' when more pages exist, else empty)",
+    "security": false,
+    "max": 24
+  },
+  "app.theme_dark": {
+    "context": "Tooltip of the header theme button while the light theme is on (the button switches to dark)",
+    "security": false
+  },
+  "app.theme_light": {
+    "context": "Tooltip of the header theme button while the dark theme is on (the button switches to light)",
+    "security": false
+  },
+  "app.theme_to_dark": {
+    "context": "Screen-reader label of the header theme button while the light theme is on",
+    "security": false
+  },
+  "app.theme_to_light": {
+    "context": "Screen-reader label of the header theme button while the dark theme is on",
+    "security": false
+  },
+  "audit.action.2fa_disabled": {
+    "context": "Audit log row: the person turned two-factor sign-in off.",
+    "security": true
+  },
+  "audit.action.2fa_enabled": {
+    "context": "Audit log row: the person turned two-factor sign-in on.",
+    "security": true
+  },
+  "audit.action.2fa_reset": {
+    "context": "Audit log row: an admin reset the two-factor sign-in of an account.",
+    "security": true
+  },
+  "audit.action.2fa_reset_cancelled": {
+    "context": "Audit log row: the admin cancelled the waiting reset of their two-factor sign-in by signing in.",
+    "security": true
+  },
+  "audit.action.2fa_reset_requested": {
+    "context": "Audit log row: a reset of an admin's two-factor sign-in was requested and waits before it takes effect.",
+    "security": true
+  },
+  "audit.action.alias.add": {
+    "context": "Audit log row: an admin added an extra address (alias) to an account.",
+    "security": false
+  },
+  "audit.action.alias.remove": {
+    "context": "Audit log row: an admin removed an extra address (alias) from an account.",
+    "security": false
+  },
+  "audit.action.break_glass": {
+    "context": "Audit log row: an admin account was restored with the deployment setup key.",
+    "security": true
+  },
+  "audit.action.domain.add": {
+    "context": "Audit log row: an admin added a domain.",
+    "security": false
+  },
+  "audit.action.domain.remove": {
+    "context": "Audit log row: an admin removed a domain.",
+    "security": false
+  },
+  "audit.action.keys_created": {
+    "context": "Audit log row: the encryption keys of an account were created.",
+    "security": true
+  },
+  "audit.action.locked_mail_delete_canceled": {
+    "context": "Row in the admin audit log: the person cancelled that request before its date.",
+    "security": true,
+    "max": 45
+  },
+  "audit.action.locked_mail_delete_requested": {
+    "context": "Row in the admin audit log: a person asked to delete the old mail that is locked under their replaced key (the log shows who and which key, never the mail).",
+    "security": true,
+    "max": 45
+  },
+  "audit.action.locked_mail_deleted": {
+    "context": "Row in the admin audit log: the scheduled job deleted the locked mail after the waiting time (the actor is the scheduled job).",
+    "security": true,
+    "max": 25
+  },
+  "audit.action.password_change": {
+    "context": "Audit log row: the person changed their password.",
+    "security": true
+  },
+  "audit.action.password_recovered": {
+    "context": "Audit log row: the person set a new password with their recovery key.",
+    "security": true
+  },
+  "audit.action.recovery": {
+    "context": "Audit log row: an admin account was restored (older entries).",
+    "security": true
+  },
+  "audit.action.recovery_code_used": {
+    "context": "Audit log row: a sign-in used one of the recovery codes.",
+    "security": true
+  },
+  "audit.action.recovery_codes_regenerated": {
+    "context": "Audit log row: the person made a new set of recovery codes.",
+    "security": true
+  },
+  "audit.action.recovery_key_replaced": {
+    "context": "Audit log row: the person created a new recovery key.",
+    "security": true
+  },
+  "audit.action.recovery_started": {
+    "context": "Audit log row: someone started a password recovery with a recovery key.",
+    "security": true
+  },
+  "audit.action.settings.default_language": {
+    "context": "Audit log row: an admin changed the default language of the organisation.",
+    "security": false
+  },
+  "audit.action.settings.require_2fa": {
+    "context": "Audit log row: an admin changed whether everyone must use two-factor sign-in.",
+    "security": true
+  },
+  "audit.action.setup": {
+    "context": "Audit log row: the first admin set up the deployment.",
+    "security": false
+  },
+  "audit.action.sign_in": {
+    "context": "Audit log row: a successful sign-in.",
+    "security": true
+  },
+  "audit.action.sign_in_failed": {
+    "context": "Audit log row: a failed sign-in.",
+    "security": true
+  },
+  "audit.action.temp_password_expired": {
+    "context": "Audit log row: someone tried to sign in with a temporary password that had expired.",
+    "security": true
+  },
+  "audit.action.temp_password_reissued": {
+    "context": "Audit log row: an admin issued a new temporary password to a person who had not signed in yet.",
+    "security": true
+  },
+  "audit.action.user.create": {
+    "context": "Audit log row: an admin created an account.",
+    "security": false
+  },
+  "audit.action.user.delete": {
+    "context": "Audit log row: an admin deleted an account.",
+    "security": false
+  },
+  "audit.action.user.disable": {
+    "context": "Audit log row: an admin disabled an account.",
+    "security": false
+  },
+  "audit.action.user.enable": {
+    "context": "Audit log row: an admin enabled an account.",
+    "security": false
+  },
+  "audit.action.user.first_sign_in": {
+    "context": "Audit log row: the first sign-in of a new account, with its temporary password.",
+    "security": true
+  },
+  "audit.action.user.rename": {
+    "context": "Audit log row: an admin changed the display name of an account.",
+    "security": false
+  },
+  "audit.action.user.role_change": {
+    "context": "Audit log row: an admin changed the role of an account (Admin or Member).",
+    "security": false
+  },
+  "audit.action_unknown": {
+    "context": "Audit log row title for an action this app has no text for yet. {action} is the raw action code, shown as it is.",
+    "security": false
+  },
+  "audit.actor_to_target": {
+    "context": "Audit log row: who did it and to whom. {actor} and {target} are email addresses (or a domain name).",
+    "security": false
+  },
+  "audit.detail_aliases": {
+    "context": "Audit log row detail name: how many extra addresses the first admin set up (lower case, before a colon).",
+    "security": false
+  },
+  "audit.detail_due": {
+    "context": "Audit log row detail name: when a delayed two-factor reset takes effect (lower case, before a colon). The value is a date and time.",
+    "security": false
+  },
+  "audit.detail_from": {
+    "context": "Audit log row detail name: the old value of a change (lower case, before a colon).",
+    "security": false
+  },
+  "audit.detail_pair": {
+    "context": "Audit log row: one detail of the entry. {label} is the name of the detail, {value} its value. Several are shown side by side, separated by a dot.",
+    "security": false
+  },
+  "audit.detail_reason": {
+    "context": "Audit log row detail name: why a sign-in failed (lower case, before a colon).",
+    "security": false
+  },
+  "audit.detail_recovery_code": {
+    "context": "Audit log row detail value: the sign-in used a recovery code.",
+    "security": true
+  },
+  "audit.detail_role": {
+    "context": "Audit log row detail name: the role of a new account (lower case, before a colon).",
+    "security": false
+  },
+  "audit.detail_second_factor": {
+    "context": "Audit log row detail name: which second step a sign-in used (lower case, before a colon).",
+    "security": true
+  },
+  "audit.detail_to": {
+    "context": "Audit log row detail name: the new value of a change (lower case, before a colon).",
+    "security": false
+  },
+  "audit.detail_user": {
+    "context": "Audit log row detail name: the account an extra address belongs to (lower case, before a colon).",
+    "security": false
+  },
+  "audit.empty": {
+    "context": "Admin Audit log tab when the log is empty.",
+    "security": false
+  },
+  "audit.end": {
+    "context": "Admin Audit log tab: shown under the list when there are no more entries.",
+    "security": false
+  },
+  "audit.intro": {
+    "context": "Admin Audit log tab: line above the list.",
+    "security": true
+  },
+  "audit.loading": {
+    "context": "Admin Audit log tab while the log loads (spinner and text).",
+    "security": false
+  },
+  "auth.address_invalid": {
+    "context": "Shown when the typed address is not a full email address (checked in the browser). name@example.com is only an example.",
+    "security": true
+  },
+  "auth.code_label": {
+    "context": "Label of the field for the six digits of the authenticator app.",
+    "security": true
+  },
+  "auth.email_label": {
+    "context": "Label of the email address field on the sign-in screen.",
+    "security": true
+  },
+  "auth.forgot_password": {
+    "context": "Button: link under the sign-in form that opens the forgotten-password flow (no question mark: it is a button).",
+    "security": true,
+    "max": 26
+  },
+  "auth.recovery_code_hint": {
+    "context": "Hint under the recovery-code field: such a code only signs the person in; it cannot open mail.",
+    "security": true
+  },
+  "auth.recovery_code_label": {
+    "context": "Label of the field for ONE two-factor recovery code (not the recovery key).",
+    "security": true
+  },
+  "auth.recovery_code_lead": {
+    "context": "Second sign-in step when the person chose a two-factor recovery code instead of the app code.",
+    "security": true
+  },
+  "auth.second_step_lead": {
+    "context": "Under the heading of the second sign-in step.",
+    "security": true
+  },
+  "auth.second_step_title": {
+    "context": "Heading of the second sign-in step (code from the authenticator app).",
+    "security": true
+  },
+  "auth.shared_device": {
+    "context": "Checkbox label on the sign-in and unlock screens: the key stays in memory only.",
+    "security": true
+  },
+  "auth.shared_device_hint": {
+    "context": "Hint under the shared-device checkbox on the sign-in screen: the encryption key stays in this browser tab only, but closing the tab does not end the sign-in. \"Sign out\" is the catalogue label of the sign-out button. cyber CAT-15.",
+    "security": true
+  },
+  "auth.try_again_in": {
+    "context": "Added after an error when the server asks the person to wait. {seconds} counts down.",
+    "security": true
+  },
+  "auth.use_app_code": {
+    "context": "Button: link that switches the second step back to the authenticator app code.",
+    "security": true,
+    "max": 40
+  },
+  "auth.use_recovery_code": {
+    "context": "Button: link that switches the second step to a two-factor recovery code.",
+    "security": true,
+    "max": 40
+  },
+  "auth.verify": {
+    "context": "Button: submits the code of the second sign-in step.",
+    "security": true,
+    "max": 20
+  },
+  "breakglass.address": {
+    "context": "Label of the admin email address field.",
+    "security": true
+  },
+  "breakglass.done_lead": {
+    "context": "Under the done heading.",
+    "security": true
+  },
+  "breakglass.done_title": {
+    "context": "Heading when the admin account was restored.",
+    "security": true
+  },
+  "breakglass.key_lead": {
+    "context": "Under the heading of the new recovery key screen of break-glass.",
+    "security": true
+  },
+  "breakglass.lead": {
+    "context": "Under the heading: only for admins who lost both password and recovery key; needs the deployment's setup key.",
+    "security": true
+  },
+  "breakglass.old_mail": {
+    "context": "Honest consequence: mail sealed to the old key stays locked after break-glass.",
+    "security": true
+  },
+  "breakglass.setup_key": {
+    "context": "Label of the setup key field.",
+    "security": true
+  },
+  "breakglass.setup_key_hint": {
+    "context": "Hint: the setup key is the secret the operator set when deploying.",
+    "security": true
+  },
+  "breakglass.title": {
+    "context": "Heading of the break-glass screen for admins.",
+    "security": true
+  },
+  "breakglass.two_factor": {
+    "context": "Break-glass never clears two-factor sign-in: the authenticator app or a recovery code is still needed.",
+    "security": true
+  },
+  "common.add": {
+    "context": "Generic button: add an item to a list (address, alias, label)",
+    "security": false,
+    "max": 16
+  },
+  "common.back": {
+    "context": "Generic button or link: go back one step",
+    "security": false,
+    "max": 16
+  },
+  "common.cancel": {
+    "context": "Generic dialog button: close without doing the action",
+    "security": false,
+    "max": 16
+  },
+  "common.close": {
+    "context": "Generic button and screen-reader label of an X: close a dialog or panel",
+    "security": false,
+    "max": 16
+  },
+  "common.confirm": {
+    "context": "Generic dialog button: do the action that was just described",
+    "security": false,
+    "max": 16
+  },
+  "common.copied": {
+    "context": "Short confirmation that replaces the Copy button for two seconds after copying",
+    "security": false,
+    "max": 16
+  },
+  "common.copy": {
+    "context": "Generic button: copy a text to the clipboard",
+    "security": false,
+    "max": 16
+  },
+  "common.loading": {
+    "context": "Shown while a list or screen is loading",
+    "security": false,
+    "max": 24
+  },
+  "common.remove": {
+    "context": "Generic button: remove an item from a list (not delete the account or mail)",
+    "security": false,
+    "max": 16
+  },
+  "common.retry": {
+    "context": "Button next to an error: try the same thing again",
+    "security": false,
+    "max": 16
+  },
+  "common.save": {
+    "context": "Generic button: save changes in a form",
+    "security": false,
+    "max": 16
+  },
+  "common.something_wrong": {
+    "context": "Generic error text when nothing more is known",
+    "security": false
+  },
+  "common.unknown_error": {
+    "context": "Error for a server answer whose code has no own text; {code} is a short technical code like 'rate_limited'. Keep {code} as it is",
+    "security": false
+  },
+  "compose.attachment_read_failed": {
+    "context": "Error when a chosen file cannot be read by the browser",
+    "security": false
+  },
+  "compose.attachments_not_saved": {
+    "context": "Small note under the attachment list: draft autosave does not keep attachments",
+    "security": false
+  },
+  "compose.attachments_too_large": {
+    "context": "Error when attachments plus text pass the size limit; {max} is a number of megabytes (25)",
+    "security": false
+  },
+  "compose.body_label": {
+    "context": "Screen-reader label of the message text editor",
+    "security": false
+  },
+  "compose.body_placeholder": {
+    "context": "Greyed hint in the empty message editor",
+    "security": false
+  },
+  "compose.bold": {
+    "context": "Compose toolbar icon button, tooltip and screen-reader label",
+    "security": false,
+    "max": 22
+  },
+  "compose.bulleted_list": {
+    "context": "Compose toolbar icon button, tooltip and screen-reader label",
+    "security": false,
+    "max": 22
+  },
+  "compose.confirm_discard": {
+    "context": "Screen-reader label of the discard button after the first click, when it asks to confirm",
+    "security": false
+  },
+  "compose.discard_ask": {
+    "context": "Visible text of the discard button after the first click (replaces the trash icon for 4 seconds)",
+    "security": false,
+    "max": 12
+  },
+  "compose.discard_failed": {
+    "context": "Notice shown after the compose closes when the draft could not be deleted on the server",
+    "security": false
+  },
+  "compose.draft_not_saved": {
+    "context": "Draft autosave status in the compose header, and the notice shown after the compose closes when the last save failed",
+    "security": false,
+    "max": 24
+  },
+  "compose.draft_saved": {
+    "context": "Draft autosave status in the compose header",
+    "security": false,
+    "max": 24
+  },
+  "compose.draft_saving": {
+    "context": "Draft autosave status in the compose header",
+    "security": false,
+    "max": 24
+  },
+  "compose.err_recipient_not_allowed": {
+    "context": "Error when Cloudflare refuses a recipient that is not verified yet; the menu paths (Email Routing, Compute, Email Service) are Cloudflare dashboard names and stay in English",
+    "security": false
+  },
+  "compose.err_sender_domain": {
+    "context": "Error when the sender address is on a domain that is not set up for sending; Email Sending is a Cloudflare product name; Settings is the Settings screen",
+    "security": false
+  },
+  "compose.format_group": {
+    "context": "Screen-reader label of the compose formatting toolbar",
+    "security": false
+  },
+  "compose.from_placeholder": {
+    "context": "Placeholder of the sender address field in the compose window (an example address)",
+    "security": false,
+    "max": 30
+  },
+  "compose.image_prompt": {
+    "context": "Browser prompt dialog asking for the web address of an image",
+    "security": false
+  },
+  "compose.insert_image": {
+    "context": "Screen-reader label of the compose toolbar button that inserts an image from a web address",
+    "security": false,
+    "max": 22
+  },
+  "compose.insert_image_url": {
+    "context": "Tooltip of the same button (the image comes from a web address, not from a file)",
+    "security": false,
+    "max": 22
+  },
+  "compose.insert_link": {
+    "context": "Compose toolbar icon button, tooltip and screen-reader label",
+    "security": false,
+    "max": 22
+  },
+  "compose.insert_signature": {
+    "context": "Compose footer icon button that inserts the saved signature, tooltip and screen-reader label",
+    "security": false,
+    "max": 22
+  },
+  "compose.invalid_address": {
+    "context": "Error under the compose header when a recipient is not a plain email address; name@example.com is an example address",
+    "security": false
+  },
+  "compose.italic": {
+    "context": "Compose toolbar icon button, tooltip and screen-reader label",
+    "security": false,
+    "max": 22
+  },
+  "compose.key_ctrl": {
+    "context": "Text on the Ctrl key cap in the send shortcut hint; normally left as it is",
+    "security": false,
+    "max": 6
+  },
+  "compose.key_enter": {
+    "context": "Text on the Enter key cap in the send shortcut hint; normally left as it is",
+    "security": false,
+    "max": 6
+  },
+  "compose.link_prompt": {
+    "context": "Browser prompt dialog asking for the web address of a link",
+    "security": false
+  },
+  "compose.missing_from": {
+    "context": "Error in the compose header when no sender address is set; Settings is the Settings screen",
+    "security": false
+  },
+  "compose.need_recipient": {
+    "context": "Validation error when Send is pressed with no recipient",
+    "security": false
+  },
+  "compose.need_subject": {
+    "context": "Validation error when Send is pressed with an empty subject",
+    "security": false
+  },
+  "compose.no_connection": {
+    "context": "Error when the send request could not reach the server; the message was NOT sent",
+    "security": false
+  },
+  "compose.no_signature": {
+    "context": "Tooltip of the disabled insert-signature button when no signature is saved; Settings is the Settings screen",
+    "security": false
+  },
+  "compose.numbered_list": {
+    "context": "Compose toolbar icon button, tooltip and screen-reader label",
+    "security": false,
+    "max": 22
+  },
+  "compose.quote": {
+    "context": "Compose toolbar icon button that turns the line into a block quote, tooltip and screen-reader label",
+    "security": false,
+    "max": 22
+  },
+  "compose.reason_big": {
+    "context": "Reason inside compose.state_plain: the message, with its files copied once for every recipient, is too large for the end-to-end route. Starts with a small letter, ends with a full stop.",
+    "security": true,
+    "max": 40
+  },
+  "compose.reason_no_keys": {
+    "context": "Reason inside compose.state_plain: at least one recipient is on this deployment but has not signed in and set up encryption keys yet. Starts with a small letter, ends with a full stop.",
+    "security": true,
+    "max": 80
+  },
+  "compose.reason_outside": {
+    "context": "Reason inside compose.state_plain: at least one recipient has an address that is not on this deployment. Starts with a small letter, ends with a full stop.",
+    "security": true,
+    "max": 70
+  },
+  "compose.remove_file": {
+    "context": "Screen-reader label of the x button on an attachment card; {filename} is the file name",
+    "security": false
+  },
+  "compose.remove_recipient": {
+    "context": "Screen-reader label of the x button on a recipient chip; {address} is the email address",
+    "security": false
+  },
+  "compose.reply_redirect": {
+    "context": "One plain line in the reply window, under the recipient fields, when the message being answered has a Reply-To header that names another address than the sender. {address} is that address (in the To field already), {sender} the address the message came from. Information only: a reply that goes somewhere else than the person expects is how payment requests are faked.",
+    "security": true,
+    "max": 75
+  },
+  "compose.send_shortcut": {
+    "context": "Hint next to the Send button (desktop only); {keys} is replaced by two key caps, Ctrl and Enter",
+    "security": false,
+    "max": 16
+  },
+  "compose.sending": {
+    "context": "Send button label while the message is being sent",
+    "security": false,
+    "max": 14
+  },
+  "compose.sent": {
+    "context": "Success status in the compose header just before the window closes",
+    "security": false
+  },
+  "compose.sent_copy_failed": {
+    "context": "Warning when the message went out but the copy in the Sent folder could not be stored; the first Sent is the verb, the second the folder name (folder.sent)",
+    "security": false
+  },
+  "compose.state_e2e": {
+    "context": "Quiet line under the recipient fields of the compose window, shown when every recipient has encryption keys on this server: the message will be sealed in the sender's browser for each of them. Information, not a warning. Do not use the badge words \"end-to-end encrypted\" here.",
+    "security": true,
+    "max": 90
+  },
+  "compose.state_plain": {
+    "context": "Quiet line under the recipient fields when the message will NOT be end-to-end encrypted. {reason} is one of the four compose.reason_* sentences (it starts with a small letter and ends with a full stop). Information, not a warning.",
+    "security": true,
+    "max": 40
+  },
+  "compose.style_heading": {
+    "context": "Text style dropdown option: heading",
+    "security": false,
+    "max": 16
+  },
+  "compose.style_normal": {
+    "context": "Text style dropdown option: normal paragraph",
+    "security": false,
+    "max": 16
+  },
+  "compose.style_subheading": {
+    "context": "Text style dropdown option: smaller heading",
+    "security": false,
+    "max": 16
+  },
+  "compose.text_style": {
+    "context": "Screen-reader label of the text style dropdown in the compose toolbar",
+    "security": false
+  },
+  "compose.title_draft": {
+    "context": "Compose window header title when a saved draft is reopened",
+    "security": false,
+    "max": 20
+  },
+  "compose.title_new": {
+    "context": "Compose window header title for a new message",
+    "security": false,
+    "max": 20
+  },
+  "compose.to_placeholder": {
+    "context": "Placeholder of the recipient field while no recipient is added",
+    "security": false,
+    "max": 20
+  },
+  "compose.too_many_attachments": {
+    "context": "Error when the attachment limit would be passed; {max} is a number (32)",
+    "security": false
+  },
+  "compose.underline": {
+    "context": "Compose toolbar icon button, tooltip and screen-reader label",
+    "security": false,
+    "max": 22
+  },
+  "confirm.delete_forever_body": {
+    "context": "Body of the confirmation dialog before Delete forever (Trash and Spam only)",
+    "security": false
+  },
+  "confirm.delete_forever_title": {
+    "context": "Title of the confirmation dialog before Delete forever",
+    "security": false
+  },
+  "crash.reload": {
+    "context": "Button of the crash screen: reloads the page",
+    "security": false,
+    "max": 16
+  },
+  "crash.reload_hint": {
+    "context": "Second line of the crash screen (shown when the app fails to render); says that mail already saved is still on the server (it does not promise that nothing was lost)",
+    "security": true
+  },
+  "docs.arch_assets": {
+    "context": "Card text: the web app is served by the Worker's static assets feature; /api is the path of the server routes (not translated).",
+    "security": false,
+    "max": 140
+  },
+  "docs.arch_assets_title": {
+    "context": "Card title in the Architecture tab: the files of the web app.",
+    "security": false,
+    "max": 20
+  },
+  "docs.arch_cron": {
+    "context": "CAT-21. Card text: what the every-minute job does: returns snoozed mail, seals mail that waited for its owner to set up keys, converts old unencrypted mail from the single-user version; and (new) applies two-factor resets that are due (an admin's reset of another admin waits 24 hours) and, seven days after a person asked, deletes their locked old mail (mail sealed to a key that was replaced).",
+    "security": true,
+    "max": 350
+  },
+  "docs.arch_cron_title": {
+    "context": "Card title: the scheduled job (cron) that runs every minute.",
+    "security": false,
+    "max": 10
+  },
+  "docs.arch_d1": {
+    "context": "CAT-22. Card text: what is stored in D1, and what is NOT encrypted there. \"Sealed\" = encrypted so that only the owner can read it. The mail index keeps sender, recipients, dates, sizes and labels readable (unencrypted); subject, text and attachment names are encrypted. Keep both halves.",
+    "security": true,
+    "max": 265
+  },
+  "docs.arch_d1_title": {
+    "context": "Card title: D1 is the name of Cloudflare's SQLite database product; never translated.",
+    "security": false,
+    "max": 20
+  },
+  "docs.arch_inbound": {
+    "context": "Card text in the Architecture tab. Cloudflare Email Routing hands the message to the Worker (the server program). \"Sealed to that person's key\" = encrypted so that only that person can open it; keep the glossary words for sealing and key. DATA_KEY is the name of a server secret: keep it as it is. An address with no account is rejected.",
+    "security": true,
+    "max": 340
+  },
+  "docs.arch_inbound_title": {
+    "context": "Card title in the Architecture tab: how incoming mail is received.",
+    "security": false,
+    "max": 20
+  },
+  "docs.arch_keys": {
+    "context": "Card text. {data_key} is the name of a secret (never translated). It protects what the server must read back itself, including mail that arrives before its owner has set up keys.",
+    "security": true,
+    "max": 230
+  },
+  "docs.arch_keys_title": {
+    "context": "Card title in the Architecture tab: how keys and secrets are used.",
+    "security": true,
+    "max": 30
+  },
+  "docs.arch_outbound": {
+    "context": "CAT-20. Card text. Mail to other servers goes out through Cloudflare Email Sending. Mail between two people on this same deployment is encrypted in the sender's browser and stays inside, BUT ONLY when every recipient has set up encryption keys and the message is within the size limits; otherwise the server can read it (a copy for a person without keys is sent unencrypted to the server; a message that is too large goes out through Email Sending and comes back in). Keep both conditions and both exceptions (do not call it \"end-to-end encrypted\" here: that term is for the badge only).",
+    "security": true,
+    "max": 575
+  },
+  "docs.arch_outbound_title": {
+    "context": "Card title in the Architecture tab: how mail is sent.",
+    "security": false,
+    "max": 20
+  },
+  "docs.arch_push": {
+    "context": "Card text. A notification names the sender only: never the subject or the text.",
+    "security": true,
+    "max": 170
+  },
+  "docs.arch_push_title": {
+    "context": "Card title: Web Push is the browser notification standard; keep \"Web Push\".",
+    "security": false,
+    "max": 20
+  },
+  "docs.arch_r2": {
+    "context": "Card text: raw messages and attachments are stored encrypted in R2.",
+    "security": true,
+    "max": 80
+  },
+  "docs.arch_r2_title": {
+    "context": "Card title: R2 is the name of Cloudflare's object storage; never translated.",
+    "security": false,
+    "max": 20
+  },
+  "docs.arch_realtime": {
+    "context": "CAT-23. Card text. MailHub is a Durable Object (Cloudflare term, not translated). The messages it sends carry ids, the sender (name and address) and the time, never a subject or text.",
+    "security": true,
+    "max": 225
+  },
+  "docs.arch_realtime_title": {
+    "context": "Card title in the Architecture tab: live updates.",
+    "security": false,
+    "max": 20
+  },
+  "docs.deploy_intro": {
+    "context": "First line of the Deployment tab. {deployment} and {configuration} are file names (docs/deployment.md, docs/configuration.md), shown as code.",
+    "security": false,
+    "max": 180
+  },
+  "docs.deploy_plan": {
+    "context": "CAT-24. Closing note of the Deployment tab: why the Workers Paid plan is needed. Keep the numbers (10 ms, about 40 ms) and the plan names. The 40 ms is a local measurement, not a Cloudflare figure: keep \"in our local test\".",
+    "security": false,
+    "max": 210
+  },
+  "docs.deploy_step1": {
+    "context": "Step heading, followed by a shell command shown as code: creates the database and the storage bucket.",
+    "security": false,
+    "max": 60
+  },
+  "docs.deploy_step1_note": {
+    "context": "Note under step 1. {id}, {file} and {default_from} are code names (database_id, wrangler.jsonc, DEFAULT_FROM), never translated.",
+    "security": false,
+    "max": 130
+  },
+  "docs.deploy_step2": {
+    "context": "Step heading, followed by a shell command: applies the database migrations.",
+    "security": false,
+    "max": 40
+  },
+  "docs.deploy_step3": {
+    "context": "Step heading, followed by three shell commands that set the three secrets.",
+    "security": true,
+    "max": 40
+  },
+  "docs.deploy_step3_note": {
+    "context": "Note under step 3. {jwt_secret}, {data_key}, {app_password} are secret names (never translated). The setup key is the name for APP_PASSWORD. 503 is an HTTP status. Only the number changed (the setup key needs at least 24 characters now, was 12); vi and zh-CN already carry the number in the overrides.",
+    "security": true,
+    "max": 360
+  },
+  "docs.deploy_step4": {
+    "context": "Step heading, followed by the deploy command.",
+    "security": false,
+    "max": 20
+  },
+  "docs.deploy_step4_note": {
+    "context": "Note under step 4.",
+    "security": false,
+    "max": 90
+  },
+  "docs.deploy_step5": {
+    "context": "Step heading: the first-run Setup screen.",
+    "security": false,
+    "max": 20
+  },
+  "docs.deploy_step5_note": {
+    "context": "Note under step 5. {app_password} is the secret name (never translated). Setup creates the first admin and shows a recovery key that must be written down.",
+    "security": true,
+    "max": 190
+  },
+  "docs.routing_alt": {
+    "context": "Note: for mail hosted elsewhere. {doc} is a file name shown as code. \"Option B\" is the heading name in that document; keep it.",
+    "security": false,
+    "max": 130
+  },
+  "docs.routing_catchall": {
+    "context": "List item: use the catch-all rule of the whole domain. {action} is the Cloudflare action name (shown in bold, same as in the domains guide) and {worker} the destination.",
+    "security": false,
+    "max": 350
+  },
+  "docs.routing_from": {
+    "context": "Closing line of the sending part: each person sends only from their own primary address.",
+    "security": false,
+    "max": 80
+  },
+  "docs.routing_intro": {
+    "context": "First line of the Email routing tab. {check} is the label of the admin console button \"Check DNS\" (taken from the catalogue).",
+    "security": false,
+    "max": 290
+  },
+  "docs.routing_test": {
+    "context": "List item: how to check that receiving works.",
+    "security": false,
+    "max": 150
+  },
+  "docs.tab_architecture": {
+    "context": "Settings tab (admins only) with short technical notes: what runs where. Tab label in a row of tabs.",
+    "security": false,
+    "max": 20
+  },
+  "docs.tab_deployment": {
+    "context": "Settings tab (admins only): the deployment steps in short. Tab label in a row of tabs.",
+    "security": false,
+    "max": 20
+  },
+  "docs.tab_routing": {
+    "context": "Settings tab (admins only): how to set up Email Routing and Email Sending. Tab label in a row of tabs; MX is the DNS record type and stays MX.",
+    "security": false,
+    "max": 30
+  },
+  "domains.add_a_domain": {
+    "context": "Button in the New account dialog when no domain exists, and label of the domain field in the Domains tab.",
+    "security": false,
+    "max": 20
+  },
+  "domains.add_domain": {
+    "context": "Button that adds the typed domain in the Domains tab.",
+    "security": false,
+    "max": 18
+  },
+  "domains.add_note": {
+    "context": "Domains tab: note under the add form. {check} is the Check DNS button name shown as a badge.",
+    "security": false
+  },
+  "domains.addresses_count#one": {
+    "context": "Domain card: how many addresses use the domain. {count} is a number.",
+    "security": false
+  },
+  "domains.addresses_count#other": {
+    "context": "Domain card: how many addresses use the domain. {count} is a number.",
+    "security": false
+  },
+  "domains.checked_at": {
+    "context": "DNS check result: when the check ran. {when} is a date and time already formatted for the language.",
+    "security": false
+  },
+  "domains.empty": {
+    "context": "Admin Domains tab when no domain exists.",
+    "security": false
+  },
+  "domains.err_empty": {
+    "context": "Form error under the domain field of the Domains tab: nothing typed.",
+    "security": false
+  },
+  "domains.err_incomplete": {
+    "context": "Form error under the domain field: the name has no dot.",
+    "security": false
+  },
+  "domains.err_label": {
+    "context": "Form error under the domain field: a part of the name has a character that is not allowed.",
+    "security": false
+  },
+  "domains.err_not_plain": {
+    "context": "Form error under the domain field: the text is a URL, an address or a wildcard instead of a domain name.",
+    "security": false
+  },
+  "domains.err_too_long": {
+    "context": "Form error under the domain field: the name is too long.",
+    "security": false
+  },
+  "domains.guide_action_worker": {
+    "context": "Name of a Cloudflare dashboard action, shown in bold in the setup guides. The dashboard is shown in English: keep it in English unless you know the localized dashboard label.",
+    "security": false,
+    "max": 30
+  },
+  "domains.guide_in1": {
+    "context": "Setup steps, receiving, step 1. {path} is a Cloudflare menu path (bold), {domain} the domain (code).",
+    "security": false
+  },
+  "domains.guide_in3": {
+    "context": "Setup steps, receiving, step 3. {action} is the Cloudflare action name \"Send to a Worker\" (bold), {worker} a description of the Worker.",
+    "security": false
+  },
+  "domains.guide_in4": {
+    "context": "Setup steps, receiving, step 4.",
+    "security": false
+  },
+  "domains.guide_out1": {
+    "context": "Setup steps, sending, step 1. {path} is a Cloudflare menu path (bold), {domain} the domain (code).",
+    "security": false
+  },
+  "domains.guide_out2": {
+    "context": "Setup steps, sending, step 2. {bounce} and {dmarc} are DNS names (code), keep them as they are.",
+    "security": false
+  },
+  "domains.guide_out3": {
+    "context": "Setup steps, sending, step 3. {code} is a Cloudflare error code (code style), keep it as it is.",
+    "security": false
+  },
+  "domains.guide_path_routing": {
+    "context": "Menu path in the Cloudflare dashboard (Compute, Email Service, Email Routing, Onboard Domain), shown in bold. The dashboard is shown in English: keep the labels as the dashboard shows them.",
+    "security": false,
+    "max": 90
+  },
+  "domains.guide_path_sending": {
+    "context": "Menu path in the Cloudflare dashboard (Email Sending). Same rule as the routing path.",
+    "security": false,
+    "max": 90
+  },
+  "domains.guide_records": {
+    "context": "List item in the domain setup guides (admin console, Settings tab): what Cloudflare adds on onboarding and a warning about the MX records of another mail provider.",
+    "security": false,
+    "max": 260
+  },
+  "domains.guide_settings": {
+    "context": "Setup steps: the name of the Settings tab of Cloudflare Email Routing (bold, inside a sentence).",
+    "security": false
+  },
+  "domains.guide_subdomain": {
+    "context": "Setup steps: paragraph about subdomains. {example} is an example name (code), {settings} and {subdomains} are Cloudflare menu names (bold), {action} the Cloudflare action name (bold), {worker} a description of the Worker.",
+    "security": false
+  },
+  "domains.guide_subdomain_title": {
+    "context": "Setup steps: heading of the paragraph about subdomains.",
+    "security": false
+  },
+  "domains.guide_subdomains": {
+    "context": "Setup steps: the name of the Subdomains section of Cloudflare Email Routing settings (bold, inside a sentence).",
+    "security": false
+  },
+  "domains.guide_worker": {
+    "context": "Setup steps: how to name the Cloudflare Worker that runs the app (fills {worker}).",
+    "security": false
+  },
+  "domains.hide_steps": {
+    "context": "Button on a domain card that closes the Cloudflare setup steps.",
+    "security": false,
+    "max": 28
+  },
+  "domains.loading": {
+    "context": "Admin Domains tab while the list loads (spinner and text).",
+    "security": false
+  },
+  "domains.name_placeholder": {
+    "context": "Placeholder of the domain field of the Domains tab: an example domain.",
+    "security": false
+  },
+  "domains.no_mx": {
+    "context": "DNS check result: the domain has no MX records.",
+    "security": false
+  },
+  "domains.not_ready": {
+    "context": "DNS check result badge: records are missing.",
+    "security": false,
+    "max": 14
+  },
+  "domains.note_mx_cloudflare": {
+    "context": "DNS check result, receiving: the MX records point to Cloudflare Email Routing.",
+    "security": false
+  },
+  "domains.note_mx_none": {
+    "context": "DNS check result, receiving: no MX records.",
+    "security": false
+  },
+  "domains.note_mx_other": {
+    "context": "DNS check result, receiving: the MX records point to another provider. {hosts} is a comma-separated list of host names.",
+    "security": false
+  },
+  "domains.note_sending_missing": {
+    "context": "DNS check result, sending: a required record is missing. The path is the Cloudflare dashboard menu, in English.",
+    "security": false
+  },
+  "domains.note_sending_ready": {
+    "context": "DNS check result, sending: all required records exist.",
+    "security": false
+  },
+  "domains.ready": {
+    "context": "DNS check result badge: the records are in place.",
+    "security": false,
+    "max": 14
+  },
+  "domains.receiving": {
+    "context": "DNS check section heading and setup steps heading for receiving mail.",
+    "security": false,
+    "max": 24
+  },
+  "domains.record_found": {
+    "context": "DNS check result, one record of the sending list. {type} is the record type (MX, TXT), {name} the record name.",
+    "security": false
+  },
+  "domains.record_missing": {
+    "context": "DNS check result, one record of the sending list. {type} is the record type (MX, TXT), {name} the record name.",
+    "security": false
+  },
+  "domains.remove_body": {
+    "context": "Body of the confirmation dialog before a domain is removed.",
+    "security": false
+  },
+  "domains.remove_domain": {
+    "context": "Button that confirms the removal of a domain.",
+    "security": false,
+    "max": 20
+  },
+  "domains.remove_title": {
+    "context": "Title of the confirmation dialog before a domain is removed. {name} is the domain name.",
+    "security": false
+  },
+  "domains.sending": {
+    "context": "DNS check section heading and setup steps heading for sending mail.",
+    "security": false,
+    "max": 24
+  },
+  "domains.show_steps": {
+    "context": "Button on a domain card that opens the Cloudflare setup steps.",
+    "security": false,
+    "max": 28
+  },
+  "drafts.locked": {
+    "context": "Error text when a saved draft from the Drafts folder is clicked while no key is unlocked in the browser, so its encrypted content cannot be opened yet. Says what to do: unlock, then open the draft again.",
+    "security": true
+  },
+  "drafts.other_key": {
+    "context": "Error text when a saved draft was encrypted to a key other than the one in use now (for example after an admin recovery of the account), so this browser cannot open it. Says only what this browser can do; it does not claim who else can or cannot open it.",
+    "security": true
+  },
+  "e2e.badge_note": {
+    "context": "Note that opens under the badge 'End-to-end encrypted' in the reader (e2e.badge, a glossary key). Wording from the security review: encrypted in the sender's browser to the recipients' keys; the keys come from this server; it protects who can read the message, not who sent it. Do not strengthen it (no 'secure', no 'only the recipient').",
+    "security": true
+  },
+  "err.account_disabled": {
+    "context": "Error shown when the server answers with code \"account_disabled\" (HTTP 403; the API's English is: This account is disabled. Contact your administrator.)",
+    "security": true
+  },
+  "err.address_taken": {
+    "context": "Error shown when the server answers with code \"address_taken\" (HTTP 409; the API's English is: That address is already in use)",
+    "security": false
+  },
+  "err.admin_password_upgrade_required": {
+    "context": "Error shown when the server answers with code \"admin_password_upgrade_required\" (HTTP 403; the API's English is: Set a password of the administrator length first)",
+    "security": true
+  },
+  "err.admin_required": {
+    "context": "Error shown when the server answers with code \"admin_required\" (HTTP 403; the API's English is: Administrator access is required)",
+    "security": false
+  },
+  "err.alias_not_found": {
+    "context": "Error shown when the server answers with code \"alias_not_found\" (HTTP 404; the API's English is: Alias not found)",
+    "security": false
+  },
+  "err.already_enabled": {
+    "context": "Error shown when the server answers with code \"already_enabled\" (HTTP 409; the API's English is: Two-step verification is already on)",
+    "security": true
+  },
+  "err.already_set_up": {
+    "context": "Error shown when the server answers with code \"already_set_up\" (HTTP 409; the API's English is: Setup is already done)",
+    "security": false
+  },
+  "err.bad_gateway": {
+    "context": "Error shown when the server answers with code \"bad_gateway\" (HTTP 502; the API's English is: An upstream service did not answer)",
+    "security": false
+  },
+  "err.cannot_delete_self": {
+    "context": "Error shown when the server answers with code \"cannot_delete_self\" (HTTP 409; the API's English is: You cannot delete your own account)",
+    "security": false
+  },
+  "err.cannot_disable_self": {
+    "context": "Error shown when the server answers with code \"cannot_disable_self\" (HTTP 409; the API's English is: You cannot disable your own account)",
+    "security": false
+  },
+  "err.cannot_reset_self": {
+    "context": "Error shown when the server answers with code \"cannot_reset_self\" (HTTP 409; the API's English is: You cannot reset your own two-step verification)",
+    "security": true
+  },
+  "err.challenge_invalid": {
+    "context": "Error shown when the server answers with code \"challenge_invalid\" (HTTP 401; the API's English is: This sign-in step has expired. Sign in again.)",
+    "security": true
+  },
+  "err.confirm_mismatch": {
+    "context": "Error shown when the server answers with code \"confirm_mismatch\" (HTTP 400; the API's English is: The confirmation does not match)",
+    "security": false
+  },
+  "err.conflict": {
+    "context": "Error shown when the server answers with code \"conflict\" (HTTP 409; the API's English is: The request conflicts with the current state)",
+    "security": false
+  },
+  "err.copies_mismatch": {
+    "context": "Error shown when the server answers with code \"copies_mismatch\" (HTTP 400; the API's English is: There must be exactly one encrypted copy for each recipient)",
+    "security": true
+  },
+  "err.dns_lookup_failed": {
+    "context": "Error shown when the server answers with code \"dns_lookup_failed\" (HTTP 502; the API's English is: The DNS lookup failed)",
+    "security": false
+  },
+  "err.domain_exists": {
+    "context": "Error shown when the server answers with code \"domain_exists\" (HTTP 409; the API's English is: That domain is already added)",
+    "security": false
+  },
+  "err.domain_in_use": {
+    "context": "Error shown when the server answers with code \"domain_in_use\" (HTTP 409; the API's English is: Addresses still use this domain)",
+    "security": false
+  },
+  "err.domain_not_configured": {
+    "context": "Error shown when the server answers with code \"domain_not_configured\" (HTTP 400; the API's English is: Add the domain first)",
+    "security": false
+  },
+  "err.domain_not_found": {
+    "context": "Error shown when the server answers with code \"domain_not_found\" (HTTP 404; the API's English is: Domain not found)",
+    "security": false
+  },
+  "err.draft_not_found": {
+    "context": "Error shown when the server answers with code \"draft_not_found\" (HTTP 404; the API's English is: Draft not found)",
+    "security": false
+  },
+  "err.forbidden": {
+    "context": "Error shown when the server answers with code \"forbidden\" (HTTP 403; the API's English is: Forbidden)",
+    "security": false
+  },
+  "err.from_not_allowed": {
+    "context": "Error shown when the server answers with code \"from_not_allowed\" (HTTP 403; the API's English is: You can only send from your own address)",
+    "security": false
+  },
+  "err.id_in_use": {
+    "context": "Error when the server already has this message id (a retry after a lost answer): the message may have gone out, so the person is asked to look in Sent before sending again. Use the catalogue name of the Sent folder. cyber CAT-14.",
+    "security": false
+  },
+  "err.invalid_address": {
+    "context": "Error shown when the server answers with code \"invalid_address\" (HTTP 400; the API's English is: That is not an address this product can host)",
+    "security": false
+  },
+  "err.invalid_body": {
+    "context": "Error shown when the server answers with code \"invalid_body\" (HTTP 400; the API's English is: A JSON object body with only the documented fields is required)",
+    "security": false
+  },
+  "err.invalid_hostname": {
+    "context": "Error shown when the server answers with code \"invalid_hostname\" (HTTP 400; the API's English is: That is not a valid domain name)",
+    "security": false
+  },
+  "err.invalid_keys": {
+    "context": "Error shown when the server answers with code \"invalid_keys\" (HTTP 400; the API's English is: The keys are not valid)",
+    "security": true
+  },
+  "err.invalid_language": {
+    "context": "Error shown when the server answers with code \"invalid_language\" (HTTP 400; the API's English is: language must be en, vi or zh-CN)",
+    "security": false
+  },
+  "err.invalid_request": {
+    "context": "Error shown when the server answers with code \"invalid_request\" (HTTP 400; the API's English is: The request is not valid)",
+    "security": false
+  },
+  "err.key_changed": {
+    "context": "Error shown when the server answers with code \"key_changed\" (HTTP 409; the API's English is: A recipient's key changed. Their current keys are in the answer: encrypt the message again.)",
+    "security": true
+  },
+  "err.key_in_use": {
+    "context": "Error shown when the server answers with code \"key_in_use\" (HTTP 409; the API's English is: That key is already in use)",
+    "security": true
+  },
+  "err.key_setup_required": {
+    "context": "Error shown when the server answers with code \"key_setup_required\" (HTTP 403; the API's English is: Set up your encryption keys first)",
+    "security": true
+  },
+  "err.keys_changed": {
+    "context": "Error shown when the server answers with code \"keys_changed\" (HTTP 409; the API's English is: Your keys changed in the meantime. Reload and try again.)",
+    "security": true
+  },
+  "err.keys_required": {
+    "context": "Error shown when the server answers with code \"keys_required\" (HTTP 400; the API's English is: The private key must be wrapped again under the new password)",
+    "security": true
+  },
+  "err.last_admin": {
+    "context": "Error shown when the server answers with code \"last_admin\" (HTTP 409; the API's English is: There must always be one active administrator)",
+    "security": true
+  },
+  "err.message_not_found": {
+    "context": "Error shown when the server answers with code \"message_not_found\" (HTTP 404; the API's English is: Message not found)",
+    "security": false
+  },
+  "err.network": {
+    "context": "Error when the request never reached the server (offline, server down)",
+    "security": false
+  },
+  "err.no_pending_reset": {
+    "context": "Error shown when the server answers with code \"no_pending_reset\" (HTTP 409; the API's English is: No reset of your two-step verification is pending)",
+    "security": true
+  },
+  "err.no_such_admin": {
+    "context": "Error shown when the server answers with code \"no_such_admin\" (HTTP 404; the API's English is: No administrator has that address)",
+    "security": true
+  },
+  "err.not_a_draft": {
+    "context": "Error shown when the server answers with code \"not_a_draft\" (HTTP 409; the API's English is: This id belongs to a message that is not a draft)",
+    "security": false
+  },
+  "err.not_applicable": {
+    "context": "Error shown when the server answers with code \"not_applicable\" (HTTP 409; the API's English is: This does not apply to the account in its current state)",
+    "security": false
+  },
+  "err.not_configured": {
+    "context": "Error shown when the server answers with code \"not_configured\" (HTTP 503; the API's English is: Server is not configured)",
+    "security": false
+  },
+  "err.not_enabled": {
+    "context": "Error shown when the server answers with code \"not_enabled\" (HTTP 409; the API's English is: Two-step verification is not on)",
+    "security": true
+  },
+  "err.not_found": {
+    "context": "Error shown when the server answers with code \"not_found\" (HTTP 404; the API's English is: Not found)",
+    "security": false
+  },
+  "err.not_started": {
+    "context": "Error shown when the server answers with code \"not_started\" (HTTP 409; the API's English is: Two-step enrolment was not started)",
+    "security": true
+  },
+  "err.notice_locked": {
+    "context": "Error shown when the server answers with code \"notice_locked\" (HTTP 403; the API's English is: This notice cannot be dismissed yet)",
+    "security": false
+  },
+  "err.notice_not_found": {
+    "context": "Error shown when the server answers with code \"notice_not_found\" (HTTP 404; the API's English is: Notice not found)",
+    "security": false
+  },
+  "err.password_change_required": {
+    "context": "Error shown when the server answers with code \"password_change_required\" (HTTP 403; the API's English is: Choose a new password first)",
+    "security": true
+  },
+  "err.payload_too_large": {
+    "context": "Error shown when the server answers with code \"payload_too_large\" (HTTP 413; the API's English is: The request is too large)",
+    "security": false
+  },
+  "err.recipient_not_internal": {
+    "context": "Error shown when the server answers with code \"recipient_not_internal\" (HTTP 400; the API's English is: Some recipients are not on this deployment: send the message the normal way)",
+    "security": true
+  },
+  "err.recovery_failed": {
+    "context": "The ONE answer of the forgot-password screen for every failed attempt (HTTP 401 code \"recovery_failed\"): a wrong or mistyped recovery key, a missing or wrong authenticator code, an unknown address. The server gives the same answer in every case, so the text names BOTH things that may be wrong and must never say which one was right or wrong. The second sentence is for a person who uses two-factor sign-in and left the code field empty. \"Recovery key\" and \"authenticator code\" are glossary terms (the code from the authenticator app, not a recovery code). Same sentence as the Worker's own English for this code.",
+    "security": true,
+    "max": 220
+  },
+  "err.recovery_stale": {
+    "context": "Error shown when the server answers with code \"recovery_stale\" (HTTP 409; the API's English is: Your account changed in the meantime. Start again.)",
+    "security": true
+  },
+  "err.reissue_refused": {
+    "context": "Error when an admin asks for a new temporary password for a person who has already chosen their own password. Says what the server checks. \"Temporary password\" is the glossary term. cyber CAT-10.",
+    "security": true
+  },
+  "err.reset_limit": {
+    "context": "Error shown when the server answers with code \"reset_limit\" (HTTP 429; the API's English is: Too many resets for this person. Try again later.)",
+    "security": true
+  },
+  "err.same_password": {
+    "context": "Error when the new password equals the CURRENT one. The server keeps no password history: do not say that old passwords are refused. cyber CAT-7.",
+    "security": true
+  },
+  "err.server_error": {
+    "context": "Error shown when the server answers with code \"server_error\" (HTTP 500; the API's English is: Something went wrong)",
+    "security": false
+  },
+  "err.step_up_required": {
+    "context": "Error shown when the server answers with code \"step_up_required\" (HTTP 403; the API's English is: Confirm with a code from your authenticator first)",
+    "security": true
+  },
+  "err.ticket_invalid": {
+    "context": "Error shown when the server answers with code \"ticket_invalid\" (HTTP 401; the API's English is: This recovery has expired. Start again.)",
+    "security": true
+  },
+  "err.too_many_aliases": {
+    "context": "Error shown when the server answers with code \"too_many_aliases\" (HTTP 400; the API's English is: This account has the most aliases it can have)",
+    "security": false
+  },
+  "err.too_many_attempts": {
+    "context": "Error shown when the server answers with code \"too_many_attempts\" (HTTP 429; the API's English is: Too many attempts. Try again later.)",
+    "security": true
+  },
+  "err.too_many_lookups": {
+    "context": "Error shown when the server answers with code \"too_many_lookups\" (HTTP 429; the API's English is: Too many lookups. Try again later.)",
+    "security": true
+  },
+  "err.too_many_recipients": {
+    "context": "Error shown when the server answers with code \"too_many_recipients\" (HTTP 400; the API's English is: A message can have at most 50 different recipients)",
+    "security": false
+  },
+  "err.too_many_requests": {
+    "context": "Error shown when the server answers with code \"too_many_requests\" (HTTP 429; the API's English is: Too many requests. Try again later.)",
+    "security": false
+  },
+  "err.two_factor_broken": {
+    "context": "Error shown when the server answers with code \"two_factor_broken\" (HTTP 403; the API's English is: Two-step verification is broken for this account. Ask an administrator to reset it.)",
+    "security": true
+  },
+  "err.two_factor_enrollment_required": {
+    "context": "Error shown when the server answers with code \"two_factor_enrollment_required\" (HTTP 403; the API's English is: Set up two-step verification first)",
+    "security": true
+  },
+  "err.two_factor_required": {
+    "context": "Error shown when the server answers with code \"two_factor_required\" (HTTP 403; the API's English is: Two-step verification is required and cannot be turned off)",
+    "security": true
+  },
+  "err.unauthorized": {
+    "context": "Error shown when the server answers with code \"unauthorized\" (HTTP 401; the API's English is: Unauthorized)",
+    "security": true
+  },
+  "err.unavailable": {
+    "context": "Error shown when the server answers with code \"unavailable\" (HTTP 503; the API's English is: This is temporarily unavailable)",
+    "security": false
+  },
+  "err.upgrade_required": {
+    "context": "Error shown when the server answers with code \"upgrade_required\" (HTTP 426; the API's English is: Expected a WebSocket upgrade request)",
+    "security": false
+  },
+  "err.user_not_found": {
+    "context": "Error shown when the server answers with code \"user_not_found\" (HTTP 404; the API's English is: User not found)",
+    "security": false
+  },
+  "err.wrong_code": {
+    "context": "Error shown when the server answers with code \"wrong_code\" (HTTP 401; the API's English is: That code is wrong or was already used)",
+    "security": true
+  },
+  "err.wrong_credentials": {
+    "context": "Error shown when the server answers with code \"wrong_credentials\" (HTTP 401; the API's English is: Wrong email or password)",
+    "security": true
+  },
+  "err.wrong_password": {
+    "context": "Error shown when the server answers with code \"wrong_password\" (HTTP 403; the API's English is: The current password is wrong)",
+    "security": true
+  },
+  "err.wrong_setup_key": {
+    "context": "Error shown when the server answers with code \"wrong_setup_key\" (HTTP 401; the API's English is: Wrong setup key)",
+    "security": true
+  },
+  "fail.activity_load": {
+    "context": "API fallback (no server error code): the request for the sign-in history failed; shown as the error text of that request.",
+    "security": true
+  },
+  "fail.admin_step_up": {
+    "context": "Fallback error of the step-up code request when the server gives no reason.",
+    "security": true
+  },
+  "fail.audit_load": {
+    "context": "Fallback error when the audit log request fails without a reason.",
+    "security": false
+  },
+  "fail.break_glass": {
+    "context": "Fallback error when the break-glass request failed and the server gave no reason.",
+    "security": true
+  },
+  "fail.compose_send": {
+    "context": "Fallback error text when sending failed and the server gave no usable reason",
+    "security": false
+  },
+  "fail.default_language_save": {
+    "context": "Error when the admin's choice of the organisation default language could not be saved",
+    "security": false
+  },
+  "fail.domains_add": {
+    "context": "Fallback error when adding a domain fails without a reason.",
+    "security": false
+  },
+  "fail.domains_check": {
+    "context": "Fallback error when the DNS check request fails without a reason.",
+    "security": false
+  },
+  "fail.domains_load": {
+    "context": "Fallback error when the domain list request fails without a reason.",
+    "security": false
+  },
+  "fail.domains_remove": {
+    "context": "Fallback error when removing a domain fails without a reason.",
+    "security": false
+  },
+  "fail.drafts_discard": {
+    "context": "Fallback error text when a draft cannot be discarded.",
+    "security": false
+  },
+  "fail.drafts_open": {
+    "context": "Fallback error text when a saved draft cannot be opened.",
+    "security": false
+  },
+  "fail.drafts_save": {
+    "context": "Fallback error text when a draft cannot be saved.",
+    "security": false
+  },
+  "fail.forgot_complete": {
+    "context": "Fallback error when the final forgotten-password request failed and the server gave no reason.",
+    "security": true
+  },
+  "fail.forgot_verify": {
+    "context": "Fallback error when the forgotten-password check of the recovery key failed and the server gave no reason.",
+    "security": true
+  },
+  "fail.key_removal": {
+    "context": "Error text when signing out (or wiping the key) could not delete the encryption key saved in this browser, for example because another tab of the app holds it open. The key is already gone from memory; the person is asked to close other tabs and try again.",
+    "security": true,
+    "max": 150
+  },
+  "fail.keys_load": {
+    "context": "Fallback error when the browser could not read the person's keys from the server.",
+    "security": true
+  },
+  "fail.keys_setup": {
+    "context": "Fallback error when the key setup request failed and the server gave no reason.",
+    "security": true
+  },
+  "fail.language_save": {
+    "context": "Error when the chosen language could not be saved to the account",
+    "security": false
+  },
+  "fail.locked_cancel": {
+    "context": "Fallback error shown when the request to cancel a deletion of locked mail failed without a reason from the server.",
+    "security": true,
+    "max": 55
+  },
+  "fail.locked_delete": {
+    "context": "Fallback error shown when the request to delete locked mail failed without a reason from the server.",
+    "security": true,
+    "max": 55
+  },
+  "fail.mailcrypto_attachment": {
+    "context": "Notice or inline error under the reader's attachment list when downloading and opening one attachment failed (network, a damaged file, or the key could not open it).",
+    "security": false
+  },
+  "fail.mailcrypto_images": {
+    "context": "Line above the mail frame in the reader after the person chose Show images, when some pictures that are part of the message could not be opened or were too large.",
+    "security": false
+  },
+  "fail.mailcrypto_raw": {
+    "context": "Notice or inline error in the reader when downloading and opening the original message (.eml) failed.",
+    "security": false
+  },
+  "fail.notice_cancel_reset": {
+    "context": "Fallback error when cancelling the reset of the two-factor sign-in failed.",
+    "security": true
+  },
+  "fail.notice_dismiss": {
+    "context": "Fallback error when dismissing a notice failed.",
+    "security": true
+  },
+  "fail.notices_load": {
+    "context": "Fallback error when the notices could not be loaded.",
+    "security": true
+  },
+  "fail.org_settings_load": {
+    "context": "Error in the admin console when the organisation's settings (default language) cannot be loaded",
+    "security": false
+  },
+  "fail.password_change": {
+    "context": "Fallback error when the password change request failed and the server gave no reason.",
+    "security": true
+  },
+  "fail.push_key": {
+    "context": "API fallback: loading the push public key failed (Settings > Notifications)",
+    "security": false
+  },
+  "fail.push_status": {
+    "context": "API fallback: checking whether this device is subscribed failed",
+    "security": false
+  },
+  "fail.push_subscribe": {
+    "context": "API fallback: registering this device for notifications failed",
+    "security": false
+  },
+  "fail.push_test": {
+    "context": "API fallback: sending the test notification failed",
+    "security": false
+  },
+  "fail.push_unsubscribe": {
+    "context": "API fallback: removing a stale notification subscription failed",
+    "security": false
+  },
+  "fail.queries_action": {
+    "context": "Fallback error text when an action on messages (archive, trash, mark read, ...) fails.",
+    "security": false
+  },
+  "fail.queries_labels": {
+    "context": "Fallback error text when the list of labels cannot be loaded.",
+    "security": false
+  },
+  "fail.queries_labels_update": {
+    "context": "Fallback error text when labels of a message cannot be saved.",
+    "security": false
+  },
+  "fail.queries_message": {
+    "context": "Fallback error text when one message cannot be opened.",
+    "security": false
+  },
+  "fail.queries_messages": {
+    "context": "Fallback error text when a message list cannot be loaded.",
+    "security": false
+  },
+  "fail.queries_send": {
+    "context": "Fallback error text when a message cannot be sent (was \"Failed to send email\": \"email\" became \"message\" to follow the glossary noun).",
+    "security": false
+  },
+  "fail.queries_stats": {
+    "context": "Fallback error text when the folder counters cannot be loaded.",
+    "security": false
+  },
+  "fail.recovery_replace": {
+    "context": "Fallback text when making a new recovery key fails and the server gave no reason.",
+    "security": true
+  },
+  "fail.sealed_locked": {
+    "context": "Error line under the compose screen: the encryption key is not unlocked in this browser, so an encrypted send was refused before any request was made (nothing was sent).",
+    "security": true
+  },
+  "fail.sealed_lookup": {
+    "context": "Error line under the compose screen: the recipients' public encryption keys could not be fetched or the answer was not valid (fallback of the key lookup request, used when the server sent no error code).",
+    "security": true
+  },
+  "fail.sealed_send": {
+    "context": "Error line under the compose screen: an end-to-end send failed and nothing more specific is known (fallback of the internal-send request when the server sent no error code, and any unexpected failure of the sealing step).",
+    "security": true
+  },
+  "fail.sealed_too_big": {
+    "context": "Error line under the compose screen: the message, or its attachments multiplied by the number of recipients, is over what the encrypted send route accepts; the normal send route still works.",
+    "security": true
+  },
+  "fail.session_check": {
+    "context": "Fallback error when the app cannot ask the server whether the person is still signed in",
+    "security": true
+  },
+  "fail.settings_load": {
+    "context": "Fallback error text when the settings cannot be loaded and the server gave no error code.",
+    "security": false
+  },
+  "fail.settings_save": {
+    "context": "Fallback error text when the settings cannot be saved and the server gave no error code.",
+    "security": false
+  },
+  "fail.setup_create": {
+    "context": "Fallback error text when the request that creates the first admin failed without a reason the server could name (shown under the recovery key).",
+    "security": false
+  },
+  "fail.sign_in": {
+    "context": "Fallback error when signing in fails and the server gave no reason",
+    "security": true
+  },
+  "fail.sign_out": {
+    "context": "Fallback error when signing out fails: the keys on this device are removed anyway, but the server may not have ended the session",
+    "security": true
+  },
+  "fail.step_up": {
+    "context": "Fallback text when checking the authenticator code (step-up before replacing the recovery key) fails and the server gave no reason.",
+    "security": true
+  },
+  "fail.two_factor_codes": {
+    "context": "Fallback text when making new recovery codes fails and the server gave no reason.",
+    "security": true
+  },
+  "fail.two_factor_disable": {
+    "context": "Fallback text when turning off two-factor sign-in fails and the server gave no reason.",
+    "security": true
+  },
+  "fail.two_factor_enrol": {
+    "context": "Fallback error when starting or confirming the two-factor setup failed.",
+    "security": true
+  },
+  "fail.users_alias_add": {
+    "context": "Fallback error when adding an extra address fails without a reason.",
+    "security": false
+  },
+  "fail.users_alias_remove": {
+    "context": "Fallback error when removing an extra address fails without a reason.",
+    "security": false
+  },
+  "fail.users_change": {
+    "context": "Fallback error when changing an account (name, role, status) fails without a reason.",
+    "security": false
+  },
+  "fail.users_create": {
+    "context": "Fallback error when creating an account fails without a reason.",
+    "security": false
+  },
+  "fail.users_delete": {
+    "context": "Fallback error when deleting an account fails without a reason.",
+    "security": false
+  },
+  "fail.users_load": {
+    "context": "Fallback error when the people list request fails without a reason.",
+    "security": false
+  },
+  "fail.users_reissue": {
+    "context": "Fallback error when issuing a new temporary password fails and the server gave no reason.",
+    "security": true
+  },
+  "fail.users_reset_two_factor": {
+    "context": "Fallback error when resetting a person's two-factor sign-in fails without a reason.",
+    "security": true
+  },
+  "forgot.admin_link": {
+    "context": "Button: link on the forgot page for an ADMIN who lost both the password and the recovery key; opens the break-glass screen.",
+    "security": true,
+    "max": 48
+  },
+  "forgot.code_hint": {
+    "context": "Hint under the optional code field: the six digits from the authenticator app, or one two-factor recovery code.",
+    "security": true
+  },
+  "forgot.code_label": {
+    "context": "Label of an optional field: only people who use two-factor sign-in need to fill it.",
+    "security": true
+  },
+  "forgot.done_button": {
+    "context": "Button: goes back to the sign-in screen after a recovery.",
+    "security": true,
+    "max": 30
+  },
+  "forgot.done_lead": {
+    "context": "Under the done heading.",
+    "security": true
+  },
+  "forgot.done_title": {
+    "context": "Heading when the password was changed through the forgotten-password flow.",
+    "security": true
+  },
+  "forgot.key_hint": {
+    "context": "Hint under the recovery key field: 54 characters in nine groups of six; spaces and hyphens are ignored.",
+    "security": true
+  },
+  "forgot.key_lead": {
+    "context": "Under the heading of step 3 (the new recovery key screen): the old recovery key stops working.",
+    "security": true
+  },
+  "forgot.lead": {
+    "context": "Under the heading: what the three steps are.",
+    "security": true
+  },
+  "forgot.nothing_changed": {
+    "context": "Reassurance on the new-recovery-key screen: nothing on the server has changed until the person confirms the key.",
+    "security": true
+  },
+  "forgot.password_lead": {
+    "context": "Under the heading: the recovery key was accepted.",
+    "security": true
+  },
+  "forgot.password_title": {
+    "context": "Heading of step 2 of the forgotten-password flow.",
+    "security": true
+  },
+  "forgot.title": {
+    "context": "Heading of the forgotten-password page (step 1 of 3).",
+    "security": true
+  },
+  "frame.images_blocked": {
+    "context": "Bar above an HTML message that has remote images, left of the 'Show images' button",
+    "security": false
+  },
+  "frame.title": {
+    "context": "Accessible title of the frame that shows the HTML body of a message (screen readers only)",
+    "security": false
+  },
+  "gate.continue": {
+    "context": "Button: moves to the next step of a first-sign-in screen.",
+    "security": false,
+    "max": 20
+  },
+  "gate.current_password_lead": {
+    "context": "When the page was reloaded in the middle of the first sign-in: ask once for the temporary password again.",
+    "security": true
+  },
+  "gate.keys_lead": {
+    "context": "Under the heading of the key setup screen.",
+    "security": true
+  },
+  "gate.keys_title": {
+    "context": "Heading of the screen that sets up the encryption keys and shows the recovery key.",
+    "security": true
+  },
+  "gate.new_password": {
+    "context": "Label of the new password field.",
+    "security": true
+  },
+  "gate.password_lead": {
+    "context": "Under the heading: the account is still on the temporary password an admin made; choose your own.",
+    "security": true
+  },
+  "gate.password_title": {
+    "context": "Heading of the first-sign-in screen that asks for a new password.",
+    "security": true
+  },
+  "gate.passwords_differ": {
+    "context": "The two new passwords typed are not equal.",
+    "security": true
+  },
+  "gate.repeat_password": {
+    "context": "Label of the field that repeats the new password.",
+    "security": true
+  },
+  "gate.two_factor_lead": {
+    "context": "Under the heading of the two-factor setup screen: it is required for this account.",
+    "security": true
+  },
+  "gate.two_factor_title": {
+    "context": "Heading of the screen that sets up two-factor sign-in at first sign-in.",
+    "security": true
+  },
+  "keys.open_failed": {
+    "context": "The keys could not be opened with the typed password (wrong password, or damaged keys): shown on the unlock screen and after a sign-in whose keys do not open.",
+    "security": true
+  },
+  "keys.unlock": {
+    "context": "Button: unlocks the encryption key with the typed password.",
+    "security": true,
+    "max": 20
+  },
+  "keys.unlock_lead": {
+    "context": "Under the unlock heading. {address} is the person's email address.",
+    "security": true
+  },
+  "keys.unlock_title": {
+    "context": "Heading of the unlock screen: signed in, but this browser has no key (reload on a shared device, or the stored key expired).",
+    "security": true
+  },
+  "lang.label": {
+    "context": "Label of the language list in Settings and in the admin console",
+    "security": false,
+    "max": 24
+  },
+  "lang.not_loaded": {
+    "context": "Error under the language list when the chosen language file could not be fetched (offline)",
+    "security": false
+  },
+  "lang.org_default": {
+    "context": "Label of the organisation's default language in the admin console",
+    "security": false
+  },
+  "lang.org_default_hint": {
+    "context": "Help text under the organisation default language list",
+    "security": false
+  },
+  "lang.picker_label": {
+    "context": "Screen-reader name of the small language list on the sign-in screens (no visible label)",
+    "security": false
+  },
+  "list.attachment": {
+    "context": "Small chip on a message row that has an attachment (singular)",
+    "security": false,
+    "max": 14
+  },
+  "list.draft_to": {
+    "context": "Row title of a draft: who it is addressed to; {recipients} is one or more email addresses",
+    "security": false
+  },
+  "list.empty_in": {
+    "context": "Empty-state title of a folder; {folder} is the folder name (Inbox, Sent, a label name)",
+    "security": false
+  },
+  "list.filter_all": {
+    "context": "Filter chip above the message list: show all messages",
+    "security": false,
+    "max": 14
+  },
+  "list.filter_unread": {
+    "context": "Filter chip above the message list: show only unread messages",
+    "security": false,
+    "max": 14
+  },
+  "list.group_earlier": {
+    "context": "Heading of the group of older messages (shown in capitals)",
+    "security": false,
+    "max": 20
+  },
+  "list.group_later": {
+    "context": "Snoozed folder heading: messages that come back after more than 7 days (shown in capitals)",
+    "security": false,
+    "max": 20
+  },
+  "list.group_next_7_days": {
+    "context": "Snoozed folder heading: messages that come back within the next 7 days (shown in capitals)",
+    "security": false,
+    "max": 20
+  },
+  "list.group_this_week": {
+    "context": "Heading of the group of messages from earlier this week (shown in capitals)",
+    "security": false,
+    "max": 20
+  },
+  "list.group_today": {
+    "context": "Heading of the group of messages from today (shown in capitals)",
+    "security": false,
+    "max": 20
+  },
+  "list.group_tomorrow": {
+    "context": "Snoozed folder heading: messages that come back tomorrow (shown in capitals)",
+    "security": false,
+    "max": 20
+  },
+  "list.group_yesterday": {
+    "context": "Heading of the group of messages from yesterday (shown in capitals)",
+    "security": false,
+    "max": 20
+  },
+  "list.has_attachments": {
+    "context": "Screen-reader label of the paperclip icon on a mobile message row",
+    "security": false
+  },
+  "list.hint_archive": {
+    "context": "Empty Archive folder, second line",
+    "security": false
+  },
+  "list.hint_clear_filter": {
+    "context": "Empty-state second line when a filter and a search match nothing; All is the name of the All filter chip",
+    "security": false
+  },
+  "list.hint_drafts": {
+    "context": "Empty Drafts folder, second line",
+    "security": false
+  },
+  "list.hint_inbox": {
+    "context": "Empty Inbox (and any other folder without its own text), second line",
+    "security": false
+  },
+  "list.hint_label": {
+    "context": "Empty folder of a user label, second line",
+    "security": false
+  },
+  "list.hint_sent": {
+    "context": "Empty Sent folder, second line",
+    "security": false
+  },
+  "list.hint_snoozed": {
+    "context": "Empty Snoozed folder, second line",
+    "security": false
+  },
+  "list.hint_spam": {
+    "context": "Empty Spam folder, second line",
+    "security": false
+  },
+  "list.hint_starred": {
+    "context": "Empty Starred folder, second line",
+    "security": false
+  },
+  "list.hint_switch_all": {
+    "context": "Empty-state second line when a filter matches nothing; All is the name of the All filter chip",
+    "security": false
+  },
+  "list.hint_trash": {
+    "context": "Empty Trash folder, second line",
+    "security": false
+  },
+  "list.load_failed": {
+    "context": "Empty-state title when the message list could not be loaded",
+    "security": false
+  },
+  "list.load_failed_hint": {
+    "context": "Empty-state second line when the message list could not be loaded",
+    "security": false
+  },
+  "list.load_more": {
+    "context": "Button at the end of the message list that loads older messages",
+    "security": false
+  },
+  "list.loading": {
+    "context": "Shown in the middle of the list while the first page of messages loads",
+    "security": false
+  },
+  "list.mark_all_read": {
+    "context": "Icon button above the message list, tooltip and screen-reader label",
+    "security": false,
+    "max": 22
+  },
+  "list.no_match": {
+    "context": "Empty-state title when a filter chip matches nothing",
+    "security": false
+  },
+  "list.no_match_search": {
+    "context": "Empty-state title when a filter chip and a search together match nothing",
+    "security": false
+  },
+  "list.no_recipient": {
+    "context": "Row title of a draft that has no recipient yet (Drafts folder)",
+    "security": false
+  },
+  "list.no_results": {
+    "context": "Empty-state title of a search with no result; {query} is what the person typed",
+    "security": false
+  },
+  "list.no_subject": {
+    "context": "Row title for a message with an empty subject",
+    "security": false
+  },
+  "list.refresh": {
+    "context": "Icon button above the message list, tooltip and screen-reader label",
+    "security": false,
+    "max": 22
+  },
+  "list.star_from": {
+    "context": "Screen-reader label of the star button on a message row; {sender} is the sender name or address",
+    "security": false
+  },
+  "list.try_other_search": {
+    "context": "Empty-state second line after a search with no result",
+    "security": false
+  },
+  "list.unread_sr": {
+    "context": "Screen-reader only text before an unread message row",
+    "security": false
+  },
+  "locked.banner#one": {
+    "context": "Card above the mailbox, singular ({count} is 1). After an admin restored their account with the setup key, mail that arrived before is sealed to the OLD encryption key, which is gone, so nobody can open it. Calm, factual; two buttons follow (Keep, Delete). Glossary: message, key, encrypt.",
+    "security": true,
+    "max": 130
+  },
+  "locked.banner#other": {
+    "context": "Plural form of locked.banner#one.",
+    "security": true,
+    "max": 140
+  },
+  "locked.cancel": {
+    "context": "Button that stops a deletion of locked old mail that was asked for and is waiting for its date (on the locked-mail card and on the notice). vi and zh-CN are cyber's (overrides); no need to translate.",
+    "security": true,
+    "max": 25
+  },
+  "locked.confirm_label": {
+    "context": "Label of the field in the confirmation dialog where the person types their own email address, which is shown in the label ({address}), so a stray click cannot start the deletion.",
+    "security": true,
+    "max": 50
+  },
+  "locked.delete": {
+    "context": "Button on the locked-mail card that opens the confirmation, and the red button of that confirmation (title: Delete locked mail). It does not delete at once.",
+    "security": true,
+    "max": 10
+  },
+  "locked.dialog_body#one": {
+    "context": "First line of the confirmation dialog, singular. Deleted locked mail cannot be brought back.",
+    "security": true,
+    "max": 80
+  },
+  "locked.dialog_body#other": {
+    "context": "Plural form of locked.dialog_body#one.",
+    "security": true,
+    "max": 80
+  },
+  "locked.dialog_note": {
+    "context": "Plain note under the first line of the confirmation dialog: the server waits several days before deleting, and the person can cancel in that time. Do not write the number of days.",
+    "security": true,
+    "max": 150
+  },
+  "locked.dialog_title": {
+    "context": "Title of the confirmation dialog that asks for the address, the password and (with two-factor sign-in) the authenticator code before locked messages are scheduled for deletion.",
+    "security": true,
+    "max": 25
+  },
+  "locked.keep": {
+    "context": "Button on the locked-mail card: leave the locked messages where they are and put the card away for now. Nothing is sent to the server.",
+    "security": true,
+    "max": 10
+  },
+  "locked.not_pending": {
+    "context": "Second line of the notice about a requested deletion of locked mail, shown when the deletion is not waiting any more (the person cancelled it, or it has been carried out).",
+    "security": true,
+    "max": 75
+  },
+  "locked.pending#one": {
+    "context": "Card above the mailbox while a deletion of locked mail waits for its date, singular. {date} is a date and time; the person can cancel until then (Cancel deletion button next to it).",
+    "security": true,
+    "max": 85
+  },
+  "locked.pending#other": {
+    "context": "Plural form of locked.pending#one.",
+    "security": true,
+    "max": 85
+  },
+  "locked.region": {
+    "context": "Landmark label (read by screen readers) of the card above the mailbox that tells the person that some old messages are locked.",
+    "security": true,
+    "max": 20
+  },
+  "login.signing_in": {
+    "context": "Label of the sign-in button while the password is being checked",
+    "security": false,
+    "max": 24
+  },
+  "mailcrypto.download_raw": {
+    "context": "Button: text button at the bottom of the reader that saves the original message as an .eml file.",
+    "security": false
+  },
+  "mailcrypto.images_hidden": {
+    "context": "Line above the mail frame in the reader when the message has pictures embedded in it (not remote ones) and the person has not chosen Show images yet; the Show images button sits next to it.",
+    "security": false
+  },
+  "mailcrypto.note_failed": {
+    "context": "Reader body when a message arrived but could not be opened in the browser (damaged data or an unexpected format).",
+    "security": false
+  },
+  "mailcrypto.note_locked": {
+    "context": "Reader body when no key is unlocked in the browser yet, so no message can be opened.",
+    "security": true
+  },
+  "mailcrypto.note_other_key": {
+    "context": "Reader body for a message that was encrypted to a key other than the one now in use (for example after an admin recovery of the account). Says only what this browser can do; it does not claim who else can or cannot open it.",
+    "security": true
+  },
+  "mailcrypto.note_pending": {
+    "context": "Reader body for a message that arrived before the person had a key and has not been sealed to their key yet.",
+    "security": true
+  },
+  "mailcrypto.subject_failed": {
+    "context": "Shown in place of the subject (list row and reader heading) for a message that could not be opened.",
+    "security": false
+  },
+  "mailcrypto.subject_locked": {
+    "context": "Shown in place of the subject (list row and reader heading) for a message that is locked: no key unlocked yet, or sealed to another key.",
+    "security": true
+  },
+  "mailcrypto.subject_pending": {
+    "context": "Shown in place of the subject (list row and reader heading) for a message still being prepared for the person's key.",
+    "security": false
+  },
+  "notice.cancel_reset": {
+    "context": "Button on the notice about a pending reset of the person's two-factor sign-in: stops the reset.",
+    "security": true,
+    "max": 26
+  },
+  "notice.dismiss": {
+    "context": "Button on a notice in the banner: hides it for good.",
+    "security": true,
+    "max": 16
+  },
+  "notice.dismiss_later": {
+    "context": "Shown under a notice that cannot be dismissed yet: security notices stay for seven days. {date} is a date and time.",
+    "security": true
+  },
+  "notice.more": {
+    "context": "Button (link style) under the banner when there are more than three notices: opens Settings, Account tab, where all of them are listed.",
+    "security": true
+  },
+  "notice.region": {
+    "context": "Accessible name of the banner above the mailbox that lists account notices. Read by screen readers only.",
+    "security": true
+  },
+  "password.check_failed": {
+    "context": "Password field status line (red alert) when the data of the common-password check could not be loaded; a Try again link follows it.",
+    "security": true
+  },
+  "password.check_loading": {
+    "context": "Password field status line with a spinner while the data of the common-password check loads.",
+    "security": true
+  },
+  "password.hide": {
+    "context": "Button (icon only): crossed-eye icon inside the password field that hides the typed password again; aria-label, no visible text.",
+    "security": true,
+    "max": 24
+  },
+  "password.level_fair": {
+    "context": "Password strength result shown under the password field (second level) and spoken by the strength meter.",
+    "security": true
+  },
+  "password.level_good": {
+    "context": "Password strength result shown under the password field (third level) and spoken by the strength meter.",
+    "security": true
+  },
+  "password.level_strong": {
+    "context": "Password strength result shown under the password field (highest level) and spoken by the strength meter.",
+    "security": true
+  },
+  "password.level_weak": {
+    "context": "Password strength result shown under the password field (lowest level; also the level of a refused password) and spoken by the strength meter.",
+    "security": true
+  },
+  "password.meter_empty": {
+    "context": "Screen reader value of the password strength bar while the field is empty (aria-valuetext). Not shown on screen.",
+    "security": true
+  },
+  "password.meter_label": {
+    "context": "Screen reader name of the password strength bar (aria-label of the meter under the password field). Not shown on screen.",
+    "security": true
+  },
+  "password.problem_common": {
+    "context": "Password field status line: the password is on the lists of common passwords (also with digits, symbols or look-alike letters added).",
+    "security": true
+  },
+  "password.problem_has_account_word": {
+    "context": "Password field status line: the password contains a word taken from the account's address, domain or display name.",
+    "security": true
+  },
+  "password.problem_predictable": {
+    "context": "Password field status line: the strength estimate finds the password too easy to guess (repeats, runs such as abc or 1234, keyboard rows, one common word).",
+    "security": true
+  },
+  "password.problem_too_long": {
+    "context": "Password field status line: the password is longer than allowed. {max} = the maximum length (256).",
+    "security": true
+  },
+  "password.problem_too_short#one": {
+    "context": "Password field status line while typing: the password is too short, one character is missing. {count} = characters still missing, {min} = the minimum for this account.",
+    "security": true
+  },
+  "password.problem_too_short#other": {
+    "context": "Password field status line while typing: the password is too short. {count} = characters still missing, {min} = the minimum for this account.",
+    "security": true
+  },
+  "password.rules": {
+    "context": "Password field status line while nothing is typed: the password rules, fixed by the Product Owner. {min} = minimum length for members (12), {adminMin} = minimum length for admins (16); both are numbers from constants.",
+    "security": true
+  },
+  "password.show": {
+    "context": "Button (icon only): eye icon inside the password field that shows the typed password; aria-label, no visible text.",
+    "security": true,
+    "max": 24
+  },
+  "password.suggest": {
+    "context": "Button under the password field on admin screens: fills in a generated passphrase (random words) and shows it. Shown with a wand icon.",
+    "security": true,
+    "max": 32
+  },
+  "password.suggest_another": {
+    "context": "Button under the password field on admin screens, after a passphrase was suggested: generates a different one. Shown with a wand icon.",
+    "security": true,
+    "max": 32
+  },
+  "password.suggest_hint": {
+    "context": "Hint shown under the Suggest button after a passphrase was filled in. {words} = how many random words the passphrase has (a number, 6).",
+    "security": true
+  },
+  "push.blocked": {
+    "context": "Settings > Notifications error when the browser has notifications blocked for this site",
+    "security": false
+  },
+  "push.dev_server": {
+    "context": "Settings > Notifications error in a development build, where the service worker is not registered",
+    "security": false
+  },
+  "push.device_off_failed": {
+    "context": "Settings > Notifications error when turning notifications off on this device did not work",
+    "security": false
+  },
+  "push.device_unknown": {
+    "context": "Settings > Notifications error after Send test: the push service dropped this device",
+    "security": false
+  },
+  "push.no_device": {
+    "context": "Settings > Notifications error after Send test: no device is registered",
+    "security": false
+  },
+  "push.not_allowed": {
+    "context": "Settings > Notifications error when the browser permission prompt was dismissed without an answer",
+    "security": false
+  },
+  "push.service_rejected": {
+    "context": "Settings > Notifications error after Send test: the push service refused the notification",
+    "security": false
+  },
+  "push.service_unreachable": {
+    "context": "Settings > Notifications error when the browser cannot reach its push service (e.g. Google, Apple, Mozilla)",
+    "security": false
+  },
+  "push.test_failed": {
+    "context": "Settings > Notifications fallback error for Send test",
+    "security": false
+  },
+  "push.turn_off_failed": {
+    "context": "Settings > Notifications fallback error for turning notifications off",
+    "security": false
+  },
+  "push.turn_on_failed": {
+    "context": "Settings > Notifications fallback error for turning notifications on",
+    "security": false
+  },
+  "reader.add_label": {
+    "context": "Reader toolbar: aria-label and tooltip of the icon button that opens the label menu. Icon-only: no visible text.",
+    "security": false,
+    "max": 24
+  },
+  "reader.arrived_by_email": {
+    "context": "A quiet chip above the text of a received message that arrived over email from outside (not sent between people of this deployment) while its From address is one of THIS deployment's own domains: anyone on the internet can write such an address, so the app says nobody checked it. Neutral colour, not an alarm; it does not say the message is fake.",
+    "security": true,
+    "max": 60
+  },
+  "reader.attachments_summary#one": {
+    "context": "Reader attachments heading, one file: {count} is 1, {size} is the total size such as \"12 KB\".",
+    "security": false
+  },
+  "reader.attachments_summary#other": {
+    "context": "Reader attachments heading, several files: {count} files, {size} is the total size such as \"1.2 MB\".",
+    "security": false
+  },
+  "reader.back_to_list": {
+    "context": "Reader toolbar, phone only: aria-label of the icon button that goes back to the message list (tooltip is common.back). Icon-only: no visible text, tooltip/screen reader.",
+    "security": false,
+    "max": 24
+  },
+  "reader.create_label": {
+    "context": "Label menu: aria-label and tooltip of the round + button that creates the typed label. Icon-only.",
+    "security": false,
+    "max": 24
+  },
+  "reader.download": {
+    "context": "Reader attachments: tooltip of the download icon on each attachment row.",
+    "security": false,
+    "max": 24
+  },
+  "reader.download_file": {
+    "context": "Reader attachments: aria-label of the download icon of one attachment; {name} is the file name. Screen reader only.",
+    "security": false
+  },
+  "reader.label_added": {
+    "context": "Label menu: small marker at the right of a label that is already on the open message, inside a 240 px menu row.",
+    "security": false,
+    "max": 12
+  },
+  "reader.label_exists": {
+    "context": "Label menu: red hint when a label with that name already exists (case-insensitive).",
+    "security": false
+  },
+  "reader.label_invalid": {
+    "context": "Label menu: red hint under the new-label field when the name has a character that is not allowed (letters, numbers, space, - and _ are allowed).",
+    "security": false
+  },
+  "reader.label_limit": {
+    "context": "Label menu: red hint when the message already has the most labels it may have. {max} is a fixed number (20).",
+    "security": false
+  },
+  "reader.label_name_limit": {
+    "context": "Label menu: grey hint under the new-label field once the name has reached the longest allowed length. {max} is a fixed number (30).",
+    "security": false
+  },
+  "reader.loading_message": {
+    "context": "Reader pane while the open message loads (spinner and text).",
+    "security": false
+  },
+  "reader.new_label": {
+    "context": "Label menu: placeholder and aria-label of the field where a new label name is typed (about 170 px wide, 16 px font).",
+    "security": false,
+    "max": 20
+  },
+  "reader.newer": {
+    "context": "Reader toolbar (desktop): tooltip of the icon button that opens the next newer message.",
+    "security": false,
+    "max": 24
+  },
+  "reader.newer_message": {
+    "context": "Reader toolbar (desktop): aria-label of the icon button that opens the next newer message. Screen reader only.",
+    "security": false,
+    "max": 24
+  },
+  "reader.no_subject": {
+    "context": "Reader heading when the message has no subject.",
+    "security": false
+  },
+  "reader.none_selected": {
+    "context": "Reader pane title when no message is open (under the Edgar picture).",
+    "security": false
+  },
+  "reader.none_selected_hint": {
+    "context": "Reader pane hint under the empty-state title.",
+    "security": false
+  },
+  "reader.older": {
+    "context": "Reader toolbar (desktop): tooltip of the icon button that opens the next older message.",
+    "security": false,
+    "max": 24
+  },
+  "reader.older_message": {
+    "context": "Reader toolbar (desktop): aria-label of the icon button that opens the next older message. Screen reader only.",
+    "security": false,
+    "max": 24
+  },
+  "reader.to_cc_line": {
+    "context": "Reader sender block, grey line when the message also has copy recipients: {to} and {cc} are addresses or lists of addresses.",
+    "security": false
+  },
+  "reader.to_line": {
+    "context": "Reader sender block, grey line under the sender name: who the message was sent to. {to} is an address or a list of addresses. Lowercase on purpose (it reads like \"to me\").",
+    "security": false
+  },
+  "reader.view_html": {
+    "context": "Reader: segmented switch above the body (shown only when the message has both forms): formatted (HTML) version. Technical word, may stay \"HTML\".",
+    "security": false,
+    "max": 12
+  },
+  "reader.view_plain": {
+    "context": "Reader: segmented switch above the body: plain-text version of the message.",
+    "security": false,
+    "max": 12
+  },
+  "recovery.claim": {
+    "context": "The one security sentence on every recovery-key screen and inside the downloaded file. Exact claim of the design (15.1): nobody, admins included, can restore mail without the password or the recovery key.",
+    "security": true
+  },
+  "recovery.confirm_button": {
+    "context": "Button: the person confirms they saved the recovery key; this sends the request that stores the keys.",
+    "security": true,
+    "max": 36
+  },
+  "recovery.confirm_lead": {
+    "context": "Asks the person to type back three groups of the key to show they saved it. {first}, {second} and {third} are group numbers (1 to 9, never neighbours).",
+    "security": true
+  },
+  "recovery.confirm_mismatch": {
+    "context": "The typed groups were wrong; the next attempt asks for different groups.",
+    "security": true
+  },
+  "recovery.copy_failed": {
+    "context": "Shown when the browser refused to copy the recovery key to the clipboard.",
+    "security": true
+  },
+  "recovery.download": {
+    "context": "Button: saves the recovery key as a text file (secondary button next to Copy).",
+    "security": true,
+    "max": 30
+  },
+  "recovery.download_warning": {
+    "context": "Warning under the Copy and Download buttons: a downloaded file stays on the device; on iPhone and iPad the file opens in a viewer, so Copy is the way there.",
+    "security": true
+  },
+  "recovery.file_title": {
+    "context": "First line of the downloaded recovery key text file. {address} is the person's email address. The product name stays as it is.",
+    "security": true
+  },
+  "recovery.group_label": {
+    "context": "Small label above each of the nine groups of six characters of the recovery key, and above each box of the typed check. {number} is 1 to 9.",
+    "security": true,
+    "max": 12
+  },
+  "recovery.old_stops": {
+    "context": "Shown only when the new key replaces an earlier one: the old recovery key stops working ON THIS SERVER at once when the person finishes. The scope matters (PB-11): the mail key does not change, so an old copy of the stored data plus the old recovery key would still open old mail; do not translate it as \"stops working\" without \"on this server\".",
+    "security": true,
+    "max": 105
+  },
+  "recovery.problem_characters": {
+    "context": "Typed recovery key containing a character that is not part of the key alphabet.",
+    "security": true
+  },
+  "recovery.problem_checksum": {
+    "context": "Typed recovery key whose two check characters do not match: a typing mistake, found before anything is sent.",
+    "security": true
+  },
+  "recovery.problem_length": {
+    "context": "Typed recovery key with the wrong number of characters (54 in nine groups of six, hyphens and spaces ignored).",
+    "security": true
+  },
+  "recovery.shown_once": {
+    "context": "Under the claim: the key is displayed one time only.",
+    "security": true
+  },
+  "recovery.title_first": {
+    "context": "Heading of the screen that shows the recovery key for the first time (first sign-in, first-run setup).",
+    "security": true
+  },
+  "recovery.title_new": {
+    "context": "Heading of the screen that shows a NEW recovery key (after 'Create a new recovery key' and after a forgotten-password recovery).",
+    "security": true
+  },
+  "security.admin_claim_no_access": {
+    "context": "First sentence of the admin claim, shown where an admin role is chosen or confirmed and on the first-run Setup screen. Final wording from the Product Owner (addendum 4.12): word for word in every language. The old absolute wording ('Nobody ... admins included') is withdrawn.",
+    "security": true
+  },
+  "security.admin_claim_operator": {
+    "context": "Last sentence of the admin claim, shown after security.admin_claim_setup_key. Keep it word for word in every language.",
+    "security": true
+  },
+  "security.admin_claim_powers": {
+    "context": "Third sentence of the admin claim (after security.admin_claim_temp_password). CHANGED in batch 2b: it now also lists re-creating an address, moving aliases, and says the person is told when their two-factor sign-in is reset (the landing page says the same: 'the person is notified when their two-factor sign-in is reset'). Use the landing page's words for the same things. Word for word in every language.",
+    "security": true
+  },
+  "security.admin_claim_setup_key": {
+    "context": "Fourth sentence of the admin claim, NEW in batch 2b. 'Setup key' is the deployment secret the person who deployed Edging Mail sets (APP_PASSWORD); it is the same term as in the Setup and break-glass screens (breakglass.setup_key). 'Console access' = being able to sign in to the admin console again. The restored admin gets a new key, so mail that arrived under the old key stays locked.",
+    "security": true
+  },
+  "security.admin_claim_temp_password": {
+    "context": "Second sentence of the admin claim, always shown right after security.admin_claim_no_access. Final wording from the Product Owner (addendum 4.12): word for word in every language. 'Server key' is the key the server holds for mail that arrives before the person has signed in.",
+    "security": true
+  },
+  "security.admin_delete_lost_keys": {
+    "context": "Delete account dialog: wording from the Product Owner, keep it word for word in every language.",
+    "security": true
+  },
+  "security.cannot_turn_off_admin": {
+    "context": "Security card row 'Two-factor sign-in': shown instead of a Turn off button when the signed-in person is an admin.",
+    "security": true
+  },
+  "security.cannot_turn_off_required": {
+    "context": "Security card row 'Two-factor sign-in': shown instead of a Turn off button when the organisation requires two-factor sign-in of everyone.",
+    "security": true
+  },
+  "security.change_password": {
+    "context": "Button: Security card row 'Password' (opens the change-password form) and the submit button of that form.",
+    "security": true,
+    "max": 28
+  },
+  "security.codes_lead": {
+    "context": "Paragraph above the password and code fields of the 'Get new recovery codes' form: the old recovery codes stop working.",
+    "security": true
+  },
+  "security.codes_replace_note": {
+    "context": "Shown above the new recovery codes list (after the form): the new codes replace the old ones.",
+    "security": true
+  },
+  "security.current_password": {
+    "context": "Label of the first field of the change-password form: the password used now (the next two fields are the new one, gate.new_password and gate.repeat_password).",
+    "security": true
+  },
+  "security.key_new_done": {
+    "context": "Success message after the new recovery key was stored, with a Back button under it.",
+    "security": true
+  },
+  "security.key_new_lead": {
+    "context": "Paragraph above the password field that starts making a new recovery key: it replaces the old one, the password and the mail stay as they are.",
+    "security": true
+  },
+  "security.key_test_button": {
+    "context": "Button: submits the typed recovery key to the test (no request is sent; the check runs in the browser).",
+    "security": true,
+    "max": 12
+  },
+  "security.key_test_hint": {
+    "context": "Hint under the recovery key test field: the shape of a recovery key (54 characters in nine groups of six).",
+    "security": true
+  },
+  "security.key_test_lead": {
+    "context": "Paragraph above the recovery key test field: what the test does, that it runs in this browser and sends nothing.",
+    "security": true
+  },
+  "security.key_test_ok": {
+    "context": "Result of the recovery key test when the key is the current one.",
+    "security": true
+  },
+  "security.key_test_wrong": {
+    "context": "Result of the recovery key test when the key is well formed but is not the current one. Does not say how it differs.",
+    "security": true
+  },
+  "security.new_codes": {
+    "context": "Button: Security card row 'Two-factor sign-in' (only when it is on): makes a new set of recovery codes; also the submit button of that form.",
+    "security": true,
+    "max": 32
+  },
+  "security.new_key": {
+    "context": "Button: Security card row 'Recovery key' (starts making a new recovery key that replaces the old one).",
+    "security": true,
+    "max": 36
+  },
+  "security.off_done": {
+    "context": "Success message after two-factor sign-in was turned off, with a Back button under it.",
+    "security": true
+  },
+  "security.off_lead": {
+    "context": "Paragraph above the password and code fields of the form that turns two-factor sign-in off: says what is lost.",
+    "security": true
+  },
+  "security.on_done": {
+    "context": "Success message after two-factor sign-in was turned on and the recovery codes were saved, with a Back button under it.",
+    "security": true
+  },
+  "security.on_lead": {
+    "context": "Paragraph above the password field that starts turning on two-factor sign-in (the QR code screen follows).",
+    "security": true
+  },
+  "security.other_devices_note": {
+    "context": "Note under the submit button of the new-recovery-codes and turn-off forms: this device stays signed in, every other device is signed out (the server ends the other sessions).",
+    "security": true
+  },
+  "security.password_changed": {
+    "context": "Success message in Settings > Account > Security after the person changed their password, with a Back button under it. This device stays signed in; every other device was signed out. Plain sentence, no question mark.",
+    "security": true,
+    "max": 90
+  },
+  "security.password_note": {
+    "context": "Plain note under the Change password button: what changing the password does and does not do.",
+    "security": true
+  },
+  "security.recovery_hint": {
+    "context": "Settings > Account > Security: line under the 'Recovery key' row label: what the recovery key is for (forgot-password flow keeps the mail readable).",
+    "security": true
+  },
+  "security.status_off": {
+    "context": "Security card row 'Two-factor sign-in': status line when it is off.",
+    "security": true
+  },
+  "security.status_on": {
+    "context": "Security card row 'Two-factor sign-in': status line when it is on.",
+    "security": true
+  },
+  "security.step_up_lead": {
+    "context": "Shown above the new recovery key when the server asks for a code from the authenticator app first: tells the person to type the six-digit code in the field below it.",
+    "security": true
+  },
+  "security.step_up_retry": {
+    "context": "Red error line under the new recovery key confirm button: the code field above must be filled, then the person confirms again.",
+    "security": true
+  },
+  "security.test_key": {
+    "context": "Button: Security card row 'Recovery key' (opens the form that checks a typed recovery key, in the browser).",
+    "security": true,
+    "max": 32
+  },
+  "security.title": {
+    "context": "Heading of the Security card in Settings > Account (password, recovery key, two-factor sign-in).",
+    "security": true
+  },
+  "security.turn_off": {
+    "context": "Button: Security card row 'Two-factor sign-in' (only when it is on and may be turned off); also the submit button of the form that turns it off.",
+    "security": true,
+    "max": 16
+  },
+  "security.turn_on": {
+    "context": "Button: Security card row 'Two-factor sign-in' (only when it is off): starts the enrolment.",
+    "security": true,
+    "max": 16
+  },
+  "send.changed_body": {
+    "context": "Body of that confirmation. Honest and calm: a changed key is normal after a person sets up their keys again, but it can also mean the key was replaced. 'Fingerprint' is a short number (6 groups of 5 digits) that identifies a key; the person can read it to the other one by phone or in person. Do not claim the key is safe or unsafe.",
+    "security": true,
+    "max": 400
+  },
+  "send.changed_confirm": {
+    "context": "Button of the key-changed confirmation: send, and remember the new key for this person. Not a question.",
+    "security": true,
+    "max": 36
+  },
+  "send.changed_line": {
+    "context": "One line block per person in that dialog: the address, then the fingerprint of the key used before ({before}) and of the new key ({now}); the fingerprints are groups of digits. Keep the three lines (separated by line breaks).",
+    "security": true,
+    "max": 60
+  },
+  "send.changed_title": {
+    "context": "Title of the confirmation shown when the encryption key of a recipient is not the one this browser remembered from earlier sends (key pinning, S3).",
+    "security": true,
+    "max": 40
+  },
+  "send.external_body": {
+    "context": "Body of that confirmation. {addresses} is one address per line. It must say the answer is sent without the protection of the message it answers (that message was encrypted in the sender's browser) and that quoted text leaves in the clear. Do not use the badge term 'end-to-end encrypted' here (a catalogue test allows it only on the e2e.badge keys). 'Edging Mail' is the product name and is never translated.",
+    "security": true,
+    "max": 340
+  },
+  "send.external_title": {
+    "context": "Title of the confirmation before answering or forwarding an end-to-end encrypted message to an address outside this Edging Mail (N6).",
+    "security": true,
+    "max": 48
+  },
+  "send.no_keys_body": {
+    "context": "Body of that confirmation. {addresses} is one address per line (one or several people); 'they' covers both. It must keep both facts: the server can read the message, and only until the person signs in and sets up encryption. Do not soften it into 'may'.",
+    "security": true,
+    "max": 200
+  },
+  "send.no_keys_inline": {
+    "context": "Extra paragraph in the confirmation before sending to a person who has not set up encryption yet (send.no_keys_body), shown only when the message has images placed inside the text. Their copy travels as plain text and loses the position of those images; they still receive the files. Calm, factual.",
+    "security": true,
+    "max": 100
+  },
+  "send.no_keys_title": {
+    "context": "Title of the confirmation before sending a message to a person on this Edging Mail who has never signed in (CK-1). Said calmly, not alarming.",
+    "security": true,
+    "max": 48
+  },
+  "send.send_anyway": {
+    "context": "Button that confirms sending although the situation in the dialog is not ideal (a recipient without keys, or a reply that leaves end-to-end encryption). Not a question.",
+    "security": true,
+    "max": 28
+  },
+  "send.too_big_body": {
+    "context": "Body of that confirmation: the message cannot be encrypted in the browser for everyone, so it can go the usual way, where the server can read it. Keep 'the server can read it' explicit.",
+    "security": true,
+    "max": 260
+  },
+  "send.too_big_confirm": {
+    "context": "Button that sends the message the usual way (not end-to-end encrypted). Not a question.",
+    "security": true,
+    "max": 40
+  },
+  "send.too_big_title": {
+    "context": "Title of the confirmation shown when a message is over the size limits of the end-to-end route (too large, too many files, too many recipients for the files).",
+    "security": true,
+    "max": 44
+  },
+  "send.was_keyed_body": {
+    "context": "Body of that confirmation. {addresses} is one address per line. Keep both consequences: the server can read the message, or it leaves as normal email. A legitimate cause exists (an admin deleted the keys, the account was re-created).",
+    "security": true,
+    "max": 330
+  },
+  "send.was_keyed_title": {
+    "context": "Title of the confirmation before sending to an address this browser sent ENCRYPTED mail to before, when the server now says it has no encryption keys or is not on this server (EC-2).",
+    "security": true,
+    "max": 50
+  },
+  "settings.address_hint": {
+    "context": "Settings, Account tab: grey hint under the read-only address field. It says the address is the sign-in name and the sender address and cannot be changed (security review CAT-4).",
+    "security": true
+  },
+  "settings.admin_hint": {
+    "context": "Settings, Account tab (admins only): description inside the Admin console card.",
+    "security": false
+  },
+  "settings.appearance": {
+    "context": "Settings, Account tab: title of the Appearance card (a Language row will be added there by another batch).",
+    "security": false
+  },
+  "settings.dark_theme": {
+    "context": "Settings, Account tab: label of the dark-theme on/off switch.",
+    "security": false
+  },
+  "settings.display_name_placeholder": {
+    "context": "Settings, Account tab: placeholder of the Display name field.",
+    "security": false
+  },
+  "settings.load_failed": {
+    "context": "Settings, Account tab: red message when the settings could not be loaded.",
+    "security": false
+  },
+  "settings.open_admin": {
+    "context": "Settings, Account tab (admins only): button inside the Admin console card.",
+    "security": false
+  },
+  "settings.push_blocked": {
+    "context": "Settings, Notifications card: red status line when the browser has blocked notifications for the site.",
+    "security": false
+  },
+  "settings.push_device": {
+    "context": "Settings, Account tab, Notifications card: label of the switch that turns new-mail notifications on or off for this device.",
+    "security": false
+  },
+  "settings.push_off": {
+    "context": "Settings, Notifications card: status line under the switch label when notifications are off.",
+    "security": false
+  },
+  "settings.push_on": {
+    "context": "Settings, Notifications card: status line under the switch label when notifications are on.",
+    "security": false
+  },
+  "settings.push_test": {
+    "context": "Settings, Notifications card: button that sends a test notification to this device.",
+    "security": false
+  },
+  "settings.push_unsupported": {
+    "context": "Settings, Notifications card: shown when the browser cannot do notifications. {brand} is the product name (not translated).",
+    "security": false
+  },
+  "settings.push_working": {
+    "context": "Settings, Notifications card: status line under the switch label while it is being changed.",
+    "security": false
+  },
+  "settings.save_offline": {
+    "context": "Settings, Account tab: red message when saving failed because the device is offline.",
+    "security": false
+  },
+  "settings.saved": {
+    "context": "Settings, Account tab: green confirmation next to the Save button.",
+    "security": false
+  },
+  "settings.saving": {
+    "context": "Settings, Account tab: label of the Save button while the request is running.",
+    "security": false
+  },
+  "settings.sections_label": {
+    "context": "Settings dialog: aria-label of the row of tabs (screen reader only).",
+    "security": false
+  },
+  "settings.signature_placeholder": {
+    "context": "Settings, Account tab: placeholder of the Signature box.",
+    "security": false
+  },
+  "settings.signing_out": {
+    "context": "Settings footer: label of the sign-out button while signing out (the idle label is auth.sign_out).",
+    "security": false
+  },
+  "settings.your_address": {
+    "context": "Settings, Account tab: label of the read-only field with the person's own sign-in address. Kept as \"Your address\" (possessive) rather than the glossary word \"Address\".",
+    "security": false
+  },
+  "setup.address_hint": {
+    "context": "First-run Setup screen, step 1: small hint under the email address field (the label is auth.email_label). It is the first admin's sign-in address.",
+    "security": false
+  },
+  "setup.err_address_invalid": {
+    "context": "First-run Setup screen, step 1: red text under the address field when it is not an address the app can host: only letters, digits and the three characters . _ - are allowed before the @. Keep the example and the characters as they are.",
+    "security": false
+  },
+  "setup.err_address_required": {
+    "context": "First-run Setup screen, step 1: red text under the address field when it is empty.",
+    "security": false
+  },
+  "setup.err_key_required": {
+    "context": "First-run Setup screen, step 1: red text under the setup key field when it is empty.",
+    "security": true
+  },
+  "setup.err_name_invalid": {
+    "context": "First-run Setup screen, step 1: red text under the display name field when it has a line break or is too long. {max} is the longest allowed length in characters (100).",
+    "security": false
+  },
+  "setup.key_hint": {
+    "context": "First-run Setup screen, step 1: small hint under the setup key field. Plain words for the APP_PASSWORD deployment secret; do not translate it as a password to sign in with.",
+    "security": true
+  },
+  "setup.key_label": {
+    "context": "First-run Setup screen, step 1: label of the field for the setup key, a secret the person who deployed the app chose.",
+    "security": true,
+    "max": 30
+  },
+  "setup.lead": {
+    "context": "First-run Setup screen, step 1: one sentence under the heading. The account being created is the first admin.",
+    "security": false
+  },
+  "setup.name_hint": {
+    "context": "First-run Setup screen, step 1: small hint under the display name field (the label is term.display_name). The field may stay empty.",
+    "security": false
+  },
+  "setup.not_ready_app_password": {
+    "context": "First-run Setup screen when the deployment lacks secrets: shown only when APP_PASSWORD is in the list. Says that this secret is the setup key asked for on the next screen. Keep APP_PASSWORD untranslated.",
+    "security": true
+  },
+  "setup.not_ready_lead": {
+    "context": "First-run Setup screen when the deployment lacks secrets: one sentence under the heading. The names of the missing secrets follow as code-styled labels.",
+    "security": true
+  },
+  "setup.not_ready_list": {
+    "context": "First-run Setup screen when the deployment lacks secrets: caption above the list of missing secret names (JWT_SECRET, APP_PASSWORD, DATA_KEY).",
+    "security": true
+  },
+  "setup.not_ready_next": {
+    "context": "First-run Setup screen when the deployment lacks secrets: what to do next (add the secrets as the deployment guide describes), then the Reload button.",
+    "security": true
+  },
+  "setup.not_ready_title": {
+    "context": "First-run Setup screen when the deployment lacks secrets: heading of the card that replaces the form.",
+    "security": false
+  },
+  "setup.reload": {
+    "context": "Button: reloads the page after the missing secrets were added (first-run Setup screen).",
+    "security": false,
+    "max": 16
+  },
+  "setup.step": {
+    "context": "First-run Setup screen: small centred line above each step. {current} is the step number (1 or 2) and {total} the number of steps (2).",
+    "security": false
+  },
+  "setup.title": {
+    "context": "First-run Setup screen, step 1: heading of the card (shown before any account exists).",
+    "security": false
+  },
+  "setup.wrong_key_retry": {
+    "context": "First-run Setup, step 2 (the recovery key screen): hint under a field to type the setup key again after the server refused it. Nothing was created, so the recovery key shown above is still valid; the person does not start again.",
+    "security": true,
+    "max": 220
+  },
+  "sidebar.close_mailboxes": {
+    "context": "Screen-reader label of the X button of the phone folder drawer",
+    "security": false
+  },
+  "sidebar.mailboxes": {
+    "context": "Screen-reader label of the folder list (sidebar nav and the phone drawer dialog)",
+    "security": false
+  },
+  "sidebar.navigation": {
+    "context": "Screen-reader label of the whole sidebar landmark",
+    "security": false
+  },
+  "snooze.date_time_label": {
+    "context": "Label of the date and time field in the snooze menu",
+    "security": false
+  },
+  "snooze.day_time": {
+    "context": "A day and a clock time together; {day} is a short date such as Mon, Nov 12 (or only a weekday), {time} a clock time. Spaces are made non-breaking by the code",
+    "security": false
+  },
+  "snooze.later_today": {
+    "context": "Snooze menu item: wake up this evening",
+    "security": false,
+    "max": 18
+  },
+  "snooze.menu_label": {
+    "context": "Screen-reader label of the snooze menu (the list of wake-up times)",
+    "security": false
+  },
+  "snooze.next_week": {
+    "context": "Snooze menu item: wake up next Monday morning",
+    "security": false,
+    "max": 18
+  },
+  "snooze.pick_date": {
+    "context": "Error in the snooze date picker when no valid date and time is chosen",
+    "security": false
+  },
+  "snooze.pick_date_time": {
+    "context": "Menu item in the snooze menu that opens a date and time picker",
+    "security": false,
+    "max": 22
+  },
+  "snooze.this_weekend": {
+    "context": "Snooze menu item: wake up on Saturday morning",
+    "security": false,
+    "max": 18
+  },
+  "snooze.today_at": {
+    "context": "Wake-up time written out when it is today; {time} is a clock time such as 6:00 PM. Spaces are made non-breaking by the code",
+    "security": false
+  },
+  "snooze.tomorrow": {
+    "context": "Snooze menu item: wake up tomorrow morning",
+    "security": false,
+    "max": 18
+  },
+  "snooze.tomorrow_at": {
+    "context": "Wake-up time written out when it is tomorrow; {time} is a clock time such as 8:00 AM. Spaces are made non-breaking by the code",
+    "security": false
+  },
+  "snooze.too_far": {
+    "context": "Error in the snooze date picker when the time is more than a year away",
+    "security": false
+  },
+  "snooze.too_soon": {
+    "context": "Error in the snooze date picker when the time is less than a minute away",
+    "security": false
+  },
+  "snooze.until": {
+    "context": "Small chip on a snoozed message row; {when} is a day and time such as tomorrow 8:00 AM, about 18 characters",
+    "security": false,
+    "max": 12
+  },
+  "time.yesterday": {
+    "context": "Time cell of a message-list row received yesterday (the group headings of the list are list.group_*)",
+    "security": false,
+    "max": 12
+  },
+  "toast.archived": {
+    "context": "Toast after a message was archived (has an Undo button)",
+    "security": false
+  },
+  "toast.deleted_forever": {
+    "context": "Toast after a message was deleted for good (no Undo)",
+    "security": false
+  },
+  "toast.moved_back_to_inbox": {
+    "context": "Toast after a snoozed message was brought back to the Inbox now",
+    "security": false
+  },
+  "toast.moved_to_inbox": {
+    "context": "Toast after a message was restored from Trash or Spam to the Inbox",
+    "security": false
+  },
+  "toast.moved_to_spam": {
+    "context": "Toast after a message was moved to Spam (has an Undo button)",
+    "security": false
+  },
+  "toast.moved_to_trash": {
+    "context": "Toast after a message was moved to Trash (has an Undo button)",
+    "security": false
+  },
+  "toast.snoozed_until": {
+    "context": "Toast after a message was snoozed; {when} is a date text such as 'tomorrow 8:00 AM' (has an Undo button)",
+    "security": false
+  },
+  "toast.undo": {
+    "context": "Undo button inside a toast",
+    "security": false,
+    "max": 12
+  },
+  "twofa.code_hint": {
+    "context": "Two-factor enrolment screen: small hint under the six-digit code input (codes change every 30 seconds).",
+    "security": true
+  },
+  "twofa.code_label": {
+    "context": "Two-factor enrolment screen: label of the input where the person types the six-digit code the authenticator app shows.",
+    "security": true
+  },
+  "twofa.codes_keep": {
+    "context": "Recovery codes panel, under the Copy and Download buttons: keep the codes somewhere safe; they are shown only this once.",
+    "security": true
+  },
+  "twofa.codes_lead": {
+    "context": "Recovery codes panel: what the codes are for (signing in when the phone with the authenticator app is lost) and that each works once.",
+    "security": true
+  },
+  "twofa.codes_not_key": {
+    "context": "Recovery codes panel: says plainly that these codes are not the recovery key and cannot restore mail. Keep the two glossary terms (recovery codes, recovery key) as two different things in every language.",
+    "security": true
+  },
+  "twofa.codes_title": {
+    "context": "Recovery codes panel (shown once after two-factor sign-in is turned on): heading of the panel. The recovery codes are single-use codes for two-factor sign-in, never the recovery key.",
+    "security": true
+  },
+  "twofa.continue": {
+    "context": "Button: last button of the recovery codes panel, enabled once the checkbox is ticked; leaves the two-factor setup.",
+    "security": true
+  },
+  "twofa.copy_failed": {
+    "context": "Red alert under a Copy button (the manual key on the enrolment screen, or the recovery codes) when the browser refused to copy.",
+    "security": true
+  },
+  "twofa.download": {
+    "context": "Button: next to Copy in the recovery codes panel; saves the codes as a text file named edging-mail-recovery-codes.txt.",
+    "security": true
+  },
+  "twofa.file_note": {
+    "context": "Last line of the downloaded recovery codes text file (the title above it already says recovery codes): each recovery code works once, and what it is for. cyber CAT-18: zh must say 恢复码, not 代码.",
+    "security": true
+  },
+  "twofa.file_title": {
+    "context": "First line of the downloaded recovery codes text file (file name edging-mail-recovery-codes.txt). Keep the product name Edging Mail unchanged.",
+    "security": true
+  },
+  "twofa.intro": {
+    "context": "Two-factor enrolment screen (first sign-in gate, or Settings), paragraph under the card title, above the QR code: what two-factor sign-in is and what an authenticator app does.",
+    "security": true
+  },
+  "twofa.manual_title": {
+    "context": "Two-factor enrolment screen: label above the text key (base32 secret, shown in groups of four) for a person who cannot scan the QR code.",
+    "security": true
+  },
+  "twofa.qr_failed": {
+    "context": "Two-factor enrolment screen: red alert in place of the QR code when the code could not be drawn; the manual key below it still works.",
+    "security": true
+  },
+  "twofa.qr_label": {
+    "context": "Accessible name (aria-label) of the QR code image on the two-factor enrolment screen; read by screen readers, not shown.",
+    "security": true
+  },
+  "twofa.saved_check": {
+    "context": "Recovery codes panel: label of the required checkbox that enables the Continue button.",
+    "security": true
+  },
+  "twofa.saved_hint": {
+    "context": "Recovery codes panel: small text under the 'I have saved these recovery codes' checkbox.",
+    "security": true
+  },
+  "twofa.scan_lead": {
+    "context": "Two-factor enrolment screen: instruction line directly above the QR code.",
+    "security": true
+  },
+  "twofa.verify": {
+    "context": "Button: primary button under the six-digit code input on the two-factor enrolment screen; checks the code and turns two-factor sign-in on.",
+    "security": true
+  },
+  "users.alias_add_label": {
+    "context": "Account dialog: label of the field where an extra address is typed.",
+    "security": false
+  },
+  "users.alias_heading": {
+    "context": "Account dialog: heading of the section that lists the extra addresses (aliases) of the person.",
+    "security": false
+  },
+  "users.alias_hint": {
+    "context": "Account dialog: explains what an extra address does.",
+    "security": false
+  },
+  "users.alias_none": {
+    "context": "Account dialog: the person has no extra address.",
+    "security": false
+  },
+  "users.alias_placeholder": {
+    "context": "Placeholder of the extra address field: an example address.",
+    "security": false
+  },
+  "users.alias_remove": {
+    "context": "aria-label of the icon-only X button that removes one extra address. {address} is that extra address.",
+    "security": false
+  },
+  "users.confirm_demote": {
+    "context": "Account dialog: confirmation text before an admin is made a member again.",
+    "security": false
+  },
+  "users.confirm_disable": {
+    "context": "Account dialog: confirmation text before an admin disables an account (people are signed out of every sign-in session).",
+    "security": true
+  },
+  "users.confirm_promote_note": {
+    "context": "Account dialog: second paragraph of the confirmation before making someone an admin (the first paragraph is the admin claim, security.admin_claim_*).",
+    "security": true
+  },
+  "users.confirm_reissue": {
+    "context": "Confirmation paragraph before a new temporary password is issued. {hours} is a number (72 today).",
+    "security": true
+  },
+  "users.confirm_reset_two_factor": {
+    "context": "Account dialog: confirmation text before an admin resets a person's two-factor sign-in.",
+    "security": true
+  },
+  "users.confirm_reset_two_factor_admin": {
+    "context": "Confirmation paragraph of \"Reset two-factor sign-in\" when the TARGET is an admin: the reset is scheduled 24 hours ahead and nobody is signed out until then (for a member see users.confirm_reset_two_factor). cyber CAT-9.",
+    "security": true
+  },
+  "users.copy_failed": {
+    "context": "Temporary password dialog: shown next to the Copy button when the browser refused to copy.",
+    "security": true
+  },
+  "users.create_account": {
+    "context": "Button that submits the New account dialog.",
+    "security": false,
+    "max": 20
+  },
+  "users.create_domains_failed": {
+    "context": "New account dialog: the list of domains could not be loaded (a Try again button follows).",
+    "security": false
+  },
+  "users.create_name_hint": {
+    "context": "New account dialog: hint under the display name field.",
+    "security": false
+  },
+  "users.create_no_domain": {
+    "context": "New account dialog: no domain exists yet, so no account can be created.",
+    "security": false
+  },
+  "users.create_password_note": {
+    "context": "New account dialog: tells the admin what happens after Create account.",
+    "security": true
+  },
+  "users.created_give": {
+    "context": "Temporary password dialog: first sentence. {address} is the new account's address (shown in bold).",
+    "security": true
+  },
+  "users.created_note_expiry": {
+    "context": "Temporary password dialog: second bullet under the password (how long the temporary password is valid). {hours} is a number (72 today).",
+    "security": true
+  },
+  "users.created_note_once": {
+    "context": "Temporary password dialog: first bullet under the password.",
+    "security": true
+  },
+  "users.created_note_send": {
+    "context": "Temporary password dialog: third bullet under the password.",
+    "security": true
+  },
+  "users.created_title": {
+    "context": "Title of the dialog that shows the temporary password of a new account.",
+    "security": false
+  },
+  "users.creating": {
+    "context": "Button label of the New account dialog while the account is being created.",
+    "security": false,
+    "max": 16
+  },
+  "users.delete_body": {
+    "context": "Delete account dialog: first paragraph. {address} is the account's address (shown in bold).",
+    "security": false
+  },
+  "users.delete_confirm_label": {
+    "context": "Delete account dialog: label of the field where the admin types the exact address.",
+    "security": false
+  },
+  "users.delete_key_note": {
+    "context": "Delete account dialog: second sentence under the Product Owner text, about the new key of a re-created account.",
+    "security": true
+  },
+  "users.delete_title": {
+    "context": "Title of the confirmation dialog before an account is deleted.",
+    "security": false
+  },
+  "users.deleting": {
+    "context": "Button label of the Delete account dialog while the account is being deleted.",
+    "security": false,
+    "max": 16
+  },
+  "users.empty": {
+    "context": "Admin People tab when there is no account at all.",
+    "security": false
+  },
+  "users.err_alias_incomplete": {
+    "context": "Form error under the extra address field: no @ or more than one.",
+    "security": false
+  },
+  "users.err_local_chars": {
+    "context": "Form error under the address field: the part before the @ has a character that is not allowed.",
+    "security": false
+  },
+  "users.err_local_dots": {
+    "context": "Form error under the address field: the part before the @ has a misplaced dot.",
+    "security": false
+  },
+  "users.err_local_empty": {
+    "context": "Form error under the address field of the New account dialog: nothing typed before the @.",
+    "security": false
+  },
+  "users.err_local_long": {
+    "context": "Form error under the address field: the part before the @ is longer than 64 characters.",
+    "security": false
+  },
+  "users.extra_addresses#one": {
+    "context": "User list row: how many extra addresses (aliases) the account has. {count} is a number.",
+    "security": false
+  },
+  "users.extra_addresses#other": {
+    "context": "User list row: how many extra addresses (aliases) the account has. {count} is a number.",
+    "security": false
+  },
+  "users.last_sign_in": {
+    "context": "User list row: when the person last signed in. {when} is a date and time already formatted for the language.",
+    "security": false
+  },
+  "users.loading": {
+    "context": "Admin People tab while the list loads (spinner and text).",
+    "security": false
+  },
+  "users.make_admin": {
+    "context": "Button in the account dialog (and its confirm button): gives the person the admin role.",
+    "security": false,
+    "max": 20
+  },
+  "users.make_member": {
+    "context": "Button in the account dialog (and its confirm button): gives an admin the member role.",
+    "security": false,
+    "max": 20
+  },
+  "users.never_signed_in": {
+    "context": "User list row: the person has not signed in yet.",
+    "security": false
+  },
+  "users.new_account": {
+    "context": "Button above the people list, and title of the dialog it opens.",
+    "security": false,
+    "max": 18
+  },
+  "users.no_match": {
+    "context": "Admin People tab when a search finds nobody. {query} is the text the admin searched for.",
+    "security": false
+  },
+  "users.not_signed_in_yet": {
+    "context": "Badge in the account dialog: the person has never signed in with their own password and has no keys yet (the only state in which an admin can issue a new temporary password).",
+    "security": false,
+    "max": 18
+  },
+  "users.password_saved": {
+    "context": "Button that closes the temporary password dialog (the only way to close it).",
+    "security": true,
+    "max": 22
+  },
+  "users.reissue_temp_password": {
+    "context": "Button in the account dialog, shown only while the person has not signed in yet: issues a new temporary password (the old one stops working at once). Also the label of the confirm button.",
+    "security": true,
+    "max": 40
+  },
+  "users.reissued_title": {
+    "context": "Title of the admin dialog that shows a new temporary password for an existing account that has not signed in yet (after \"Issue a new temporary password\"). Not the title for a new account (users.created_title).",
+    "security": true,
+    "max": 40
+  },
+  "users.reset_scheduled": {
+    "context": "Line under the buttons of the admin dialog after an admin asked to reset the two-factor sign-in of ANOTHER ADMIN: it is scheduled, not done. {due} is a date and time.",
+    "security": true,
+    "max": 150
+  },
+  "users.reset_two_factor": {
+    "context": "Button in the account dialog (and its confirm button): resets the person's two-factor sign-in.",
+    "security": true,
+    "max": 30
+  },
+  "users.role": {
+    "context": "New account dialog: legend of the radio group that picks Member or Admin.",
+    "security": false,
+    "max": 12
+  },
+  "users.save_name": {
+    "context": "Button next to the display name field of the account dialog.",
+    "security": false,
+    "max": 16
+  },
+  "users.search_label": {
+    "context": "aria-label of the search field of the People tab. Screen reader only.",
+    "security": false
+  },
+  "users.search_placeholder": {
+    "context": "Placeholder of the search field of the People tab.",
+    "security": false
+  },
+  "users.self_note": {
+    "context": "Account dialog, own account: why the disable, delete and reset buttons are missing.",
+    "security": true
+  },
+  "users.showing": {
+    "context": "Admin People tab under the list: how many accounts are loaded of how many exist. {shown} and {total} are numbers.",
+    "security": false
+  },
+  "users.status_active": {
+    "context": "Badge in the account dialog: the account is active.",
+    "security": false,
+    "max": 14
+  },
+  "users.status_disabled": {
+    "context": "Badge on an account that is disabled (user list row and account dialog).",
+    "security": false,
+    "max": 14
+  },
+  "users.this_is_you": {
+    "context": "Account dialog: shown next to the badges when the admin opens their own account.",
+    "security": false
+  }
+}

@@ -87,7 +87,9 @@ export default defineConfig([
       // Imports (ordering is left alone on purpose: cosmetic, and it would rewrite every file's import block)
       'import-x/first': 'error',
       'import-x/newline-after-import': 'error',
-      'import-x/no-cycle': 'error',
+      // Our own import cycles only: following the imports of installed packages (vitest.config.ts -> the Cloudflare test plugin -> wrangler
+      // -> miniflare ...) made one run take 3 GB and a minute.
+      'import-x/no-cycle': ['error', { ignoreExternal: true }],
       'import-x/no-self-import': 'error',
       'import-x/no-useless-path-segments': 'error',
       'import-x/no-mutable-exports': 'error',
@@ -135,8 +137,9 @@ export default defineConfig([
     languageOptions: {
       parserOptions: {
         // Root files outside tsconfig.json's `include` (vite.config.ts, drizzle.config.ts) go through the default
-        // project, which is tsconfig.json itself (compilerOptions only, `include` is ignored for it).
-        projectService: { allowDefaultProject: ['*.config.ts'] },
+        // project, which is tsconfig.json itself (compilerOptions only, `include` is ignored for it). vitest.config.ts is in the
+        // project proper: as a default-project file it would build a second program (wrangler, miniflare) and exhaust the memory.
+        projectService: { allowDefaultProject: ['vite.config.ts', 'drizzle.config.ts'] },
         tsconfigRootDir: import.meta.dirname
       }
     },
@@ -211,6 +214,18 @@ export default defineConfig([
     rules: {
       // console.* is the Workers observability channel (wrangler tail / Logs); the existing `[edging-mail]` lines use log.
       'no-console': ['error', { allow: ['log', 'info', 'warn', 'error'] }]
+    }
+  },
+
+  // ---------------------------------------------------------------------------------------------------------------
+  // Tests (Vitest on the Workers runtime, see test/ and vitest.config.ts)
+  // ---------------------------------------------------------------------------------------------------------------
+  {
+    name: 'edging-mail/tests',
+    files: ['test/**/*.ts'],
+    rules: {
+      // `(await call('/api/x')).status` is how a test reads one field of an answer; a variable per field would only add noise.
+      'unicorn/no-await-expression-member': 'off'
     }
   },
 
