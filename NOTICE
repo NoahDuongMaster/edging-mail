@@ -8,7 +8,7 @@ repository (the "license" field), and the copyright line from the licence file
 in the package where it ships one. The full texts are in each package's own
 licence file in node_modules and in the package's source repository.
 
-No font file is shipped. See "Fonts" below.
+Two font files are shipped (public/fonts). See "Fonts" below.
 
 
 1. Runtime dependencies (these end up in the Worker or in the app that the
@@ -100,12 +100,23 @@ No font file is shipped. See "Fonts" below.
 
 4. Fonts
 
-   No font file is shipped in this repository or in the build. index.html asks
-   the visitor's browser to load Geist and Geist Mono from Google Fonts at run
-   time (the browser contacts Google when the app opens). Geist is published by
-   Vercel under the SIL Open Font License 1.1
-   (https://github.com/vercel/geist-font). Self-hosting the font files, or
-   removing the request, is listed in docs/security.md under known limitations.
+   Two font files are shipped, in the app and on the public site. They are
+   served from this origin (public/fonts), so the visitor's browser contacts
+   no font service.
+
+   - Geist (public/fonts/geist-sans-1.9.2.woff2) and Geist Mono
+     (public/fonts/geist-mono-1.9.2.woff2): the variable fonts of Geist 1.9.2,
+     unchanged, taken from the npm package "geist"
+     (https://github.com/vercel/geist-font); only the file names gained a
+     version. Copyright (c) 2023 Vercel, in collaboration with basement.studio.
+     Licence: SIL Open Font License 1.1, full text in
+     public/fonts/geist-OFL-1.9.2.txt.
+   - The OFL lets the files be used, bundled and redistributed freely as long
+     as they are not sold by themselves and the copyright notice and licence
+     travel with them. The licence file sits next to the font files for that
+     reason.
+   - Chinese text uses the system CJK fonts (the font stacks in
+     src/shared/design/tokens.ts): no CJK font is shipped.
 
 
 5. Build and test tools under other licences
