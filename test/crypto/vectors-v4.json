@@ -1,0 +1,140 @@
+{
+  "spec": {
+    "text_form": "symbols52 (Crockford base32 of rk, MSB first, 4 zero pad bits at the end) || check2; shown as 9 groups of 6 separated by '-'.",
+    "check2": "SHA-256(\"edging-mail/v1/rk-check\" || 0x00 || rk): take the first 10 bits (top 10 bits of the first two bytes), as two 5-bit symbols (first symbol = high 5 bits). 0x00 separator as in M10.",
+    "decoder_order": "NFKC first (so full-width letters, digits, hyphen and the ideographic space typed with a CJK input method are accepted), then strip spaces/hyphens/tabs/newlines, upper-case, fold I,L->1 and O->0; then in this order: length must be 54; alphabet (Crockford, no U); pad bits of symbol 52 must be 0 even if the checksum would pass; checksum. All before any KDF or request; nothing about the typed text is sent to the server. The UI may say what is wrong with the typed text (length, character, check); it never says anything about a key being right or wrong, because nothing is compared with the server at this point.",
+    "rwk_rauth": "rwk = HKDF-SHA256(rk, salt empty, info 'edging-mail/v1/recovery-wrap', 32); rauth = HKDF-SHA256(rk, salt empty, info 'edging-mail/v1/recovery-auth', 32); independent outputs.",
+    "recovery_verifier": "PBKDF2-HMAC-SHA256(RAW 32 bytes of rauth, per-user random salt16, 100000, 32): the same function as the sign-in verifier (RR-7). `rauth` on the wire = base64url, no padding, canonical decode, like `auth`.",
+    "typed_confirmation": "3 distinct group indexes out of 1..9, no two adjacent (|i-j| >= 2), 35 possible triples, drawn with the CSPRNG (rejection sampling), a fresh draw at every attempt; the comparison is on the normalised group text."
+  },
+  "keys": {
+    "R1_00_1f": {
+      "rk_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "symbols52": "000G40R40M30E209185GR38E1W8124GK2GAHC5RR34D1P70X3RFG",
+      "check2": "WS",
+      "text54": "000G40R40M30E209185GR38E1W8124GK2GAHC5RR34D1P70X3RFGWS",
+      "grouped_9x6": "000G40-R40M30-E20918-5GR38E-1W8124-GK2GAH-C5RR34-D1P70X-3RFGWS",
+      "rwk_hex": "e56feace6dedd87035ffc3cc339203659b0f382394f10ce435cbcd86d90601a3",
+      "rauth_hex": "3096ea1de09b34a64fcd83d20ca64cf30e1db52fa39d92f95f05e552c43c3713",
+      "rauth_b64url": "MJbqHeCbNKZPzYPSDKZM8w4dtS-jnZL5XwXlUsQ8NxM",
+      "rwk_equals_rauth": false
+    },
+    "R2_all_ff": {
+      "rk_hex": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "symbols52": "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZG",
+      "check2": "9K",
+      "text54": "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZG9K",
+      "grouped_9x6": "ZZZZZZ-ZZZZZZ-ZZZZZZ-ZZZZZZ-ZZZZZZ-ZZZZZZ-ZZZZZZ-ZZZZZZ-ZZZG9K",
+      "rwk_hex": "99b58a38863742bb5a59f589442bfbffbfa1ae2a6b81ad9f64522fe7233bbea1",
+      "rauth_hex": "f1f2eaf08488eb31c6a01c780eac6611434ba765370d87910d552974312ab249",
+      "rauth_b64url": "8fLq8ISI6zHGoBx4DqxmEUNLp2U3DYeRDVUpdDEqskk",
+      "rwk_equals_rauth": false
+    },
+    "R3_sha256_of_label": {
+      "rk_hex": "ffd295c21274d45e360dd471308c76e41a16109e90b05f19d45f0d65e3497a12",
+      "symbols52": "ZZ99BGGJEKA5WDGDTHRK133PWGD1C44YJ2R5Y6EMBW6PBRT9F890",
+      "check2": "PP",
+      "text54": "ZZ99BGGJEKA5WDGDTHRK133PWGD1C44YJ2R5Y6EMBW6PBRT9F890PP",
+      "grouped_9x6": "ZZ99BG-GJEKA5-WDGDTH-RK133P-WGD1C4-4YJ2R5-Y6EMBW-6PBRT9-F890PP",
+      "rwk_hex": "31ec5673e0ee5141557c66952ae461dd4009875489953624c3ca60d2a953b9cd",
+      "rauth_hex": "31f40c9a811ffed64f77e9e0137de98dc3a64d5445e40a9866b9e78e64b49bf9",
+      "rauth_b64url": "MfQMmoEf_tZPd-ngE33pjcOmTVRF5AqYZrnnjmS0m_k",
+      "rwk_equals_rauth": false
+    }
+  },
+  "recovery_verifier": {
+    "salt16_hex": "000102030405060708090a0b0c0d0e0f",
+    "iterations": 100000,
+    "verifier_of_RAW_rauth_hex": "f46d9714395858af19043c07257efc2b196d90d36261a7477dd62bd0cab6ecde",
+    "WRONG_if_utf8_of_base64url_string_hex": "fe8bc75aa83284c5d3fba710e97917a125485243a04b1c7855022be55e05759d"
+  },
+  "decoder_cases": [
+    {
+      "name": "canonical",
+      "input": "000G40R40M30E209185GR38E1W8124GK2GAHC5RR34D1P70X3RFGWS",
+      "expect": "ok",
+      "rk_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+    },
+    {
+      "name": "fullwidth_cjk_input",
+      "input": "０００Ｇ４０　Ｒ４０Ｍ３０　Ｅ２０９１８　５ＧＲ３８Ｅ　１Ｗ８１２４　ＧＫ２ＧＡＨ　Ｃ５ＲＲ３４　Ｄ１Ｐ７０Ｘ　３ＲＦＧＷＳ",
+      "expect": "ok",
+      "rk_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+    },
+    {
+      "name": "fullwidth_with_fullwidth_hyphens",
+      "input": "０００Ｇ４０－Ｒ４０Ｍ３０－Ｅ２０９１８－５ＧＲ３８Ｅ－１Ｗ８１２４－ＧＫ２ＧＡＨ－Ｃ５ＲＲ３４－Ｄ１Ｐ７０Ｘ－３ＲＦＧＷＳ",
+      "expect": "ok",
+      "rk_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+    },
+    {
+      "name": "grouped",
+      "input": "000G40-R40M30-E20918-5GR38E-1W8124-GK2GAH-C5RR34-D1P70X-3RFGWS",
+      "expect": "ok",
+      "rk_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+    },
+    {
+      "name": "lower_with_spaces",
+      "input": "000g40 r40m30 e20918 5gr38e 1w8124 gk2gah c5rr34 d1p70x 3rfgws",
+      "expect": "ok",
+      "rk_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+    },
+    {
+      "name": "folded_I_L_O",
+      "input": "OO0G40R40M30E209I85GR38ELW8124GK2GAHC5RR34D1P70X3RFGWS",
+      "expect": "ok",
+      "rk_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+    },
+    {
+      "name": "one_symbol_typo",
+      "input": "000G40R40N30E209185GR38E1W8124GK2GAHC5RR34D1P70X3RFGWS",
+      "expect": "checksum",
+      "rk_hex": null
+    },
+    {
+      "name": "adjacent_transposition",
+      "input": "000G40R40M03E209185GR38E1W8124GK2GAHC5RR34D1P70X3RFGWS",
+      "expect": "checksum",
+      "rk_hex": null
+    },
+    {
+      "name": "wrong_check_symbol",
+      "input": "000G40R40M30E209185GR38E1W8124GK2GAHC5RR34D1P70X3RFGWT",
+      "expect": "checksum",
+      "rk_hex": null
+    },
+    {
+      "name": "too_short_53",
+      "input": "000G40R40M30E209185GR38E1W8124GK2GAHC5RR34D1P70X3RFGW",
+      "expect": "length",
+      "rk_hex": null
+    },
+    {
+      "name": "too_long_55",
+      "input": "000G40R40M30E209185GR38E1W8124GK2GAHC5RR34D1P70X3RFGWS0",
+      "expect": "length",
+      "rk_hex": null
+    },
+    {
+      "name": "symbol_U_not_in_alphabet",
+      "input": "000G40R40M30E209185GU38E1W8124GK2GAHC5RR34D1P70X3RFGWS",
+      "expect": "alphabet",
+      "rk_hex": null
+    },
+    {
+      "name": "nonzero_pad_correct_checksum",
+      "input": "000G40R40M30E209185GR38E1W8124GK2GAHC5RR34D1P70X3RFHWS",
+      "expect": "pad",
+      "rk_hex": null
+    },
+    {
+      "name": "empty",
+      "input": "",
+      "expect": "length",
+      "rk_hex": null
+    }
+  ],
+  "typed_confirmation": {
+    "triples_count": 35
+  }
+}

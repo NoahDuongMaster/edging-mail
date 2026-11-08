@@ -1,0 +1,148 @@
+{
+  "conventions": {
+    "text_fields": "Every AAD/info field that is text (address, row_id, key_id, org_key_id, purpose) is its UTF-8 bytes; fields are joined with a single 0x00 byte; no length prefixes.",
+    "key_id": "base64url(SHA-256(SPKI DER)[0:16]) without padding. AAD and DB columns use this text form; blob headers carry the raw 16 bytes and the reader MUST check header == column.",
+    "address": "ASCII primary address, trimmed and lower-cased, exactly as stored; never an alias, never changed after account creation.",
+    "auth_on_the_wire": "base64url without padding of the 32 raw bytes; the server decodes it (reject non-canonical) and feeds the RAW 32 bytes to the verifier PBKDF2.",
+    "blob_layout": "AES-GCM blobs = 0x01 || iv(12) || ciphertext || tag(16). HPKE wrapped_cek = 0x01 || suite 0x01 || key_id raw(16) || enc(65) || ciphertext(48) = 131 bytes.",
+    "pkcs8_note": "PKCS8 bytes differ between implementations (Chrome/workerd/OpenSSL); never compare PKCS8 bytes across runtimes, compare the derived public key / key_id."
+  },
+  "kdf": {
+    "K1": {
+      "password": "correct horse battery staple",
+      "address_input": "Alice@Example.com ",
+      "password_utf8_nfkc_hex": "636f727265637420686f727365206261747465727920737461706c65",
+      "salt": "31cd0ab4ea95800937c5575a10a3d8cc5bc846ff5337a830b6371df0465bfc5b",
+      "mk": "7f2b2c1d016095b24569281a6de048208dc8d50efc778b987795966f0a9813e9",
+      "auth_hex": "b6fd5d1c3e320fc866f51c11060a5b9ece628d714c33e34c573535afece267e5",
+      "auth_b64url": "tv1dHD4yD8hm9RwRBgpbns5ijXFMM-NMVzU1r-ziZ-U",
+      "wk": "746852cd30d401f45c78c9c7debca0019b7f5bd0cb71ba7974349c9e19476bae"
+    },
+    "K2_composed": {
+      "password": "café-ＡＢＣ-1234",
+      "address": "alice@example.com",
+      "password_utf8_nfkc_hex": "636166c3a92d4142432d31323334",
+      "salt": "31cd0ab4ea95800937c5575a10a3d8cc5bc846ff5337a830b6371df0465bfc5b",
+      "mk": "4907f699b75315289672a5f3b156891e5642448a54e0f033f8474fb76ff81142",
+      "auth_hex": "d3ef8ad49863141551767506608a1217ce53322f7121c57df0f37a1458c31ef7",
+      "auth_b64url": "0--K1JhjFBVRdnUGYIoSF85TMi9xIcV98PN6FFjDHvc",
+      "wk": "8113a51a0be740dea99f41cf3c8cc96603c1a26d126bfeab23af4149cafc25eb"
+    },
+    "K2_decomposed_must_equal_K2_composed": {
+      "password": "café-ABC-1234",
+      "address": "alice@example.com",
+      "password_utf8_nfkc_hex": "636166c3a92d4142432d31323334",
+      "salt": "31cd0ab4ea95800937c5575a10a3d8cc5bc846ff5337a830b6371df0465bfc5b",
+      "mk": "4907f699b75315289672a5f3b156891e5642448a54e0f033f8474fb76ff81142",
+      "auth_hex": "d3ef8ad49863141551767506608a1217ce53322f7121c57df0f37a1458c31ef7",
+      "auth_b64url": "0--K1JhjFBVRdnUGYIoSF85TMi9xIcV98PN6FFjDHvc",
+      "wk": "8113a51a0be740dea99f41cf3c8cc96603c1a26d126bfeab23af4149cafc25eb"
+    }
+  },
+  "user_key": {
+    "scalar": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+    "spki": "3059301306072a8648ce3d020106082a8648ce3d03010703420004515c3d6eb9e396b904d3feca7f54fdcd0cc1e997bf375dca515ad0a6c3b4035f4536be3a50f318fbf9a5475902a221502bef0d57e08c53b2cc0a56f17d9f9354",
+    "raw_pub": "04515c3d6eb9e396b904d3feca7f54fdcd0cc1e997bf375dca515ad0a6c3b4035f4536be3a50f318fbf9a5475902a221502bef0d57e08c53b2cc0a56f17d9f9354",
+    "pkcs8": "308187020100301306072a8648ce3d020106082a8648ce3d030107046d306b02010104200102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20a14403420004515c3d6eb9e396b904d3feca7f54fdcd0cc1e997bf375dca515ad0a6c3b4035f4536be3a50f318fbf9a5475902a221502bef0d57e08c53b2cc0a56f17d9f9354",
+    "key_id": "8dWUSbcnFl3nMr8oMzgSKw",
+    "key_id_raw": "f1d59449b727165de732bf283338122b"
+  },
+  "org_key": {
+    "scalar": "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60",
+    "spki": "3059301306072a8648ce3d020106082a8648ce3d03010703420004261efbd3550cf068ef013ed7366ba32f5d6fe557b4b2abce8ade58cba168a55e1788a0b29a56a6abec4084c0c96bd3dcbca6b507f35dbea9e985708479d8bdc9",
+    "raw_pub": "04261efbd3550cf068ef013ed7366ba32f5d6fe557b4b2abce8ade58cba168a55e1788a0b29a56a6abec4084c0c96bd3dcbca6b507f35dbea9e985708479d8bdc9",
+    "pkcs8": "308187020100301306072a8648ce3d020106082a8648ce3d030107046d306b02010104204142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60a14403420004261efbd3550cf068ef013ed7366ba32f5d6fe557b4b2abce8ade58cba168a55e1788a0b29a56a6abec4084c0c96bd3dcbca6b507f35dbea9e985708479d8bdc9",
+    "key_id": "YZcjdu03922roQ30O9I6rw",
+    "key_id_raw": "61972376ed37f76daba10df43bd23aaf"
+  },
+  "wrapped_private_key_pw": {
+    "aad_hex": "656467696e672d6d61696c2f76312f707269766b657900616c696365406578616d706c652e636f6d00386457555362636e466c336e4d72386f4d7a67534b77",
+    "iv_hex": "000102030405060708090a0b",
+    "blob_hex": "01000102030405060708090a0b86468a2a350400697f4dadf70a3389692f72dcb743327bfcd46e2d121ef1c44d97a9ff71963dcdb775eb3c98d86bca06a0b6bde4aced6fa3a8d9ac9b5b9e25b6f85303e85b535c457ecfd817da9c11125d91af66316011e32807aa7c19f7ef1bd744c8d034e82c04fe1fc20705fabfdb242c5f379351ee396a02b9f188398e2f279f8de27016497247b1c6a169800531ed351bda8dc8cbba95dc",
+    "length": 167
+  },
+  "recovery_key": {
+    "rk_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "crockford52": "000G40R40M30E209185GR38E1W8124GK2GAHC5RR34D1P70X3RFG",
+    "grouped": "000G-40R4-0M30-E209-185G-R38E-1W81-24GK-2GAH-C5RR-34D1-P70X-3RFG",
+    "encoding": "256 bits + 4 zero pad bits = 260 bits = 52 symbols; decoder must reject length != 52, symbols outside the alphabet after Crockford folding (I,L->1; O->0; case-insensitive; strip '-' and spaces) and non-zero pad bits",
+    "rwk": "e56feace6dedd87035ffc3cc339203659b0f382394f10ce435cbcd86d90601a3",
+    "wrapped_private_key_recovery_blob_hex": "01000102030405060708090a0b2bf6d582573215497db6ad5690a803ea5733909d5c1fd623bb20cecee625bd6ff8212ed4668fcc4ab7228d385f8380ce85aa1baffc4ff2d01490cb27dcee789ef255213c6a4b8e17bdb2fd06b9c271c107824c73a42f684c92e65884040fce113c6a8862a539b41fc25817388f7dbf780dcc01d0321c526b1b87381ce445a90b3a4be4ade53a12c4d51b999c4dc89ea74af0d73a09b09dddbec1"
+  },
+  "em1_summary": {
+    "cek_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "row_id": "00000000-0000-4000-8000-000000000001",
+    "subkey_hex": "e881e666d7fdac79c592bb0094deb12e336d8482c70ed63f710da4929621355d",
+    "aad_hex": "656467696e672d6d61696c2f76312f626c6f620073756d6d6172790030303030303030302d303030302d343030302d383030302d303030303030303030303031",
+    "iv_hex": "101112131415161718191a1b",
+    "plaintext": "{\"subject\":\"Hello\",\"snippet\":\"World\"}",
+    "blob_hex": "01101112131415161718191a1bc81c06361d7c0b45a55182ddf9b60944b91c4a850c4f6b855f0f21a05aca03bd16469c01e396e41167585d484480c50c32b3c91bdf"
+  },
+  "hpke_wrapped_cek": {
+    "info": "edging-mail/v1/cek",
+    "aad_hex": "30303030303030302d303030302d343030302d383030302d30303030303030303030303100386457555362636e466c336e4d72386f4d7a67534b77",
+    "ephemeral_scalar_hex": "2122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f40",
+    "enc_hex": "041f140146bfb1b251f84f4ddbe0d4cdcfd77afd984a9520e35794021f8312bb9eec995a08b1fa7704df3dcc0b50a9665263fb7711f95f9f8a449c5096e47c892b",
+    "ct_hex": "43817151ab3b0d7fafd7ab927d073d2fb4bfa0d50182d0059b7221828c178ff2119f1d7ef4d44c5e11e13a8e35c648a8",
+    "plaintext_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "wrapped_cek_hex": "0101f1d59449b727165de732bf283338122b041f140146bfb1b251f84f4ddbe0d4cdcfd77afd984a9520e35794021f8312bb9eec995a08b1fa7704df3dcc0b50a9665263fb7711f95f9f8a449c5096e47c892b43817151ab3b0d7fafd7ab927d073d2fb4bfa0d50182d0059b7221828c178ff2119f1d7ef4d44c5e11e13a8e35c648a8",
+    "wrapped_cek_length": 131
+  },
+  "hpke_user_escrow_to_org": {
+    "info": "edging-mail/v1/user-key-escrow",
+    "aad_hex": "616c696365406578616d706c652e636f6d00386457555362636e466c336e4d72386f4d7a67534b7700595a636a64753033393232726f5133304f3949367277",
+    "ephemeral_scalar_hex": "6162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f80",
+    "enc_hex": "04bd5714b9c20400411f1e51dbff63647f05d1d70b55fc200c6cad10c2f4614dc1e5048562f731f54573c04224d973a916a59f526a8268076fc1cfa92a5f143f19",
+    "ct_hex": "b5fe6f26796bbd89895718b4c7ea3f96a6d180dd1b06569d809972c2c26a3ac06cd8cdc8ae00ef19d687482c23f6a098809ba52adb654e64fd3ed6b335c5a7b258d3915db1e80bcc878de66392ab01920586143b0e89e289eb8b5544541764511764d01e6fa50f1bd3985ce8c38d466941d096e9771581fe2272d0081d89f0b4ac69351068500881f71d97d113ca95c7ab15a3b4892ab3d6b836",
+    "plaintext_hex": "308187020100301306072a8648ce3d020106082a8648ce3d030107046d306b02010104200102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20a14403420004515c3d6eb9e396b904d3feca7f54fdcd0cc1e997bf375dca515ad0a6c3b4035f4536be3a50f318fbf9a5475902a221502bef0d57e08c53b2cc0a56f17d9f9354"
+  },
+  "hpke_org_key_custodian_copy_for_admin_alice": {
+    "info": "edging-mail/v1/org-key",
+    "aad_hex": "595a636a64753033393232726f5133304f394936727700386457555362636e466c336e4d72386f4d7a67534b77",
+    "ephemeral_scalar_hex": "8182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0",
+    "enc_hex": "04ecb6a2f86c7825ee71d022c29b9f8aa35971520ec3f9739855635765ead1bd14adad028bfba628ed75b72e3cbeb1ef192e60f52b3e2021497df3afb3006550df",
+    "ct_hex": "e9cbfcda4f3b149a2c20d63353dc624c1b2b80f484d0430d7df93703fb3a8b54cd2d9c8e47b4a094c4bf789fe1a79390b62c110c374c3404ce4796d9267ae030185d143b06f979f424979a076d0a5ad4c34e1da13b1ad864efe8a0628deabc939dd8e0af707d7a9b4105f1c2710a0a38c38f57aa642771dd49022f3fab4f0c072bc59383b18ca5713415cf2a2bf7eed67a6fe6bd983488819ce1",
+    "plaintext_hex": "308187020100301306072a8648ce3d020106082a8648ce3d030107046d306b02010104204142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60a14403420004261efbd3550cf068ef013ed7366ba32f5d6fe557b4b2abce8ade58cba168a55e1788a0b29a56a6abec4084c0c96bd3dcbca6b507f35dbea9e985708479d8bdc9"
+  },
+  "verifier": {
+    "salt16_hex": "000102030405060708090a0b0c0d0e0f",
+    "iterations": 100000,
+    "verifier_of_RAW_32_byte_auth_hex": "a98e9c497c1ab1a799d9039ba2d9a804f13d9bb7f42464333c23292893c1e846",
+    "WRONG_if_utf8_of_base64url_string_hex": "3dcb24d1d98e5076f1e82bc79bd5e40c2c32d75c67b6a3676963f58929e59748"
+  },
+  "totp_rfc6238_sha1": {
+    "secret_ascii": "12345678901234567890",
+    "cases": [
+      {
+        "unix_time": 59,
+        "code8": "94287082",
+        "code6": "287082"
+      },
+      {
+        "unix_time": 1111111109,
+        "code8": "07081804",
+        "code6": "081804"
+      },
+      {
+        "unix_time": 1111111111,
+        "code8": "14050471",
+        "code6": "050471"
+      },
+      {
+        "unix_time": 1234567890,
+        "code8": "89005924",
+        "code6": "005924"
+      },
+      {
+        "unix_time": 2000000000,
+        "code8": "69279037",
+        "code6": "279037"
+      },
+      {
+        "unix_time": 20000000000,
+        "code8": "65353130",
+        "code6": "353130"
+      }
+    ]
+  }
+}
