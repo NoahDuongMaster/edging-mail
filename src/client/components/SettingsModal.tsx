@@ -1,41 +1,49 @@
 import React from 'react';
-import { BellRing, Clock, Cloud, Database, Globe, HardDrive, Loader2, LogOut, Mail, Radio, Send, X } from 'lucide-react';
+import { Cloud, Loader2, LogOut, ShieldCheck, X } from 'lucide-react';
+import { BRAND_NAME } from '../../shared/i18n';
 import type { ThemeTokens } from '../theme';
-import { useLogout } from '../lib/auth';
+import { useIsAdmin, useLogout } from '../lib/auth';
 import { trapTab } from '../lib/focusTrap';
-import { deviceOffMessage, removeThisDevice, usePushNotifications } from '../lib/push';
-import { useSaveSettings, useSettings, type Settings } from '../lib/settings';
+import { useT, type MessageKey } from '../lib/i18n';
+import { useSaveLanguage } from '../lib/language';
+import { useSecretHeld } from '../lib/secretHold';
+import { pushForSignOut, usePushNotifications } from '../lib/push';
+import { useSaveSettings, useSettings, type Settings, type SettingsPatch } from '../lib/settings';
+import { AccountActivity } from './AccountActivity';
+import { LanguagePicker } from './LanguagePicker';
+import { DeveloperDocs, DOCS_TABS, type DocsTab } from './settings/DeveloperDocs';
+import { SecuritySection } from './security/SecuritySection';
 
 interface SettingsModalProps {
   isOpen: boolean;
   t: ThemeTokens;
   onClose: () => void;
   onToggleDark: () => void;
+  /** Opens the admin console (and the caller closes Settings). Only offered to admins. */
+  onOpenAdmin: () => void;
 }
 
-type Tab = 'account' | 'architecture' | 'deployment' | 'routing';
+type Tab = 'account' | DocsTab;
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'account', label: 'Account' },
-  { id: 'architecture', label: 'Architecture' },
-  { id: 'deployment', label: 'Deployment' },
-  { id: 'routing', label: 'Email routing & MX' }
-];
+const ACCOUNT_TAB: { id: Tab; labelKey: MessageKey } = { id: 'account', labelKey: 'term.account' };
+// The technical tabs (architecture, deployment, mail setup) are for admins: they are about the deployment, not about a person's mail.
+const ADMIN_TABS: { id: Tab; labelKey: MessageKey }[] = [ACCOUNT_TAB, ...DOCS_TABS];
+const MEMBER_TABS: { id: Tab; labelKey: MessageKey }[] = [ACCOUNT_TAB];
 
 // Arrow keys wrap around; Home and End jump to the ends. null = not a tab key.
-function tabAfterKey(key: string, current: number): number | null {
+function tabAfterKey(key: string, current: number, count: number): number | null {
   switch (key) {
     case 'ArrowRight': {
-      return (current + 1) % TABS.length;
+      return (current + 1) % count;
     }
     case 'ArrowLeft': {
-      return (current + TABS.length - 1) % TABS.length;
+      return (current + count - 1) % count;
     }
     case 'Home': {
       return 0;
     }
     case 'End': {
-      return TABS.length - 1;
+      return count - 1;
     }
     default: {
       return null;
@@ -43,9 +51,9 @@ function tabAfterKey(key: string, current: number): number | null {
   }
 }
 
-const SETTING_KEYS: (keyof Settings)[] = ['display_name', 'default_from', 'signature'];
+const SETTING_KEYS: (keyof SettingsPatch)[] = ['display_name', 'signature'];
 
-type Feedback = { type: 'saved' } | { type: 'error'; text: string } | null;
+type Feedback = { type: 'saved' } | { type: 'offline' } | { type: 'error'; text: string } | null;
 
 interface SwitchProps {
   t: ThemeTokens;
@@ -108,7 +116,9 @@ const Switch: React.FC<SwitchProps> = ({ t, checked, labelledBy, onClick, busy =
   </button>
 );
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose, onToggleDark }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose, onToggleDark, onOpenAdmin }) => {
+  const tr = useT();
+  const isAdmin = useIsAdmin();
   const [tab, setTab] = React.useState<Tab>('account');
   const dialogRef = React.useRef<HTMLDivElement | null>(null);
   // Whether the latest press began on the backdrop itself: a drag that starts in a field and ends outside the card must not close the dialog.
@@ -116,7 +126,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
 
   const settingsQuery = useSettings();
   const { mutate: saveSettings, isPending: isSaving } = useSaveSettings();
-  const { mutateAsync: logOut } = useLogout();
+  const { mutateAsync: logOut } = useLogout({ push: pushForSignOut() });
+  const { mutateAsync: saveLanguage } = useSaveLanguage();
   const push = usePushNotifications();
   const settings = settingsQuery.data;
   // null = the form is untouched and shows the saved settings.
@@ -124,6 +135,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
   const [feedback, setFeedback] = React.useState<Feedback>(null);
   const [signingOut, setSigningOut] = React.useState(false);
   const [signOutError, setSignOutError] = React.useState<string | null>(null);
+  // A screen inside shows a secret once (two-factor recovery codes): every way out of the dialog waits until the person has saved it (C-7).
+  const secretHeld = useSecretHeld();
+  const leave = React.useCallback(() => {
+    if (!secretHeld) {
+      onClose();
+    }
+  }, [secretHeld, onClose]);
+  const heldLook: React.CSSProperties = secretHeld ? { opacity: 0.45, cursor: 'not-allowed' } : {};
 
   // Each time the dialog opens, start from the saved settings on the Account tab (adjusting state while rendering, not in an effect).
   const [wasOpen, setWasOpen] = React.useState(isOpen);
@@ -143,12 +162,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
     }
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !e.defaultPrevented) {
-        onClose();
+        leave();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, leave]);
 
   // Move focus into the dialog on open and hand it back to the opener on close.
   React.useEffect(() => {
@@ -159,9 +178,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
     dialogRef.current?.focus({ preventScroll: true });
     return () => {
       // On a phone the opener sits in the mailbox drawer, which unmounts when Settings opens (the browser then reports BODY as the
-      // focused element): the header button that opens the drawer takes over (found by its label; App.tsx gives it no id).
+      // focused element): the header button that opens the drawer takes over (found by its data attribute, never by its label).
       const openerGone = !opener || opener === document.body || !opener.isConnected;
-      const target = openerGone ? document.querySelector<HTMLElement>('button[aria-label="Open mailboxes"]') : opener;
+      const target = openerGone ? document.querySelector<HTMLElement>('button[data-nav-toggle="mailboxes"]') : opener;
       target?.focus({ preventScroll: true });
     };
   }, [isOpen]);
@@ -171,9 +190,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
   }
 
   const values = form ?? settings;
+  const tabs = isAdmin ? ADMIN_TABS : MEMBER_TABS;
+  // A member who was an admin a moment ago (the dialog is open while the role changes) lands on the Account tab.
+  const shownTab: Tab = tabs.some((item) => item.id === tab) ? tab : 'account';
   const dirty = form !== null && settings !== undefined && SETTING_KEYS.some((key) => form[key] !== settings[key]);
 
-  const edit = (key: keyof Settings, value: string) => {
+  const edit = (key: keyof SettingsPatch, value: string) => {
     if (values === undefined) {
       return;
     }
@@ -188,15 +210,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
     }
     setFeedback(null);
     saveSettings(
-      { display_name: form.display_name.trim(), default_from: form.default_from.trim(), signature: form.signature.trimEnd() },
+      { display_name: form.display_name.trim(), signature: form.signature.trimEnd() },
       {
         onSuccess: () => {
           setForm(null);
           setFeedback({ type: 'saved' });
         },
         // fetch rejects with a TypeError when offline: its own text ('Failed to fetch') tells the user nothing.
-        onError: (error) =>
-          setFeedback({ type: 'error', text: error instanceof TypeError ? 'No connection: nothing was saved' : error.message })
+        onError: (error) => setFeedback(error instanceof TypeError ? { type: 'offline' } : { type: 'error', text: error.message })
       }
     );
   };
@@ -207,33 +228,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
     }
     const next = tabAfterKey(
       event.key,
-      TABS.findIndex((item) => item.id === tab)
+      tabs.findIndex((item) => item.id === shownTab),
+      tabs.length
     );
-    const target = next === null ? undefined : TABS[next];
+    const target = next === null ? undefined : tabs[next];
     if (target === undefined) {
       return;
     }
     event.preventDefault();
+    if (secretHeld) {
+      return;
+    }
     setTab(target.id);
     document.querySelector<HTMLElement>(`#settings-tab-${target.id}`)?.focus();
   };
 
   const signOut = async () => {
-    // Disabled from the first click on, so a second click cannot start another round while notifications are being turned off.
+    // Disabled from the first click on, so a second click cannot start another round.
     setSigningOut(true);
     setSignOutError(null);
-    // Server first: when it cannot confirm, the browser subscription and the login both stay, and this click can be repeated.
-    const removal = await removeThisDevice();
-    if (removal === 'failed' || removal === 'offline') {
-      setSignOutError(deviceOffMessage(removal));
-      setSigningOut(false);
-      return;
-    }
+    // The key is wiped first, always; the endpoint of this browser's push subscription then travels with the logout request, which ends the
+    // session and deletes that subscription on the server in one batch; the browser's own subscription is dropped after the answer (CK-16).
+    // A push service that cannot be reached no longer keeps the login and the key on the device.
     try {
       await logOut();
     } catch (error) {
-      // The login stays (an HttpOnly cookie cannot be cleared from here), so the button is usable again.
-      setSignOutError(error instanceof Error ? error.message : 'Could not sign out');
+      // The login stays (an HttpOnly cookie cannot be cleared from here), the key is already gone, and the button is usable again.
+      setSignOutError(error instanceof Error ? error.message : tr('fail.sign_out'));
       setSigningOut(false);
     }
   };
@@ -247,18 +268,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
     display: 'flex',
     flexDirection: 'column',
     gap: 6
-  };
-  const pre: React.CSSProperties = {
-    margin: 0,
-    padding: 12,
-    borderRadius: 10,
-    border: `1px solid ${t.border}`,
-    background: t.bg,
-    color: t.text,
-    fontFamily: "'Geist Mono', ui-monospace, monospace",
-    fontSize: 12,
-    lineHeight: '18px',
-    overflowX: 'auto'
   };
   const muted: React.CSSProperties = { color: t.text2, fontSize: 12.5, lineHeight: '19px', margin: 0 };
   const button: React.CSSProperties = {
@@ -326,7 +335,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
       onClick={() => {
         if (pressedBackdrop.current) {
           pressedBackdrop.current = false;
-          onClose();
+          leave();
         }
       }}
     >
@@ -350,63 +359,73 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', borderBottom: `1px solid ${t.divider}` }}>
           <Cloud size={18} color={t.accent} aria-hidden="true" />
           <h2 id="settings-title" style={{ margin: 0, fontSize: 15, fontWeight: 600, flex: 1 }}>
-            Settings
+            {tr('term.settings')}
           </h2>
-          <button type="button" className="nm-tap" onClick={onClose} aria-label="Close" style={button}>
+          <button
+            type="button"
+            className="nm-tap"
+            onClick={leave}
+            disabled={secretHeld}
+            aria-label={tr('common.close')}
+            style={{ ...button, ...heldLook }}
+          >
             <X size={18} strokeWidth={1.8} aria-hidden="true" />
           </button>
         </div>
 
-        <div
-          className="nm-settings-tabs"
-          role="tablist"
-          aria-label="Settings sections"
-          style={{ display: 'flex', gap: 4, padding: '8px 16px', borderBottom: `1px solid ${t.divider}` }}
-        >
-          {TABS.map((item) => {
-            const on = tab === item.id;
-            return (
-              <button
-                key={item.id}
-                id={`settings-tab-${item.id}`}
-                type="button"
-                role="tab"
-                aria-selected={on}
-                aria-controls={on ? `settings-panel-${item.id}` : undefined}
-                tabIndex={on ? 0 : -1}
-                className="nm-tap-h nm-settings-tab"
-                onClick={() => setTab(item.id)}
-                onKeyDown={onTabKeyDown}
-                style={{
-                  height: 34,
-                  padding: '0 10px',
-                  border: 0,
-                  borderRadius: 8,
-                  background: on ? t.selBg : 'transparent',
-                  color: on ? t.selText : t.text2,
-                  fontSize: 13,
-                  fontWeight: on ? 600 : 500,
-                  cursor: 'pointer'
-                }}
-              >
-                {item.label}
-              </button>
-            );
-          })}
-        </div>
+        {tabs.length > 1 ? (
+          <div
+            className="nm-settings-tabs"
+            role="tablist"
+            aria-label={tr('settings.sections_label')}
+            style={{ display: 'flex', gap: 4, padding: '8px 16px', borderBottom: `1px solid ${t.divider}` }}
+          >
+            {tabs.map((item) => {
+              const on = shownTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  id={`settings-tab-${item.id}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={on}
+                  aria-controls={on ? `settings-panel-${item.id}` : undefined}
+                  tabIndex={on ? 0 : -1}
+                  className="nm-tap-h nm-settings-tab"
+                  onClick={() => setTab(item.id)}
+                  disabled={secretHeld}
+                  onKeyDown={onTabKeyDown}
+                  style={{
+                    height: 34,
+                    padding: '0 10px',
+                    border: 0,
+                    borderRadius: 8,
+                    background: on ? t.selBg : 'transparent',
+                    color: on ? t.selText : t.text2,
+                    fontSize: 13,
+                    fontWeight: on ? 600 : 500,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {tr(item.labelKey)}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
 
         <div
-          id={`settings-panel-${tab}`}
+          id={`settings-panel-${shownTab}`}
           role="tabpanel"
-          aria-labelledby={`settings-tab-${tab}`}
+          aria-labelledby={tabs.length > 1 ? `settings-tab-${shownTab}` : 'settings-title'}
           style={{ padding: 20, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}
         >
-          {tab === 'account' ? (
+          {shownTab === 'account' ? (
             <>
               {values === undefined ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <p style={{ ...muted, color: settingsQuery.isError ? danger : t.text2 }}>
-                    {settingsQuery.isError ? 'Could not load your settings.' : 'Loading…'}
+                    {settingsQuery.isError ? tr('settings.load_failed') : tr('common.loading')}
                   </p>
                   {settingsQuery.isError ? (
                     <button
@@ -417,7 +436,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
                       }}
                       style={secondaryButton}
                     >
-                      Try again
+                      {tr('common.retry')}
                     </button>
                   ) : null}
                 </div>
@@ -425,7 +444,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
                 <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <label htmlFor="settings-name" style={fieldLabel}>
-                      Display name
+                      {tr('term.display_name')}
                     </label>
                     <input
                       id="settings-name"
@@ -435,28 +454,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
                       value={values.display_name}
                       onChange={(e) => edit('display_name', e.target.value)}
                       maxLength={100}
-                      placeholder="Shown to people you write to"
-                      style={{ ...fieldInput, height: 40 }}
+                      placeholder={tr('settings.display_name_placeholder')}
+                      style={{ ...fieldInput, height: 44 }}
                     />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <label htmlFor="settings-from" style={fieldLabel}>
-                      Sender address
+                      {tr('settings.your_address')}
                     </label>
                     <input
                       id="settings-from"
-                      className="nm-tap-h"
                       type="email"
-                      autoComplete="email"
-                      value={values.default_from}
-                      onChange={(e) => edit('default_from', e.target.value)}
-                      placeholder="you@yourdomain.com"
-                      style={{ ...fieldInput, height: 40 }}
+                      readOnly
+                      value={values.email}
+                      aria-describedby="settings-from-hint"
+                      style={{ ...fieldInput, height: 44, background: t.raised, color: t.text2 }}
                     />
+                    <p id="settings-from-hint" style={muted}>
+                      {tr('settings.address_hint')}
+                    </p>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <label htmlFor="settings-signature" style={fieldLabel}>
-                      Signature
+                      {tr('term.signature')}
                     </label>
                     <textarea
                       id="settings-signature"
@@ -464,7 +484,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
                       value={values.signature}
                       onChange={(e) => edit('signature', e.target.value)}
                       maxLength={2000}
-                      placeholder="Added to new messages"
+                      placeholder={tr('settings.signature_placeholder')}
                       style={{ ...fieldInput, padding: '10px 12px', lineHeight: '22px', resize: 'vertical' }}
                     />
                   </div>
@@ -484,53 +504,84 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
                       }}
                     >
                       {isSaving ? <Loader2 size={16} className="nm-spin" aria-hidden="true" /> : null}
-                      {isSaving ? 'Saving…' : 'Save'}
+                      {isSaving ? tr('settings.saving') : tr('common.save')}
                     </button>
                     {feedback?.type === 'saved' ? (
                       <span role="status" style={{ fontSize: 13, color: t.dark ? '#4ADE80' : '#15803D' }}>
-                        Saved
+                        {tr('settings.saved')}
                       </span>
                     ) : null}
-                    {feedback?.type === 'error' ? (
+                    {feedback?.type === 'error' || feedback?.type === 'offline' ? (
                       <span role="alert" style={{ fontSize: 13, color: danger }}>
-                        {feedback.text}
+                        {feedback.type === 'offline' ? tr('settings.save_offline') : feedback.text}
                       </span>
                     ) : null}
                   </div>
                 </form>
               )}
 
+              <AccountActivity t={t} />
+              <SecuritySection t={t} />
+
+              {isAdmin ? (
+                <section aria-labelledby="settings-admin" style={card}>
+                  <h3 id="settings-admin" style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>
+                    {tr('term.admin_console')}
+                  </h3>
+                  <p style={muted}>{tr('settings.admin_hint')}</p>
+                  <div>
+                    <button
+                      type="button"
+                      className="nm-tap-h"
+                      onClick={onOpenAdmin}
+                      disabled={secretHeld}
+                      style={{ ...secondaryButton, ...heldLook }}
+                    >
+                      <ShieldCheck size={16} aria-hidden="true" />
+                      {tr('settings.open_admin')}
+                    </button>
+                  </div>
+                </section>
+              ) : null}
+
               <section aria-labelledby="settings-appearance" style={card}>
                 <h3 id="settings-appearance" style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>
-                  Appearance
+                  {tr('settings.appearance')}
                 </h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div id="settings-dark-label" style={{ flex: 1, minWidth: 0, fontSize: 13 }}>
-                    Dark theme
+                    {tr('settings.dark_theme')}
                   </div>
                   <Switch t={t} checked={t.dark} labelledBy="settings-dark-label" onClick={onToggleDark} />
                 </div>
               </section>
 
+              <section aria-labelledby="settings-language" style={card}>
+                <h3 id="settings-language" style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>
+                  {tr('lang.label')}
+                </h3>
+                <LanguagePicker t={t} id="settings-language-select" onChosen={saveLanguage} />
+              </section>
+
               <section aria-labelledby="settings-notifications" style={card}>
                 <h3 id="settings-notifications" style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>
-                  Notifications
+                  {tr('term.notifications')}
                 </h3>
                 {push.supported ? (
                   <>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div id="settings-push-label" style={{ fontSize: 13 }}>
-                          New mail on this device
+                          {tr('settings.push_device')}
                         </div>
                         <p role="status" style={{ ...muted, color: push.permission === 'denied' ? danger : t.text2 }}>
                           {push.busy
-                            ? 'Working…'
+                            ? tr('settings.push_working')
                             : push.permission === 'denied'
-                              ? 'Blocked in your browser settings. Allow notifications for this site, then try again.'
+                              ? tr('settings.push_blocked')
                               : push.subscribed
-                                ? 'On'
-                                : 'Off'}
+                                ? tr('settings.push_on')
+                                : tr('settings.push_off')}
                         </p>
                       </div>
                       <Switch
@@ -562,173 +613,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
                           opacity: push.subscribed ? 1 : 0.5
                         }}
                       >
-                        Send test notification
+                        {tr('settings.push_test')}
                       </button>
                     </div>
                   </>
                 ) : (
-                  <p style={muted}>
-                    Notifications are not available in this browser. On iPhone, add Edging Mail to the Home Screen first, then open it from
-                    there.
-                  </p>
+                  <p style={muted}>{tr('settings.push_unsupported', { brand: BRAND_NAME })}</p>
                 )}
               </section>
             </>
           ) : null}
 
-          {tab === 'architecture' ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-              <div style={card}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13 }}>
-                  <Mail size={16} color={t.accent} aria-hidden="true" />
-                  Inbound routing
-                </div>
-                <p style={muted}>
-                  Cloudflare Email Routing hands the raw SMTP stream to the Worker&apos;s email handler, which parses and stores it.
-                </p>
-              </div>
-              <div style={card}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13 }}>
-                  <Send size={16} color={t.accent} aria-hidden="true" />
-                  Outbound mail
-                </div>
-                <p style={muted}>Mail you send goes out through Cloudflare Email Sending, using the Worker&apos;s send_email binding.</p>
-              </div>
-              <div style={card}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13 }}>
-                  <Database size={16} color="#15803D" aria-hidden="true" />
-                  D1 (SQLite)
-                </div>
-                <p style={muted}>Message bodies, folders, labels, read state, drafts and settings live in D1.</p>
-              </div>
-              <div style={card}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13 }}>
-                  <HardDrive size={16} color="#2F5BEA" aria-hidden="true" />
-                  R2 bucket
-                </div>
-                <p style={muted}>Raw RFC 822 messages and attachments are stored in R2, with no egress fees on reads.</p>
-              </div>
-              <div style={card}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13 }}>
-                  <Globe size={16} color="#B97800" aria-hidden="true" />
-                  Static assets
-                </div>
-                <p style={muted}>The React app is served by the Worker&apos;s static assets binding, next to the /api routes.</p>
-              </div>
-              <div style={card}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13 }}>
-                  <Radio size={16} color={t.accent} aria-hidden="true" />
-                  Realtime
-                </div>
-                <p style={muted}>
-                  A Durable Object (MailHub) holds the open WebSocket connections and tells every open tab when mail changes.
-                </p>
-              </div>
-              <div style={card}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13 }}>
-                  <Clock size={16} color={t.accent} aria-hidden="true" />
-                  Snooze
-                </div>
-                <p style={muted}>A cron trigger runs every minute and moves snoozed mail that is due back to the Inbox.</p>
-              </div>
-              <div style={card}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13 }}>
-                  <BellRing size={16} color={t.accent} aria-hidden="true" />
-                  Web Push
-                </div>
-                <p style={muted}>Devices with notifications on get a Web Push for new mail and for snoozed mail that comes back.</p>
-              </div>
-            </div>
-          ) : null}
-
-          {tab === 'deployment' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <p style={{ ...muted, fontWeight: 600, color: t.text }}>1. Create the D1 database and R2 bucket</p>
-              <pre style={pre}>{`npx wrangler d1 create edging_mail_db\nnpx wrangler r2 bucket create edging-mail-storage`}</pre>
-              <p style={muted}>
-                Paste the printed <code style={{ color: t.text }}>database_id</code> into{' '}
-                <code style={{ color: t.text }}>wrangler.jsonc</code>, and set the route there to your own domain.
-              </p>
-              <p style={{ ...muted, fontWeight: 600, color: t.text }}>2. Apply the migrations</p>
-              <pre style={pre}>npm run db:migrate:remote</pre>
-              <p style={{ ...muted, fontWeight: 600, color: t.text }}>3. Set the secrets (wrangler secret put)</p>
-              <pre style={pre}>{`npx wrangler secret put APP_PASSWORD\nnpx wrangler secret put JWT_SECRET`}</pre>
-              <p style={muted}>
-                <code style={{ color: t.text }}>APP_PASSWORD</code> needs at least 12 characters and{' '}
-                <code style={{ color: t.text }}>JWT_SECRET</code> at least 32. Until both are set, login answers 503.
-              </p>
-              <p style={{ ...muted, fontWeight: 600, color: t.text }}>4. Deploy</p>
-              <pre style={pre}>npm run deploy</pre>
-              <p style={muted}>It builds the app, applies any pending migrations, then deploys.</p>
-            </div>
-          ) : null}
-
-          {tab === 'routing' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <p style={muted}>To receive real mail at your own domain:</p>
-              <ol
-                style={{
-                  margin: 0,
-                  paddingLeft: 18,
-                  listStyle: 'decimal',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 6,
-                  color: t.text2,
-                  fontSize: 13
-                }}
-              >
-                <li>
-                  Open <strong style={{ color: t.text }}>Compute → Email Service → Email Routing → Onboard Domain</strong> and choose your
-                  domain.
-                </li>
-                <li>
-                  Cloudflare adds the MX, SPF and DKIM records on the domain. MX records of another mail provider must be removed first, so
-                  that provider stops receiving mail for the domain.
-                </li>
-                <li>
-                  Create a routing rule for one address, such as <code style={{ color: t.text }}>you@yourdomain.com</code>, with the action{' '}
-                  <strong style={{ color: t.text }}>Send to a Worker</strong> → <code style={{ color: t.text }}>edging-mail</code>. To
-                  receive every address of the domain, use the catch-all rule with the same action instead.
-                </li>
-                <li>Save. Inbound mail now lands straight in this inbox.</li>
-              </ol>
-              <p style={muted}>
-                Keeping mail at another provider? Run Email Routing on a subdomain (Email Routing → Settings → Subdomains) and forward one
-                address to it. See Option B in <code style={{ color: t.text }}>docs/deployment.md</code>.
-              </p>
-              <p style={{ ...muted, fontWeight: 600, color: t.text, marginTop: 6 }}>Sending mail</p>
-              <ol
-                style={{
-                  margin: 0,
-                  paddingLeft: 18,
-                  listStyle: 'decimal',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 6,
-                  color: t.text2,
-                  fontSize: 13,
-                  overflowWrap: 'anywhere'
-                }}
-              >
-                <li>
-                  To send to other people, open{' '}
-                  <strong style={{ color: t.text }}>Compute → Email Service → Email Sending → Onboard Domain</strong> and choose your
-                  domain.
-                </li>
-                <li>
-                  Cloudflare adds the records it needs: MX and SPF on a <code style={{ color: t.text }}>cf-bounce</code> subdomain, a DKIM
-                  key, and DMARC on <code style={{ color: t.text }}>_dmarc</code>. They can take 5–15 minutes to take effect.
-                </li>
-                <li>
-                  Until the domain is onboarded, only verified destination addresses of your account can receive mail; anyone else fails
-                  with <code style={{ color: t.text }}>E_RECIPIENT_NOT_ALLOWED</code>. Sending to any other recipient also needs the Workers
-                  Paid plan.
-                </li>
-                <li>Use an address on that domain as your Sender address (Account tab).</li>
-              </ol>
-            </div>
-          ) : null}
+          {shownTab === 'account' ? null : <DeveloperDocs t={t} tab={shownTab} />}
         </div>
 
         <div
@@ -745,14 +641,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
           <button
             type="button"
             className="nm-tap-h"
-            disabled={signingOut}
+            disabled={signingOut || secretHeld}
             onClick={() => {
               void signOut();
             }}
-            style={{ ...secondaryButton, flex: 'none', whiteSpace: 'nowrap', cursor: signingOut ? 'progress' : 'pointer' }}
+            style={{ ...secondaryButton, flex: 'none', whiteSpace: 'nowrap', cursor: signingOut ? 'progress' : 'pointer', ...heldLook }}
           >
             <LogOut size={16} style={{ flex: 'none' }} aria-hidden="true" />
-            {signingOut ? 'Signing out…' : 'Sign out'}
+            {signingOut ? tr('settings.signing_out') : tr('auth.sign_out')}
           </button>
           {signOutError === null ? null : (
             <span
@@ -763,8 +659,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, t, onClose
               {signOutError}
             </span>
           )}
-          <button type="button" className="nm-tap-h" onClick={onClose} style={{ ...secondaryButton, flex: 'none', whiteSpace: 'nowrap' }}>
-            Close
+          <button
+            type="button"
+            className="nm-tap-h"
+            onClick={leave}
+            disabled={secretHeld}
+            style={{ ...secondaryButton, flex: 'none', whiteSpace: 'nowrap', ...heldLook }}
+          >
+            {tr('common.close')}
           </button>
         </div>
       </div>

@@ -1,3 +1,10 @@
+/**
+ * What the browser could do with one message's encrypted content (see lib/mailcrypto): 'ready' = subject, snippet and bodies are
+ * filled in; 'locked' = no key is unlocked yet; 'pending' = the server has not sealed it to the person's key yet; 'other_key' = it
+ * was sealed to a key other than the one in use; 'failed' = it could not be opened.
+ */
+export type MailState = 'ready' | 'locked' | 'pending' | 'other_key' | 'failed';
+
 export interface Message {
   id: string;
   message_id?: string | null;
@@ -27,6 +34,21 @@ export interface Message {
   size: number;
   created_at: number;
   updated_at: number;
+  /** 0 = a legacy plaintext row (subject, snippet and bodies are plain); 1 = encrypted (the server sends blobs, the browser fills the text in). */
+  enc_fmt?: number;
+  /** 1 only when the mail reached its recipients without any plaintext copy ever reaching the server (internal mail sealed in the sender's browser). */
+  is_e2e?: number;
+  /** Where the message came from (PX-12): 'smtp' = it arrived over email from outside, 'internal' = sent between people of this deployment. Absent on older rows. */
+  origin?: 'smtp' | 'internal';
+  /** True when the From address of the message belongs to a domain this deployment hosts: for an 'smtp' message that is a claim nobody verified. */
+  from_hosted?: boolean | number;
+  /** Encrypted rows: the key the content key is sealed to, the sealed content key, and who sealed it ('server' = pending). Ciphertext only. */
+  key_id?: string | null;
+  wrapped_cek?: string | null;
+  wrap_kind?: 'user' | 'server' | null;
+  summary_blob?: string | null;
+  /** Set by lib/mailcrypto on every message it returns; absent only on rows that never went through it. */
+  mail_state?: MailState;
 }
 
 export interface Attachment {
@@ -39,6 +61,10 @@ export interface Attachment {
   content_id?: string | null;
   is_inline: number;
   created_at: number;
+  /** Encrypted rows: filename, type and content id as one blob; lib/mailcrypto fills the three fields in from it. */
+  meta_blob?: string | null;
+  /** The name and type could not be opened (the file may still download). */
+  meta_failed?: boolean;
 }
 
 export type FolderStats = Record<

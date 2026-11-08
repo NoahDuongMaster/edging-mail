@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlarmClockOff, Clock } from 'lucide-react';
 import { mix, type ThemeTokens } from '../theme';
+import { useT } from '../lib/i18n';
 import {
   MAX_SNOOZE_MS,
   MIN_SNOOZE_MS,
@@ -42,6 +43,7 @@ interface SnoozeMenuProps {
 
 /** Reader toolbar button that snoozes the open mail (quick times or a picked date), or unsnoozes it when it is snoozed. */
 export const SnoozeMenu: React.FC<SnoozeMenuProps> = ({ t, buttonStyle, snoozed, onSnooze, onUnsnooze }) => {
+  const tr = useT();
   const [menu, setMenu] = React.useState<OpenMenu | null>(null);
   const [picking, setPicking] = React.useState(false);
   const [pick, setPick] = React.useState('');
@@ -180,8 +182,8 @@ export const SnoozeMenu: React.FC<SnoozeMenuProps> = ({ t, buttonStyle, snoozed,
       <button
         ref={buttonRef}
         type="button"
-        aria-label={snoozed ? 'Unsnooze' : 'Snooze'}
-        title={snoozed ? 'Unsnooze' : 'Snooze'}
+        aria-label={snoozed ? tr('action.unsnooze') : tr('action.snooze')}
+        title={snoozed ? tr('action.unsnooze') : tr('action.snooze')}
         className="nm-tap"
         aria-haspopup={snoozed ? undefined : 'menu'}
         aria-expanded={snoozed ? undefined : isOpen}
@@ -205,7 +207,7 @@ export const SnoozeMenu: React.FC<SnoozeMenuProps> = ({ t, buttonStyle, snoozed,
         <div
           ref={menuRef}
           role="menu"
-          aria-label="Snooze until"
+          aria-label={tr('snooze.menu_label')}
           className="nm-fade-in"
           style={{
             position: 'fixed',
@@ -230,12 +232,12 @@ export const SnoozeMenu: React.FC<SnoozeMenuProps> = ({ t, buttonStyle, snoozed,
           ))}
           <div role="separator" style={{ height: 1, margin: '4px 6px', background: t.border }} />
           <button type="button" role="menuitem" aria-expanded={picking} className="nm-tap-h" onClick={() => setPicking(true)} style={item}>
-            <span>Pick date &amp; time</span>
+            <span>{tr('snooze.pick_date_time')}</span>
           </button>
           {picking ? (
             <form noValidate onSubmit={submit} style={{ padding: '6px 6px 4px' }}>
               <label htmlFor={pickId} style={{ display: 'block', margin: '0 0 6px', fontSize: 12, lineHeight: '16px', color: t.text2 }}>
-                Date and time
+                {tr('snooze.date_time_label')}
               </label>
               <input
                 id={pickId}
@@ -289,7 +291,7 @@ export const SnoozeMenu: React.FC<SnoozeMenuProps> = ({ t, buttonStyle, snoozed,
                   cursor: 'pointer'
                 }}
               >
-                Snooze
+                {tr('action.snooze')}
               </button>
             </form>
           ) : null}
@@ -310,23 +312,28 @@ interface SnoozeChipProps {
 }
 
 /** Muted "Until tomorrow 8:00 AM" chip with a clock, for mail in the Snoozed folder. */
-export const SnoozeChip: React.FC<SnoozeChipProps> = ({ t, until, bare = false, selected = false }) => (
-  <span
-    style={{
-      minWidth: 0,
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: 6,
-      height: 22,
-      padding: bare ? 0 : '0 8px',
-      borderRadius: 6,
-      border: bare ? 0 : `1px solid ${selected ? mix(t.text2, t.selBg, 0.6) : t.border}`,
-      color: t.text2,
-      fontSize: 12,
-      lineHeight: '16px'
-    }}
-  >
-    <Clock size={12} strokeWidth={2} aria-hidden="true" style={{ flex: 'none' }} />
-    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{`Until ${formatSnoozeUntil(until)}`}</span>
-  </span>
-);
+export const SnoozeChip: React.FC<SnoozeChipProps> = ({ t, until, bare = false, selected = false }) => {
+  const tr = useT();
+  return (
+    <span
+      style={{
+        minWidth: 0,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        height: 22,
+        padding: bare ? 0 : '0 8px',
+        borderRadius: 6,
+        border: bare ? 0 : `1px solid ${selected ? mix(t.text2, t.selBg, 0.6) : t.border}`,
+        color: t.text2,
+        fontSize: 12,
+        lineHeight: '16px'
+      }}
+    >
+      <Clock size={12} strokeWidth={2} aria-hidden="true" style={{ flex: 'none' }} />
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {tr('snooze.until', { when: formatSnoozeUntil(until) })}
+      </span>
+    </span>
+  );
+};

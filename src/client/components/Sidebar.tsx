@@ -3,6 +3,8 @@ import { Archive, Ban, Clock, FileText, Inbox, PenLine, Send, Star, Trash2, X } 
 import type { ThemeTokens } from '../theme';
 import { getLabelChip } from '../theme';
 import type { FolderStats } from '../types';
+import { useT } from '../lib/i18n';
+import { folderName } from '../lib/mail';
 import { BrandMark } from './BrandMark';
 
 interface SidebarProps {
@@ -15,18 +17,20 @@ interface SidebarProps {
   onCloseMobile?: () => void;
 }
 
+// The folder's name comes from `folderName(id)` when it is shown, so a language switch reaches it.
 const NAV_ITEMS = [
-  { id: 'inbox', label: 'Inbox', icon: Inbox },
-  { id: 'starred', label: 'Starred', icon: Star },
-  { id: 'snoozed', label: 'Snoozed', icon: Clock },
-  { id: 'sent', label: 'Sent', icon: Send },
-  { id: 'drafts', label: 'Drafts', icon: FileText },
-  { id: 'archive', label: 'Archive', icon: Archive },
-  { id: 'spam', label: 'Spam', icon: Ban },
-  { id: 'trash', label: 'Trash', icon: Trash2 }
+  { id: 'inbox', icon: Inbox },
+  { id: 'starred', icon: Star },
+  { id: 'snoozed', icon: Clock },
+  { id: 'sent', icon: Send },
+  { id: 'drafts', icon: FileText },
+  { id: 'archive', icon: Archive },
+  { id: 'spam', icon: Ban },
+  { id: 'trash', icon: Trash2 }
 ] as const;
 
 export const Sidebar: React.FC<SidebarProps> = ({ t, folder, onSelectFolder, stats, labels, onCompose, onCloseMobile }) => {
+  const tr = useT();
   // Stats come from the API, so any folder can be missing.
   const folderStats: Partial<FolderStats> = stats;
   const inboxUnread = folderStats.inbox?.unread ?? 0;
@@ -56,7 +60,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ t, folder, onSelectFolder, sta
 
   return (
     <aside
-      aria-label="Mail navigation"
+      aria-label={tr('sidebar.navigation')}
       className="nm-sidebar"
       style={{
         // In the mobile drawer the panel decides the width; on desktop it is the fixed 248px column.
@@ -77,7 +81,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ t, folder, onSelectFolder, sta
         {onCloseMobile ? (
           <button
             type="button"
-            aria-label="Close mailboxes"
+            aria-label={tr('sidebar.close_mailboxes')}
             className="nm-tap"
             onClick={onCloseMobile}
             style={{
@@ -100,6 +104,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ t, folder, onSelectFolder, sta
 
       <button
         type="button"
+        data-compose-button=""
         onClick={onCompose}
         style={{
           display: 'flex',
@@ -118,7 +123,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ t, folder, onSelectFolder, sta
         }}
       >
         <PenLine size={18} strokeWidth={1.8} aria-hidden="true" />
-        <span>Compose</span>
+        <span>{tr('action.compose')}</span>
         {onCloseMobile ? null : (
           <kbd
             aria-hidden="true"
@@ -138,7 +143,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ t, folder, onSelectFolder, sta
         )}
       </button>
 
-      <nav aria-label="Mailboxes">
+      <nav aria-label={tr('sidebar.mailboxes')}>
         <ul role="list" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
           {NAV_ITEMS.map((item) => {
             const active = folder === item.id;
@@ -158,7 +163,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ t, folder, onSelectFolder, sta
                   <span style={{ display: 'inline-flex', color: active ? t.selText : t.text2 }}>
                     <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
                   </span>
-                  <span style={{ flex: 1 }}>{item.label}</span>
+                  <span style={{ flex: 1 }}>{folderName(item.id)}</span>
                   {item.id === 'inbox' && inboxUnread > 0 ? (
                     <span style={{ fontSize: 12, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{inboxUnread}</span>
                   ) : item.id !== 'inbox' && count > 0 ? (
@@ -186,7 +191,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ t, folder, onSelectFolder, sta
                 color: t.text2
               }}
             >
-              Labels
+              {tr('folder.labels')}
             </h2>
           </div>
 

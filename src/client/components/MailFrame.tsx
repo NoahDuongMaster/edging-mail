@@ -1,75 +1,75 @@
 import React from 'react';
 import type { ThemeTokens } from '../theme';
+import { useT } from '../lib/i18n';
+import { buildMailDocument } from '../lib/mailDocument';
+import type { EmbeddedImages } from '../lib/mailcrypto/inline';
 
-// Mail is untrusted: nothing may load except inline styles and data: images/fonts, and the frame cannot navigate.
-// The page's own policy (public/_headers) is inherited by this srcdoc frame and is wider (`img-src https:`) because
-// 'Show images' must be able to widen the frame's policy; this meta policy is the gate for remote content.
-const framePolicy = (images: string) =>
-  `default-src 'none'; img-src ${images}; style-src 'unsafe-inline'; font-src data:; frame-src 'none'`;
-
-const REMOTE_URL = /^\s*(?:https?:)?\/\//i;
-const REMOTE_SRCSET = /(?:^|,)\s*https?:\/\//i;
-const REMOTE_CSS_URL = /url\(\s*["']?\s*(?:https?:)?\/\//i;
-
-function anyAttribute(doc: Document, selector: string, attribute: string, pattern: RegExp): boolean {
-  return [...doc.querySelectorAll(selector)].some((element) => pattern.test(element.getAttribute(attribute) ?? ''));
-}
-
-function buildMailDocument(html: string, accent: string, allowImages: boolean): { srcDoc: string; hasRemoteImages: boolean } {
-  // Parsed inertly (no script runs, nothing loads) so links can be fixed up before the sandboxed frame sees them.
-  // The sender's markup lands in the body exactly as it did before, so its own <style> blocks keep working.
-  const doc = new DOMParser().parseFromString(
-    `<!DOCTYPE html><html><head><meta charset="utf-8" /><base target="_blank" /><style>
-        html,body{margin:0;padding:0;background:#ffffff;}
-        body{font-family:'Geist',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:24px;color:#1f2430;word-break:break-word;padding:24px;}
-        img{max-width:100%;height:auto;} a{color:${accent};}
-        blockquote{margin:0 0 0 12px;padding-left:12px;border-left:2px solid #e3e6eb;color:#535a66;}
-        table{max-width:100%;}
-      </style></head><body>${html}</body></html>`,
-    'text/html'
-  );
-
-  const hasRemoteImages =
-    anyAttribute(doc, 'img[src]', 'src', REMOTE_URL) ||
-    anyAttribute(doc, '[srcset]', 'srcset', REMOTE_SRCSET) ||
-    anyAttribute(doc, '[background]', 'background', REMOTE_URL) ||
-    anyAttribute(doc, '[style]', 'style', REMOTE_CSS_URL) ||
-    [...doc.querySelectorAll('style')].some((style) => REMOTE_CSS_URL.test(style.textContent));
-
-  for (const link of doc.querySelectorAll('a[href], area[href]')) {
-    link.setAttribute('target', '_blank');
-    link.setAttribute('rel', 'noopener noreferrer');
-  }
-  // A refresh would navigate the frame to a page of the sender's choosing.
-  for (const meta of doc.querySelectorAll('meta[http-equiv="refresh" i]')) {
-    meta.remove();
-  }
-
-  // First in <head>, so it covers everything after it.
-  const policy = doc.createElement('meta');
-  policy.httpEquiv = 'Content-Security-Policy';
-  policy.content = framePolicy(allowImages ? 'data: https:' : 'data:');
-  const referrer = doc.createElement('meta');
-  referrer.name = 'referrer';
-  referrer.content = 'no-referrer';
-  // Not head.prepend(): @cloudflare/workers-types overrides Element.prepend with the HTMLRewriter signature.
-  doc.head.insertBefore(referrer, doc.head.firstChild);
-  doc.head.insertBefore(policy, referrer);
-
-  return { srcDoc: `<!DOCTYPE html>${doc.documentElement.outerHTML}`, hasRemoteImages };
-}
+const NO_EMBEDDED: ReadonlyMap<string, string> = new Map();
 
 interface MailFrameProps {
   html: string;
   t: ThemeTokens;
+  /**
+   * Opens the pictures the mail carries inside itself (encrypted messages): given the `cid:` references, gives back `data:` URLs.
+   * Called only after the reader pressed 'Show images'. Without it a `cid:` picture stays as the sender wrote it.
+   */
+  loadEmbedded?: (references: string[]) => Promise<EmbeddedImages>;
 }
 
+// The document the frame shows, and why nothing in it can reach the network before 'Show images', is lib/mailDocument.ts.
 /** The HTML body of a mail in a sandboxed frame. Mount it with `key={message.id}`: 'Show images' is per message. */
-export const MailFrame: React.FC<MailFrameProps> = ({ html, t }) => {
+export const MailFrame: React.FC<MailFrameProps> = ({ html, t, loadEmbedded }) => {
+  const tr = useT();
   const [showImages, setShowImages] = React.useState(false);
+  const [opened, setOpened] = React.useState<EmbeddedImages | null>(null);
   // HTML mail is rendered on a light canvas in both themes, like a desktop mail client,
   // so sender-authored colours stay readable.
-  const { srcDoc, hasRemoteImages } = React.useMemo(() => buildMailDocument(html, t.accent, showImages), [html, t.accent, showImages]);
+  const { srcDoc, hasRemoteImages, embedded } = React.useMemo(
+    () => buildMailDocument(html, t.accent, showImages, opened?.urls ?? NO_EMBEDDED),
+    [html, t.accent, showImages, opened]
+  );
+  const hasEmbedded = loadEmbedded !== undefined && embedded.length > 0;
+  const embeddedKey = embedded.join('\n');
+  const loadRef = React.useRef(loadEmbedded);
+  React.useEffect(() => {
+    loadRef.current = loadEmbedded;
+  }, [loadEmbedded]);
+
+  React.useEffect(() => {
+    const load = loadRef.current;
+    if (!showImages || embeddedKey === '' || load === undefined) {
+      return;
+    }
+    let cancelled = false;
+    const references = embeddedKey.split('\n');
+    load(references)
+      .then((result) => {
+        if (!cancelled) {
+          setOpened(result);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setOpened({ urls: new Map(), failed: references.length });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showImages, embeddedKey]);
+
+  const barStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: '0 8px',
+    padding: '4px 12px',
+    borderBottom: `1px solid ${t.border}`,
+    background: t.raised,
+    color: t.text2,
+    fontSize: 13,
+    lineHeight: '20px'
+  };
 
   return (
     <div
@@ -80,22 +80,9 @@ export const MailFrame: React.FC<MailFrameProps> = ({ html, t }) => {
         overflow: 'hidden'
       }}
     >
-      {hasRemoteImages && !showImages ? (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '0 8px',
-            padding: '4px 12px',
-            borderBottom: `1px solid ${t.border}`,
-            background: t.raised,
-            color: t.text2,
-            fontSize: 13,
-            lineHeight: '20px'
-          }}
-        >
-          <span>Remote images are blocked.</span>
+      {(hasRemoteImages || hasEmbedded) && !showImages ? (
+        <div style={barStyle}>
+          <span>{hasRemoteImages ? tr('frame.images_blocked') : tr('mailcrypto.images_hidden')}</span>
           <button
             type="button"
             className="nm-tap-h"
@@ -111,12 +98,17 @@ export const MailFrame: React.FC<MailFrameProps> = ({ html, t }) => {
               cursor: 'pointer'
             }}
           >
-            Show images
+            {tr('action.show_images')}
           </button>
         </div>
       ) : null}
+      {showImages && opened !== null && opened.failed > 0 ? (
+        <div role="status" style={barStyle}>
+          <span>{tr('fail.mailcrypto_images')}</span>
+        </div>
+      ) : null}
       <iframe
-        title="Message body"
+        title={tr('frame.title')}
         srcDoc={srcDoc}
         sandbox="allow-popups allow-popups-to-escape-sandbox"
         style={{ width: '100%', height: 480, border: 0, display: 'block', background: '#FFFFFF' }}

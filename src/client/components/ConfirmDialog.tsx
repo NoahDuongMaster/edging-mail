@@ -1,5 +1,6 @@
 import React from 'react';
 import type { ThemeTokens } from '../theme';
+import { useT } from '../lib/i18n';
 import { trapTab } from '../lib/focusTrap';
 
 interface ConfirmDialogProps {
@@ -14,6 +15,7 @@ interface ConfirmDialogProps {
 
 /** Asks before something that cannot be undone. Cancel has focus first (the safe choice); Escape and a tap on the scrim cancel. */
 export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ isOpen, t, title, body, confirmLabel, onConfirm, onCancel }) => {
+  const tr = useT();
   const dialogRef = React.useRef<HTMLDivElement | null>(null);
   const cancelRef = React.useRef<HTMLButtonElement | null>(null);
 
@@ -100,12 +102,12 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ isOpen, t, title, 
         <h2 id="confirm-title" style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>
           {title}
         </h2>
-        <p id="confirm-body" style={{ margin: '8px 0 0', color: t.text2 }}>
+        <p id="confirm-body" style={{ margin: '8px 0 0', color: t.text2, whiteSpace: 'pre-line' }}>
           {body}
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
           <button ref={cancelRef} type="button" onClick={onCancel} style={button}>
-            Cancel
+            {tr('common.cancel')}
           </button>
           <button type="button" onClick={onConfirm} style={{ ...button, borderColor: danger, color: danger }}>
             {confirmLabel}

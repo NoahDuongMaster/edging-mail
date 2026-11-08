@@ -1,5 +1,6 @@
 import React from 'react';
 import { getTokens } from '../theme';
+import { tr } from '../lib/i18n';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -43,8 +44,8 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
         }}
       >
         <img src="/edgar.svg" alt="" width={112} height={109} style={{ display: 'block', maxWidth: '100%', height: 'auto' }} />
-        <p style={{ margin: 0, fontWeight: 600 }}>Something went wrong.</p>
-        <p style={{ margin: 0, color: t.text2 }}>Reload to try again. Your mail is safe on the server.</p>
+        <p style={{ margin: 0, fontWeight: 600 }}>{tr('common.something_wrong')}</p>
+        <p style={{ margin: 0, color: t.text2 }}>{tr('crash.reload_hint')}</p>
         <button
           type="button"
           onClick={() => window.location.reload()}
@@ -60,7 +61,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             cursor: 'pointer'
           }}
         >
-          Reload
+          {tr('crash.reload')}
         </button>
       </main>
     );

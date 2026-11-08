@@ -1,6 +1,9 @@
 # Cloudflare Workers Assets header rules (served with dist/client).
-# A new deploy must reach the browser at once, so these two are always revalidated.
+# A new deploy must reach the browser at once, so these three are always revalidated (none of them has a hashed name).
 /sw.js
+  Cache-Control: no-cache
+
+/standalone.js
   Cache-Control: no-cache
 
 /manifest.webmanifest
@@ -13,8 +16,10 @@
 
 # Security headers for every static file. The mail frame is a srcdoc document and inherits this policy, so img-src allows
 # https: here and the frame's own meta policy (MailFrame.tsx) is what blocks remote images until 'Show images'.
+# connect-src 'self' also covers the app's own WebSocket (wss:// on this host; ws:// on an http page): CSP Level 3 says so, and
+# Chrome 71+, Firefox and Safari 16+ do it. Safari before 16 refuses it, so live updates need Safari 16 or later.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' wss:; frame-src 'self'; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'; form-action 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; frame-src 'self'; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'; form-action 'self'
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
   Permissions-Policy: camera=(), microphone=(), geolocation=()

@@ -22,11 +22,19 @@ import {
 } from 'lucide-react';
 import type { ThemeTokens } from '../theme';
 import { getChip } from '../theme';
+import { ApiError, UnauthorizedError } from '../lib/api';
 import { fileTypeOf, formatBytes, initialsOf, nonEmpty, stringHue } from '../lib/mail';
 import { DraftSaver, newDraftId, sanitizeDraftHtml, type DraftSnapshot, type DraftStatus } from '../lib/drafts';
 import { trapTab } from '../lib/focusTrap';
+import { tRich, useT, type TFunction } from '../lib/i18n';
 import { queryKeys, useSendMessage } from '../lib/queries';
+import { SealedMailError, previewAddresses, sealedErrorText, type OutgoingAttachment } from '../lib/sealedmail';
 import { restoreSignatureDelimiter, signatureBlock } from '../lib/settings';
+import { ComposeState } from './compose/ComposeState';
+import { useComposePreview } from './compose/useComposePreview';
+import { useSendFlow } from './compose/useSendFlow';
+import { ReplyRedirectNote } from './compose/ReplyRedirectNote';
+import type { ReplyRedirect } from '../lib/mail';
 
 export interface ComposeDraft {
   /** Set when a draft from the Drafts folder is reopened: autosave goes on updating that same draft. */
@@ -45,6 +53,10 @@ export interface ComposeDraft {
   /** Message-ID of the mail being answered (replies only; a forward is a new thread). */
   inReplyTo?: string;
   references?: string[];
+  /** The mail being answered or forwarded is end-to-end encrypted (`is_e2e`): sending its content to an outside address needs a warning first (N6). */
+  sourceIsE2E?: boolean;
+  /** The mail being answered asks for replies at another address than the sender's (PX-12): shown on a line of its own while it is in To. */
+  replyRedirect?: ReplyRedirect;
 }
 
 interface ComposeModalProps {
@@ -73,52 +85,69 @@ const splitRecipients = (value: string): string[] => value.split(/[\s,;]+/).filt
 // The worker's rule (isEmail in src/worker/utils.ts): one plain address, no name part.
 const isAddress = (value: string) => /^[^\s@<>,"]+@[^\s@<>,"]+\.[^\s@<>,"]+$/.test(value);
 
-const invalidAddressText = 'Enter a full address like name@example.com.';
+// What ends an address in the recipient fields (Enter or a separator).
+const isCommitKey = (key: string) => key === 'Enter' || [',', ';'].includes(key);
 
 // What the server accepts in one send (src/worker/services/email-sender.ts); it counts the base64 text of the attachments.
 const MAX_ATTACHMENTS = 32;
 const MAX_MESSAGE_BYTES = 25 * 1024 * 1024;
 const base64Length = (bytes: number) => Math.ceil(bytes / 3) * 4;
 
+/** A picked file as the sealed send takes it: its bytes (the compose keeps them as base64). */
+const outgoingFile = (file: PendingFile): OutgoingAttachment => ({
+  filename: file.filename,
+  mimeType: file.content_type,
+  contentId: null,
+  bytes: Uint8Array.from(atob(file.content_base64), (char) => char.codePointAt(0) ?? 0)
+});
+
 const escapeHtml = (value: string) =>
   value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('\n', '<br />');
 
-const missingFromText = 'Add a sender address in Settings.';
-
-const draftStatusText: Record<DraftStatus, string> = {
-  idle: '',
-  saving: 'Saving…',
-  saved: 'Draft saved',
-  error: 'Could not save the draft'
+/** The header's status text of the draft autosave ('' while idle). */
+const draftStatusText = (status: DraftStatus, tr: TFunction): string => {
+  if (status === 'saving') {
+    return tr('compose.draft_saving');
+  }
+  if (status === 'saved') {
+    return tr('compose.draft_saved');
+  }
+  return status === 'error' ? tr('compose.draft_not_saved') : '';
 };
 
-const noConnectionText = 'No connection: the message was not sent. Try again.';
+/**
+ * The code the server gives a send that went out although its copy in Sent could not be stored: the compose closes as sent and
+ * must never offer a second send. The other codes handled in `sendErrorText` are Cloudflare's refusals.
+ */
+const SENT_COPY_FAILED = 'sent_copy_not_saved';
 
-const sentUnsavedPrefix = 'The email was sent but could not be saved to Sent';
-
-/** What a failed send says: Cloudflare's error codes turned into what the user has to do. */
-const sendErrorText = (message: string): string => {
-  if (message.includes('E_RECIPIENT_NOT_ALLOWED')) {
-    return 'Cloudflare only delivers to verified addresses until your domain is onboarded for Email Sending. Add the recipient under Email Routing > Destination addresses, or onboard the domain (Compute > Email Service > Email Sending).';
+/** What a failed send says: Cloudflare's refusals turned into what the user has to do, else the (already localized) message of the API error. */
+const sendErrorText = (error: unknown, tr: TFunction): string => {
+  if (error instanceof SealedMailError) {
+    return sealedErrorText(error);
   }
-  if (message.includes('E_SENDER_NOT_VERIFIED') || message.includes('E_SENDER_DOMAIN_NOT_AVAILABLE')) {
-    return 'The sender address must be on a domain onboarded for Email Sending. Change it in Settings.';
+  const code = error instanceof ApiError ? error.code : undefined;
+  if (code === 'recipient_not_allowed') {
+    return tr('compose.err_recipient_not_allowed');
   }
-  if (message.startsWith(sentUnsavedPrefix)) {
-    return 'Sent, but the copy could not be saved to Sent. Do not send it again.';
+  if (code === 'sender_not_verified' || code === 'sender_domain_not_available') {
+    return tr('compose.err_sender_domain');
   }
-  return message;
+  if (code === SENT_COPY_FAILED) {
+    return tr('compose.sent_copy_failed');
+  }
+  return error instanceof Error && error.message !== '' ? error.message : tr('fail.compose_send');
 };
 
 /** The compose header: what this compose is, from the draft it was opened with. */
-const titleOf = (draft: ComposeDraft) => {
+const titleOf = (draft: ComposeDraft, tr: TFunction) => {
   if (draft.draftId !== undefined) {
-    return 'Draft';
+    return tr('compose.title_draft');
   }
   if (draft.quote === undefined) {
-    return 'New message';
+    return tr('compose.title_new');
   }
-  return /^fwd:/i.test(draft.subject ?? '') ? 'Forward' : 'Reply';
+  return /^fwd:/i.test(draft.subject ?? '') ? tr('action.forward') : tr('action.reply');
 };
 
 const unique = (list: string[]) => [...new Set(list)];
@@ -188,11 +217,12 @@ const read = (file: File) =>
         size: file.size
       });
     });
-    reader.addEventListener('error', () => reject(reader.error ?? new Error('Could not read file')));
+    reader.addEventListener('error', () => reject(reader.error ?? new Error('file read failed')));
     reader.readAsDataURL(file);
   });
 
 const RecipientChip: React.FC<{ t: ThemeTokens; address: string; onRemove: () => void }> = ({ t, address, onRemove }) => {
+  const tr = useT();
   const chip = getChip(stringHue(address), t);
   const name = address.split('@', 1)[0];
   // Phones: a 44px hit area. The button has no background, so the negative margin keeps the chip the size it is.
@@ -237,7 +267,7 @@ const RecipientChip: React.FC<{ t: ThemeTokens; address: string; onRemove: () =>
       </span>
       <button
         type="button"
-        aria-label={`Remove ${address}`}
+        aria-label={tr('compose.remove_recipient', { address })}
         onClick={onRemove}
         style={{
           flex: 'none',
@@ -261,6 +291,7 @@ const RecipientChip: React.FC<{ t: ThemeTokens; address: string; onRemove: () =>
 };
 
 export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, defaultFrom, signature, draft, onSuccess, onNotice }) => {
+  const tr = useT();
   const [from, setFrom] = React.useState(defaultFrom);
   const [toList, setToList] = React.useState<string[]>([]);
   const [ccList, setCcList] = React.useState<string[]>([]);
@@ -297,6 +328,14 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
   const bccInputRef = React.useRef<HTMLInputElement | null>(null);
   const fileRef = React.useRef<HTMLInputElement | null>(null);
   const { mutateAsync: sendMessage } = useSendMessage();
+  const sendFlow = useSendFlow(t);
+  // What this message will be, from a debounced key lookup (EC-4): the quiet line under the recipients.
+  const preview = useComposePreview({
+    enabled: isOpen,
+    draft,
+    addresses: previewAddresses(toList, ccList, bccList, splitRecipients(toInput), splitRecipients(ccInput), splitRecipients(bccInput)),
+    fileSizes: files.map((file) => file.size)
+  });
   const queryClient = useQueryClient();
   // Same breakpoint as .nm-hide-sm: below it the header has no room for the status text, so it moves under the header.
   const narrow = useMedia('(max-width: 640px)');
@@ -347,7 +386,9 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
         subject: subjectText,
         text,
         html,
-        ...(draft.inReplyTo === undefined ? null : { in_reply_to: draft.inReplyTo })
+        ...(draft.inReplyTo === undefined ? null : { in_reply_to: draft.inReplyTo }),
+        // N6 must survive a save and a reopen: the flag goes into the sealed draft (EC-3).
+        ...(draft.sourceIsE2E === true ? { from_e2e: true } : null)
       },
       empty: to.length === 0 && cc.length === 0 && bcc.length === 0 && subjectText === '' && writtenText(text, signature) === '',
       key: contentKey(from, to, cc, bcc, subjectText, html),
@@ -358,9 +399,9 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
   // Nothing typed, attached or sent since the compose opened (the sender and the signature it was opened with are not typing).
   const isPristine = () => !sendingRef.current && files.length === 0 && readDraft().key === baselineRef.current;
 
-  const latest = React.useRef({ readDraft, isPristine, onNotice, queryClient });
+  const latest = React.useRef({ readDraft, isPristine, onNotice, queryClient, tr });
   React.useLayoutEffect(() => {
-    latest.current = { readDraft, isPristine, onNotice, queryClient };
+    latest.current = { readDraft, isPristine, onNotice, queryClient, tr };
   });
 
   React.useEffect(() => {
@@ -382,7 +423,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
         void latest.current.queryClient.invalidateQueries({ queryKey: queryKeys.messages });
         void latest.current.queryClient.invalidateQueries({ queryKey: queryKeys.stats });
       },
-      onLost: () => latest.current.onNotice?.('Could not save the draft')
+      onLost: () => latest.current.onNotice?.(latest.current.tr('compose.draft_not_saved'))
     });
     saverRef.current = saver;
     return () => {
@@ -439,11 +480,12 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
     const opener = document.activeElement as HTMLElement | null;
     return () => {
       // The opener can be gone: the phone drawer unmounts when its Compose button is used, and the C shortcut starts from BODY. The
-      // header button that opens the drawer takes over, else the Compose button (both are found by label: they have no id).
+      // header button that opens the drawer takes over, else the Compose button (neither has an id: the first is found by its
+      // data attribute, the second by its own data attribute).
       const openerGone = !opener || opener === document.body || !opener.isConnected;
       const target = openerGone
-        ? (document.querySelector<HTMLElement>('button[aria-label="Open mailboxes"]') ??
-          [...document.querySelectorAll<HTMLElement>('button')].find((button) => button.textContent.startsWith('Compose')))
+        ? (document.querySelector<HTMLElement>('button[data-nav-toggle="mailboxes"]') ??
+          document.querySelector<HTMLElement>('button[data-compose-button]'))
         : opener;
       target?.focus({ preventScroll: true });
     };
@@ -525,7 +567,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
       // Rendered first: the recipients changed, and that clears an error (see formKey), so the one below must come after it.
       flushSync(add);
     }
-    setStatus({ text: invalidAddressText, type: 'error' });
+    setStatus({ text: tr('compose.invalid_address'), type: 'error' });
   };
 
   const exec = (command: string, value?: string) => {
@@ -553,13 +595,13 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
     }
     // Refused as a whole when it would pass what the server accepts; it counts the attachments as base64 plus the text of the body.
     if (files.length + picked.length > MAX_ATTACHMENTS) {
-      setStatus({ text: 'At most 32 attachments.', type: 'error' });
+      setStatus({ text: tr('compose.too_many_attachments', { max: MAX_ATTACHMENTS }), type: 'error' });
       return;
     }
     const { html, text } = readBody();
     const size = [...files, ...picked].reduce((total, file) => total + base64Length(file.size), html.length + text.length);
     if (size > MAX_MESSAGE_BYTES) {
-      setStatus({ text: 'Attachments are larger than 25 MB in total.', type: 'error' });
+      setStatus({ text: tr('compose.attachments_too_large', { max: MAX_MESSAGE_BYTES / (1024 * 1024) }), type: 'error' });
       return;
     }
 
@@ -567,7 +609,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
       const next = await Promise.all(picked.map(read));
       setFiles((prev) => [...prev, ...next]);
     } catch {
-      setStatus({ text: 'Could not read one of the attachments.', type: 'error' });
+      setStatus({ text: tr('compose.attachment_read_failed'), type: 'error' });
     }
   };
 
@@ -579,20 +621,20 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
     const { to, cc, bcc, html, text } = collect();
 
     if (sender === '') {
-      setStatus({ text: missingFromText, type: 'error' });
+      setStatus({ text: tr('compose.missing_from'), type: 'error' });
       return;
     }
     if (to.length === 0) {
-      setStatus({ text: 'Add at least one recipient.', type: 'error' });
+      setStatus({ text: tr('compose.need_recipient'), type: 'error' });
       return;
     }
     // Text left in a field after Enter / blur (or a chip from an old draft) that is not an address.
     if ([...to, ...cc, ...bcc].some((address) => !isAddress(address))) {
-      setStatus({ text: invalidAddressText, type: 'error' });
+      setStatus({ text: tr('compose.invalid_address'), type: 'error' });
       return;
     }
     if (!subject.trim()) {
-      setStatus({ text: 'Subject is required.', type: 'error' });
+      setStatus({ text: tr('compose.need_subject'), type: 'error' });
       return;
     }
 
@@ -611,40 +653,61 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
     try {
       // A save in flight finishes first and no new one starts: a PUT landing after the send would bring the draft back.
       await saver?.lockForSend();
-      const data = await sendMessage({
-        from: sender,
-        to,
-        cc: cc.length > 0 ? cc : undefined,
-        bcc: bcc.length > 0 ? bcc : undefined,
-        subject: subject.trim(),
-        text,
-        html: `<div style="font-family:'Geist',ui-sans-serif,system-ui,sans-serif;font-size:15px;line-height:24px">${html}</div>`,
-        attachments:
-          files.length > 0
-            ? files.map((f) => ({ filename: f.filename, content_type: f.content_type, content_base64: f.content_base64 }))
-            : undefined,
-        in_reply_to: draft.inReplyTo,
-        references: draft.references,
-        draft_id: saver?.id
+      const wrappedHtml = `<div style="font-family:'Geist',ui-sans-serif,system-ui,sans-serif;font-size:15px;line-height:24px">${html}</div>`;
+      // Between people on this server the message is sealed here, in the browser (lib/sealedmail); anything else goes the usual way.
+      const outcome = await sendFlow.run({
+        sender,
+        headers: { to, cc, bcc, in_reply_to: draft.inReplyTo, references: draft.references, draft_id: saver?.id },
+        content: { subject: subject.trim(), text, html: wrappedHtml },
+        attachments: files.map(outgoingFile),
+        sourceIsE2E: draft.sourceIsE2E === true
       });
+      if (outcome.status === 'cancelled') {
+        // The person said no to a question: nothing was sent, the compose stays as it was.
+        saver?.unlock();
+        sendingRef.current = false;
+        return;
+      }
+      let note: string | undefined;
+      if (outcome.status === 'normal') {
+        ({ note } = await sendMessage({
+          from: sender,
+          to,
+          cc: cc.length > 0 ? cc : undefined,
+          bcc: bcc.length > 0 ? bcc : undefined,
+          subject: subject.trim(),
+          text,
+          html: wrappedHtml,
+          attachments:
+            files.length > 0
+              ? files.map((f) => ({ filename: f.filename, content_type: f.content_type, content_base64: f.content_base64 }))
+              : undefined,
+          in_reply_to: draft.inReplyTo,
+          references: draft.references,
+          draft_id: saver?.id
+        }));
+      }
 
-      markSent('Message sent.');
-      onSuccess(data.note);
+      markSent(tr('compose.sent'));
+      onSuccess(note);
     } catch (error: unknown) {
       console.error('Send failed', error);
-      const message = error instanceof Error && error.message !== '' ? error.message : 'Error sending email';
-      if (message.startsWith(sentUnsavedPrefix)) {
+      if (error instanceof UnauthorizedError) {
+        // The session is gone: a normal read signs the person out the way every other screen does.
+        void queryClient.invalidateQueries({ queryKey: queryKeys.messages });
+      }
+      const message = sendErrorText(error, tr);
+      if (error instanceof ApiError && error.code === SENT_COPY_FAILED) {
         // The mail went out and only its copy in Sent is missing: sending it again would deliver it twice.
-        const notice = sendErrorText(message);
-        markSent(notice);
+        markSent(message);
         onSuccess();
         // The compose is gone in under a second; the warning has to outlive it.
-        onNotice?.(notice);
+        onNotice?.(message);
       } else {
         // The server keeps the draft when the send fails; autosave goes on.
         saver?.unlock();
         sendingRef.current = false;
-        setStatus({ text: error instanceof TypeError ? noConnectionText : sendErrorText(message), type: 'error' });
+        setStatus({ text: error instanceof TypeError ? tr('compose.no_connection') : message, type: 'error' });
       }
     } finally {
       setIsSending(false);
@@ -669,7 +732,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
     closingRef.current = true;
     const deleted = (await saverRef.current?.discard()) ?? true;
     if (!deleted) {
-      onNotice?.('Could not discard the draft');
+      onNotice?.(tr('compose.discard_failed'));
     }
     onClose();
   };
@@ -706,6 +769,17 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
     color: t.text2,
     cursor: 'pointer'
   };
+  // The key caps of the "to send" hint.
+  const kbdStyle: React.CSSProperties = {
+    fontFamily: "'Geist Mono', ui-monospace, monospace",
+    fontSize: 11,
+    lineHeight: '18px',
+    padding: '0 6px',
+    borderRadius: 5,
+    border: `1px solid ${t.borderStrong}`,
+    background: t.surface,
+    color: t.text2
+  };
 
   const missingFrom = from.trim() === '';
   const danger = t.dark ? '#F97066' : '#B42318';
@@ -713,7 +787,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
   const sent = status?.type === 'success';
   const noSignature = signatureBlock(signature) === '';
   // The empty-sender hint shows until the field is filled; other messages (validation, send result) take over.
-  const shownStatus = status ?? (missingFrom ? { text: missingFromText, type: 'error' as const } : null);
+  const shownStatus = status ?? (missingFrom ? { text: tr('compose.missing_from'), type: 'error' as const } : null);
 
   const statusEl = shownStatus ? (
     <span
@@ -754,7 +828,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
         color: draftStatus === 'error' ? danger : t.text3
       }}
     >
-      {draftStatusText[draftStatus]}
+      {draftStatusText(draftStatus, tr)}
     </output>
   );
 
@@ -787,7 +861,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
           cursor: 'pointer'
         }}
       >
-        Cc/Bcc
+        {`${tr('term.cc')}/${tr('term.bcc')}`}
       </button>
     );
 
@@ -811,6 +885,10 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
       }}
       className="nm-fade-in"
       onKeyDown={(e) => {
+        // The question dialog of a send (compose/useConfirm) lives inside this root: its keys are its own.
+        if (e.target instanceof Element && e.target.closest('[role="alertdialog"]') !== null) {
+          return;
+        }
         trapTab(e, dialogRef.current);
         if (e.key === 'Escape') {
           void requestClose();
@@ -832,7 +910,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
               void requestClose();
             }}
             disabled={isSending}
-            aria-label="Back"
+            aria-label={tr('common.back')}
             className="nm-tap"
             style={{
               display: 'inline-flex',
@@ -850,11 +928,11 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
             }}
           >
             <ArrowLeft size={20} strokeWidth={1.8} aria-hidden="true" />
-            <span className="nm-hide-sm">Back</span>
+            <span className="nm-hide-sm">{tr('common.back')}</span>
           </button>
         </div>
         <h1 id="compose-title" style={{ margin: 0, fontSize: 16, lineHeight: '24px', fontWeight: 600, whiteSpace: 'nowrap' }}>
-          {titleOf(draft)}
+          {titleOf(draft, tr)}
         </h1>
         <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
           {statusBelow ? null : statusEl}
@@ -865,9 +943,9 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
               void requestClose();
             }}
             disabled={isSending}
-            aria-label="Close"
+            aria-label={tr('common.close')}
             className="nm-tap"
-            title="Close"
+            title={tr('common.close')}
             style={{
               ...toolBtn,
               flex: 'none',
@@ -912,7 +990,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
           <div className="nm-compose-scroll" style={{ overflowY: 'auto' }}>
             <div style={fieldRow}>
               <label htmlFor="compose-from" style={labelStyle}>
-                From
+                {tr('term.sender')}
               </label>
               <input
                 id="compose-from"
@@ -922,13 +1000,13 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                 onChange={(e) => setFrom(e.target.value)}
                 onKeyDown={enterToBody}
                 style={{ ...inputStyle, height: 40, textOverflow: 'ellipsis' }}
-                placeholder="sender@yourdomain.com"
+                placeholder={tr('compose.from_placeholder')}
               />
             </div>
 
             <div style={{ ...fieldRow, padding: '6px 16px 6px 24px', ...(narrow ? { alignItems: 'flex-start' } : null) }}>
               <label htmlFor="compose-to" style={narrow ? { ...labelStyle, paddingTop: toList.length > 0 ? 6 : 12 } : labelStyle}>
-                To
+                {tr('term.to')}
               </label>
               <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                 {toList.map((address) => (
@@ -949,11 +1027,11 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
-                  placeholder={toList.length === 0 ? 'Add people' : ''}
+                  placeholder={toList.length === 0 ? tr('compose.to_placeholder') : ''}
                   value={toInput}
                   onChange={(e) => setToInput(e.target.value)}
                   onKeyDown={(e) => {
-                    if (['Enter', ',', ';'].includes(e.key)) {
+                    if (isCommitKey(e.key)) {
                       e.preventDefault();
                       commitRecipients(toInput, setToList, setToInput);
                     }
@@ -973,7 +1051,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
             {showCc ? (
               <div style={fieldRow}>
                 <label htmlFor="compose-cc" style={labelStyle}>
-                  Cc
+                  {tr('term.cc')}
                 </label>
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                   {ccList.map((address) => (
@@ -997,7 +1075,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                     value={ccInput}
                     onChange={(e) => setCcInput(e.target.value)}
                     onKeyDown={(e) => {
-                      if (['Enter', ',', ';'].includes(e.key)) {
+                      if (isCommitKey(e.key)) {
                         e.preventDefault();
                         commitRecipients(ccInput, setCcList, setCcInput);
                       }
@@ -1012,7 +1090,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
             {showBcc ? (
               <div style={fieldRow}>
                 <label htmlFor="compose-bcc" style={labelStyle}>
-                  Bcc
+                  {tr('term.bcc')}
                 </label>
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                   {bccList.map((address) => (
@@ -1036,7 +1114,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                     value={bccInput}
                     onChange={(e) => setBccInput(e.target.value)}
                     onKeyDown={(e) => {
-                      if (['Enter', ',', ';'].includes(e.key)) {
+                      if (isCommitKey(e.key)) {
                         e.preventDefault();
                         commitRecipients(bccInput, setBccList, setBccInput);
                       }
@@ -1048,9 +1126,13 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
               </div>
             ) : null}
 
+            <ReplyRedirectNote t={t} redirect={draft.replyRedirect} to={toList} />
+
+            <ComposeState t={t} preview={preview} />
+
             <div style={fieldRow}>
               <label htmlFor="compose-subject" style={labelStyle}>
-                Subject
+                {tr('term.subject')}
               </label>
               <input
                 id="compose-subject"
@@ -1059,13 +1141,13 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 onKeyDown={enterToBody}
-                placeholder="Subject"
+                placeholder={tr('term.subject')}
                 style={{ ...inputStyle, height: 40, fontSize: 15, fontWeight: 500, textOverflow: 'ellipsis' }}
               />
             </div>
 
             <div
-              aria-label="Formatting"
+              aria-label={tr('compose.format_group')}
               className="nm-hide-scrollbar nm-compose-fmt"
               style={{
                 display: 'flex',
@@ -1078,7 +1160,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
               }}
             >
               <select
-                aria-label="Text style"
+                aria-label={tr('compose.text_style')}
                 className="nm-tap-h"
                 onChange={(e) => exec('formatBlock', e.target.value)}
                 defaultValue="p"
@@ -1095,21 +1177,35 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                   cursor: 'pointer'
                 }}
               >
-                <option value="p">Normal text</option>
-                <option value="h3">Heading</option>
-                <option value="h4">Subheading</option>
+                <option value="p">{tr('compose.style_normal')}</option>
+                <option value="h3">{tr('compose.style_heading')}</option>
+                <option value="h4">{tr('compose.style_subheading')}</option>
               </select>
               <span aria-hidden="true" className="nm-hide-sm" style={{ width: 1, height: 20, margin: '0 6px', background: t.border }} />
-              <button type="button" aria-label="Bold" title="Bold" className="nm-tap" onClick={() => exec('bold')} style={toolBtn}>
+              <button
+                type="button"
+                aria-label={tr('compose.bold')}
+                title={tr('compose.bold')}
+                className="nm-tap"
+                onClick={() => exec('bold')}
+                style={toolBtn}
+              >
                 <Bold size={18} strokeWidth={2.2} aria-hidden="true" />
               </button>
-              <button type="button" aria-label="Italic" title="Italic" className="nm-tap" onClick={() => exec('italic')} style={toolBtn}>
+              <button
+                type="button"
+                aria-label={tr('compose.italic')}
+                title={tr('compose.italic')}
+                className="nm-tap"
+                onClick={() => exec('italic')}
+                style={toolBtn}
+              >
                 <Italic size={18} strokeWidth={2} aria-hidden="true" />
               </button>
               <button
                 type="button"
-                aria-label="Underline"
-                title="Underline"
+                aria-label={tr('compose.underline')}
+                title={tr('compose.underline')}
                 className="nm-tap"
                 onClick={() => exec('underline')}
                 style={toolBtn}
@@ -1119,8 +1215,8 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
               <span aria-hidden="true" className="nm-hide-sm" style={{ width: 1, height: 20, margin: '0 6px', background: t.border }} />
               <button
                 type="button"
-                aria-label="Bulleted list"
-                title="Bulleted list"
+                aria-label={tr('compose.bulleted_list')}
+                title={tr('compose.bulleted_list')}
                 className="nm-tap"
                 onClick={() => exec('insertUnorderedList')}
                 style={toolBtn}
@@ -1129,8 +1225,8 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
               </button>
               <button
                 type="button"
-                aria-label="Numbered list"
-                title="Numbered list"
+                aria-label={tr('compose.numbered_list')}
+                title={tr('compose.numbered_list')}
                 className="nm-tap"
                 onClick={() => exec('insertOrderedList')}
                 style={toolBtn}
@@ -1139,8 +1235,8 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
               </button>
               <button
                 type="button"
-                aria-label="Quote"
-                title="Quote"
+                aria-label={tr('compose.quote')}
+                title={tr('compose.quote')}
                 className="nm-tap"
                 onClick={() => exec('formatBlock', 'blockquote')}
                 style={toolBtn}
@@ -1150,12 +1246,12 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
               <span aria-hidden="true" className="nm-hide-sm" style={{ width: 1, height: 20, margin: '0 6px', background: t.border }} />
               <button
                 type="button"
-                aria-label="Insert link"
-                title="Insert link"
+                aria-label={tr('compose.insert_link')}
+                title={tr('compose.insert_link')}
                 className="nm-tap"
                 onClick={() => {
                   // eslint-disable-next-line no-alert -- no custom dialog exists for the URL prompt
-                  const url = window.prompt('Link URL');
+                  const url = window.prompt(tr('compose.link_prompt'));
                   if (url !== null && url !== '') {
                     exec('createLink', url);
                   }
@@ -1166,12 +1262,12 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
               </button>
               <button
                 type="button"
-                aria-label="Insert image"
-                title="Insert image by URL"
+                aria-label={tr('compose.insert_image')}
+                title={tr('compose.insert_image_url')}
                 className="nm-tap"
                 onClick={() => {
                   // eslint-disable-next-line no-alert -- no custom dialog exists for the URL prompt
-                  const url = window.prompt('Image URL');
+                  const url = window.prompt(tr('compose.image_prompt'));
                   if (url !== null && url !== '') {
                     exec('insertImage', url);
                   }
@@ -1182,8 +1278,8 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
               </button>
               <button
                 type="button"
-                aria-label="Attach files"
-                title="Attach files"
+                aria-label={tr('action.attach_files')}
+                title={tr('action.attach_files')}
                 className="nm-tap"
                 onClick={() => fileRef.current?.click()}
                 style={toolBtn}
@@ -1207,8 +1303,8 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
               contentEditable
               role="textbox"
               aria-multiline="true"
-              aria-label="Message body"
-              data-placeholder="Write your message…"
+              aria-label={tr('compose.body_label')}
+              data-placeholder={tr('compose.body_placeholder')}
               className="nm-editor"
               onInput={() => {
                 readBody();
@@ -1233,7 +1329,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
             {files.length > 0 ? (
               <ul
                 role="list"
-                aria-label="Attachments"
+                aria-label={tr('term.attachments')}
                 style={{ listStyle: 'none', margin: 0, padding: '0 24px 20px', display: 'flex', flexWrap: 'wrap', gap: 12 }}
               >
                 {files.map((file, index) => (
@@ -1279,8 +1375,8 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                     </span>
                     <button
                       type="button"
-                      aria-label={`Remove ${file.filename}`}
-                      title="Remove"
+                      aria-label={tr('compose.remove_file', { filename: file.filename })}
+                      title={tr('common.remove')}
                       className="nm-tap"
                       onClick={() => setFiles((prev) => prev.filter((_, i) => i !== index))}
                       style={toolBtn}
@@ -1294,7 +1390,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
 
             {files.length > 0 ? (
               <p style={{ margin: '-8px 0 0', padding: '0 24px 16px', fontSize: 12, lineHeight: '16px', color: t.text3 }}>
-                Attachments are not saved in drafts
+                {tr('compose.attachments_not_saved')}
               </p>
             ) : null}
           </div>
@@ -1333,48 +1429,27 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                 ) : (
                   <Send size={18} strokeWidth={1.8} aria-hidden="true" />
                 )}
-                {isSending ? 'Sending…' : 'Send'}
+                {isSending ? tr('compose.sending') : tr('action.send')}
               </button>
             </div>
             {statusBelow || touchOnly ? null : (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, lineHeight: '16px', color: t.text2 }}>
-                <kbd
-                  style={{
-                    fontFamily: "'Geist Mono', ui-monospace, monospace",
-                    fontSize: 11,
-                    lineHeight: '18px',
-                    padding: '0 6px',
-                    borderRadius: 5,
-                    border: `1px solid ${t.borderStrong}`,
-                    background: t.surface,
-                    color: t.text2
-                  }}
-                >
-                  Ctrl
-                </kbd>
-                <kbd
-                  style={{
-                    fontFamily: "'Geist Mono', ui-monospace, monospace",
-                    fontSize: 11,
-                    lineHeight: '18px',
-                    padding: '0 6px',
-                    borderRadius: 5,
-                    border: `1px solid ${t.borderStrong}`,
-                    background: t.surface,
-                    color: t.text2
-                  }}
-                >
-                  Enter
-                </kbd>
-                to send
+                {tRich('compose.send_shortcut', {
+                  keys: (
+                    <>
+                      <kbd style={kbdStyle}>{tr('compose.key_ctrl')}</kbd>
+                      <kbd style={kbdStyle}>{tr('compose.key_enter')}</kbd>
+                    </>
+                  )
+                })}
               </span>
             )}
             <button
               type="button"
-              aria-label="Insert signature"
+              aria-label={tr('compose.insert_signature')}
               className="nm-tap"
               disabled={noSignature}
-              title={noSignature ? 'No signature saved. Add one in Settings.' : 'Insert signature'}
+              title={noSignature ? tr('compose.no_signature') : tr('compose.insert_signature')}
               onClick={() => {
                 editorRef.current?.focus();
                 const block = signatureBlock(signature);
@@ -1398,9 +1473,9 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
             <button
               ref={discardRef}
               type="button"
-              aria-label={confirmingDiscard ? 'Confirm discard' : 'Discard draft'}
+              aria-label={confirmingDiscard ? tr('compose.confirm_discard') : tr('action.discard_draft')}
               className="nm-tap"
-              title="Discard draft"
+              title={tr('action.discard_draft')}
               onClick={() => {
                 // Asks first when something would be lost: typed text, attachments, or a draft that is saved on the server.
                 const { empty } = readDraft();
@@ -1420,11 +1495,12 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, t, onClose, 
                 ...(confirmingDiscard ? { width: 'auto', padding: '0 8px', color: danger, fontSize: 14, fontWeight: 600 } : null)
               }}
             >
-              {confirmingDiscard ? 'Discard?' : <Trash2 size={20} strokeWidth={1.8} aria-hidden="true" />}
+              {confirmingDiscard ? tr('compose.discard_ask') : <Trash2 size={20} strokeWidth={1.8} aria-hidden="true" />}
             </button>
           </div>
         </form>
       </main>
+      {sendFlow.dialog}
     </div>
   );
 };

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiPost, UnauthorizedError } from './api';
-import { CANNOT_REACH_SERVER, endSession } from './auth';
+import { cannotReachServer, endSession } from './auth';
+import type { SignOutPush } from './auth';
+import { tr } from './i18n';
 
 export interface PushNotifications {
   /** Browser can do Web Push (service worker + PushManager + Notification). On iOS only inside an installed PWA. */
@@ -22,7 +24,8 @@ interface TestResult {
   removed: number;
 }
 
-const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const supported =
+  typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && typeof Notification !== 'undefined';
 
 function decodeKey(value: string): Uint8Array<ArrayBuffer> {
   const base64 = value.replaceAll('-', '+').replaceAll('_', '/');
@@ -42,7 +45,7 @@ async function currentSubscription(): Promise<PushSubscription | null> {
 // Only production builds register the service worker, and `ready` would wait forever without one.
 async function readyRegistration(): Promise<ServiceWorkerRegistration> {
   if ((await navigator.serviceWorker.getRegistration()) === undefined) {
-    throw new Error('Notifications work in the built app, not in the dev server.');
+    throw new Error(tr('push.dev_server'));
   }
   return navigator.serviceWorker.ready;
 }
@@ -50,11 +53,9 @@ async function readyRegistration(): Promise<ServiceWorkerRegistration> {
 const SERVER_CAP_MS = 5000;
 const BROWSER_CAP_MS = 3000;
 
-const DEVICE_OFF_FAILED = 'Could not turn off notifications on this device. Try again.';
-
 /** What to tell the user when the server could not confirm: the real cause when the network is down, else the generic text. */
 export function deviceOffMessage(result: 'failed' | 'offline'): string {
-  return result === 'offline' ? CANNOT_REACH_SERVER : DEVICE_OFF_FAILED;
+  return result === 'offline' ? cannotReachServer() : tr('push.device_off_failed');
 }
 
 // Asks the server to delete this device's row. 401 (the login is already gone) and 404 (no such row) leave nothing to keep either.
@@ -106,6 +107,29 @@ function dropInBrowser(subscription: PushSubscription): Promise<void> {
 export type DeviceRemoval = 'removed' | 'signed-out' | 'failed' | 'offline';
 
 /**
+ * The push side of a sign-out (CK-16): the endpoint of this browser's subscription goes with the logout request (the Worker deletes that one row
+ * in the same batch as the sessions), and the browser's own subscription is dropped once the request has answered. Reading the subscription is
+ * local; `sign-out` caps it. Nothing here needs the session, so a network that is down costs nothing.
+ */
+export function pushForSignOut(): SignOutPush {
+  let found: PushSubscription | null = null;
+  return {
+    endpoint: async () => {
+      if (!supported) {
+        return null;
+      }
+      found = await currentSubscription();
+      return found?.endpoint ?? null;
+    },
+    drop: async () => {
+      if (found !== null) {
+        await dropInBrowser(found);
+      }
+    }
+  };
+}
+
+/**
  * Turns push off for this device, server first: the browser keeps its subscription unless the server confirmed that the row is
  * gone, so a failed attempt can simply be repeated (a browser that had dropped it already would leave a row nobody can name again).
  * 'removed' also covers a device that was never subscribed; 'signed-out' means the server answered 401; 'offline' is 'failed' because
@@ -131,12 +155,12 @@ export async function removeThisDevice(): Promise<DeviceRemoval> {
 function describe(error: unknown, fallback: string): string {
   if (error instanceof DOMException) {
     if (error.name === 'AbortError') {
-      return 'The browser could not reach its push service. Check your connection and try again.';
+      return tr('push.service_unreachable');
     }
-    return error.name === 'NotAllowedError' ? 'Notifications are blocked in your browser settings.' : fallback;
+    return error.name === 'NotAllowedError' ? tr('push.blocked') : fallback;
   }
   if (error instanceof TypeError) {
-    return 'Could not reach the server.';
+    return tr('app.server_unreachable');
   }
   return error instanceof Error && !(error instanceof SyntaxError) && error.message !== '' ? error.message : fallback;
 }
@@ -160,7 +184,7 @@ export function usePushNotifications(): PushNotifications {
       try {
         const subscription = await currentSubscription();
         const status = subscription
-          ? await apiPost<{ subscribed: boolean }>('/api/push/status', { endpoint: subscription.endpoint }, 'Could not check notifications')
+          ? await apiPost<{ subscribed: boolean }>('/api/push/status', { endpoint: subscription.endpoint }, 'fail.push_status')
           : null;
         if (!unmounted.signal.aborted) {
           setSubscribed(status?.subscribed === true);
@@ -200,18 +224,18 @@ export function usePushNotifications(): PushNotifications {
     }
     // Permission has to be requested straight from the click, before any other await.
     const permissionRequest = Notification.requestPermission();
-    await run('Could not turn notifications on.', async () => {
+    await run(tr('push.turn_on_failed'), async () => {
       const result = await permissionRequest;
       setPermission(result);
       if (result !== 'granted') {
         // 'denied' is explained by the Settings dialog itself.
         if (result === 'default') {
-          setError('Notifications were not allowed.');
+          setError(tr('push.not_allowed'));
         }
         return;
       }
       const registration = await readyRegistration();
-      const { publicKey } = await apiGet<{ publicKey: string }>('/api/push/public-key', 'Could not load the notification key');
+      const { publicKey } = await apiGet<{ publicKey: string }>('/api/push/public-key', 'fail.push_key');
       const key = decodeKey(publicKey);
       let subscription = await registration.pushManager.getSubscription();
       if (subscription && !sameKey(subscription.options.applicationServerKey, key)) {
@@ -219,14 +243,14 @@ export function usePushNotifications(): PushNotifications {
         const stale = subscription.endpoint;
         await subscription.unsubscribe();
         try {
-          await apiPost('/api/push/unsubscribe', { endpoint: stale }, 'Could not remove the old subscription');
+          await apiPost('/api/push/unsubscribe', { endpoint: stale }, 'fail.push_unsubscribe');
         } catch {
           // the server drops it itself once the push service answers 404/410
         }
         subscription = null;
       }
       subscription ??= await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
-      await apiPost('/api/push/subscribe', subscription.toJSON(), 'Could not register this device');
+      await apiPost('/api/push/subscribe', subscription.toJSON(), 'fail.push_subscribe');
       setSubscribed(true);
     });
   };
@@ -235,7 +259,7 @@ export function usePushNotifications(): PushNotifications {
     if (!supported) {
       return;
     }
-    await run('Could not turn notifications off.', async () => {
+    await run(tr('push.turn_off_failed'), async () => {
       const result = await removeThisDevice();
       if (result === 'failed' || result === 'offline') {
         // Nothing was dropped in the browser, so the switch stays on and the next click can try again.
@@ -249,17 +273,15 @@ export function usePushNotifications(): PushNotifications {
   };
 
   const sendTest = async () => {
-    await run('Could not send the test notification.', async () => {
-      const { sent, failed, removed } = await apiPost<TestResult>('/api/push/test', {}, 'Could not send the test notification');
+    await run(tr('push.test_failed'), async () => {
+      const { sent, failed, removed } = await apiPost<TestResult>('/api/push/test', {}, 'fail.push_test');
       if (sent > 0) {
         return;
       }
       if (failed > 0) {
-        throw new Error('The push service did not accept the notification. Try again in a moment.');
+        throw new Error(tr('push.service_rejected'));
       }
-      throw new Error(
-        removed > 0 ? 'The push service no longer knows this device. Turn notifications off and on again.' : 'No device is registered.'
-      );
+      throw new Error(removed > 0 ? tr('push.device_unknown') : tr('push.no_device'));
     });
   };
 

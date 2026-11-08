@@ -1,5 +1,6 @@
 import React from 'react';
 import type { ThemeTokens } from '../theme';
+import { useT } from '../lib/i18n';
 
 export interface ToastState {
   text: string;
@@ -17,6 +18,7 @@ interface ToastProps {
 }
 
 export const Toast: React.FC<ToastProps> = ({ t, toast, onDismiss, raised = false, desktop = false }) => {
+  const tr = useT();
   // App passes a new onDismiss on every render: the timer must not restart each time (an Undo toast would never expire).
   const dismissRef = React.useRef(onDismiss);
   React.useLayoutEffect(() => {
@@ -82,7 +84,7 @@ export const Toast: React.FC<ToastProps> = ({ t, toast, onDismiss, raised = fals
             cursor: 'pointer'
           }}
         >
-          Undo
+          {tr('toast.undo')}
         </button>
       ) : null}
     </output>

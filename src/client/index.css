@@ -97,6 +97,15 @@ button {
   animation: nm-fade-in 0.18s ease-out;
 }
 
+/* Reduced motion (C-11): nothing slides in and nothing turns or pulses. A busy button still says so: its text, `aria-busy`, the progress cursor and
+   the dimmed look. */
+@media (prefers-reduced-motion: reduce) {
+  .nm-fade-in,
+  .nm-spin {
+    animation: none;
+  }
+}
+
 @media (max-width: 640px) {
   .nm-hide-sm {
     display: none !important;
@@ -143,6 +152,11 @@ button {
   }
 }
 
+/* A title that script gives the keyboard (the screen that just opened) needs no outline: it is not a control. */
+h1[tabindex='-1']:focus {
+  outline: none;
+}
+
 /* Phone tap targets (44px). Class names go on the control; desktop keeps its inline sizes. */
 @media (max-width: 900px) {
   .nm-tap {
@@ -160,6 +174,14 @@ button {
     content: '';
     position: absolute;
     inset: -4px;
+  }
+}
+
+/* The admin console and its dialogs on a phone (C-12): every button is 44px high. `min-height` wins over the inline `height: 40`, so the buttons
+   keep their look on a desktop. */
+@media (max-width: 900px) {
+  .nm-admin button {
+    min-height: 44px;
   }
 }
 

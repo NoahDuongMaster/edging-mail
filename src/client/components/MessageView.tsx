@@ -25,6 +25,7 @@ import {
   LABEL_NAME_MAX,
   LABEL_NAME_PATTERN,
   MAX_LABELS_PER_MESSAGE,
+  arrivedUnverified,
   bodyParagraphs,
   displayName,
   fileTypeOf,
@@ -32,8 +33,18 @@ import {
   formatFullDate,
   initialsOf,
   labelsOf,
-  stringHue
+  stringHue,
+  subjectOf
 } from '../lib/mail';
+import { useT, type MessageKey } from '../lib/i18n';
+import { getUnlockedKey } from '../lib/crypto/keyStore';
+import { loadEmbeddedImages } from '../lib/mailcrypto/inline';
+import { safeFileName } from '../lib/mailcrypto/files';
+import { E2eBadge } from './E2eBadge';
+import { UnverifiedChip } from './UnverifiedChip';
+import { MailNote } from '../lib/mailcrypto/MailNote';
+import { isUnreadable } from '../lib/mailcrypto/texts';
+import { useMailDownloads } from '../lib/mailcrypto/useMailDownloads';
 import { MailFrame } from './MailFrame';
 import { SnoozeChip, SnoozeMenu } from './SnoozeMenu';
 
@@ -43,6 +54,8 @@ interface MessageViewProps {
   attachments: Attachment[];
   isLoading: boolean;
   labels: string[];
+  /** Where a failed download is reported (the app's toast). Without it the reader shows the failure itself, under the message. */
+  onNotice?: (text: string) => void;
   onReply: (message: Message) => void;
   onReplyAll: (message: Message) => void;
   onForward: (message: Message) => void;
@@ -124,15 +137,37 @@ const iconBtn = (t: ThemeTokens): React.CSSProperties => ({
   cursor: 'pointer'
 });
 
+/** The download control of one attachment (a link for a plain file, a button for an encrypted one). */
+const downloadStyle = (t: ThemeTokens): React.CSSProperties => ({
+  width: 36,
+  height: 36,
+  flex: 'none',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  border: 0,
+  borderRadius: 8,
+  color: t.text2
+});
+
+type LabelProblem = 'invalid' | 'exists' | 'full';
+
+/** What is shown for each problem: the key is kept (not the text), so a language switch changes a hint that is on screen. */
+const LABEL_PROBLEM_KEYS: Record<LabelProblem, MessageKey> = {
+  invalid: 'reader.label_invalid',
+  exists: 'reader.label_exists',
+  full: 'reader.label_limit'
+};
+
 /** Why `label` cannot be created (checked again by the server), or null when it can. */
-function labelProblem(label: string, existing: string[], full: boolean): string | null {
+function labelProblem(label: string, existing: string[], full: boolean): LabelProblem | null {
   if (!LABEL_NAME_PATTERN.test(label)) {
-    return 'Use letters, numbers, spaces, - and _ only.';
+    return 'invalid';
   }
   if (existing.some((name) => name.toLowerCase() === label.toLowerCase())) {
-    return 'That label already exists.';
+    return 'exists';
   }
-  return full ? `A message can have ${MAX_LABELS_PER_MESSAGE} labels at most.` : null;
+  return full ? 'full' : null;
 }
 
 interface NewLabelRowProps {
@@ -146,8 +181,9 @@ interface NewLabelRowProps {
 
 /** Last row of the label menu: type a name, press Enter (or the button) to create it and put it on the open message. */
 const NewLabelRow: React.FC<NewLabelRowProps> = ({ t, existing, full, onCreate }) => {
+  const tr = useT();
   const [name, setName] = React.useState('');
-  const [hint, setHint] = React.useState<string | null>(null);
+  const [hint, setHint] = React.useState<LabelProblem | null>(null);
   const blank = name.trim() === '';
   const hasList = existing.length > 0;
   // maxLength cuts a longer paste; this says so instead of leaving the field short without a word.
@@ -174,10 +210,10 @@ const NewLabelRow: React.FC<NewLabelRowProps> = ({ t, existing, full, onCreate }
         <input
           type="text"
           className="nm-tap-h"
-          aria-label="New label"
+          aria-label={tr('reader.new_label')}
           aria-invalid={hint !== null}
           aria-describedby={describedBy}
-          placeholder="New label"
+          placeholder={tr('reader.new_label')}
           autoComplete="off"
           maxLength={LABEL_NAME_MAX}
           value={name}
@@ -200,8 +236,8 @@ const NewLabelRow: React.FC<NewLabelRowProps> = ({ t, existing, full, onCreate }
         />
         <button
           type="submit"
-          aria-label="Create label"
-          title="Create label"
+          aria-label={tr('reader.create_label')}
+          title={tr('reader.create_label')}
           className="nm-tap"
           disabled={blank}
           style={{
@@ -225,7 +261,7 @@ const NewLabelRow: React.FC<NewLabelRowProps> = ({ t, existing, full, onCreate }
       {hint === null ? (
         atLimit ? (
           <p id="new-label-limit" style={{ margin: '6px 2px 2px', fontSize: 12, lineHeight: '16px', color: t.text2 }}>
-            {`Up to ${LABEL_NAME_MAX} characters`}
+            {tr('reader.label_name_limit', { max: LABEL_NAME_MAX })}
           </p>
         ) : null
       ) : (
@@ -234,7 +270,7 @@ const NewLabelRow: React.FC<NewLabelRowProps> = ({ t, existing, full, onCreate }
           role="alert"
           style={{ margin: '6px 2px 2px', fontSize: 12, lineHeight: '16px', color: t.dark ? '#F97066' : '#B42318' }}
         >
-          {hint}
+          {tr(LABEL_PROBLEM_KEYS[hint], { max: MAX_LABELS_PER_MESSAGE })}
         </p>
       )}
     </form>
@@ -266,8 +302,11 @@ export const MessageView: React.FC<MessageViewProps> = ({
   hasNext,
   position,
   onBack,
+  onNotice,
   compact = false
 }) => {
+  const tr = useT();
+  const downloads = useMailDownloads(message, onNotice);
   const [labelMenuOpen, setLabelMenuOpen] = React.useState(false);
   const labelMenuRef = React.useRef<HTMLDivElement | null>(null);
   const [showHtml, setShowHtml] = React.useState(true);
@@ -329,7 +368,7 @@ export const MessageView: React.FC<MessageViewProps> = ({
       <article ref={paneRef} aria-busy="true" style={{ ...shell, alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: t.text2 }}>
           <Loader2 size={18} className="nm-spin" aria-hidden="true" />
-          <span>Loading message…</span>
+          <span>{tr('reader.loading_message')}</span>
         </div>
       </article>
     );
@@ -340,8 +379,8 @@ export const MessageView: React.FC<MessageViewProps> = ({
       <article ref={paneRef} style={{ ...shell, alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: 40, textAlign: 'center' }}>
           <img src="/edgar.svg" alt="" width={132} height={128} style={{ display: 'block', maxWidth: '100%', height: 'auto' }} />
-          <p style={{ margin: '8px 0 0', fontSize: 15, fontWeight: 600 }}>No message selected</p>
-          <p style={{ margin: 0, maxWidth: 280, color: t.text2, textWrap: 'balance' }}>Choose a message from the list to read it here.</p>
+          <p style={{ margin: '8px 0 0', fontSize: 15, fontWeight: 600 }}>{tr('reader.none_selected')}</p>
+          <p style={{ margin: 0, maxWidth: 280, color: t.text2, textWrap: 'balance' }}>{tr('reader.none_selected_hint')}</p>
         </div>
       </article>
     );
@@ -383,18 +422,32 @@ export const MessageView: React.FC<MessageViewProps> = ({
         }}
       >
         {onBack ? (
-          <button type="button" aria-label="Back to list" title="Back" className="nm-tap" onClick={onBack} style={barBtn}>
+          <button
+            type="button"
+            aria-label={tr('reader.back_to_list')}
+            title={tr('common.back')}
+            className="nm-tap"
+            onClick={onBack}
+            style={barBtn}
+          >
             <ChevronLeft size={20} strokeWidth={1.8} aria-hidden="true" />
           </button>
         ) : null}
-        <button type="button" aria-label="Archive" title="Archive" className="nm-tap" onClick={() => onArchive(message)} style={barBtn}>
+        <button
+          type="button"
+          aria-label={tr('action.archive')}
+          title={tr('action.archive')}
+          className="nm-tap"
+          onClick={() => onArchive(message)}
+          style={barBtn}
+        >
           <Archive size={20} strokeWidth={1.8} aria-hidden="true" />
         </button>
         {inSpam ? null : (
           <button
             type="button"
-            aria-label="Move to Spam"
-            title="Move to Spam"
+            aria-label={tr('action.move_to_spam')}
+            title={tr('action.move_to_spam')}
             className="nm-tap"
             onClick={() => onSpam(message)}
             style={barBtn}
@@ -405,8 +458,8 @@ export const MessageView: React.FC<MessageViewProps> = ({
         {inTrash ? null : (
           <button
             type="button"
-            aria-label="Move to Trash"
-            title="Move to Trash"
+            aria-label={tr('action.move_to_trash')}
+            title={tr('action.move_to_trash')}
             className="nm-tap"
             onClick={() => onTrash(message)}
             style={barBtn}
@@ -418,8 +471,8 @@ export const MessageView: React.FC<MessageViewProps> = ({
           <>
             <button
               type="button"
-              aria-label="Move to Inbox"
-              title="Move to Inbox"
+              aria-label={tr('action.move_to_inbox')}
+              title={tr('action.move_to_inbox')}
               className="nm-tap"
               onClick={() => onRestore(message)}
               style={barBtn}
@@ -428,8 +481,8 @@ export const MessageView: React.FC<MessageViewProps> = ({
             </button>
             <button
               type="button"
-              aria-label="Delete forever"
-              title="Delete forever"
+              aria-label={tr('action.delete_forever')}
+              title={tr('action.delete_forever')}
               className="nm-tap"
               onClick={() => onDeleteForever(message)}
               style={{ ...barBtn, color: danger }}
@@ -445,8 +498,8 @@ export const MessageView: React.FC<MessageViewProps> = ({
         />
         <button
           type="button"
-          aria-label="Mark as unread"
-          title="Mark as unread"
+          aria-label={tr('action.mark_unread')}
+          title={tr('action.mark_unread')}
           className="nm-tap"
           onClick={() => onMarkUnread(message)}
           style={barBtn}
@@ -467,8 +520,8 @@ export const MessageView: React.FC<MessageViewProps> = ({
         <div ref={labelMenuRef} style={{ position: 'relative' }}>
           <button
             type="button"
-            aria-label="Add label"
-            title="Add label"
+            aria-label={tr('reader.add_label')}
+            title={tr('reader.add_label')}
             className="nm-tap"
             aria-expanded={labelMenuOpen}
             onClick={() => setLabelMenuOpen((v) => !v)}
@@ -532,7 +585,9 @@ export const MessageView: React.FC<MessageViewProps> = ({
                       <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {label}
                       </span>
-                      {on ? <span style={{ flex: 'none', color: t.link, fontSize: 12, fontWeight: 600 }}>Added</span> : null}
+                      {on ? (
+                        <span style={{ flex: 'none', color: t.link, fontSize: 12, fontWeight: 600 }}>{tr('reader.label_added')}</span>
+                      ) : null}
                     </button>
                   );
                 })}
@@ -557,8 +612,8 @@ export const MessageView: React.FC<MessageViewProps> = ({
             )}
             <button
               type="button"
-              aria-label="Newer message"
-              title="Newer"
+              aria-label={tr('reader.newer_message')}
+              title={tr('reader.newer')}
               disabled={!hasPrev}
               onClick={onPrev}
               style={{ ...iconBtn(t), opacity: hasPrev ? 1 : 0.4, cursor: hasPrev ? 'pointer' : 'default' }}
@@ -567,8 +622,8 @@ export const MessageView: React.FC<MessageViewProps> = ({
             </button>
             <button
               type="button"
-              aria-label="Older message"
-              title="Older"
+              aria-label={tr('reader.older_message')}
+              title={tr('reader.older')}
               disabled={!hasNext}
               onClick={onNext}
               style={{ ...iconBtn(t), opacity: hasNext ? 1 : 0.4, cursor: hasNext ? 'pointer' : 'default' }}
@@ -595,7 +650,7 @@ export const MessageView: React.FC<MessageViewProps> = ({
                 textWrap: 'balance'
               }}
             >
-              {message.subject || '(No subject)'}
+              {subjectOf(message, tr('reader.no_subject'))}
             </h2>
             {messageLabels.length > 0 || snoozeUntil !== null ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -656,8 +711,9 @@ export const MessageView: React.FC<MessageViewProps> = ({
                 )}
               </div>
               <span style={{ fontSize: 13, color: t.text2, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                to {message.to_address}
-                {hasText(message.cc) ? `, cc ${message.cc}` : ''}
+                {hasText(message.cc)
+                  ? tr('reader.to_cc_line', { to: message.to_address, cc: message.cc })
+                  : tr('reader.to_line', { to: message.to_address })}
               </span>
             </div>
             <div
@@ -676,7 +732,7 @@ export const MessageView: React.FC<MessageViewProps> = ({
               </span>
               <button
                 type="button"
-                aria-label="Star"
+                aria-label={tr('action.star')}
                 aria-pressed={starred}
                 className="nm-tap"
                 onClick={() => onToggleStar(message)}
@@ -684,11 +740,22 @@ export const MessageView: React.FC<MessageViewProps> = ({
               >
                 <Star size={20} strokeWidth={1.8} fill={starred ? t.star : 'none'} aria-hidden="true" />
               </button>
-              <button type="button" aria-label="Reply" title="Reply" className="nm-tap" onClick={() => onReply(message)} style={iconBtn(t)}>
+              <button
+                type="button"
+                aria-label={tr('action.reply')}
+                title={tr('action.reply')}
+                className="nm-tap"
+                onClick={() => onReply(message)}
+                style={iconBtn(t)}
+              >
                 <Reply size={20} strokeWidth={1.8} aria-hidden="true" />
               </button>
             </div>
           </div>
+
+          {isUnreadable(message.mail_state) ? <MailNote t={t} state={message.mail_state} /> : null}
+          {message.is_e2e === 1 && message.mail_state === 'ready' ? <E2eBadge t={t} /> : null}
+          {arrivedUnverified(message) ? <UnverifiedChip t={t} /> : null}
 
           {hasText(message.body_html) && hasText(message.body_text) ? (
             <div
@@ -702,11 +769,11 @@ export const MessageView: React.FC<MessageViewProps> = ({
               }}
             >
               {[
-                { id: true, label: 'HTML' },
-                { id: false, label: 'Plain text' }
+                { id: true, label: tr('reader.view_html') },
+                { id: false, label: tr('reader.view_plain') }
               ].map((mode) => (
                 <button
-                  key={mode.label}
+                  key={String(mode.id)}
                   type="button"
                   className="nm-tap-h"
                   onClick={() => setShowHtml(mode.id)}
@@ -730,7 +797,14 @@ export const MessageView: React.FC<MessageViewProps> = ({
           ) : null}
 
           {hasText(message.body_html) && showHtml ? (
-            <MailFrame key={message.id} html={message.body_html} t={t} />
+            <MailFrame
+              key={message.id}
+              html={message.body_html}
+              t={t}
+              loadEmbedded={
+                message.enc_fmt === 1 ? (references) => loadEmbeddedImages(message, attachments, references, getUnlockedKey()) : undefined
+              }
+            />
           ) : (
             <div style={{ maxWidth: '68ch', fontSize: 15, lineHeight: '24px', color: t.text }}>
               {paragraphs.map((p, i) => (
@@ -743,13 +817,15 @@ export const MessageView: React.FC<MessageViewProps> = ({
           )}
 
           {attachments.length > 0 ? (
-            <section aria-label="Attachments" style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${t.border}` }}>
+            <section aria-label={tr('term.attachments')} style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${t.border}` }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
                 <h3 style={{ margin: 0, fontSize: 13, lineHeight: '20px', fontWeight: 600, color: t.text2 }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     <Paperclip size={14} strokeWidth={2} aria-hidden="true" />
-                    {attachments.length} {attachments.length === 1 ? 'attachment' : 'attachments'} ·{' '}
-                    {formatBytes(attachments.reduce((sum, a) => sum + a.size, 0))}
+                    {tr('reader.attachments_summary', {
+                      count: attachments.length,
+                      size: formatBytes(attachments.reduce((sum, a) => sum + a.size, 0))
+                    })}
                   </span>
                 </h3>
               </div>
@@ -765,8 +841,12 @@ export const MessageView: React.FC<MessageViewProps> = ({
                 }}
               >
                 {attachments.map((att) => {
-                  const type = fileTypeOf(att.filename);
+                  // PX-7: the name the sender gave is shown the way it is saved (no direction controls: "photo\u202Egpj.exe" would read
+                  // "photoexe.jpg"), and the type chip is read from that same name.
+                  const name = safeFileName(att.filename, tr('list.attachment'));
+                  const type = fileTypeOf(name);
                   const chip = getChip(FILE_HUES[type] || '#475569', t);
+                  const fetching = downloads.busy === att.id;
                   return (
                     <li
                       key={att.id}
@@ -801,31 +881,44 @@ export const MessageView: React.FC<MessageViewProps> = ({
                       </span>
                       <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, fontWeight: 500 }}>
-                          {att.filename}
+                          {name}
                         </span>
                         <span style={{ fontSize: 12, lineHeight: '16px', color: t.text3 }}>{formatBytes(att.size)}</span>
                       </span>
-                      <a
-                        href={`/api/attachments/${att.id}`}
-                        download={att.filename}
-                        aria-label={`Download ${att.filename}`}
-                        title="Download"
-                        className="nm-tap"
-                        style={{
-                          width: 36,
-                          height: 36,
-                          flex: 'none',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          border: 0,
-                          borderRadius: 8,
-                          color: t.text2,
-                          textDecoration: 'none'
-                        }}
-                      >
-                        <Download size={18} strokeWidth={1.8} aria-hidden="true" />
-                      </a>
+                      {message.enc_fmt === 1 ? (
+                        // An encrypted file is fetched and opened here, then saved; a plain link would save the encrypted bytes.
+                        <button
+                          type="button"
+                          onClick={() => downloads.saveAttachment(att)}
+                          disabled={downloads.busy !== null}
+                          aria-busy={fetching}
+                          aria-label={tr('reader.download_file', { name })}
+                          title={tr('reader.download')}
+                          className="nm-tap"
+                          style={{
+                            ...downloadStyle(t),
+                            background: 'transparent',
+                            cursor: downloads.busy === null ? 'pointer' : 'default'
+                          }}
+                        >
+                          {fetching ? (
+                            <Loader2 size={18} className="nm-spin" aria-hidden="true" />
+                          ) : (
+                            <Download size={18} strokeWidth={1.8} aria-hidden="true" />
+                          )}
+                        </button>
+                      ) : (
+                        <a
+                          href={`/api/attachments/${att.id}`}
+                          download={safeFileName(att.filename, '')}
+                          aria-label={tr('reader.download_file', { name })}
+                          title={tr('reader.download')}
+                          className="nm-tap"
+                          style={{ ...downloadStyle(t), textDecoration: 'none' }}
+                        >
+                          <Download size={18} strokeWidth={1.8} aria-hidden="true" />
+                        </a>
+                      )}
                     </li>
                   );
                 })}
@@ -835,9 +928,12 @@ export const MessageView: React.FC<MessageViewProps> = ({
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 28 }}>
             {[
-              { label: 'Reply', icon: Reply, action: () => onReply(message) },
-              { label: 'Reply all', icon: ReplyAll, action: () => onReplyAll(message) },
-              { label: 'Forward', icon: Forward, action: () => onForward(message) }
+              { label: tr('action.reply'), icon: Reply, action: () => onReply(message) },
+              { label: tr('action.reply_all'), icon: ReplyAll, action: () => onReplyAll(message) },
+              // A message the browser could not open has no content to forward.
+              ...(isUnreadable(message.mail_state)
+                ? []
+                : [{ label: tr('action.forward'), icon: Forward, action: () => onForward(message) }])
             ].map((item) => {
               const Icon = item.icon;
               return (
@@ -870,6 +966,36 @@ export const MessageView: React.FC<MessageViewProps> = ({
               );
             })}
           </div>
+
+          {message.mail_state === 'ready' && hasText(message.r2_key) ? (
+            <button
+              type="button"
+              className="nm-tap-h"
+              onClick={downloads.saveRaw}
+              disabled={downloads.busy !== null}
+              aria-busy={downloads.busy === 'raw'}
+              style={{
+                display: 'block',
+                minHeight: 44,
+                marginTop: 8,
+                padding: 0,
+                border: 0,
+                background: 'transparent',
+                color: t.link,
+                font: 'inherit',
+                fontSize: 13,
+                textDecoration: 'underline',
+                cursor: downloads.busy === null ? 'pointer' : 'default'
+              }}
+            >
+              {downloads.busy === 'raw' ? tr('common.loading') : tr('mailcrypto.download_raw')}
+            </button>
+          ) : null}
+          {downloads.error === null ? null : (
+            <p role="alert" style={{ margin: '8px 0 0', fontSize: 13, lineHeight: '20px', color: danger }}>
+              {downloads.error}
+            </p>
+          )}
         </div>
       </div>
     </article>

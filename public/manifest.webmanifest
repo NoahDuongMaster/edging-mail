@@ -3,7 +3,7 @@
   "name": "Edging Mail",
   "short_name": "Mail",
   "description": "Serverless webmail on Cloudflare Workers",
-  "start_url": "/",
+  "start_url": "/app",
   "scope": "/",
   "display": "standalone",
   "background_color": "#F4F5F7",

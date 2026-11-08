@@ -5,8 +5,12 @@ import { initialsOf } from './mail';
 export interface Settings {
   display_name: string;
   signature: string;
-  default_from: string;
+  /** The person's own primary address: their sign-in name and the only From address. Read-only; the server ignores it on save. */
+  email: string;
 }
+
+/** What a save sends: the two fields a person can change. */
+export type SettingsPatch = Partial<Pick<Settings, 'display_name' | 'signature'>>;
 
 export const settingsKey = ['settings'] as const;
 
@@ -14,17 +18,17 @@ export function useSettings(): UseQueryResult<Settings> {
   return useQuery({
     queryKey: settingsKey,
     queryFn: async ({ signal }) => {
-      const data = await apiGet<{ settings: Settings }>('/api/settings', 'Failed to load settings', signal);
+      const data = await apiGet<{ settings: Settings }>('/api/settings', 'fail.settings_load', signal);
       return data.settings;
     }
   });
 }
 
-export function useSaveSettings(): UseMutationResult<Settings, Error, Partial<Settings>> {
+export function useSaveSettings(): UseMutationResult<Settings, Error, SettingsPatch> {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (patch: Partial<Settings>) => {
-      const data = await apiPost<{ settings: Settings }>('/api/settings', patch, 'Failed to save settings');
+    mutationFn: async (patch: SettingsPatch) => {
+      const data = await apiPost<{ settings: Settings }>('/api/settings', patch, 'fail.settings_save');
       return data.settings;
     },
     // The server answers with the effective settings, which replace the cached ones.
@@ -37,7 +41,7 @@ export function ownerInitials(settings: Settings | undefined): string {
   if (settings === undefined) {
     return '';
   }
-  return initialsOf(settings.display_name.trim(), settings.default_from.split('@', 1)[0].trim());
+  return initialsOf(settings.display_name.trim(), settings.email.split('@', 1)[0].trim());
 }
 
 /** Plain-text signature block for the editor: a blank line, the '-- ' separator, the signature. '' when none is saved. */

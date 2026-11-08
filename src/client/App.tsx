@@ -5,15 +5,21 @@ import { MessageList, type MailFilter } from './components/MessageList';
 import { MessageView } from './components/MessageView';
 import { ComposeModal, type ComposeDraft } from './components/ComposeModal';
 import { ConfirmDialog } from './components/ConfirmDialog';
-import { LoginScreen } from './components/LoginScreen';
+import { AuthGate } from './components/auth/AuthGate';
+import { LockedMailBanner } from './components/LockedMailBanner';
+import { NoticesBanner } from './components/NoticesBanner';
 import { SettingsModal } from './components/SettingsModal';
+import { AdminConsole } from './components/admin/AdminConsole';
 import { Toast, type ToastState } from './components/Toast';
 import { getTokens, type ThemeTokens } from './theme';
-import { displayName, formatSender, labelsOf, nonEmpty, SEARCH_MAX } from './lib/mail';
+import { displayName, folderName, formatSender, labelsOf, nonEmpty, replyRedirect, SEARCH_MAX } from './lib/mail';
+import { isUnreadable } from './lib/mailcrypto/texts';
+import { ApiError } from './lib/api';
 import { useBackStack } from './lib/backStack';
 import { useSession } from './lib/auth';
-import { fetchDraft } from './lib/drafts';
+import { DraftOpenError, fetchDraft } from './lib/drafts';
 import { trapTab } from './lib/focusTrap';
+import { fmt, useT, type TFunction } from './lib/i18n';
 import {
   useBatchAction,
   useLabels,
@@ -30,17 +36,6 @@ import { shortcutOf } from './lib/shortcuts';
 import { canResnooze, formatSnoozeUntil } from './lib/snooze';
 import type { Attachment, FolderStats, Message } from './types';
 
-const FOLDER_TITLES: Record<string, string> = {
-  inbox: 'Inbox',
-  starred: 'Starred',
-  snoozed: 'Snoozed',
-  sent: 'Sent',
-  drafts: 'Drafts',
-  archive: 'Archive',
-  spam: 'Spam',
-  trash: 'Trash'
-};
-
 const EMPTY_STATS: FolderStats = {};
 const EMPTY_MESSAGES: Message[] = [];
 const EMPTY_ATTACHMENTS: Attachment[] = [];
@@ -53,19 +48,31 @@ function messageAt(list: Message[], index: number): Message | undefined {
   return list[index];
 }
 
-/** What a failed request tells the user: no connection (fetch throws a TypeError then), the server's reason, or `fallback`. */
-function failureText(error: unknown, fallback: string): string {
-  return error instanceof TypeError ? 'No connection: nothing was changed' : error instanceof Error ? error.message : fallback;
+/** What a failed request tells the user: no connection (fetch throws a TypeError then), the server's reason, or `fallback` (already translated by the caller). */
+function failureText(tr: TFunction, error: unknown, fallback: string): string {
+  return error instanceof TypeError ? tr('app.no_connection') : error instanceof Error ? error.message : fallback;
 }
+
+/** The date of a reply or forward header in the mail itself: the same numeric form `toLocaleString()` gave, now in the UI language. */
+const QUOTED_DATE: Intl.DateTimeFormatOptions = {
+  year: 'numeric',
+  month: 'numeric',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: 'numeric',
+  second: 'numeric'
+};
 
 /** The owner's round avatar in the header, desktop and phone: the one way into Settings (account, appearance, notifications, sign out). On phones `nm-tap` grows the hit area to 44px around the same 32px circle. */
 function AccountButton({ t, initials, onClick }: { t: ThemeTokens; initials: string; onClick: () => void }) {
+  const tr = useT();
   return (
     <button
       type="button"
       className="nm-tap"
-      aria-label="Account and settings"
-      title="Account and settings"
+      data-account-button=""
+      aria-label={tr('app.account_settings')}
+      title={tr('app.account_settings')}
       onClick={onClick}
       style={{
         width: 32,
@@ -125,6 +132,7 @@ function useDebounced<T>(value: T, delay: number): T {
 }
 
 export default function App() {
+  const tr = useT();
   const [dark, setDark] = React.useState<boolean>(() => {
     const stored = typeof window !== 'undefined' ? window.localStorage.getItem('edging-mail-theme') : null;
     return stored === 'dark';
@@ -142,10 +150,11 @@ export default function App() {
     window.localStorage.setItem('edging-mail-theme', dark ? 'dark' : 'light');
   }, [dark, t]);
 
-  // Nothing mail-related mounts (or is requested) until the server has confirmed the login cookie.
+  // Nothing mail-related mounts (or is requested) until the server has confirmed the login cookie AND no gate is open (a gate answers 403 on
+  // every route but its own).
   const session = useSession();
   const authenticated = session.data?.authenticated === true;
-  useRealtime(authenticated);
+  useRealtime(authenticated && (session.data?.gate ?? null) === null);
 
   // Started offline: the check failed and nothing retries it on its own, so redo it when the connection returns.
   const { refetch: recheckSession } = session;
@@ -183,7 +192,7 @@ export default function App() {
           height={136}
           style={{ display: 'block', margin: '0 auto 16px', maxWidth: '100%', height: 'auto' }}
         />
-        <p style={{ margin: 0 }}>Could not reach the server.</p>
+        <p style={{ margin: 0 }}>{tr('app.server_unreachable')}</p>
         <button
           type="button"
           className="nm-tap-h"
@@ -202,18 +211,20 @@ export default function App() {
             cursor: 'pointer'
           }}
         >
-          Try again
+          {tr('common.retry')}
         </button>
       </main>
     );
   }
-  if (!authenticated) {
-    return <LoginScreen t={t} />;
-  }
-  return <Mailbox t={t} dark={dark} onToggleDark={() => setDark((v) => !v)} />;
+  return (
+    <AuthGate t={t} session={session.data}>
+      <Mailbox t={t} dark={dark} onToggleDark={() => setDark((v) => !v)} />
+    </AuthGate>
+  );
 }
 
 function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onToggleDark: () => void }) {
+  const tr = useT();
   const [folder, setFolder] = React.useState('inbox');
   const [filter, setFilter] = React.useState<MailFilter>('all');
   const [searchInput, setSearchInput] = React.useState('');
@@ -240,6 +251,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
   const [composeOpen, setComposeOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<ComposeDraft>({});
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
+  const [adminOpen, setAdminOpen] = React.useState(false);
   // The mail whose Delete forever waits for the owner's yes (see ConfirmDialog).
   const [confirmDelete, setConfirmDelete] = React.useState<Message | null>(null);
   const [toast, setToast] = React.useState<ToastState | null>(null);
@@ -269,6 +281,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
       { open: mobilePane === 'reader', close: () => setMobilePane('list') },
       { open: sidebarOpen, close: () => setSidebarOpen(false) },
       { open: isSettingsOpen, close: () => setIsSettingsOpen(false) },
+      { open: adminOpen, close: () => setAdminOpen(false) },
       { open: composeOpen, close: () => setComposeOpen(false) },
       { open: confirmDelete !== null, close: () => setConfirmDelete(null) }
     ],
@@ -329,15 +342,15 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
     if (detailFailed && selectedId !== null) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- the selection is state, and it must follow the failed load of the selected mail
       setSelectedId(null);
-      // The server's own 404 keeps the plain wording; offline (or any other failure) says what happened. Errors carry no status, so the 404 is told by its text.
+      // The server's own 404 keeps the plain wording; offline (or any other failure) says what happened.
       setToast({
         text:
-          detailError instanceof Error && detailError.message === 'Message not found'
-            ? 'That message is not available'
-            : failureText(detailError, 'That message is not available')
+          detailError instanceof ApiError && detailError.status === 404
+            ? tr('app.message_unavailable')
+            : failureText(tr, detailError, tr('app.message_unavailable'))
       });
     }
-  }, [detailFailed, detailError, selectedId]);
+  }, [detailFailed, detailError, selectedId, tr]);
 
   const refreshStats = React.useCallback(() => {
     void refetchStats();
@@ -346,7 +359,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
   const loadMore = async () => {
     const result = await fetchNextPage();
     if (result.isFetchNextPageError) {
-      setToast({ text: 'Could not load more mail' });
+      setToast({ text: tr('app.load_more_failed') });
     }
   };
   // Not offered on the previous search's rows shown while the next search loads.
@@ -375,13 +388,13 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
       const result = await refetchMessages();
       if (result.isError) {
         // The list stays as it was (or failed); without this a failed Refresh looks like nothing happened.
-        setToast({ text: failureText(result.error, 'Could not refresh') });
+        setToast({ text: failureText(tr, result.error, tr('app.refresh_failed')) });
       }
       if (result.data && !result.isError && !result.isPlaceholderData) {
         reconcileSelection(result.data, options);
       }
     },
-    [refetchMessages, reconcileSelection]
+    [refetchMessages, reconcileSelection, tr]
   );
 
   // Refresh button and the failed list's Retry: reload the list and the folder counts.
@@ -435,23 +448,26 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
     return [...found].toSorted((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
   }, [serverLabels, currentMessage]);
 
-  const title = folder.startsWith('label:') ? folder.slice(6) : FOLDER_TITLES[folder] || 'Inbox';
+  const title = folder.startsWith('label:') ? folder.slice(6) : folderName(folder);
   // A folder holds more mail than the loaded pages, so its counts come from the server, like the sidebar's. Search, the filter
   // chips and label folders (no server count) count the loaded rows.
   const folderStats: Partial<FolderStats> = stats;
   const serverCount = listSearch === '' && filter === 'all' ? folderStats[folder] : undefined;
   const poolCount = serverCount?.total ?? messages.length;
   const unreadCount = serverCount?.unread ?? messages.filter((m) => m.is_read === 0).length;
-  const noun = folder === 'drafts' ? 'draft' : 'message';
   // Empty while the folder's first load is out: "0 messages" would be a claim the server has not made yet. Counts of loaded rows
   // get a '+' while more pages exist: they are a floor, not the total.
   const more = serverCount === undefined && hasMore ? '+' : '';
-  const subtitle =
-    messagesQuery.data === undefined
-      ? ''
-      : unreadCount > 0
-        ? `${unreadCount}${more} unread`
-        : `${poolCount}${more} ${poolCount === 1 ? noun : `${noun}s`}`;
+  let subtitle = '';
+  if (messagesQuery.data !== undefined) {
+    if (unreadCount > 0) {
+      subtitle = tr('app.subtitle_unread', { count: unreadCount, more });
+    } else if (folder === 'drafts') {
+      subtitle = tr('app.subtitle_drafts', { count: poolCount, more });
+    } else {
+      subtitle = tr('app.subtitle_messages', { count: poolCount, more });
+    }
+  }
 
   const { mutateAsync: runBatch } = useBatchAction();
   const { mutateAsync: runMarkAllRead, isPending: markingAllRead } = useMarkAllRead();
@@ -468,11 +484,11 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
       } catch (error) {
         console.error('Batch action failed', error);
         // The cache has rolled back by now: say so, otherwise the row just reappears (offline, server error).
-        setToast({ text: failureText(error, 'Action failed') });
+        setToast({ text: failureText(tr, error, tr('app.action_failed')) });
         return false;
       }
     },
-    [runBatch]
+    [runBatch, tr]
   );
 
   // The batch mutation patches every cached list optimistically, rolls back on failure and refreshes the stats.
@@ -529,7 +545,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
       return null;
     } catch (error) {
       console.error('Snooze failed', error);
-      return failureText(error, 'Could not snooze');
+      return failureText(tr, error, tr('app.snooze_failed'));
     }
   };
 
@@ -568,7 +584,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
       return;
     }
 
-    const label = target === 'trash' ? 'Moved to Trash' : target === 'spam' ? 'Moved to Spam' : 'Archived';
+    const label = target === 'trash' ? tr('toast.moved_to_trash') : target === 'spam' ? tr('toast.moved_to_spam') : tr('toast.archived');
     setToast({ text: label, undo: undoFor(message) });
   };
 
@@ -583,7 +599,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
       return;
     }
 
-    setToast(action === 'restore' ? { text: 'Moved to Inbox', undo: undoFor(message) } : { text: 'Deleted forever' });
+    setToast(action === 'restore' ? { text: tr('toast.moved_to_inbox'), undo: undoFor(message) } : { text: tr('toast.deleted_forever') });
   };
 
   const snoozeMessage = async (message: Message, until: Date) => {
@@ -601,7 +617,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
       return;
     }
 
-    setToast({ text: `Snoozed until ${formatSnoozeUntil(until.getTime())}`, undo: undoFor(message) });
+    setToast({ text: tr('toast.snoozed_until', { when: formatSnoozeUntil(until.getTime()) }), undo: undoFor(message) });
   };
 
   // Brings a snoozed mail back to the Inbox now; Undo snoozes it again for the time it had (or leaves it in the Inbox when that is due).
@@ -614,7 +630,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
       return;
     }
 
-    setToast({ text: 'Moved back to Inbox', undo: typeof message.snoozed_until === 'number' ? undoFor(message) : undefined });
+    setToast({ text: tr('toast.moved_back_to_inbox'), undo: typeof message.snoozed_until === 'number' ? undoFor(message) : undefined });
   };
 
   const markAllRead = async () => {
@@ -634,7 +650,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
       }
     } catch (error) {
       console.error('Mark all as read failed', error);
-      setToast({ text: failureText(error, 'Action failed') });
+      setToast({ text: failureText(tr, error, tr('app.action_failed')) });
     }
   };
 
@@ -658,7 +674,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
       await runUpdateLabels({ id: message.id, labels: next });
     } catch (error) {
       console.error('Failed to update labels', error);
-      setToast({ text: failureText(error, 'Could not update labels') });
+      setToast({ text: failureText(tr, error, tr('app.labels_failed')) });
     }
   };
 
@@ -693,11 +709,14 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
         html: stored.html,
         inReplyTo,
         // The server rebuilds the whole chain from the answered mail; this one id is what threads the sent reply.
-        references: inReplyTo === undefined ? undefined : [inReplyTo]
+        references: inReplyTo === undefined ? undefined : [inReplyTo],
+        // N6 survives the save: the flag was sealed inside the draft (EC-3).
+        sourceIsE2E: stored.from_e2e === true
       });
     } catch (error) {
       console.error('Could not open the draft', error);
-      setToast({ text: 'That draft is not available' });
+      // A draft that is locked or sealed to another key says so; anything else is the general message.
+      setToast({ text: error instanceof DraftOpenError && error.reason !== 'damaged' ? error.message : tr('app.draft_unavailable') });
       void refreshMessages();
     } finally {
       if (pendingDraft.current === id) {
@@ -710,7 +729,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
     const sender = nonEmpty(message.reply_to) ?? message.from_address;
     // Reply-all: everyone on the mail once (case-insensitive) except the owner's own address, which is on every inbound To.
     // The original Cc stays in Cc, minus anyone already in To.
-    const taken = new Set([(settings?.default_from ?? '').trim().toLowerCase()]);
+    const taken = new Set([(settings?.email ?? '').trim().toLowerCase()]);
     const addresses = (...lists: (string | null | undefined)[]) =>
       lists
         .flatMap((list) => (list ?? '').split(/[,;]+/))
@@ -727,21 +746,39 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
     const to = all ? addresses(sender, message.to_address) : sender;
     const cc = all ? addresses(message.cc) : undefined;
     const messageId = nonEmpty(message.message_id);
+    // A message the browser could not open has no subject or text to answer with: the reply still goes to the sender, without a quote.
+    const readable = !isUnreadable(message.mail_state);
+    const answered = /^re:/i.test(message.subject) ? message.subject : `Re: ${message.subject}`;
+    const quoted = `${tr('app.reply_quote_header', { date: fmt.dateTime(message.created_at, QUOTED_DATE), name: displayName(message) })}\n> ${(nonEmpty(message.body_text) ?? nonEmpty(message.snippet) ?? '').replaceAll('\n', '\n> ')}`;
     openCompose({
       to,
       cc,
-      subject: /^re:/i.test(message.subject) ? message.subject : `Re: ${message.subject}`,
-      quote: `On ${new Date(message.created_at).toLocaleString()}, ${displayName(message)} wrote:\n> ${(nonEmpty(message.body_text) ?? nonEmpty(message.snippet) ?? '').replaceAll('\n', '\n> ')}`,
+      subject: readable ? answered : '',
+      quote: readable ? quoted : undefined,
       // Threads the answer under this mail (In-Reply-To / References) on the server and in the recipient's client.
       inReplyTo: messageId,
-      references: messageId === undefined ? undefined : [messageId]
+      references: messageId === undefined ? undefined : [messageId],
+      // N6: what is quoted from an end-to-end message must not leave for an outside address without a warning.
+      sourceIsE2E: message.is_e2e === 1,
+      replyRedirect: replyRedirect(message)
     });
   };
 
   const forward = (message: Message) => {
+    if (isUnreadable(message.mail_state)) {
+      return;
+    }
+    // The header lines become part of the outgoing mail, so they are in the UI language like the reply line.
+    const header = [
+      tr('app.forward_header_title'),
+      tr('app.forward_header_from', { sender: formatSender(message) }),
+      tr('app.forward_header_date', { date: fmt.dateTime(message.created_at, QUOTED_DATE) }),
+      tr('app.forward_header_subject', { subject: message.subject })
+    ].join('\n');
     openCompose({
       subject: /^fwd:/i.test(message.subject) ? message.subject : `Fwd: ${message.subject}`,
-      quote: `---------- Forwarded message ----------\nFrom: ${formatSender(message)}\nDate: ${new Date(message.created_at).toLocaleString()}\nSubject: ${message.subject}\n\n${nonEmpty(message.body_text) ?? nonEmpty(message.snippet) ?? ''}`
+      quote: `${header}\n\n${nonEmpty(message.body_text) ?? nonEmpty(message.snippet) ?? ''}`,
+      sourceIsE2E: message.is_e2e === 1
     });
   };
 
@@ -789,7 +826,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
         return;
       }
       const shortcut = shortcutOf(event, event.target as HTMLElement | null);
-      if (shortcut === null || composeOpen || isSettingsOpen || drawerOpen || confirmDelete !== null) {
+      if (shortcut === null || composeOpen || isSettingsOpen || adminOpen || drawerOpen || confirmDelete !== null) {
         return;
       }
       event.preventDefault();
@@ -803,23 +840,24 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [composeOpen, isSettingsOpen, drawerOpen, confirmDelete, navigateRelative, openCompose]);
+  }, [composeOpen, isSettingsOpen, adminOpen, drawerOpen, confirmDelete, navigateRelative, openCompose]);
 
-  // Focus moves into the drawer when it opens and returns to the button that opens it when it closes (as in SettingsModal; the
-  // button is found by its label, it has no id).
+  // Focus moves into the drawer when it opens and returns to the button that opens it when it closes (as in SettingsModal).
   const drawerRef = React.useRef<HTMLDivElement | null>(null);
+  const menuButtonRef = React.useRef<HTMLButtonElement | null>(null);
   React.useEffect(() => {
     if (!drawerOpen) {
       return;
     }
+    const opener = menuButtonRef.current;
     drawerRef.current?.focus({ preventScroll: true });
     return () => {
-      document.querySelector<HTMLElement>('button[aria-label="Open mailboxes"]')?.focus({ preventScroll: true });
+      opener?.focus({ preventScroll: true });
     };
   }, [drawerOpen]);
 
   const selectedIndex = selectedId !== null ? visibleMessages.findIndex((m) => m.id === selectedId) : -1;
-  const position = selectedIndex > -1 ? `${selectedIndex + 1} of ${visibleMessages.length}` : '';
+  const position = selectedIndex > -1 ? tr('app.position', { current: selectedIndex + 1, total: visibleMessages.length }) : '';
 
   const renderSearch = (mobile: boolean) => (
     <form role="search" onSubmit={(e) => e.preventDefault()} style={{ position: 'relative', flex: '1 1 320px', maxWidth: 680, margin: 0 }}>
@@ -827,7 +865,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
         htmlFor="mail-search"
         style={{ position: 'absolute', width: 1, height: 1, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap' }}
       >
-        Search mail
+        {tr('app.search_mail')}
       </label>
       <span aria-hidden="true" style={{ position: 'absolute', left: 14, top: mobile ? 13 : 11, display: 'inline-flex', color: t.text2 }}>
         <Search size={18} strokeWidth={1.8} />
@@ -841,7 +879,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
         maxLength={SEARCH_MAX}
         value={searchInput}
         onChange={(e) => setSearchInput(e.target.value)}
-        placeholder="Search mail"
+        placeholder={tr('app.search_mail')}
         style={{
           width: '100%',
           height: mobile ? 44 : 40,
@@ -857,7 +895,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
       {searchInput ? (
         <button
           type="button"
-          aria-label="Clear search"
+          aria-label={tr('app.clear_search')}
           onClick={() => {
             setSearchInput('');
             searchRef.current?.focus();
@@ -909,8 +947,8 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 'auto' }}>
         <button
           type="button"
-          aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
-          title={dark ? 'Light theme' : 'Dark theme'}
+          aria-label={dark ? tr('app.theme_to_light') : tr('app.theme_to_dark')}
+          title={dark ? tr('app.theme_light') : tr('app.theme_dark')}
           onClick={onToggleDark}
           style={{
             width: 40,
@@ -968,6 +1006,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
     <MessageView
       t={t}
       message={currentMessage}
+      onNotice={(text) => setToast({ text })}
       attachments={attachments}
       isLoading={isLoadingMessage}
       labels={availableLabels}
@@ -1047,12 +1086,16 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
       ) : null}
 
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        <NoticesBanner t={t} onOpenSettings={() => setIsSettingsOpen(true)} />
+        <LockedMailBanner t={t} />
         {isMobile ? (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '12px 8px 0' }}>
               <button
+                ref={menuButtonRef}
                 type="button"
-                aria-label="Open mailboxes"
+                data-nav-toggle="mailboxes"
+                aria-label={tr('app.open_mailboxes')}
                 onClick={() => setSidebarOpen(true)}
                 style={{
                   width: 44,
@@ -1069,22 +1112,25 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
               >
                 <Menu size={22} strokeWidth={1.8} aria-hidden="true" />
               </button>
-              <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 8, paddingLeft: 4 }}>
+              {/* The folder name is never cut: when the count does not fit beside it (a 320px phone, a long Vietnamese name), the count wraps below. */}
+              <div
+                style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: 8, paddingLeft: 4 }}
+              >
                 <h1
                   title={title}
                   style={{
-                    minWidth: 0,
+                    maxWidth: '100%',
                     margin: 0,
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
-                    fontSize: 22,
+                    fontSize: 'clamp(19px, 6.2vw, 22px)',
                     lineHeight: '28px',
                     fontWeight: 600,
                     letterSpacing: '-0.01em'
                   }}
                 >
-                  {mobilePane === 'reader' ? 'Message' : title}
+                  {mobilePane === 'reader' ? tr('term.message') : title}
                 </h1>
                 {mobilePane === 'list' ? (
                   <span style={{ flex: 'none', fontSize: 13, color: t.text2, whiteSpace: 'nowrap' }}>{subtitle}</span>
@@ -1094,8 +1140,8 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
               {mobilePane === 'list' && folder !== 'drafts' ? (
                 <button
                   type="button"
-                  aria-label="Mark all as read"
-                  title="Mark all as read"
+                  aria-label={tr('app.mark_all_read')}
+                  title={tr('app.mark_all_read')}
                   onClick={() => {
                     void markAllRead();
                   }}
@@ -1177,6 +1223,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
                 />
                 <button
                   type="button"
+                  data-compose-button=""
                   onClick={() => openCompose()}
                   style={{
                     position: 'absolute',
@@ -1198,7 +1245,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
                   }}
                 >
                   <PenLine size={20} strokeWidth={1.8} aria-hidden="true" />
-                  Compose
+                  {tr('action.compose')}
                 </button>
               </div>
             ) : (
@@ -1225,7 +1272,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
             ref={drawerRef}
             role="dialog"
             aria-modal="true"
-            aria-label="Mailboxes"
+            aria-label={tr('sidebar.mailboxes')}
             tabIndex={-1}
             onKeyDown={(e) => trapTab(e, drawerRef.current)}
             style={{
@@ -1264,7 +1311,7 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
         isOpen={composeOpen}
         t={t}
         onClose={() => setComposeOpen(false)}
-        defaultFrom={settings?.default_from ?? ''}
+        defaultFrom={settings?.email ?? ''}
         signature={settings?.signature ?? ''}
         draft={draft}
         onNotice={(text) => setToast({ text })}
@@ -1276,14 +1323,24 @@ function Mailbox({ t, dark, onToggleDark }: { t: ThemeTokens; dark: boolean; onT
         }}
       />
 
-      <SettingsModal isOpen={isSettingsOpen} t={t} onClose={() => setIsSettingsOpen(false)} onToggleDark={onToggleDark} />
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        t={t}
+        onClose={() => setIsSettingsOpen(false)}
+        onToggleDark={onToggleDark}
+        onOpenAdmin={() => {
+          setIsSettingsOpen(false);
+          setAdminOpen(true);
+        }}
+      />
+      <AdminConsole isOpen={adminOpen} t={t} onClose={() => setAdminOpen(false)} />
 
       <ConfirmDialog
         isOpen={confirmDelete !== null}
         t={t}
-        title="Delete this message forever?"
-        body="It and its attachments are removed for good. This cannot be undone."
-        confirmLabel="Delete forever"
+        title={tr('confirm.delete_forever_title')}
+        body={tr('confirm.delete_forever_body')}
+        confirmLabel={tr('action.delete_forever')}
         onConfirm={() => {
           if (confirmDelete !== null) {
             void restoreOrDelete(confirmDelete, 'delete');

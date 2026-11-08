@@ -3,8 +3,20 @@ import { Archive, CheckCheck, FileText, Inbox, Loader2, Paperclip, RefreshCw, St
 import type { Message } from '../types';
 import type { ThemeTokens } from '../theme';
 import { getChip, getLabelChip } from '../theme';
-import { GROUP_ORDER, displayName, formatRowTime, groupOf, initialsOf, labelsOf, nonEmpty, snippetOf, stringHue } from '../lib/mail';
+import {
+  GROUP_ORDER,
+  displayName,
+  formatRowTime,
+  groupOf,
+  initialsOf,
+  labelsOf,
+  nonEmpty,
+  snippetOf,
+  stringHue,
+  subjectOf
+} from '../lib/mail';
 import { SNOOZE_GROUP_ORDER, snoozeGroupOf } from '../lib/snooze';
+import { useT, type TFunction } from '../lib/i18n';
 import { SnoozeChip } from './SnoozeMenu';
 
 export type MailFilter = 'all' | 'unread' | 'starred' | 'attachments';
@@ -44,42 +56,78 @@ interface MessageListProps {
   onRetry?: () => void;
 }
 
-const FILTERS: { id: MailFilter; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'unread', label: 'Unread' },
-  { id: 'attachments', label: 'Attachments' }
-];
-
-// The mobile board adds a Starred chip between Unread and Attachments.
-const COMPACT_FILTERS: { id: MailFilter; label: string }[] = [FILTERS[0], FILTERS[1], { id: 'starred', label: 'Starred' }, FILTERS[2]];
+/** The filter chips in the UI language; the mobile board adds a Starred chip between Unread and Attachments. */
+function filterChips(compact: boolean, tr: TFunction): { id: MailFilter; label: string }[] {
+  const all = { id: 'all' as const, label: tr('list.filter_all') };
+  const unread = { id: 'unread' as const, label: tr('list.filter_unread') };
+  const attachments = { id: 'attachments' as const, label: tr('term.attachments') };
+  return compact ? [all, unread, { id: 'starred' as const, label: tr('folder.starred') }, attachments] : [all, unread, attachments];
+}
 
 const SWIPE_REVEAL = 96;
 const SWIPE_ARCHIVE_BG = '#0F766E';
 
-// What an empty folder says it holds; the Inbox's wording is the default (Drafts and Snoozed have their own lines below).
-const EMPTY_HINTS: Record<string, string> = {
-  spam: 'Messages you move to Spam are kept here.',
-  trash: 'Messages you move to Trash are kept here.',
-  archive: 'Archived messages are kept here.',
-  sent: 'Messages you send are kept here.',
-  starred: 'Star a message to find it here.'
-};
-
-function emptyHint(folder: string): string {
-  return folder.startsWith('label:')
-    ? 'Messages with this label appear here.'
-    : EMPTY_HINTS[folder] || 'Messages you receive will appear in this list.';
+/** What an empty folder says it holds; the Inbox's wording is the default (Drafts and Snoozed have their own lines below). */
+function emptyHint(folder: string, tr: TFunction): string {
+  if (folder.startsWith('label:')) {
+    return tr('list.hint_label');
+  }
+  if (folder === 'spam') {
+    return tr('list.hint_spam');
+  }
+  if (folder === 'trash') {
+    return tr('list.hint_trash');
+  }
+  if (folder === 'archive') {
+    return tr('list.hint_archive');
+  }
+  if (folder === 'sent') {
+    return tr('list.hint_sent');
+  }
+  if (folder === 'starred') {
+    return tr('list.hint_starred');
+  }
+  return tr('list.hint_inbox');
 }
 
-/** How a row names the other side: the sender, or in Drafts the recipients ('No recipient' when none is set yet). */
-function partyOf(m: Message, isDrafts: boolean) {
+/**
+ * The heading of a group of rows. The ids come from lib/mail.ts (the day groups of every folder) and lib/snooze.ts (the
+ * Snoozed folder); an id nobody knows is shown as it is.
+ */
+function groupHeading(id: string, tr: TFunction): string {
+  if (id === 'Today' || id === 'today') {
+    return tr('list.group_today');
+  }
+  if (id === 'Yesterday') {
+    return tr('list.group_yesterday');
+  }
+  if (id === 'This week') {
+    return tr('list.group_this_week');
+  }
+  if (id === 'Earlier') {
+    return tr('list.group_earlier');
+  }
+  if (id === 'tomorrow') {
+    return tr('list.group_tomorrow');
+  }
+  if (id === 'next-7-days') {
+    return tr('list.group_next_7_days');
+  }
+  if (id === 'later') {
+    return tr('list.group_later');
+  }
+  return id;
+}
+
+/** How a row names the other side: the sender, or in Drafts the recipients (a "No recipient" text when none is set yet). */
+function partyOf(m: Message, isDrafts: boolean, tr: TFunction) {
   if (!isDrafts) {
     return { label: displayName(m), seed: m.from_address, avatar: initialsOf(m.from_name, m.from_address) };
   }
   const recipients = nonEmpty(m.to_address.trim());
   const first = recipients?.split(/[,;]/, 1)[0].trim();
   return {
-    label: recipients === undefined ? 'No recipient' : `To: ${recipients}`,
+    label: recipients === undefined ? tr('list.no_recipient') : tr('list.draft_to', { recipients }),
     seed: first ?? '',
     avatar: first === undefined || first === '' ? <FileText size={16} strokeWidth={1.8} aria-hidden="true" /> : initialsOf(undefined, first)
   };
@@ -121,6 +169,7 @@ const CompactRow: React.FC<CompactRowProps> = ({
   onToggleStar,
   onSwipeArchive
 }) => {
+  const tr = useT();
   const [dx, setDx] = React.useState(0);
   const [dragging, setDragging] = React.useState(false);
   const rowRef = React.useRef<HTMLLIElement | null>(null);
@@ -206,7 +255,7 @@ const CompactRow: React.FC<CompactRowProps> = ({
           }}
         >
           <Archive size={22} strokeWidth={1.8} />
-          Archive
+          {tr('action.archive')}
         </span>
       ) : null}
       <div
@@ -284,7 +333,7 @@ const CompactRow: React.FC<CompactRowProps> = ({
                     whiteSpace: 'nowrap'
                   }}
                 >
-                  Unread.
+                  {tr('list.unread_sr')}
                 </span>
               ) : null}
               <span
@@ -302,7 +351,14 @@ const CompactRow: React.FC<CompactRowProps> = ({
                 {sender}
               </span>
               {m.has_attachments === 1 ? (
-                <Paperclip role="img" aria-label="Has attachments" size={14} strokeWidth={2} color={t.text3} style={{ flex: 'none' }} />
+                <Paperclip
+                  role="img"
+                  aria-label={tr('list.has_attachments')}
+                  size={14}
+                  strokeWidth={2}
+                  color={t.text3}
+                  style={{ flex: 'none' }}
+                />
               ) : null}
               {snoozedUntil === null ? (
                 <span
@@ -350,7 +406,7 @@ const CompactRow: React.FC<CompactRowProps> = ({
         {starred ? (
           <button
             type="button"
-            aria-label={`Star message from ${sender}`}
+            aria-label={tr('list.star_from', { sender })}
             aria-pressed={starred}
             onClick={() => onToggleStar(m)}
             style={{
@@ -403,6 +459,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   loadFailed = false,
   onRetry
 }) => {
+  const tr = useT();
   const scrollerRef = React.useRef<HTMLDivElement | null>(null);
   // Restore the offset the list had before it was unmounted (reader opened, then Back).
   React.useLayoutEffect(() => {
@@ -418,7 +475,7 @@ export const MessageList: React.FC<MessageListProps> = ({
       const key = isSnoozed
         ? typeof m.snoozed_until === 'number'
           ? snoozeGroupOf(m.snoozed_until)
-          : 'Later'
+          : 'later'
         : groupOf(isDrafts ? m.updated_at : m.created_at);
       const bucket = byGroup.get(key);
       if (bucket) {
@@ -430,13 +487,13 @@ export const MessageList: React.FC<MessageListProps> = ({
     const order: readonly string[] = isSnoozed ? SNOOZE_GROUP_ORDER : GROUP_ORDER;
     return order.flatMap((g) => {
       const items = byGroup.get(g);
-      return items ? [{ label: g, items }] : [];
+      return items ? [{ id: g, items }] : [];
     });
   }, [messages, isDrafts, isSnoozed]);
 
   const searching = searchQuery !== undefined && searchQuery !== '';
   // An empty Inbox with no search, filter or failed load is the "all caught up" screen, which Edgar owns.
-  const caughtUp = title === 'Inbox' && filter === 'all' && !loadFailed && !searching;
+  const caughtUp = folder === 'inbox' && filter === 'all' && !loadFailed && !searching;
 
   return (
     <section
@@ -482,8 +539,8 @@ export const MessageList: React.FC<MessageListProps> = ({
             {isDrafts ? null : (
               <button
                 type="button"
-                aria-label="Mark all as read"
-                title="Mark all as read"
+                aria-label={tr('list.mark_all_read')}
+                title={tr('list.mark_all_read')}
                 onClick={onMarkAllRead}
                 style={{
                   width: 40,
@@ -503,8 +560,8 @@ export const MessageList: React.FC<MessageListProps> = ({
             )}
             <button
               type="button"
-              aria-label="Refresh"
-              title="Refresh"
+              aria-label={tr('list.refresh')}
+              title={tr('list.refresh')}
               onClick={onRefresh}
               style={{
                 width: 40,
@@ -528,14 +585,14 @@ export const MessageList: React.FC<MessageListProps> = ({
       {/* Drafts are always read, unstarred and without attachments, so none of the filters could match anything there. */}
       {isDrafts ? null : (
         <div
-          className={compact ? 'nm-hide-scrollbar' : undefined}
           style={
             compact
-              ? { display: 'flex', gap: 2, overflowX: 'auto', padding: '4px 12px 4px' }
+              ? // The chips wrap onto a second line instead of scrolling sideways, so every folder name is visible at 320 px in every language.
+                { display: 'flex', flexWrap: 'wrap', gap: '0 2px', padding: '4px 12px 4px' }
               : { display: 'flex', gap: 8, flexWrap: 'wrap', padding: '8px 16px 12px 20px', borderBottom: `1px solid ${t.border}` }
           }
         >
-          {(compact ? COMPACT_FILTERS : FILTERS).map((f) => {
+          {filterChips(compact, tr).map((f) => {
             const on = filter === f.id;
             if (compact) {
               // 44px touch target around a 34px pill, as on the mobile board.
@@ -621,12 +678,12 @@ export const MessageList: React.FC<MessageListProps> = ({
         {isLoading && groups.length === 0 ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '72px 24px', color: t.text2 }}>
             <Loader2 size={18} className="nm-spin" aria-hidden="true" />
-            <span>Loading messages…</span>
+            <span>{tr('list.loading')}</span>
           </div>
         ) : null}
 
         {groups.map((g) => (
-          <div key={g.label}>
+          <div key={g.id}>
             <h2
               style={{
                 margin: 0,
@@ -639,7 +696,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                 color: t.text2
               }}
             >
-              {g.label}
+              {groupHeading(g.id, tr)}
             </h2>
             <ul
               role="list"
@@ -657,13 +714,13 @@ export const MessageList: React.FC<MessageListProps> = ({
                 const selected = m.id === selectedId;
                 const unread = m.is_read === 0;
                 const starred = m.is_starred === 1;
-                const party = partyOf(m, isDrafts);
+                const party = partyOf(m, isDrafts, tr);
                 const avatar = getChip(stringHue(party.seed), t);
                 const labels = labelsOf(m);
                 const preview = snippetOf(m, 120);
                 const sender = party.label;
                 const timestamp = isDrafts ? m.updated_at : m.created_at;
-                const subject = m.subject || '(No subject)';
+                const subject = subjectOf(m, tr('list.no_subject'));
                 const snoozedUntil = m.folder === 'snoozed' && typeof m.snoozed_until === 'number' ? m.snoozed_until : null;
 
                 if (compact) {
@@ -751,7 +808,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                               whiteSpace: 'nowrap'
                             }}
                           >
-                            Unread.
+                            {tr('list.unread_sr')}
                           </span>
                         ) : null}
                         <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
@@ -857,7 +914,9 @@ export const MessageList: React.FC<MessageListProps> = ({
                                 }}
                               >
                                 <Paperclip size={12} strokeWidth={2} aria-hidden="true" style={{ flex: 'none' }} />
-                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Attachment</span>
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {tr('list.attachment')}
+                                </span>
                               </span>
                             ) : null}
                           </span>
@@ -867,7 +926,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                     {isDrafts ? null : (
                       <button
                         type="button"
-                        aria-label={`Star message from ${sender}`}
+                        aria-label={tr('list.star_from', { sender })}
                         aria-pressed={starred}
                         onClick={() => onToggleStar(m)}
                         style={{
@@ -922,29 +981,29 @@ export const MessageList: React.FC<MessageListProps> = ({
             )}
             <p style={{ margin: '8px 0 0', fontSize: 15, fontWeight: 600, overflowWrap: 'anywhere' }}>
               {loadFailed
-                ? 'Could not load mail'
+                ? tr('list.load_failed')
                 : filter === 'all'
                   ? searching
-                    ? `No results for “${searchQuery}”`
-                    : `No messages in ${title}`
+                    ? tr('list.no_results', { query: searchQuery })
+                    : tr('list.empty_in', { folder: title })
                   : searching
-                    ? 'Nothing matches this filter and search'
-                    : 'Nothing matches this filter'}
+                    ? tr('list.no_match_search')
+                    : tr('list.no_match')}
             </p>
             <p style={{ margin: 0, maxWidth: 280, color: t.text2, textWrap: 'balance' }}>
               {loadFailed
-                ? 'Check your connection and try again.'
+                ? tr('list.load_failed_hint')
                 : filter === 'all'
                   ? searching
-                    ? 'Try a different search.'
+                    ? tr('list.try_other_search')
                     : isDrafts
-                      ? 'Drafts you start are saved here.'
+                      ? tr('list.hint_drafts')
                       : isSnoozed
-                        ? 'Snoozed messages come back to your inbox at the time you pick.'
-                        : emptyHint(folder)
+                        ? tr('list.hint_snoozed')
+                        : emptyHint(folder, tr)
                   : searching
-                    ? 'Clear the search or switch back to All.'
-                    : 'Switch back to All to see every message.'}
+                    ? tr('list.hint_clear_filter')
+                    : tr('list.hint_switch_all')}
             </p>
             {loadFailed ? (
               <button
@@ -964,7 +1023,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                   cursor: 'pointer'
                 }}
               >
-                Try again
+                {tr('common.retry')}
               </button>
             ) : null}
           </div>
@@ -994,7 +1053,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                 cursor: loadingMore ? 'default' : 'pointer'
               }}
             >
-              {loadingMore ? 'Loading…' : 'Load more'}
+              {loadingMore ? tr('common.loading') : tr('list.load_more')}
             </button>
           </div>
         ) : null}

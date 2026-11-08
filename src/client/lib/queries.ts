@@ -11,8 +11,14 @@ import {
   type UseQueryOptions,
   type UseQueryResult
 } from '@tanstack/react-query';
+import React from 'react';
 import type { Attachment, FolderStats, Message } from '../types';
 import { apiGet, apiPost } from './api';
+import { getUnlockedKey } from './crypto/keyStore';
+import { openDetail, openListRows } from './mailcrypto/rows';
+import type { DetailRow } from './mailcrypto/rows';
+import { withLoadedMatches } from './mailcrypto/search';
+import { bindMailCache } from './mailcrypto/sync';
 
 export type BatchAction = 'read' | 'unread' | 'star' | 'unstar' | 'trash' | 'archive' | 'restore' | 'move' | 'snooze' | 'delete';
 
@@ -57,11 +63,14 @@ export const queryKeys = {
   labels: ['labels'] as const
 };
 
+// Everything that holds opened (decrypted) mail: dropped when the keys are wiped, read again when a key appears (lib/mailcrypto/sync.ts).
+const MAIL_ROOTS = [queryKeys.messages, queryKeys.messageDetails] as const;
+
 export function useStats(): UseQueryResult<FolderStats> {
   return useQuery({
     queryKey: queryKeys.stats,
     queryFn: async ({ signal }) => {
-      const data = await apiGet<{ stats: FolderStats }>('/api/stats', 'Failed to load stats', signal);
+      const data = await apiGet<{ stats: FolderStats }>('/api/stats', 'fail.queries_stats', signal);
       return data.stats;
     }
   });
@@ -72,7 +81,7 @@ export function useLabels(): UseQueryResult<string[]> {
   return useQuery({
     queryKey: queryKeys.labels,
     queryFn: async ({ signal }) => {
-      const data = await apiGet<{ labels?: string[] }>('/api/labels', 'Failed to load labels', signal);
+      const data = await apiGet<{ labels?: string[] }>('/api/labels', 'fail.queries_labels', signal);
       return data.labels ?? [];
     }
   });
@@ -104,8 +113,40 @@ function flattenPages(data: MessageLists): Message[] {
   return rows;
 }
 
+/**
+ * The rows of the same view that are already loaded without a search. The server matches only addresses; a subject lives encrypted there,
+ * so a search looks for it here, among what the browser has opened (lib/mailcrypto/search.ts).
+ */
+function loadedRowsOf(queryClient: QueryClient, folder: string): Message[] {
+  const rows: Message[] = [];
+  for (const [key, data] of queryClient.getQueriesData<MessageLists>({ queryKey: queryKeys.messages })) {
+    const view: unknown = key[1];
+    if (
+      data !== undefined &&
+      typeof view === 'object' &&
+      view !== null &&
+      'folder' in view &&
+      'search' in view &&
+      view.folder === folder &&
+      view.search === ''
+    ) {
+      rows.push(...flattenPages(data));
+    }
+  }
+  return rows;
+}
+
 /** `data` is the flattened rows of the loaded pages; `fetchNextPage` appends the next one. */
 export function useMessages({ folder, search }: { folder: string; search: string }): UseInfiniteQueryResult<Message[]> {
+  const queryClient = useQueryClient();
+  React.useEffect(() => bindMailCache(queryClient, MAIL_ROOTS), [queryClient]);
+  const select = React.useCallback(
+    (data: MessageLists): Message[] => {
+      const rows = flattenPages(data);
+      return search === '' ? rows : withLoadedMatches(rows, loadedRowsOf(queryClient, folder), search, folder);
+    },
+    [queryClient, folder, search]
+  );
   return useInfiniteQuery({
     queryKey: queryKeys.messageList(folder, search),
     // The param is the number of rows held so far. A refetch walks the loaded pages again from 0.
@@ -122,12 +163,14 @@ export function useMessages({ folder, search }: { folder: string; search: string
         params.set('q', search);
       }
       // The signal aborts the request as soon as another search or folder replaces this one.
-      const data = await apiGet<{ messages?: Message[] }>(`/api/messages?${params.toString()}`, 'Failed to load messages', signal);
+      const data = await apiGet<{ messages?: Message[] }>(`/api/messages?${params.toString()}`, 'fail.queries_messages', signal);
       const rows = data.messages ?? [];
-      return { messages: rows.slice(pageParam % MESSAGES_PAGE_SIZE), hasMore: rows.length === MESSAGES_PAGE_SIZE };
+      // Opened here, so the cache and the components only ever see the subject and the snippet, never a blob.
+      const opened = await openListRows(rows.slice(pageParam % MESSAGES_PAGE_SIZE), getUnlockedKey());
+      return { messages: opened, hasMore: rows.length === MESSAGES_PAGE_SIZE };
     },
     getNextPageParam: (lastPage, pages) => (lastPage.hasMore ? pages.reduce((held, page) => held + page.messages.length, 0) : undefined),
-    select: flattenPages,
+    select,
     // Keep showing the previous rows while the next search is loading instead of flashing empty, but
     // not across folders: another folder's rows under the new title would be wrong.
     placeholderData: (previous, previousQuery) => (previousQuery?.queryKey[1].folder === folder ? previous : undefined),
@@ -151,15 +194,18 @@ export function messageDetailOptions(
       // A refetch of a mail that is already shown (a realtime change) only peeks: reading it again would mark it read, so a mail
       // that came back unread while open would silently turn read.
       const peek = queryClient.getQueryData(queryKey) !== undefined;
-      const data = await apiGet<{ message: Message; attachments?: Attachment[] }>(
+      const data = await apiGet<{ message: DetailRow; attachments?: Attachment[] }>(
         `/api/messages/${encodeURIComponent(messageId)}${peek ? '?peek=1' : ''}`,
-        'Failed to load message'
+        'fail.queries_message'
       );
+      // The text, the attachment names and the state of the message come out of the blobs here (the key is read once, so one message is
+      // never half opened with one key and half with another).
+      const opened = await openDetail(data.message, data.attachments ?? [], getUnlockedKey());
       if (!peek) {
         patchMessages(queryClient, [messageId], { is_read: 1 });
         void queryClient.invalidateQueries({ queryKey: queryKeys.stats });
       }
-      return { message: data.message, attachments: data.attachments ?? [] };
+      return opened;
     },
     // Re-focusing the tab must never GET again. gcTime 0 drops the entry once another mail is selected,
     // so opening a mail again does GET (and mark it read) again, as it always did.
@@ -171,6 +217,7 @@ export function messageDetailOptions(
 
 export function useMessageDetail(id: string | null): UseQueryResult<MessageDetail> {
   const queryClient = useQueryClient();
+  React.useEffect(() => bindMailCache(queryClient, MAIL_ROOTS), [queryClient]);
   return useQuery(messageDetailOptions(queryClient, id));
 }
 
@@ -242,7 +289,7 @@ export function useBatchAction(): UseMutationResult<unknown, Error, BatchVariabl
           ...(folder !== undefined && folder !== '' ? { folder } : {}),
           ...(until === undefined ? {} : { until })
         },
-        'Action failed'
+        'fail.queries_action'
       ),
     onMutate: async ({ action, ids }) => {
       const context = await beginOptimistic(queryClient);
@@ -286,7 +333,7 @@ export function useMarkAllRead(): UseMutationResult<unknown, Error, { folder: st
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ folder, search }: { folder: string; search: string; ids: string[] }) =>
-      apiPost('/api/messages/read-all', { folder, ...(search === '' ? {} : { q: search }) }, 'Action failed'),
+      apiPost('/api/messages/read-all', { folder, ...(search === '' ? {} : { q: search }) }, 'fail.queries_action'),
     onMutate: async ({ ids }) => {
       const context = await beginOptimistic(queryClient);
       patchMessages(queryClient, ids, { is_read: 1 });
@@ -305,7 +352,7 @@ export function useUpdateLabels(): UseMutationResult<unknown, Error, { id: strin
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, labels }: { id: string; labels: string[] }) =>
-      apiPost('/api/messages/labels', { id, labels }, 'Failed to update labels'),
+      apiPost('/api/messages/labels', { id, labels }, 'fail.queries_labels_update'),
     onMutate: async ({ id, labels }) => {
       const context = await beginOptimistic(queryClient);
       patchMessages(queryClient, [id], { labels: JSON.stringify(labels) });
@@ -322,6 +369,8 @@ export function useUpdateLabels(): UseMutationResult<unknown, Error, { id: strin
 
 export function useSendMessage(): UseMutationResult<{ note?: string }, Error, SendPayload> {
   return useMutation({
-    mutationFn: (payload: SendPayload) => apiPost<{ note?: string }>('/api/messages/send', payload, 'Failed to send email')
+    mutationFn: (payload: SendPayload) => apiPost<{ note?: string }>('/api/messages/send', payload, 'fail.queries_send'),
+    // The payload is the plaintext of the message: it is not kept in the mutation cache once the send has settled.
+    gcTime: 0
   });
 }

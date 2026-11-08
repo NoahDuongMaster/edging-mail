@@ -1,4 +1,6 @@
 // Snooze times, in the browser's local time zone. Pure functions (no React, no clock reads unless a default says so) so they can be tested in Node.
+// The texts are looked up when a function runs (never at module load), in the UI language.
+import { fmt, tr } from './i18n';
 import { formatClock } from './mail';
 
 /** The server rejects a wake time sooner than this or later than MAX_SNOOZE_MS from now. */
@@ -45,7 +47,7 @@ function timeText(date: Date): string {
 }
 
 function weekdayText(date: Date): string {
-  return new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(date);
+  return fmt.date(date, { weekday: 'short' });
 }
 
 /** The default for a custom pick: tomorrow morning. */
@@ -64,19 +66,19 @@ export function snoozePresets(now: Date): SnoozePreset[] {
 
   const evening = atLocal(now, 0, EVENING_HOUR);
   if (evening.getTime() - now.getTime() >= LATER_TODAY_MIN_MS) {
-    choices.push({ id: 'later', label: 'Later today', at: evening });
+    choices.push({ id: 'later', label: tr('snooze.later_today'), at: evening });
   }
-  choices.push({ id: 'tomorrow', label: 'Tomorrow', at: tomorrowMorning(now) });
+  choices.push({ id: 'tomorrow', label: tr('snooze.tomorrow'), at: tomorrowMorning(now) });
   if (day !== 0 && day !== 6) {
-    choices.push({ id: 'weekend', label: 'This weekend', at: atLocal(now, 6 - day, MORNING_HOUR) });
+    choices.push({ id: 'weekend', label: tr('snooze.this_weekend'), at: atLocal(now, 6 - day, MORNING_HOUR) });
   }
-  choices.push({ id: 'next-week', label: 'Next week', at: atLocal(now, (8 - day) % 7 || 7, MORNING_HOUR) });
+  choices.push({ id: 'next-week', label: tr('snooze.next_week'), at: atLocal(now, (8 - day) % 7 || 7, MORNING_HOUR) });
 
   return choices
     .filter((choice, index) => choices.findIndex((other) => other.at.getTime() === choice.at.getTime()) === index)
     .map((choice) => ({
       ...choice,
-      hint: choice.id === 'later' ? timeText(choice.at) : `${weekdayText(choice.at)} ${timeText(choice.at)}`
+      hint: choice.id === 'later' ? timeText(choice.at) : tr('snooze.day_time', { day: weekdayText(choice.at), time: timeText(choice.at) })
     }));
 }
 
@@ -84,19 +86,20 @@ export function snoozePresets(now: Date): SnoozePreset[] {
 export function formatSnoozeUntil(untilMs: number, now: Date = new Date()): string {
   const until = new Date(untilMs);
   const offset = dayOffset(until, now);
+  const time = timeText(until);
   if (offset === 0) {
-    return `today${NBSP}${timeText(until)}`;
+    return tr('snooze.today_at', { time }).replaceAll(' ', NBSP);
   }
   if (offset === 1) {
-    return `tomorrow${NBSP}${timeText(until)}`;
+    return tr('snooze.tomorrow_at', { time }).replaceAll(' ', NBSP);
   }
-  const date = new Intl.DateTimeFormat(undefined, {
+  const day = fmt.date(until, {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
     ...(until.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' as const })
-  }).format(until);
-  return `${date.replaceAll(' ', NBSP)}${NBSP}${timeText(until)}`;
+  });
+  return tr('snooze.day_time', { day, time }).replaceAll(' ', NBSP);
 }
 
 /**
@@ -107,32 +110,33 @@ export function canResnooze(untilMs: number, nowMs: number): boolean {
   return untilMs - nowMs >= MIN_SNOOZE_MS + RESNOOZE_MARGIN_MS;
 }
 
-export type SnoozeGroup = 'Today' | 'Tomorrow' | 'Next 7 days' | 'Later';
+/** Ids of the list headings of the Snoozed folder (the list turns them into text, in the UI language). */
+export type SnoozeGroup = 'today' | 'tomorrow' | 'next-7-days' | 'later';
 
-export const SNOOZE_GROUP_ORDER: SnoozeGroup[] = ['Today', 'Tomorrow', 'Next 7 days', 'Later'];
+export const SNOOZE_GROUP_ORDER: SnoozeGroup[] = ['today', 'tomorrow', 'next-7-days', 'later'];
 
-/** The list heading for a snoozed mail, by the day it comes back. Soonest-first input stays in order across these groups. */
+/** The list heading (as an id) for a snoozed mail, by the day it comes back. Soonest-first input stays in order across these groups. */
 export function snoozeGroupOf(untilMs: number, now: Date = new Date()): SnoozeGroup {
   const offset = dayOffset(new Date(untilMs), now);
   if (offset <= 0) {
-    return 'Today';
+    return 'today';
   }
   if (offset === 1) {
-    return 'Tomorrow';
+    return 'tomorrow';
   }
-  return offset <= 7 ? 'Next 7 days' : 'Later';
+  return offset <= 7 ? 'next-7-days' : 'later';
 }
 
-/** Why a custom wake time cannot be used (the server checks again), or null when it can. */
+/** Why a custom wake time cannot be used (the server checks again), in the UI language, or null when it can. */
 export function snoozeProblem(at: Date | null, now: Date): string | null {
   if (at === null || Number.isNaN(at.getTime())) {
-    return 'Pick a date and time.';
+    return tr('snooze.pick_date');
   }
   const ahead = at.getTime() - now.getTime();
   if (ahead < MIN_SNOOZE_MS) {
-    return 'Pick a time at least 1 minute from now.';
+    return tr('snooze.too_soon');
   }
-  return ahead > MAX_SNOOZE_MS ? 'Pick a time within the next year.' : null;
+  return ahead > MAX_SNOOZE_MS ? tr('snooze.too_far') : null;
 }
 
 const pad2 = (n: number) => String(n).padStart(2, '0');

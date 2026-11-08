@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { sessionKey } from './auth';
+import { askSession, sessionKey } from './auth';
+import { wipeKeysInBackground } from './crypto/keyStore';
 import { queryKeys } from './queries';
+import { confirmSession, handleSocketClose, SESSION_RENEWED_CLOSE } from './sessionRenewal';
 
 export type RealtimeStatus = 'connecting' | 'open' | 'closed';
 
@@ -138,11 +140,25 @@ export function useRealtime(enabled: boolean): RealtimeStatus {
           catchUp();
         }
       });
-      ws.addEventListener('close', () => {
+      ws.addEventListener('close', (event) => {
         if (ws !== socket) {
           return;
         }
         lost();
+        // The Worker closes a socket whose session ended with 4401 (sign-out elsewhere, a reset): no key may outlive it (CK-13). It closes
+        // them with 4402 when the person's sessions were renewed (a password change, new recovery codes). The session check then says whether
+        // the cookie of this device is still good (the unlock screen asks for the password) or gone.
+        handleSocketClose(event.code, {
+          wipeKeys: wipeKeysInBackground,
+          // A check that cannot be answered is asked again for 30 s, then the keys are wiped and the app locks (SR-1).
+          checkSession: () => {
+            void confirmSession(() => askSession(queryClient), wipeKeysInBackground);
+          }
+        });
+        if (event.code === SESSION_RENEWED_CLOSE) {
+          // The cookie changed: the next socket is opened with the new one, soon.
+          reconnects = 0;
+        }
         if (!sawHello) {
           refused += 1;
           if (refused >= REFUSED_BEFORE_SESSION_CHECK) {
