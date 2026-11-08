@@ -3,10 +3,12 @@
 #
 #   cp .dev.vars.example .dev.vars
 #
-# The placeholders below are deliberately too short: until you replace them, login answers
-# 503 "Login is not configured" instead of accepting a password everybody can read here.
+# The placeholders below are deliberately unusable: until you replace them, sign-in and Setup
+# answer 503 "Server is not configured" instead of accepting a secret everybody can read here.
+# The three values must be different from each other.
 
-# The password you type on the login screen. At least 12 characters.
+# The setup key: needed for the first-run Setup and for break-glass recovery of an admin. It is
+# not anybody's sign-in password. At least 24 characters.
 #   openssl rand -base64 24
 APP_PASSWORD=CHANGE_ME
 
@@ -14,6 +16,15 @@ APP_PASSWORD=CHANGE_ME
 #   openssl rand -hex 32
 JWT_SECRET=CHANGE_ME
 
+# Protects what the server must read back (see docs/configuration.md). Base64 of exactly 32 random
+# bytes. This placeholder is 32 zero bytes, which the Worker refuses on purpose.
+#   openssl rand -base64 32
+DATA_KEY=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+
 # Optional: override the defaults from `vars` in wrangler.jsonc.
 # APP_NAME="Edging Mail"
-# DEFAULT_FROM=hi@duongnamtruong.com
+# DEFAULT_FROM=you@example.com
+
+# Optional, local development only: also accept a Web Push endpoint on loopback over http or https (a fake
+# push service). Without it only real push services over https are accepted. Never set it on a deployment.
+# ALLOW_LOCAL_PUSH=on

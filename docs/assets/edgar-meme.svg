@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1000 600" width="1000" height="600" role="img" aria-labelledby="t d">
-  <title id="t">Edgar meme: zero servers, zero cold starts, zero dollars</title>
-  <desc id="d">Edgar the pigeon in sunglasses on a cloud with the caption ZERO SERVERS. ZERO COLD STARTS. ZERO DOLLARS.</desc>
+  <title id="t">Edgar meme: zero servers, zero cold starts</title>
+  <desc id="d">Edgar the pigeon in sunglasses on a cloud with the caption ZERO SERVERS. ZERO COLD STARTS.</desc>
   <defs>
     <linearGradient id="skyM" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#2F5BEA"/>
@@ -149,5 +149,4 @@
   </svg>
   <text x="500" y="72" font-size="54" stroke-width="11" font-family="Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Black', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-weight="900" fill="#FFFFFF" stroke="#0B1220" stroke-linejoin="round" paint-order="stroke fill" text-anchor="middle">ZERO SERVERS.</text>
   <text x="500" y="132" font-size="54" stroke-width="11" font-family="Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Black', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-weight="900" fill="#FFFFFF" stroke="#0B1220" stroke-linejoin="round" paint-order="stroke fill" text-anchor="middle">ZERO COLD STARTS.</text>
-  <text x="500" y="556" font-size="84" stroke-width="16" font-family="Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Black', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-weight="900" fill="#FFFFFF" stroke="#0B1220" stroke-linejoin="round" paint-order="stroke fill" text-anchor="middle">ZERO DOLLARS.</text>
 </svg>

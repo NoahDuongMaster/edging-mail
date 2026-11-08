@@ -1,0 +1,135 @@
+Edging Mail
+Licensed under the MIT License (see LICENSE).
+
+This file lists the third-party software and data that Edging Mail ships or
+that its tests and build use, with the licence of each. The licence of every
+package was read from its package.json and package-lock.json in this
+repository (the "license" field), and the copyright line from the licence file
+in the package where it ships one. The full texts are in each package's own
+licence file in node_modules and in the package's source repository.
+
+No font file is shipped. See "Fonts" below.
+
+
+1. Runtime dependencies (these end up in the Worker or in the app that the
+   browser downloads)
+
+   Package                  Version    Licence       Copyright
+   -----------------------  ---------  ------------  -------------------------------------------
+   react                    19.3.1     MIT           Meta Platforms, Inc. and affiliates
+   react-dom                19.3.1     MIT           Meta Platforms, Inc. and affiliates
+   hono                     4.13.16    MIT           Yusuke Wada and Hono contributors
+   drizzle-orm              0.45.4     Apache-2.0    Drizzle Team (the package carries no licence file)
+   @tanstack/react-query    5.105.3    MIT           Tanner Linsley
+   lucide-react             1.66.0     ISC           Lucide Icons and Contributors (some icons
+                                                     derive from Feather, MIT, Cole Bemis)
+   mimetext                 3.0.28     MIT           Murat Gozel
+   postal-mime              4.2.0      MIT-0         Andris Reinman
+   @hpke/core               1.10.0     MIT           Ajitomi Daisuke
+   qrcode-generator         2.0.4      MIT           Kazuhiko Arase (package author; the package
+                                                     carries no licence file)
+
+   Their own runtime dependencies, all in the same lockfile:
+
+   Package                  Version    Licence       Needed by
+   -----------------------  ---------  ------------  -------------------------------------------
+   scheduler                0.28.0     MIT           react-dom
+   @tanstack/query-core     5.105.3    MIT           @tanstack/react-query
+   @hpke/common             1.11.0     MIT           @hpke/core
+   @babel/runtime           7.29.10    MIT           mimetext
+   @babel/runtime-corejs3   7.29.10    MIT           mimetext
+   core-js-pure             3.51.0     MIT           @babel/runtime-corejs3
+   js-base64                3.9.6      BSD-3-Clause  mimetext
+   mime-types               2.1.35     MIT           mimetext
+   mime-db                  1.52.0     MIT           mime-types
+
+   Every runtime package is under MIT, MIT-0, ISC, BSD-3-Clause or
+   Apache-2.0. The drizzle-orm package ships no NOTICE file.
+
+
+2. Build and test dependencies added for the multi-user version
+   (dev dependencies: nothing here is shipped to users)
+
+   Package                      Version    Licence  Copyright
+   ---------------------------  ---------  -------  -------------------------------------------
+   vitest                       4.1.12     MIT      VoidZero Inc. and Vitest contributors
+   @cloudflare/vitest-plugin    1.6.0      MIT      Cloudflare (the package carries no licence file)
+   esbuild                      0.28.2     MIT      Evan Wallace
+
+   esbuild is used by scripts/check-worker-bundle.mjs, which builds the Worker
+   the way a deploy does and fails when a module of ours calls a forbidden
+   crypto function, and by scripts/kat-browser.mjs, which builds the
+   known-answer tests into a page for a browser. The other build tools of the project (Vite, Tailwind CSS,
+   TypeScript, ESLint, Prettier, Wrangler and the rest of the dev
+   dependencies) are not shipped either; their licences are in
+   package-lock.json.
+
+
+3. Data
+
+   Both data sets are bundled into the app and loaded only on a screen where
+   someone sets a password. Nothing is fetched at run time. How they were made
+   is documented in src/client/lib/password/data/SOURCES.md.
+
+   a. Common-password blocklist
+      (src/client/lib/password/data/common-roots.txt and common-long.txt)
+      Cut from the SecLists file
+      Passwords/Common-Credentials/xato-net-10-million-passwords-1000000.txt
+      (https://github.com/danielmiessler/SecLists).
+      Licence of SecLists: MIT, Copyright (c) 2018 Daniel Miessler.
+      Origin of the data: Mark Burnett's 2015 "ten million passwords" data set,
+      which he released to the public domain. His request, honoured here, is that
+      the data is used for research and for making authentication more secure;
+      this app uses it only to refuse weak passwords.
+
+   b. Passphrase word list (src/client/lib/password/data/wordlist.txt)
+      The English word list of BIP-39 (bip-0039/english.txt in
+      https://github.com/bitcoin/bips), unchanged. Licence: MIT ("This BIP falls
+      under the MIT License"). Authors: Marek Palatinus, Pavol Rusnak, Aaron
+      Voisine, Sean Bowe.
+
+   c. Test vectors (test/crypto/)
+      cfrg-p256.json is one HPKE test vector (mode 0, DHKEM(P-256, HKDF-SHA256),
+      HKDF-SHA256, AES-256-GCM) from the interoperability test-vector set that
+      the IETF CFRG publishes for RFC 9180
+      (https://github.com/cfrg/draft-irtf-cfrg-hpke). The file states no
+      licence of its own; it is a published test value, used only by the tests
+      and not shipped. vectors.json and vectors-v4.json are known-answer vectors
+      written for this project.
+
+
+4. Fonts
+
+   No font file is shipped in this repository or in the build. index.html asks
+   the visitor's browser to load Geist and Geist Mono from Google Fonts at run
+   time (the browser contacts Google when the app opens). Geist is published by
+   Vercel under the SIL Open Font License 1.1
+   (https://github.com/vercel/geist-font). Self-hosting the font files, or
+   removing the request, is listed in docs/security.md under known limitations.
+
+
+5. Build and test tools under other licences
+
+   None of these is shipped, copied into the app or linked into the Worker. They
+   are in package-lock.json as dependencies of the build and test tools (the
+   lockfile says why), and they are not under the licences the project accepts for
+   what it ships (MIT, ISC, BSD, Apache-2.0):
+
+   - lightningcss 1.33.0 and its 11 platform packages (lightningcss-*): MPL-2.0.
+     Needed by Vite and Tailwind CSS at build time.
+   - axe-core 4.14.0: MPL-2.0. Needed by eslint-plugin-jsx-a11y (a lint rule set).
+   - The @img/sharp-libvips-* packages (LGPL-3.0-or-later) and the @img/sharp-wasm32
+     and @img/sharp-win32-* packages that bundle libvips (Apache-2.0 AND
+     LGPL-3.0-or-later, the wasm32 one also MIT). All optional, needed by sharp,
+     which miniflare (the local runtime of Wrangler and of the test runner) uses.
+     They are never part of a deploy.
+   - @speed-highlight/core 1.2.24 (needed by youch, an error-page library of
+     miniflare) and language-subtag-registry 0.3.23 (data, needed by language-tags
+     of eslint-plugin-jsx-a11y): CC0-1.0.
+   - argparse 2.0.1 (needed by js-yaml of ESLint): Python-2.0.
+   - caniuse-lite 1.0.30001820 (browser data, needed by Autoprefixer and
+     browserslist): CC-BY-4.0.
+
+   @types/react, csstype and @cloudflare/workers-types (MIT; the last one MIT OR
+   Apache-2.0) are type definitions that only the compiler reads. They are not
+   shipped either.
