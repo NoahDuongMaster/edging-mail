@@ -1,8 +1,14 @@
 import React from 'react';
 import { CheckCheck, Menu as MenuIcon, Moon, PenLine, Search, Sun, User, X } from 'lucide-react';
-import { BrandMark } from './components/BrandMark';
 import { Sidebar } from './components/Sidebar';
-import { MessageList, type MailFilter, type RowActions, type RowMenuRequest, type SearchScope } from './components/MessageList';
+import {
+  MessageList,
+  RollingText,
+  type MailFilter,
+  type RowActions,
+  type RowMenuRequest,
+  type SearchScope
+} from './components/MessageList';
 import {
   SelectAllLine,
   SelectionBar,
@@ -23,6 +29,7 @@ import { AdminConsole } from './components/admin/AdminConsole';
 import { Toast, type ToastState } from './components/Toast';
 import {
   applyTheme,
+  avatarHue,
   getTokens,
   storedThemeChoice,
   storeThemeChoice,
@@ -31,7 +38,7 @@ import {
   type ThemeChoice,
   type ThemeTokens
 } from './theme';
-import { folderName, formatSender, labelsOf, nonEmpty, replyRedirect, SEARCH_MAX, subjectOf } from './lib/mail';
+import { displayName, folderName, formatSender, labelsOf, nonEmpty, replyRedirect, SEARCH_MAX, subjectOf } from './lib/mail';
 import { isUnreadable } from './lib/mailcrypto/texts';
 import { ApiError, apiPost } from './lib/api';
 import { announce } from './lib/announce';
@@ -57,10 +64,22 @@ import { ownerInitials, useSettings } from './lib/settings';
 import { SELECTION_SHORTCUTS, SHOW_SHORTCUTS_EVENT, shortcutOf, type TriageShortcut } from './lib/shortcuts';
 import { chunks, extendSelection, keepListed, pageState, toggleAll, toggleOne } from './lib/selection';
 import { canResnooze, formatSnoozeUntil } from './lib/snooze';
-import { RETURN_SLIDE_DELAY_MS, enterPane, fadeOutInPlace, leaveDrawer, leavePane, type PhonePane } from './lib/shellMotion';
+import { RETURN_SLIDE_DELAY_MS, enterPane, flyAway, flyBack, homeRef, leaveDrawer, leavePane, type PhonePane } from './lib/shellMotion';
 import { useCountdown } from './lib/useCountdown';
-import { Button, EmptyState, IconButton, Kbd, TextField, motionReduced, useSwipeToDismiss } from './ui';
-import { isCjk } from './ui/initials';
+import {
+  Button,
+  EmptyState,
+  FlightTrail,
+  IconButton,
+  Kbd,
+  TextField,
+  VisuallyHidden,
+  motionReduced,
+  useSwipeToDismiss,
+  type FlyHomeOptions,
+  type HomingKind
+} from './ui';
+import { initialsOf, isCjk } from './ui/initials';
 import type { Attachment, FolderStats, Message } from './types';
 import './components/mailbox.css';
 
@@ -189,6 +208,32 @@ function focusNeighbourRow(item: HTMLElement): void {
   }
 }
 
+/** Where a single message's flight starts (DESIGN-v3 H1): its row in the list, or the open message's subject when the reader acted on it. */
+type FlightOrigin = 'row' | 'reader';
+
+/** The element a flight of `message` lifts off: the row (when it is listed and on screen) or the reader's subject, as `origin` asks first. */
+function flightFrom(message: Message, origin: FlightOrigin): Element | null {
+  const row = messagesRegion()?.querySelector(`li[data-id="${CSS.escape(message.id)}"]:not([data-leaving])`) ?? null;
+  const subject = document.querySelector('#msg-subject');
+  return origin === 'reader' ? (subject ?? row) : (row ?? subject);
+}
+
+/** The token of a message: the sender's initials on the sender's own hue (the row's avatar). */
+function tokenOf(message: Message, kind: HomingKind, count?: number): FlyHomeOptions {
+  return { initials: initialsOf(displayName(message)), hue: avatarHue(message.from_address), kind, count };
+}
+
+/** The kind of flight a move to a folder is (any other folder: a plain move). */
+const MOVE_KINDS: ReadonlyMap<string, HomingKind> = new Map([
+  ['archive', 'archive'],
+  ['trash', 'trash'],
+  ['spam', 'spam'],
+  ['inbox', 'restore']
+]);
+function kindOf(target: string): HomingKind {
+  return MOVE_KINDS.get(target) ?? 'move';
+}
+
 /** The id of the open message's pane on a desktop: the second skip link goes there (past the list, to Reply and the toolbar). */
 const READER_ID = 'mail-reader';
 
@@ -218,7 +263,7 @@ const QUOTED_DATE: Intl.DateTimeFormatOptions = {
   minute: '2-digit'
 };
 
-/** The owner's round avatar in the header, desktop and phone: the one way into Settings (account, appearance, notifications, sign out). On phones the button is 44px around the same 32px face. Its name starts with the letters it shows (2.5.3: a voice user says what they see). */
+/** The owner's round avatar in the phone's app bar: the one way into Settings there (account, appearance, notifications, sign out). The button is 44px around the same 32px face. Its name starts with the letters it shows (2.5.3: a voice user says what they see). */
 function AccountButton({ initials, onClick }: { initials: string; onClick: () => void }) {
   const tr = useT();
   return (
@@ -233,6 +278,27 @@ function AccountButton({ initials, onClick }: { initials: string; onClick: () =>
         {initials === '' ? <User size={16} strokeWidth={1.75} /> : initials}
       </span>
     </IconButton>
+  );
+}
+
+/**
+ * The account at the foot of the desktop rail (DESIGN-v3 4.1): the owner's avatar, name and address; the one way into Settings on a desktop
+ * (the same button as the phone's avatar: `data-account-button`). Its name is what it shows, then what it opens (2.5.3).
+ */
+function AccountRow({ initials, name, address, onClick }: { initials: string; name: string; address: string; onClick: () => void }) {
+  const tr = useT();
+  const shown = name === '' ? address : name;
+  return (
+    <button type="button" className="mb-account-row" data-account-button="" onClick={onClick}>
+      <span aria-hidden="true" className="ui-avatar" data-size="md" data-script={isCjk(initials) ? 'cjk' : undefined}>
+        {initials === '' ? <User size={16} strokeWidth={1.75} /> : initials}
+      </span>
+      <span className="mb-account-text">
+        <span className="mb-account-name">{shown === '' ? tr('app.account_settings') : shown}</span>
+        {name === '' || address === '' ? null : <span className="mb-account-addr">{address}</span>}
+      </span>
+      {shown === '' ? null : <VisuallyHidden>{tr('app.account_settings')}</VisuallyHidden>}
+    </button>
   );
 }
 
@@ -333,27 +399,31 @@ export default function App() {
     }
     return (
       <main className="mb-status">
-        <EmptyState
-          illustration
-          idle
-          titleAs="h1"
-          title={tr('app.server_unreachable')}
-          description={tr('app.server_unreachable_hint')}
-          action={
-            <>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  void session.refetch();
-                }}
-              >
-                {tr('common.retry')}
-              </Button>
-              {/* J3-34: the countdown is helper text under the button (12px below it, quiet and tabular), not a label above it. */}
-              <RetryStatus checking={session.isFetching} />
-            </>
-          }
-        />
+        {/* DESIGN-v3 4.3: Edgar with his flight trail behind him, the headline, one line, the action; no card. */}
+        <div className="mb-status-scene">
+          <FlightTrail size="md" className="mb-status-trail" />
+          <EmptyState
+            illustration
+            idle
+            titleAs="h1"
+            title={tr('app.server_unreachable')}
+            description={tr('app.server_unreachable_hint')}
+            action={
+              <>
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    void session.refetch();
+                  }}
+                >
+                  {tr('common.retry')}
+                </Button>
+                {/* J3-34: the countdown is helper text under the button (12px below it, quiet and tabular), not a label above it. */}
+                <RetryStatus checking={session.isFetching} />
+              </>
+            }
+          />
+        </div>
       </main>
     );
   }
@@ -666,13 +736,18 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
   // get a '+' while more pages exist: they are a floor, not the total.
   const more = serverCount === undefined && hasMore ? '+' : '';
   let subtitle = '';
+  // The number in it rolls when it changes (DESIGN-v3 H2, MessageList RollingText).
+  let subtitleCount: number | undefined;
   if (messagesQuery.data !== undefined) {
     if (unreadCount > 0) {
       subtitle = tr('app.subtitle_unread', { count: unreadCount, more });
+      subtitleCount = unreadCount;
     } else if (folder === 'drafts') {
       subtitle = tr('app.subtitle_drafts', { count: poolCount, more });
+      subtitleCount = poolCount;
     } else {
       subtitle = tr('app.subtitle_messages', { count: poolCount, more });
+      subtitleCount = poolCount;
     }
   }
 
@@ -764,6 +839,24 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
 
   // Mails whose archive/trash/spam/snooze/unsnooze is on its way: a second click on the still-open mail must not send it twice.
   const leaving = React.useRef(new Set<string>());
+  // Where each message that left flew to (DESIGN-v3 H1), so its Undo flies it back from there to its row.
+  const wentTo = React.useRef(new Map<string, string>());
+  /** A message (or the ticked ones: `count`) leaves for `target`: its token flies home from `from`, and the Undo knows where it went. */
+  const sendHome = (message: Message, target: string, from: Element | null, kind: HomingKind, count?: number) => {
+    wentTo.current.set(message.id, target);
+    flyAway(from, target, tokenOf(message, kind, count));
+  };
+  /** The Undo of `message` came back: its token flies from the folder it went to back to its row (the open subject on a phone's reader). */
+  const flyBackHome = (message: Message, count?: number) => {
+    const home = wentTo.current.get(message.id);
+    wentTo.current.delete(message.id);
+    if (home === undefined) {
+      return;
+    }
+    window.requestAnimationFrame(() => {
+      flyBack(home, flightFrom(message, 'row'), tokenOf(message, 'restore', count));
+    });
+  };
   // Mails deleted forever: their row leaves the list with a fade only (the others slide away), see MessageList `leaveStyle`.
   const fading = React.useRef(new Set<string>());
   const leaveStyle = React.useCallback((id: string): 'slide' | 'fade' => (fading.current.has(id) ? 'fade' : 'slide'), []);
@@ -831,6 +924,9 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
   const undoFor = (message: Message) => async (): Promise<void> => {
     const ok = await putBack(message);
     await refreshMessages({ keepSelection: true });
+    if (ok) {
+      flyBackHome(message);
+    }
     if (ok && !isMobileRef.current) {
       if (!motionReduced()) {
         await new Promise((resolve) => {
@@ -846,10 +942,12 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
   // optimistic removal is drawn a moment after the click): Undo works at once (it waits for the request, then puts the mail back), and a
   // request that fails turns the same toast into the error (batch) while the row comes back; one that failed before the toast came shows
   // only the error.
-  const moveMessage = async (message: Message, target: 'archive' | 'trash' | 'spam' | 'inbox') => {
+  const moveMessage = async (message: Message, target: 'archive' | 'trash' | 'spam' | 'inbox', origin: FlightOrigin = 'row') => {
     if (leaving.current.has(message.id)) {
       return;
     }
+    // DESIGN-v3 H1: the message flies home to the folder it goes to, from where it was, before its row's own exit moves it.
+    sendHome(message, target, flightFrom(message, origin), kindOf(target));
     const label =
       target === 'trash'
         ? tr('toast.moved_to_trash')
@@ -883,14 +981,14 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
 
   // Trash and Spam only. Move to Inbox can be undone (the mail goes back to the folder it came from); Delete forever cannot, which is
   // why the toolbar asks first (confirmDelete) and the toast has no Undo.
-  const restoreOrDelete = async (message: Message, action: 'restore' | 'delete') => {
+  const restoreOrDelete = async (message: Message, action: 'restore' | 'delete', origin: FlightOrigin = 'row') => {
     if (action === 'delete') {
       // Deleted forever is not a journey: its row only fades (M1).
       fading.current.add(message.id);
     }
     if (action === 'restore') {
-      // As the other moves: the toast with the row's exit (J2-19).
-      await moveMessage(message, 'inbox');
+      // As the other moves: the toast with the row's exit (J2-19), and its flight home to the Inbox. Delete forever flies nowhere.
+      await moveMessage(message, 'inbox', origin);
       return;
     }
     const ok = await leaveMessage(message, () => batch(action, [message.id]));
@@ -903,7 +1001,10 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
     setToast({ text: tr('toast.deleted_forever') });
   };
 
-  const snoozeMessage = async (message: Message, until: Date) => {
+  const snoozeMessage = async (message: Message, until: Date, origin: FlightOrigin = 'row') => {
+    if (!leaving.current.has(message.id)) {
+      sendHome(message, 'snoozed', flightFrom(message, origin), 'snooze');
+    }
     const ok = await leaveMessage(message, async () => {
       const problem = await snoozeBatch(message.id, until.getTime());
       if (problem !== null) {
@@ -926,7 +1027,10 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
   };
 
   // Brings a snoozed mail back to the Inbox now; Undo snoozes it again for the time it had (or leaves it in the Inbox when that is due).
-  const unsnoozeMessage = async (message: Message) => {
+  const unsnoozeMessage = async (message: Message, origin: FlightOrigin = 'row') => {
+    if (!leaving.current.has(message.id)) {
+      sendHome(message, 'inbox', flightFrom(message, origin), 'restore');
+    }
     const ok = await leaveMessage(message, () => batch('move', [message.id], { folder: 'inbox' }));
     if (ok !== true) {
       if (ok === false) {
@@ -1040,6 +1144,14 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
     }
   };
 
+  // A label put on a message (not one taken off) flies a token to that label in the rail (DESIGN-v3 H1); the message stays where it is.
+  const labelMessage = (message: Message, label: string, origin: FlightOrigin) => {
+    if (!labelsOf(message).includes(label)) {
+      flyAway(flightFrom(message, origin), `label:${label}`, tokenOf(message, 'label'));
+    }
+    void toggleLabel(message, label);
+  };
+
   // ---- The ticked messages (J6-26): every action goes through POST /api/messages/batch in chunks of 100 ids, optimistic like a row's own
   // actions (the rows leave at once), with ONE toast whose Undo puts them all back. Its toast speaks for it, not "Selection cleared".
   const clearSelection = React.useCallback(() => {
@@ -1093,6 +1205,10 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
     if (ids.length === 0) {
       return;
     }
+    // DESIGN-v3 H1: ONE token with the count flies from the first ticked row (or the selection bar) to where they all go.
+    const first = rows[0];
+    const lead = flightFrom(first, 'row') ?? document.querySelector('.ml-selbar, .ml-selbar-phone');
+    sendHome(first, until === undefined ? target : 'snoozed', lead, until === undefined ? kindOf(target) : 'snooze', ids.length);
     handOffFocus(ids);
     clearSelection();
     keepFocusInList();
@@ -1129,6 +1245,7 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
         undo: async () => {
           if (await request) {
             await putBackAll(rows);
+            flyBackHome(first, ids.length);
           }
         },
         returnFocus: isMobile ? messagesRegion : rowOf(ids)
@@ -1194,6 +1311,14 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
     const rows = selectedRows.filter((m) => !labelsOf(m).includes(label));
     if (rows.length === 0) {
       return;
+    }
+    const lead = rows.at(0);
+    if (lead !== undefined) {
+      flyAway(
+        flightFrom(lead, 'row') ?? document.querySelector('.ml-selbar, .ml-selbar-phone'),
+        `label:${label}`,
+        tokenOf(lead, 'label', rows.length)
+      );
     }
     const done = await Promise.all(rows.map((m) => toggleLabel(m, label)));
     if (done.every(Boolean)) {
@@ -1533,9 +1658,7 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
         void moveMessage(m, known);
       }
     },
-    label: (m, label) => {
-      void toggleLabel(m, label);
-    },
+    label: (m, label) => labelMessage(m, label, 'row'),
     reply: (m) => answerFromRow(m, 'reply'),
     replyAll: (m) => answerFromRow(m, 'replyAll'),
     forward: (m) => answerFromRow(m, 'forward'),
@@ -1624,10 +1747,12 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
           focusNeighbourRow(item);
         }
       };
+      // The key acted on the focused row, or (no row focused) on the open message: that is where its flight starts.
+      const origin: FlightOrigin = row === undefined ? 'reader' : 'row';
       switch (shortcut) {
         case 'archive': {
           handOff();
-          void (bin ? restoreOrDelete(m, 'restore') : moveMessage(m, 'archive'));
+          void (bin ? restoreOrDelete(m, 'restore', origin) : moveMessage(m, 'archive', origin));
           break;
         }
         case 'trash': {
@@ -1635,7 +1760,7 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
             setConfirmDelete(m);
           } else {
             handOff();
-            void moveMessage(m, 'trash');
+            void moveMessage(m, 'trash', origin);
           }
           break;
         }
@@ -1789,6 +1914,15 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
   // Focus moves into the drawer when it opens and returns to the button that opens it when it closes (as in SettingsModal).
   const drawerRef = React.useRef<HTMLDivElement | null>(null);
   const menuButtonRef = React.useRef<HTMLButtonElement | null>(null);
+  // The phone's menu button is the home of every folder while the drawer is shut: a message flies into it (DESIGN-v3 H1).
+  const menuHome = homeRef('menu');
+  const setMenuButton = React.useCallback(
+    (node: HTMLButtonElement | null) => {
+      menuButtonRef.current = node;
+      return menuHome(node);
+    },
+    [menuHome]
+  );
   React.useEffect(() => {
     if (!drawerOpen) {
       return;
@@ -1823,24 +1957,6 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
     shownPane.current = pane;
     return () => {
       leavePane(node, pane);
-    };
-  }, []);
-
-  // J2-23 on a phone: the app bar and the selection bar trade places by a fade-through. The app bar's copy fades out in 90 ms when the
-  // selection bar comes (it waits 60 ms, messagelist.css); back from a selection the app bar fades in after 60 ms (mailbox.css [data-return]).
-  const phoneSelecting = isMobile && selection.size > 0;
-  const [phoneBarWas, setPhoneBarWas] = React.useState(phoneSelecting);
-  const [phoneBarReturns, setPhoneBarReturns] = React.useState(false);
-  if (phoneBarWas !== phoneSelecting) {
-    setPhoneBarWas(phoneSelecting);
-    setPhoneBarReturns(!phoneSelecting);
-  }
-  const phoneBarRef = React.useCallback((node: HTMLDivElement | null) => {
-    if (node === null) {
-      return;
-    }
-    return () => {
-      fadeOutInPlace(node, { lift: false, replacedBy: '.ml-selbar-phone' });
     };
   }, []);
 
@@ -1919,21 +2035,20 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
     </form>
   );
 
-  // Desktop header, on the window ground: the mark above the folders, the search over the list column (its edges are the list's), the theme
-  // and the account on the right, the account's edge on the content sheet's.
-  const header = (
-    <header className="mb-header">
-      <div className="mb-header-brand">
-        <BrandMark t={t} />
-      </div>
-      <div className="mb-header-search">{renderSearch(false)}</div>
-      <div className="mb-header-actions">
-        <IconButton label={dark ? tr('app.theme_to_light') : tr('app.theme_to_dark')} onClick={onToggleDark}>
-          {dark ? <Sun size={18} strokeWidth={1.75} aria-hidden="true" /> : <Moon size={18} strokeWidth={1.75} aria-hidden="true" />}
-        </IconButton>
-        <AccountButton initials={initials} onClick={() => openSettings()} />
-      </div>
-    </header>
+  // DESIGN-v3 4.1: no header on a desktop. The foot of the rail holds the account (the one way into Settings) and the theme switch; the
+  // search is the list sheet's own (its head).
+  const railFoot = (
+    <>
+      <AccountRow
+        initials={initials}
+        name={settings?.display_name.trim() ?? ''}
+        address={settings?.email ?? ''}
+        onClick={() => openSettings()}
+      />
+      <IconButton label={dark ? tr('app.theme_to_light') : tr('app.theme_to_dark')} onClick={onToggleDark}>
+        {dark ? <Sun size={18} strokeWidth={1.75} aria-hidden="true" /> : <Moon size={18} strokeWidth={1.75} aria-hidden="true" />}
+      </IconButton>
+    </>
   );
 
   // What the list shows above its rows while a search runs, and the actions only Trash and Spam have.
@@ -1966,6 +2081,7 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
       title={title}
       folder={folder}
       subtitle={subtitle}
+      subtitleCount={subtitleCount}
       filter={filter}
       onFilterChange={setFilter}
       onMarkAllRead={() => {
@@ -1974,6 +2090,8 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
       onRefresh={refreshList}
       isLoading={isLoadingList}
       {...searchProps}
+      // The search is the list sheet's own, under its title (DESIGN-v3 4.1).
+      searchSlot={renderSearch(false)}
       hasMore={hasMore}
       loadingMore={messagesQuery.isFetchingNextPage}
       onLoadMore={() => {
@@ -2005,30 +2123,28 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
         void toggleStar(m);
       }}
       onArchive={(m) => {
-        void moveMessage(m, 'archive');
+        void moveMessage(m, 'archive', 'reader');
       }}
       onTrash={(m) => {
-        void moveMessage(m, 'trash');
+        void moveMessage(m, 'trash', 'reader');
       }}
       onSpam={(m) => {
-        void moveMessage(m, 'spam');
+        void moveMessage(m, 'spam', 'reader');
       }}
       onRestore={(m) => {
-        void restoreOrDelete(m, 'restore');
+        void restoreOrDelete(m, 'restore', 'reader');
       }}
       onDeleteForever={setConfirmDelete}
       onMarkUnread={(m) => {
         void markUnread(m);
       }}
       onSnooze={(m, until) => {
-        void snoozeMessage(m, until);
+        void snoozeMessage(m, until, 'reader');
       }}
       onUnsnooze={(m) => {
-        void unsnoozeMessage(m);
+        void unsnoozeMessage(m, 'reader');
       }}
-      onToggleLabel={(m, label) => {
-        void toggleLabel(m, label);
-      }}
+      onToggleLabel={(m, label) => labelMessage(m, label, 'reader')}
       onPrev={() => navigateRelative(-1)}
       onNext={() => navigateRelative(1)}
       hasPrev={selectedIndex > 0}
@@ -2086,8 +2202,6 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
           {tr('app.skip_to_message')}
         </a>
       )}
-      {isMobile ? null : header}
-
       <div className="mb-body" data-toast={toast === null ? undefined : ''}>
         {!isMobile ? (
           <Sidebar
@@ -2097,6 +2211,7 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
             stats={stats}
             labels={availableLabels}
             onCompose={() => openCompose()}
+            foot={railFoot}
           />
         ) : null}
 
@@ -2108,25 +2223,11 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
                   the message starts higher. The page keeps its heading (the folder) for screen readers. */}
               {mobilePane === 'reader' ? (
                 <h1 className="ui-visually-hidden">{title}</h1>
-              ) : selectionBar !== undefined ? (
-                // Selection mode (J6-26): the bar is the selection's (Close, the count, Archive, Move to Trash, More); the page keeps its heading.
-                <>
-                  <h1 className="ui-visually-hidden">{title}</h1>
-                  {selectionBar}
-                </>
               ) : (
-                <div
-                  ref={phoneBarRef}
-                  className="mb-phone-bar"
-                  data-return={phoneBarReturns ? 'true' : undefined}
-                  onAnimationEnd={(event) => {
-                    if (event.target === event.currentTarget) {
-                      setPhoneBarReturns(false);
-                    }
-                  }}
-                >
+                // Selection mode (J6-26) keeps this bar: the selection's own bar floats at the bottom, in thumb reach (DESIGN-v3 4.1).
+                <div className="mb-phone-bar">
                   <IconButton
-                    ref={menuButtonRef}
+                    ref={setMenuButton}
                     data-nav-toggle="mailboxes"
                     label={tr('app.open_mailboxes')}
                     onClick={() => setSidebarOpen(true)}
@@ -2138,7 +2239,9 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
                   <div className="mb-phone-title">
                     {/* A search titles the bar "Results" (J6-37): the count under it says where it looked. */}
                     <h1>{listSearch === '' ? title : tr('list.results')}</h1>
-                    <span className="mb-phone-count">{listSearch === '' ? subtitle : resultsText}</span>
+                    <span className="mb-phone-count">
+                      {listSearch === '' ? <RollingText text={subtitle} count={subtitleCount} /> : resultsText}
+                    </span>
                   </div>
                   {/* MessageList hides its own header on phones, so its Mark all as read lives here: only while something is unread, and
                       well apart from the avatar (the way into Settings). */}
@@ -2232,7 +2335,9 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
                     {/* Not while messages are ticked: the bar's actions are the ones that matter then, and it would cover the last rows. */}
                     <div className="mb-fab-wrap" hidden={selectionBar !== undefined}>
                       <Button
-                        variant="primary"
+                        ref={homeRef('compose')}
+                        variant="secondary"
+                        shape="pill"
                         size="lg"
                         data-compose-button=""
                         data-short={fabShort ? 'true' : undefined}
@@ -2242,6 +2347,11 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
                       >
                         <span className="mb-fab-label">{tr('action.compose')}</span>
                       </Button>
+                    </div>
+                    {/* The selection's bar (Close, the count, Archive, Move to Trash, More) floats where Compose was, above the safe area. */}
+                    <div className="ml-dock" data-phone="true">
+                      <span aria-hidden="true" className="ml-dock-anchor" />
+                      {selectionBar}
                     </div>
                   </>
                 ) : (

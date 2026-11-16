@@ -72,18 +72,32 @@ export const UnlockScreen: React.FC<{ t: ThemeTokens; user: SessionUser }> = ({ 
         void submit(event);
       }}
     >
-      <SecretField
-        id="unlock-password"
-        ref={inputRef}
-        label={tr('term.password')}
-        error={passwordError}
-        value={password}
-        onChange={(event) => setPassword(event.target.value)}
-        autoComplete="current-password"
-        aria-invalid={passwordError !== undefined || action.error !== null}
-        aria-describedby={action.error === null ? undefined : 'unlock-error'}
-      />
-      <ErrorLine t={t} id="unlock-error" text={action.error} />
+      <div className="au-secret-row">
+        <SecretField
+          id="unlock-password"
+          ref={inputRef}
+          label={tr('term.password')}
+          error={passwordError}
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          autoComplete="current-password"
+          aria-invalid={passwordError !== undefined || action.error !== null}
+          aria-describedby={action.error === null ? undefined : 'unlock-error'}
+        />
+        <ErrorLine t={t} id="unlock-error" text={action.error} />
+        {/* The same way out as on sign-in (J4-16): it signs out here and opens the forgotten-password flow with this address. */}
+        <HintedLink
+          id="unlock-forgot"
+          label={tr('auth.forgot_password')}
+          hint={tr('keys.unlock_forgot_hint')}
+          onClick={() => {
+            if (!logout.isPending) {
+              openForgotNext(user.email);
+              logout.mutate();
+            }
+          }}
+        />
+      </div>
       <CheckboxRow
         t={t}
         id="unlock-shared"
@@ -94,18 +108,6 @@ export const UnlockScreen: React.FC<{ t: ThemeTokens; user: SessionUser }> = ({ 
         locked={start.locked}
       />
       <AuthButton t={t} busy={action.busy} label={tr('keys.unlock')} />
-      {/* The same way out as on sign-in (J4-16): it signs out here and opens the forgotten-password flow with this address. */}
-      <HintedLink
-        id="unlock-forgot"
-        label={tr('auth.forgot_password')}
-        hint={tr('keys.unlock_forgot_hint')}
-        onClick={() => {
-          if (!logout.isPending) {
-            openForgotNext(user.email);
-            logout.mutate();
-          }
-        }}
-      />
       <TrustLine />
     </AuthCard>
   );

@@ -11,6 +11,7 @@ import { SignInScreen } from '../../src/client/components/auth/SignInScreen';
 import { UnlockScreen } from '../../src/client/components/auth/UnlockScreen';
 import { ErrorBoundary } from '../../src/client/components/ErrorBoundary';
 import { AuthButton, AuthSteps, CheckboxRow, HintedLink, TextButton, TrustLine } from '../../src/client/components/auth/authUi';
+import { DEFAULT_SKY, heroTrail } from '../../src/client/components/auth/brandSky';
 import { ChangePasswordView } from '../../src/client/components/security/ChangePasswordView';
 import { CredentialForm } from '../../src/client/components/security/CredentialForm';
 import type { SessionUser } from '../../src/client/lib/auth';
@@ -29,12 +30,12 @@ describe('AuthButton', () => {
   it('says that it is busy to a screen reader, whatever the animation does (C-11: no animation under reduced motion)', () => {
     const busy = renderToStaticMarkup(createElement(AuthButton, { t, label: 'Continue', busy: true }));
     expect(busy).toContain('aria-busy="true"');
-    expect(busy).toContain('nm-spin');
+    expect(busy).toContain('ui-wing');
     // Busy is also disabled, as before the redesign: a second press does nothing.
     expect(busy).toMatch(/<button[^>]*\bdisabled=""/);
     const idle = renderToStaticMarkup(createElement(AuthButton, { t, label: 'Continue' }));
     expect(idle).toContain('aria-busy="false"');
-    expect(idle).not.toContain('nm-spin');
+    expect(idle).not.toContain('ui-wing');
     expect(idle).toContain('type="submit"');
   });
 
@@ -55,7 +56,7 @@ describe('AuthButton', () => {
     expect(html.indexOf('data-icon="download"')).toBeLessThan(html.indexOf('Download<'));
     const busy = renderToStaticMarkup(createElement(AuthButton, { t, label: 'Download', quiet: true, type: 'button', icon, busy: true }));
     expect(busy).not.toContain('data-icon="download"');
-    expect(busy).toContain('nm-spin');
+    expect(busy).toContain('ui-wing');
   });
 });
 
@@ -282,6 +283,25 @@ describe('the crash screen', () => {
     expect(html).toMatch(/<h1 class="ui-empty-title">Something went wrong<\/h1>/);
     expect(html.match(/data-variant="primary"/g)).toHaveLength(1);
     expect(html).toContain('Reload</button>');
+    // A status page (card-less on the page ground): Edgar's flight trail behind him, no brand panel.
+    expect(html).toContain('class="au-page" data-layout="status"');
+    expect(html.indexOf('class="ui-trail au-art-trail"')).toBeLessThan(html.indexOf('<img src="/edgar.svg"'));
+    expect(html).not.toContain('au-panel');
+  });
+
+  it('Setup not ready is the same kind of status page: Edgar with his trail over the centred title, the missing names as mono chips', () => {
+    const html = page(
+      createElement(SetupScreen, {
+        t,
+        session: { authenticated: false, setup_required: true, configured: false, missing_secrets: ['APP_PASSWORD', 'DATA_KEY'] }
+      })
+    );
+    expect(html).toContain('data-layout="status"');
+    expect(html).not.toContain('au-panel');
+    expect(html).toContain('data-status="true"');
+    expect(html.indexOf('class="ui-trail au-art-trail"')).toBeLessThan(html.indexOf('<img src="/edgar.svg"'));
+    expect(html.indexOf('<img src="/edgar.svg"')).toBeLessThan(html.indexOf('<h1'));
+    expect(html.match(/<code translate="no" class="nm-mono au-secret">/g)).toHaveLength(2);
   });
 });
 
@@ -316,27 +336,105 @@ describe('the sign-in and unlock cards say where and how', () => {
     expect(html).toMatch(/<h1[^>]*>Welcome back<\/h1>/);
     expect(html).not.toMatch(/<h1[^>]*>Sign in<\/h1>/);
     expect(buttonTag(html, 'Sign in')).toContain('type="submit"');
-    // Forgot password: a ghost button with the link look, described by the line under it (the recovery key).
+    // Forgot password: a ghost button with the link look, described by what a reset needs (the recovery key): its tooltip with a mouse, a
+    // line under it on touch (auth.css), always its aria-describedby (v3 P1).
     const forgot = buttonTag(html, 'Forgot password');
     expect(forgot).toContain('class="ui-btn au-link-btn"');
     expect(forgot).toContain('aria-describedby="signin-forgot-hint"');
-    expect(html).toMatch(/<p id="signin-forgot-hint" class="au-link-hint">You need your recovery key to reset it\.<\/p>/);
-    // The shared-device row explains itself before it is ticked, in one short line.
+    expect(html).toMatch(/<p id="signin-forgot-hint" class="au-link-hint">You need your recovery key to reset your password\.<\/p>/);
+    // It comes after the password field in the tab order (auth.css draws it on the field's label row with a mouse).
+    expect(html.indexOf('id="signin-password"')).toBeLessThan(html.indexOf('signin-forgot-hint'));
+    expect(html.indexOf('signin-forgot-hint')).toBeLessThan(html.indexOf('id="signin-shared"'));
+    // The shared-device row explains itself before it is ticked, in one short line (one line on a 390 px phone, en / vi / zh-CN).
     expect(html).toContain('id="signin-shared-hint"');
-    expect(html).toContain('Asks for your password again when this tab is closed or reloaded.');
+    expect(html).toContain('Asks for your password again after closing or reloading.');
     // The trust line: a lock and one sentence, after the form's actions.
     expect(html).toMatch(/<p class="au-trust"><svg[^>]*aria-hidden="true"[\s\S]*?<\/svg><span>Your mail is stored encrypted/);
     expect(html.indexOf('class="au-trust"')).toBeGreaterThan(html.indexOf('signin-forgot-hint'));
-    // The card stands on its stage (the glow centred on it).
-    expect(html.indexOf('class="au-stage"')).toBeLessThan(html.indexOf('class="au-card"'));
+    // The split page: the form side first, then the brand panel with the statement and the three proofs (decoration aria-hidden).
+    expect(html).toContain('class="au-page" data-layout="split"');
+    expect(html.indexOf('class="au-card"')).toBeLessThan(html.indexOf('<aside class="au-panel"'));
+    expect(html).toContain('Your mail opens only in your browser.');
+    expect(html.match(/class="au-panel-proof"/g)).toHaveLength(3);
+    expect(html).toMatch(/<div class="au-panel-flight" aria-hidden="true"><svg aria-hidden="true"/);
+    expect(html).not.toContain('/edgar.svg');
   });
 
   it('Unlock: the short shared-device line and the trust line, and the same pieces render alone', () => {
     const html = page(createElement(UnlockScreen, { t, user: { ...USER, has_keys: true } }));
-    expect(html).toContain('Asks for your password again when this tab is closed or reloaded.');
+    expect(html).toContain('Asks for your password again after closing or reloading.');
     expect(html).toContain('class="au-trust"');
     const link = renderToStaticMarkup(createElement(HintedLink, { id: 'x', label: 'Go', hint: 'Needs a key', onClick: nothing }));
     expect(link).toMatch(/^<div class="au-hinted"><button type="button" class="ui-btn au-link-btn" data-variant="ghost" data-size="sm"/);
     expect(renderToStaticMarkup(createElement(TrustLine))).toMatch(/^<p class="au-trust">/);
+  });
+});
+
+/** The cubic of a path "M x y C x y x y x y", evaluated at a point of its run (0 to 1). */
+const cubic = (d: string) => {
+  const n = (d.match(/-?[\d.]+/g) ?? []).map(Number);
+  return (run: number) => {
+    const u = 1 - run;
+    const at = (i: number) =>
+      u * u * u * (n[i] ?? 0) + 3 * u * u * run * (n[i + 2] ?? 0) + 3 * u * run * run * (n[i + 4] ?? 0) + run * run * run * (n[i + 6] ?? 0);
+    return { x: at(0), y: at(1) };
+  };
+};
+
+describe('the brand panel sky: one hero trail from the form to the letter (X2)', () => {
+  it('enters at the panel edge level with the main button, flies over the words and stops just short of the letter', () => {
+    const trail = heroTrail(DEFAULT_SKY);
+    expect(trail.entry).toBe(650);
+    const walk = cubic(trail.forward);
+    expect(walk(0)).toEqual({ x: -6, y: 650 });
+    const { letter, copy } = DEFAULT_SKY;
+    const end = walk(1);
+    // The last dash ends 14 px behind the letter's back edge (along its tilt), never on it.
+    const back = {
+      x: letter.x - (letter.width / 2) * Math.cos((letter.tilt * Math.PI) / 180),
+      y: letter.y - (letter.width / 2) * Math.sin((letter.tilt * Math.PI) / 180)
+    };
+    expect(Math.hypot(end.x - back.x, end.y - back.y)).toBeGreaterThan(10);
+    expect(Math.hypot(end.x - back.x, end.y - back.y)).toBeLessThan(24);
+    // Wherever it passes over the words, it keeps at least 40 px above them.
+    for (let step = 0; step <= 100; step += 1) {
+      const at = walk(step / 100);
+      if (copy !== null && at.x >= copy.left - 40 && at.x <= copy.right) {
+        expect(at.y, `t=${step / 100}`).toBeLessThanOrEqual(copy.top - 40);
+      }
+    }
+    // The visible path runs the other way (its dashes start at the letter).
+    expect(cubic(trail.backward)(0)).toEqual(end);
+  });
+
+  it('keeps the entry in the sky when the button is off the panel, and over words that start at the padding', () => {
+    expect(heroTrail({ ...DEFAULT_SKY, entry: 2000 }).entry).toBeCloseTo(868 * 0.88, 0);
+    expect(heroTrail({ ...DEFAULT_SKY, entry: null }).entry).toBeCloseTo(868 * 0.72, 0);
+    expect(heroTrail({ ...DEFAULT_SKY, entry: 10 }).entry).toBeCloseTo(868 * 0.45, 0);
+    // Words at the panel's padding leave no room to climb from the button's height: the trail comes in higher, at least 24 px over them.
+    const flush = { ...DEFAULT_SKY, copy: { left: 40, top: 560, right: 640 } };
+    const over = heroTrail(flush);
+    expect(over.entry).toBeLessThan(650);
+    const walk = cubic(over.forward);
+    for (let step = 1; step <= 100; step += 1) {
+      const at = walk(step / 100);
+      if (at.x >= 16 && at.x <= 640) {
+        expect(at.y, `t=${step / 100}`).toBeLessThanOrEqual(560 - 24);
+      }
+    }
+  });
+
+  it('renders the hero letter (stamp, postmark) and the measured trail inside the aria-hidden flight layer', () => {
+    const html = page(createElement(SignInScreen, { t, onForgot: nothing }));
+    const flight = html.slice(html.indexOf('<div class="au-panel-flight"'), html.indexOf('<div class="au-panel-copy"'));
+    expect(flight).toMatch(
+      /^<div class="au-panel-flight" aria-hidden="true"><svg aria-hidden="true" focusable="false" class="au-panel-trail"/
+    );
+    expect(flight.match(/class="au-panel-path"/g)).toHaveLength(1);
+    expect(flight).toContain('class="au-letter-stamp"');
+    expect(flight).toContain('class="au-letter-postmark"');
+    expect(flight).toMatch(/<text[^>]*class="au-letter-initial">E<\/text>/);
+    // No Edgar on a sign-in screen (settled).
+    expect(flight).not.toContain('edgar');
   });
 });

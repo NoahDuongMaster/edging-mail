@@ -174,7 +174,7 @@ export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose
   const pending = confirming === null ? null : confirmCopy[confirming];
 
   return (
-    <ModalFrame t={t} title={personName(user)} onClose={onClose} locked={action.busy} maxWidth={600}>
+    <ModalFrame t={t} title={personName(user)} onClose={onClose} locked={action.busy} maxWidth={660}>
       <PersonSummary user={user} isSelf={isSelf} />
       <NameForm user={user} busy={action.busy} run={apply} />
 

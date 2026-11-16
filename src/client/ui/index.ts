@@ -1,7 +1,7 @@
 // The component library of the app. Hand-built, styled by classes and CSS variables (ui.css), no `t` prop: the colours follow the theme.
 // Import from here: `import { Button, Dialog } from '../ui';`
 
-export { Avatar } from './Avatar';
+export { Avatar, type AvatarSize } from './Avatar';
 export { Badge, type BadgeTone } from './Badge';
 export { Banner, type BannerTone } from './Banner';
 export { Button, type ButtonProps, type ButtonVariant, type ControlSize } from './Button';
@@ -45,6 +45,30 @@ export { Tooltip, TOOLTIP_OPEN_DELAY_MS, useTooltip } from './Tooltip';
  */
 export { pressedOnControl, useSwipeToDismiss, type SwipeDirection, type SwipeToDismissOptions } from './useSwipeToDismiss';
 export { VisuallyHidden } from './VisuallyHidden';
+/**
+ * The v3 "Airmail" signature (DESIGN-v3 section 3): homing flights of messages to their folder (`registerHome`, `flyHome`, `catchHome`,
+ * `foldAndFly`), rolling counts (`Odometer`), the gliding selection capsule (`useGlide`), the flight trail illustration (`FlightTrail`)
+ * and the date-time picker that replaces the browser's (`DateTimePicker`). Every motion honours `motionReduced()`.
+ */
+export {
+  catchHome,
+  flyFrom,
+  flyHome,
+  foldAndFly,
+  homeElement,
+  homeRef,
+  registerHome,
+  type FlyHomeOptions,
+  type FoldOptions,
+  type HomeId,
+  type HomingKind
+} from './homing';
+export { Odometer, type OdometerProps } from './Odometer';
+export { useGlide, type GlideOptions } from './glide';
+export { FlightTrail, type FlightTrailProps } from './FlightTrail';
+/** Postmark: a decorative circular date stamp with wavy cancellation lines (the reader's open letter, compose at Send); aria-hidden. */
+export { Postmark, type PostmarkProps } from './Postmark';
+export { DateTimePicker, type DateTimePickerProps } from './DateTimePicker';
 /**
  * Layout as state (ui/media.ts): `useMediaMatch(query)` (a media query, false on the server), `useOverflows(ref)` (whether a scroll area
  * scrolls: its Tab stop), `useScrollEdges(ref, on)` (`data-more` on the hidden side of a sideways scroller, for an edge fade).

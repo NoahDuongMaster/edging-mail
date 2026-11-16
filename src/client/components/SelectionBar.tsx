@@ -36,16 +36,17 @@ import type { ThemeTokens } from '../theme';
 import {
   Button,
   Checkbox,
+  DateTimePicker,
   Dialog,
   IconButton,
   Menu,
-  TextField,
   Toolbar,
   VisuallyHidden,
   type MenuItem,
   type MenuTriggerProps
 } from '../ui';
 import { useFontsLoaded } from './reader/barDensity';
+import { RollingText } from './MessageList';
 import { FolderIcon } from './RowMenu';
 import { SnoozeMenu } from './SnoozeMenu';
 
@@ -310,7 +311,7 @@ export function SelectionBar({
   if (phone) {
     return (
       <PhoneBar
-        {...{ counted, onClear, onToggleAll, state, snoozable, anyUnread, anyUnstarred, labels, targets, actions, ...request }}
+        {...{ counted, count, onClear, onToggleAll, state, snoozable, anyUnread, anyUnstarred, labels, targets, actions, ...request }}
         firsts={[firstAction, secondAction]}
         asButton={asButton}
       />
@@ -319,6 +320,7 @@ export function SelectionBar({
   return (
     <DesktopBar
       counted={counted}
+      count={count}
       state={state}
       onToggleAll={onToggleAll}
       onClear={onClear}
@@ -464,6 +466,8 @@ const desktopFit = (room: number, button: number, gap: number, total: number): n
 
 interface DesktopBarProps {
   counted: string;
+  /** The number in `counted`: it rolls when it changes (DESIGN-v3 H2). */
+  count: number;
   state: PageState;
   onToggleAll: () => void;
   onClear: () => void;
@@ -472,12 +476,13 @@ interface DesktopBarProps {
   onMenuRequestDone?: () => void;
 }
 
-function DesktopBar({ counted, state, onToggleAll, onClear, actions, menuRequest, onMenuRequestDone }: DesktopBarProps) {
+function DesktopBar({ counted, count, state, onToggleAll, onClear, actions, menuRequest, onMenuRequestDone }: DesktopBarProps) {
   const tr = useT();
   const total = actions.length;
   const fit = React.useCallback((room: number, button: number, gap: number) => desktopFit(room, button, gap, total), [total]);
   const { countRef, shown } = useFit(total, DESKTOP_FIXED, fit, counted);
-  useLeaveInPlace(countRef, '.ml-heading');
+  // The bar floats in the list sheet's dock (MessageList): its copy fades out where it was when the selection ends.
+  useLeaveInPlace(countRef, '.ml-dock-anchor');
   const visible = actions.slice(0, shown);
   const more = actions.slice(shown);
   // b, l, v (J6-38): the list's own button when it shows (focus on it, then open it as the keyboard would), else More opened on its item.
@@ -537,7 +542,7 @@ function DesktopBar({ counted, state, onToggleAll, onClear, actions, menuRequest
         }}
         className="ml-selbar-count"
       >
-        {counted}
+        <RollingText text={counted} count={count} />
       </span>
       <div className="ml-selbar-actions">
         {visible.slice(0, 2).map((action) => action.button)}
@@ -575,6 +580,7 @@ type SheetView = 'closed' | 'actions' | SelectionMenuView;
 
 interface PhoneBarProps {
   counted: string;
+  count: number;
   /** Archive and Move to Trash (Move to Inbox and Delete forever in Trash and Spam): buttons while there is room, else rows of the sheet. */
   firsts: readonly SimpleAction[];
   asButton: (action: SimpleAction) => React.ReactNode;
@@ -607,6 +613,7 @@ const phoneFit = (room: number, button: number, gap: number): number => Math.max
  */
 function PhoneBar({
   counted,
+  count,
   firsts,
   asButton,
   onClear,
@@ -633,7 +640,8 @@ function PhoneBar({
   const moreRef = React.useRef<HTMLButtonElement | null>(null);
   const listRef = React.useRef<HTMLUListElement | null>(null);
   const { countRef, shown } = useFit(firsts.length, PHONE_FIXED, phoneFit, counted);
-  useLeaveInPlace(countRef, '.mb-phone-bar:not(.ml-selbar-phone)');
+  // The bar floats at the bottom of the phone's list (App's dock), above the safe area; its copy fades out there when the selection ends.
+  useLeaveInPlace(countRef, '.ml-dock-anchor');
   const close = () => setSheet('closed');
   const open = (view: SheetView) => {
     if (view === 'snooze') {
@@ -762,7 +770,7 @@ function PhoneBar({
     </button>
   );
   return (
-    <div className="mb-phone-bar ml-selbar-phone">
+    <div className="ml-selbar-phone">
       <IconButton label={tr('list.clear_selection')} className="ml-selbar-close" onClick={onClear}>
         <X {...SHEET_ICON} />
       </IconButton>
@@ -772,7 +780,7 @@ function PhoneBar({
         }}
         className="ml-selbar-count"
       >
-        {counted}
+        <RollingText text={counted} count={count} />
       </p>
       {firsts.slice(0, shown).map((action) => asButton(action))}
       <IconButton
@@ -819,18 +827,17 @@ function PhoneBar({
           </ul>
           {sheet === 'snooze' && picking ? (
             <form id={formId} noValidate onSubmit={submitPick} className="ml-selbar-pick">
-              <TextField
+              {/* The app's own date and time picker (DESIGN-v3 H9): the same value string as the browser's field gave. */}
+              <DateTimePicker
                 id={pickId}
-                type="datetime-local"
-                label={tr('snooze.date_time_label')}
-                hideLabel
+                aria-label={tr('snooze.date_time_label')}
                 value={pick}
                 min={toLocalInputValue(new Date(snoozeFrom.getTime() + MIN_SNOOZE_MS))}
                 max={toLocalInputValue(new Date(snoozeFrom.getTime() + MAX_SNOOZE_MS))}
                 aria-invalid={problem !== null}
                 aria-describedby={problem === null ? undefined : `${pickId}-problem`}
-                onChange={(e) => {
-                  setPick(e.target.value);
+                onChange={(value) => {
+                  setPick(value);
                   setProblem(null);
                 }}
               />

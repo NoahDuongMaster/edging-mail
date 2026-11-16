@@ -1,7 +1,10 @@
-/* Settings: the dialog (SettingsModal) with its nav of sections on the left, the pages of cards on the right (settings/SettingsPage), the
-   Security overview and its views (security/), the account activity, the device preferences (settings/PreferencesPanel) and the
-   technical sections (settings/DeveloperDocs). The dialog is ui/Dialog (inline, lg, the nav in its toolbar slot); everything is ui/
-   primitives and this file only lays them out. Classes are `st-*`. */
+/* Settings (v3 "Airmail"): a well-kept preferences window. The dialog (SettingsModal) is a two-pane sheet: the nav of sections on the left on
+   the raised tone, a gliding capsule under the open section (ui/glide.ts), the page on the right on the surface: a page header (the title at
+   24/32 and one line), then grouped cards of rows (settings/SettingsPage: label and hint on the left, the control on the right, inset
+   hairlines), the Security overview as status cards and its views on a card of their own (security/), the account activity as a quiet
+   timeline, the device preferences (settings/PreferencesPanel) and the technical sections as readable docs pages (settings/DeveloperDocs).
+   The dialog is ui/Dialog (inline, lg, the nav in its toolbar slot); everything is ui/ primitives and this file lays them out. Classes are
+   `st-*`. */
 
 /* ---------- The dialog ---------- */
 
@@ -9,21 +12,26 @@
 .ui-dialog-root.st-root {
   z-index: var(--z-window);
 }
-/* Three grounds, one step apart: the nav column (chrome), the page (bg in light, surface in dark) and the cards on it (surface in light,
-   raised in dark, settings cards below), so a card reads as a card in both themes. */
+/* Two tones, no line between them: the nav on the raised fill, the page on the surface. A card of the page is the surface on the surface
+   (light): the one place where a hairline ring is its edge (two surfaces of the same tone meet), no shadow; dark puts the cards one step up
+   on the raised tone with the same ring. */
 .ui-dialog.st-dialog {
-  --st-nav-w: 232px;
-  --st-nav-bg: var(--chrome);
-  --st-page-bg: var(--bg);
-  --st-edge: var(--border);
+  --st-nav-w: 240px;
+  --st-nav-bg: var(--raised);
+  --st-page-bg: var(--surface);
+  --st-card-bg: var(--surface);
+  --st-card-shadow: 0 0 0 1px var(--border);
+  --st-row-x: 18px;
   height: min(760px, 100%);
 }
 :root[data-theme='dark'] .ui-dialog.st-dialog {
-  --st-page-bg: var(--surface);
-  --st-edge: var(--border-strong);
+  /* Dark: the nav one step down (the night ground) so the page, not the nav, is what stands up. */
+  --st-nav-bg: var(--bg);
+  --st-card-bg: var(--raised);
 }
-:root[data-theme='dark'] .st-dialog .ui-card {
-  background: var(--raised);
+.st-dialog :is(.ui-group, .ui-card, .st-defs) {
+  background: var(--st-card-bg);
+  box-shadow: var(--st-card-shadow);
 }
 .st-foot-msg {
   display: flex;
@@ -42,11 +50,12 @@
   flex: none;
   margin-top: 2px;
 }
-/* Why the ways out are off (J1-27): a quiet line with a lock, under them, in the nav's own inset. */
+/* Why the ways out are off (J1-27): a quiet line with a lock, under them, in the nav's own inset: the 14px lock in the 16px column of the
+   nav's icons and the words on the column of their labels (gap 6 put them 8px left of 'Admin console' and 'Sign out'). */
 .st-held-note {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
+  gap: 12px;
   min-width: 0;
   margin: 4px 0 0;
   padding-inline: 12px;
@@ -57,42 +66,39 @@
 }
 .st-held-note svg {
   flex: none;
-  margin-top: 2px;
+  margin: 2px 1px 0;
 }
 .st-held-note span {
   text-wrap: balance;
 }
 
-/* A desktop: the title over the nav, the X at the top right, the nav down the left and the page on the right, each scrolling on its own;
-   the footer (Sign out, Close) under both. The nav stays in view however long the page is. */
+/* A desktop: the title over the nav, the X at the top right of the page, the nav down the left and the page on the right, each scrolling on
+   its own, so the nav stays in view however long the page is (1024x768, 1440x600). Up to 1040 x 760, the dialog's 20px corners. */
 @media (min-width: 641px) {
   .ui-dialog.st-dialog {
     display: grid;
     grid-template-columns: var(--st-nav-w) minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
-    max-width: 880px;
-    background: linear-gradient(
-      to right,
-      var(--st-nav-bg) var(--st-nav-w),
-      var(--st-edge) var(--st-nav-w) calc(var(--st-nav-w) + 1px),
-      var(--st-page-bg) calc(var(--st-nav-w) + 1px)
-    );
+    max-width: 1040px;
+    background: linear-gradient(to right, var(--st-nav-bg) var(--st-nav-w), var(--st-page-bg) var(--st-nav-w));
   }
-  /* The title over the nav and the page's own title start on one line; the X floats at the top right of the page (on the page's ground,
-     so text scrolled under it never shows through). */
+  /* The dialog's name sits at the top of the nav, quiet; the page's own title is the big one. */
+  /* The three things at the top share one line, 44px under the panel's edge: the dialog's name, the page title (24/32) and the X. */
   .st-dialog > .ui-dialog-head {
     grid-column: 1;
     grid-row: 1;
-    padding: 20px 12px 4px 24px;
+    padding: 32px 16px 0 24px;
   }
   .st-dialog > .ui-dialog-head > .ui-dialog-title {
-    font-size: 16px;
-    line-height: 28px;
+    font-size: 15px;
+    line-height: 24px;
+    color: var(--text2);
   }
+  /* The X floats at the top right of the page, on the page's ground (text scrolled under it never shows through). */
   .st-dialog > .ui-dialog-head > .ui-btn {
     position: absolute;
-    top: 14px;
-    right: 14px;
+    top: 28px;
+    right: 32px;
     z-index: var(--z-raise);
     margin: 0;
   }
@@ -104,16 +110,21 @@
     grid-row: 2;
     min-height: 0;
     overflow-y: auto;
-    padding: 12px 12px 16px;
+    padding: 20px 12px 16px;
   }
+  /* 40px of room round the page; the right side is the same 40px measured from the panel's edge (--ui-dialog-end takes the scrollbar
+     lane off it). */
   .st-dialog > .ui-dialog-body {
+    --ui-dialog-pad: 40px;
     grid-column: 2;
     grid-row: 1 / 3;
-    padding: 20px var(--ui-dialog-end) 32px 32px;
-    scroll-padding-block: 16px;
+    padding: 28px var(--ui-dialog-end) 48px var(--ui-dialog-pad);
+    scroll-padding-block: 24px;
+    /* What scrolls under the bottom edge fades out over its last 40px instead of being cut by it (the end of the page has 48px of room). */
+    mask-image: linear-gradient(to bottom, var(--text) calc(100% - 40px), transparent);
   }
   .st-page-head {
-    padding-right: 40px;
+    padding-right: 48px;
   }
   /* No footer: the X next to the title, Escape, the scrim and a phone's Back button close Settings (each through the guarded `leave`). */
 }
@@ -123,16 +134,25 @@
 .st-nav {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
   min-height: 100%;
 }
-/* Who is signed in, at the top of the nav: the initials, the name and the address (both cut with an ellipsis, never wrapped). */
+/* The open section's capsule (useGlide): the accent's soft tone under the row, gliding to the next one in --dur-glide; the row's own words
+   and icon take the accent text colour (ui.css). The Tabs' own sliding ink gives way to it. */
+.st-glide {
+  border-radius: var(--radius-control);
+  background: var(--accent-soft);
+}
+.ui-tabs.st-tabs > .ui-ink {
+  display: none;
+}
+/* Who is signed in, at the top of the nav: their own avatar (the accent tint), the name and the address (cut, never wrapped). */
 .st-identity {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
-  padding: 0 4px 0 8px;
+  padding: 0 8px 0 12px;
 }
 .st-identity-text {
   display: flex;
@@ -153,27 +173,40 @@
 .st-identity-address {
   font-size: 12px;
   line-height: 16px;
+  color: var(--text3);
+}
+/* Rows of 36px (44px on touch), the icon 16px, the words 14/500 in --text2; the open one in the accent text colour, semibold. */
+.ui-tabs.st-tabs > .ui-tab {
+  gap: 12px;
+  min-height: var(--ui-h-md);
+  padding: 8px 12px;
   color: var(--text2);
 }
-.ui-tabs.st-tabs > .ui-tab {
-  gap: 10px;
-  min-height: var(--ui-h-md);
+.ui-tabs.st-tabs > .ui-tab[aria-selected='true'] {
+  color: var(--accent-text);
 }
-/* The ways out of Settings that are not sections (the admin console, Sign out): rows at the foot of the nav, after a hairline; the admin
-   console has an arrow that says it goes elsewhere. */
+@media (hover: hover) {
+  .ui-tabs.st-tabs > .ui-tab:hover:not(:disabled, [aria-selected='true']) {
+    color: var(--text);
+  }
+}
+.ui-tabs.st-tabs > .ui-tab:active:not(:disabled, [aria-selected='true']) {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+/* The ways out of Settings that are not sections (the admin console, Sign out): rows at the foot of the nav, set apart by space; the admin
+   console has a chevron that says it opens another view. */
 .st-nav-foot {
   display: flex;
   flex-direction: column;
   gap: 2px;
   margin-top: auto;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
+  padding-top: 16px;
 }
 .ui-btn.st-nav-link {
   justify-content: flex-start;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  padding-inline: 11px;
+  padding-inline: 12px;
   color: var(--text2);
   font-weight: 500;
 }
@@ -186,7 +219,7 @@
   display: none;
 }
 
-/* ---------- A page: title, one line, cards ---------- */
+/* ---------- A page: the header, then groups ---------- */
 
 /* A new section fades in (keyed in SettingsModal); a view of Security slides in 12px from the side it comes from, and back. Under reduced
    motion --motion is 0, so only the fade is left (index.css caps the durations at 150ms). */
@@ -220,35 +253,185 @@
 .st-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  max-width: 640px;
+  gap: 28px;
+  max-width: 720px;
 }
 .st-page-head {
-  padding-top: 0;
+  padding-bottom: 2px;
 }
 .st-page-title {
   margin: 0;
-  font-size: 20px;
-  line-height: 28px;
+  font-size: 24px;
+  line-height: 32px;
   font-weight: 600;
   letter-spacing: -0.02em;
 }
 .st-page-desc {
-  margin: 2px 0 0;
+  margin: 4px 0 0;
   font-size: 14px;
-  line-height: 20px;
+  line-height: 22px;
   color: var(--text2);
 }
-.st-cards {
+/* The groups are set apart by the page's gap, not by the sections' own margin. */
+.st-page .ui-section + .ui-section {
+  margin-top: 0;
+}
+/* A group's title over its card is a quiet label (13/600 in --text2), a clear step under the page title and apart from the rows' labels. */
+.st-page .ui-section-head {
+  margin-bottom: 8px;
+}
+.st-page .ui-section-title {
+  font-size: 13px;
+  line-height: 20px;
+  letter-spacing: 0;
+  color: var(--text2);
+}
+.st-block {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  container: st-cards / inline-size;
+  min-width: 0;
 }
-/* A card's title ranks under the page's (20px): 15px. */
-.st-dialog .ui-card .ui-section-title {
-  font-size: 15px;
-  line-height: 22px;
+/* Keyboard: the keys under the switch's card take the page's column, so the two end on one edge (they stopped 160px short of the card at
+   1440x900); the list's own 560px cap is the ? dialog's. */
+.st-block > .sk-groups {
+  max-width: none;
+}
+
+/* ---------- Grouped cards of rows (SettingsGroup = ui Section `grouped`) ---------- */
+
+/* The card's width decides whether a row keeps its control on the right (a leaf box: no dialog or popup is drawn inside it). */
+.st-group {
+  container: st-group / inline-size;
+}
+.st-group > .ui-group > * {
+  padding: 16px var(--st-row-x);
+}
+.st-group > .ui-group > * + *::before {
+  left: var(--st-row-x);
+}
+/* A row that is not a field: its words on the left, its control on the right (alone, a control starts on the left). */
+.st-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 24px;
+}
+.st-row:not(:has(> .st-row-text)) {
+  justify-content: flex-start;
+}
+.st-row-text {
+  display: flex;
+  flex: 1 1 240px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.st-row-label {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
+.st-row-hint {
+  max-width: 62ch;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text3);
+}
+.st-row-control {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+/* A field as a row: its label (14/500) on the left, the box on the right with its hint and error under it (as a form reads); the label stands
+   on the box's first line, so a tall box (the signature) keeps it at its top. The ui Field keeps its own markup (a real label, the hint and
+   the error linked to the control); only the grid places them. */
+.st-field-row .ui-field {
+  display: grid;
+  grid-template-columns: minmax(0, 160px) minmax(0, 1fr);
+  grid-template-areas:
+    'label control'
+    '. hint'
+    '. error';
+  gap: 0 24px;
+}
+.st-field-row .ui-field > :is(.ui-label, .ui-visually-hidden) {
+  grid-area: label;
+  align-self: start;
+  margin-top: calc((var(--ui-h-field, 40px) - 20px) / 2);
+}
+.st-field-row .ui-field > :is(.ui-input, .ui-select) {
+  grid-area: control;
+}
+.st-field-row .ui-field > .ui-hint {
+  grid-area: hint;
+  margin-top: 6px;
+}
+.st-field-row .ui-field > .ui-error {
+  grid-area: error;
+  margin-top: 6px;
+}
+.st-group .ui-field > .ui-label,
+.st-group .ui-switch-text .ui-label {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
+/* A narrow card (a phone, a long language): the label over the box, as a form. The offsets of the two-column row go: the label no longer
+   centres on a box beside it (it sat 12px lower than the card's padding), and the gap alone spaces the hint and the error (6px, not 12). */
+@container st-group (max-width: 520px) {
+  .st-field-row .ui-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .st-field-row .ui-field > :is(.ui-label, .ui-visually-hidden, .ui-hint, .ui-error) {
+    margin-top: 0;
+  }
+}
+/* Choices as rows (Motion, Density): the radio, the name (14/500) and its hint; the whole row is the label and takes a hover tint. The
+   chosen row wears the page's one selection language (v3 P1, as the chosen theme card): the accent's soft tint (with the checked radio);
+   the inset hairlines beside it give way. The group's title says what they are about: the legends are for screen readers only. */
+.st-group > .ui-group > .ui-radio-group.st-choices {
+  padding: 0;
+  overflow: hidden;
+}
+.ui-radio-group.st-choices > .ui-check {
+  position: relative;
+  gap: 12px;
+  min-height: 0;
+  padding: 14px var(--st-row-x);
+  transition: background-color var(--dur-fast) var(--ease-standard);
+}
+.ui-radio-group.st-choices > .ui-check + .ui-check::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: calc(var(--st-row-x) + 30px);
+  height: 1px;
+  background: var(--border);
+  pointer-events: none;
+}
+.ui-radio-group.st-choices > .ui-check:has(> .ui-radio-input:checked) {
+  background: var(--accent-soft);
+}
+/* Dark: on the soft tint the radio's accent ring would fall to 2.9:1 (1.4.11); there it takes the indicator, 4.3:1 on the tint. */
+:root[data-theme='dark'] :is(.st-theme, .st-choices) .ui-radio-input:checked {
+  border-color: var(--indicator);
+}
+.ui-radio-group.st-choices > .ui-check:has(> .ui-radio-input:checked)::before,
+.ui-radio-group.st-choices > .ui-check:has(> .ui-radio-input:checked) + .ui-check::before {
+  opacity: 0;
+}
+.ui-radio-group.st-choices .ui-check-text > span:first-child {
+  font-weight: 500;
+}
+@media (hover: hover) {
+  .ui-radio-group.st-choices > .ui-check:hover:not([data-disabled='true'], :has(> .ui-radio-input:checked)) {
+    background: var(--hover);
+  }
 }
 
 /* ---------- Text ---------- */
@@ -256,7 +439,7 @@
 .st-lead {
   margin: 0;
   font-size: 14px;
-  line-height: 20px;
+  line-height: 22px;
   color: var(--text);
 }
 .st-muted {
@@ -299,13 +482,6 @@
 .st-feedback[data-tone='pending'] {
   color: var(--text2);
 }
-/* The undo-send time: a list as wide as its longest choice, its hint under it at a reading width. */
-.st-undo .ui-select {
-  max-width: 220px;
-}
-.st-undo .ui-hint {
-  max-width: 62ch;
-}
 /* A line with a message and its button (Could not load ... Retry). */
 .st-inline {
   display: flex;
@@ -314,17 +490,17 @@
   gap: 8px 12px;
 }
 /* Hints and quiet explanations break before a lone last word. */
-.st-dialog :is(.ui-hint, .st-muted, .st-lead, .st-page-desc, .ui-section-description) {
+.st-dialog :is(.ui-hint, .st-muted, .st-lead, .st-page-desc, .st-row-hint, .ui-section-description) {
   text-wrap: pretty;
 }
 /* A heading that takes the focus from script when the content under it changes (C-9b): it is not a control. */
 .st-focus-title:focus {
   outline: none;
 }
-/* A group's heading inside a card (Notices, Recent sign-ins, the shortcut keys): the weight and colour of a field label. */
+/* A group's heading (Notices, Recent sign-ins, the shortcut keys): 14/600 in the text colour. */
 .st-subtitle {
-  margin: 0 0 4px;
-  font-size: 13px;
+  margin: 0 0 12px;
+  font-size: 14px;
   line-height: 20px;
   font-weight: 600;
   color: var(--text);
@@ -335,26 +511,33 @@
 .st-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
 }
-.st-actions {
+/* Save is the last row of the card it saves, on the right, with what it did on its left (words with an icon). */
+.st-form-foot {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 12px;
+  justify-content: flex-end;
+  gap: 8px 16px;
 }
-/* The address is shown, not edited: a quieter fill and a small lock at its end. */
+.st-group > .ui-group > .st-form-foot {
+  padding-block: 12px;
+}
+/* The address is shown, not edited: no edge (it is not a control to type in), the raised fill and a small lock at its end. */
 .st-form .ui-input:has(> .ui-input-el[readonly]) {
   background: var(--raised);
+  border-color: transparent;
+  box-shadow: none;
   color: var(--text2);
 }
 .st-lock {
   color: var(--text3);
 }
 
-/* ---------- Appearance: the theme as two cards with a picture, the motion as two choices ---------- */
+/* ---------- Appearance: the theme as three cards with a picture of the app ---------- */
 
-/* The card's title already says what the choices are: the legends are for screen readers only. */
+/* The section's title already says what the choices are: the legends are for screen readers only. */
 :is(.ui-radio-group.st-theme, .ui-radio-group.st-choices) > legend {
   position: absolute;
   width: 1px;
@@ -369,227 +552,377 @@
 .ui-radio-group.st-theme {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 12px;
+  gap: 16px;
 }
-/* Each choice is a card: the picture over the radio and its name; the chosen one has an accent edge (3:1 and more on its ground). */
-.st-theme .ui-check {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-  min-height: 0;
-  padding: 10px 12px 12px;
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-card);
-  box-shadow: var(--control-shadow);
-  transition:
-    border-color var(--dur-fast) var(--ease-standard),
-    box-shadow var(--dur-fast) var(--ease-standard);
-}
-.st-theme .ui-check:has(> .ui-radio-input:checked) {
-  border-color: var(--accent);
-  box-shadow:
-    inset 0 0 0 1px var(--accent),
-    var(--control-shadow);
-}
-@media (hover: hover) {
-  .st-theme .ui-check:hover:not(:has(> .ui-radio-input:checked)) {
-    border-color: var(--control);
-  }
-}
-/* The picture: a tiny mailbox (a sidebar with an accent Compose pill, three rows of lines) in the browser's own colours of that scheme
-   (Canvas and CanvasText under color-scheme light or dark), so the Dark card shows dark on a light page and the other way round. The layers
-   are one variable, resolved on each pseudo-element in its own scheme: Match system draws the light picture with the dark one over its right
-   half (::after). */
-.st-theme .ui-check {
-  /* The sidebar's width and where the list starts: a narrow card (three on a phone) draws a narrower sidebar, so its rows stay inside. */
-  --st-art-side: 40px;
-  --st-art-x: 48px;
-  --st-theme-art:
-    linear-gradient(var(--accent), var(--accent)) calc(var(--st-art-side) * 0.2) 9px / calc(var(--st-art-side) * 0.6) 7px no-repeat,
-    linear-gradient(color-mix(in srgb, CanvasText 22%, Canvas), color-mix(in srgb, CanvasText 22%, Canvas)) calc(var(--st-art-side) * 0.2)
-      24px / calc(var(--st-art-side) * 0.55) 3px no-repeat,
-    linear-gradient(color-mix(in srgb, CanvasText 22%, Canvas), color-mix(in srgb, CanvasText 22%, Canvas)) calc(var(--st-art-side) * 0.2)
-      32px / calc(var(--st-art-side) * 0.45) 3px no-repeat,
-    linear-gradient(color-mix(in srgb, CanvasText 70%, Canvas), color-mix(in srgb, CanvasText 70%, Canvas)) var(--st-art-x) 11px /
-      calc((100% - var(--st-art-x) - 8px) * 0.55) 4px no-repeat,
-    linear-gradient(color-mix(in srgb, CanvasText 28%, Canvas), color-mix(in srgb, CanvasText 28%, Canvas)) var(--st-art-x) 19px /
-      calc((100% - var(--st-art-x) - 8px) * 0.85) 3px no-repeat,
-    linear-gradient(color-mix(in srgb, CanvasText 70%, Canvas), color-mix(in srgb, CanvasText 70%, Canvas)) var(--st-art-x) 32px /
-      calc((100% - var(--st-art-x) - 8px) * 0.45) 4px no-repeat,
-    linear-gradient(color-mix(in srgb, CanvasText 28%, Canvas), color-mix(in srgb, CanvasText 28%, Canvas)) var(--st-art-x) 40px /
-      calc((100% - var(--st-art-x) - 8px) * 0.75) 3px no-repeat,
-    linear-gradient(color-mix(in srgb, CanvasText 70%, Canvas), color-mix(in srgb, CanvasText 70%, Canvas)) var(--st-art-x) 53px /
-      calc((100% - var(--st-art-x) - 8px) * 0.5) 4px no-repeat,
-    linear-gradient(color-mix(in srgb, CanvasText 28%, Canvas), color-mix(in srgb, CanvasText 28%, Canvas)) var(--st-art-x) 61px /
-      calc((100% - var(--st-art-x) - 8px) * 0.65) 3px no-repeat,
-    linear-gradient(
-      to right,
-      color-mix(in srgb, CanvasText 5%, Canvas) var(--st-art-side),
-      color-mix(in srgb, CanvasText 12%, Canvas) var(--st-art-side) calc(var(--st-art-side) + 1px),
-      Canvas calc(var(--st-art-side) + 1px)
-    );
-  position: relative;
-}
-.st-theme .ui-check::before {
-  content: '';
-  grid-column: 1 / -1;
-  height: 72px;
-  color-scheme: light;
-  border-radius: var(--radius-control);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, CanvasText 10%, Canvas);
-  background: var(--st-theme-art);
-}
-.st-theme .ui-check:has(> .ui-radio-input[value='dark'])::before {
-  color-scheme: dark;
-}
-/* Match system: the dark picture over the light one from a diagonal, so each half still shows a piece of the list. */
-.st-theme .ui-check:has(> .ui-radio-input[value='system'])::after {
-  content: '';
-  position: absolute;
-  top: 10px;
-  right: 12px;
-  left: 12px;
-  height: 72px;
-  color-scheme: dark;
-  border-radius: var(--radius-control);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, CanvasText 20%, Canvas);
-  background: var(--st-theme-art);
-  clip-path: polygon(62% 0, 100% 0, 100% 100%, 38% 100%);
-  pointer-events: none;
-}
-/* Three choices (Light, Dark, Match system) side by side on a desktop. */
+/* Three choices (Light, Dark, Match system) side by side. */
 .ui-radio-group.st-theme-3 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
-:root[data-theme='dark'] .st-theme .ui-check::before {
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, CanvasText 20%, Canvas);
+/* Each choice is a card: the picture over the radio and its name. One selection language on the page (v3 P1): the chosen card (as the
+   chosen Motion and Density row) takes the accent's soft tint, a 2px indicator ring (3:1 and more on the page) and the checked radio; the
+   keyboard ring goes round the whole card. */
+.st-theme .ui-check {
+  --st-l: 40px;
+  --st-art-h: 92px;
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px 10px;
+  min-height: 0;
+  padding: 12px 12px 14px;
+  background: var(--st-card-bg);
+  border-radius: var(--radius-card);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+  font-weight: 500;
+  transition:
+    box-shadow var(--dur-fast) var(--ease-standard),
+    background-color var(--dur-fast) var(--ease-standard);
 }
-/* The two motion choices: their own 8px of padding above and below is taken back, so the card's padding is the space round them. */
-.ui-radio-group.st-choices {
-  margin-block: -8px;
+.st-theme .ui-check > .ui-radio-input {
+  margin-left: 6px;
+}
+.st-theme .ui-check:has(> .ui-radio-input:checked) {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 2px var(--indicator);
+}
+@media (hover: hover) {
+  .st-theme .ui-check:hover:not(:has(> .ui-radio-input:checked)) {
+    background: color-mix(in srgb, var(--hover) 60%, var(--st-card-bg));
+    box-shadow: inset 0 0 0 1px var(--control);
+  }
+}
+.st-theme .ui-check:has(> .ui-radio-input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+.st-theme .ui-radio-input:focus-visible {
+  outline: none;
+}
+/* The picture: a tiny mailbox of v3 in a small app window (the window ground, the rail with its Compose pill and folders, the list sheet
+   with a selected row and the reader sheet with a title and lines), each in ITS OWN palette whatever the theme on screen (v3 P1): the
+   tokens of the other theme are not variables here, so each is made of the live ones (below, per page theme), within a few units of the
+   tokens, each a step quieter than the app itself (FP2) so that no picture outweighs the chosen card: on a light page the night window
+   is the night surface and raised tones, on a dark page the day window has --text sheets on a ground a step under them. The layers are
+   written once; each picture sets the six colours of its scheme (--st-c-*), resolved on the pseudo-element itself (color-scheme light:
+   Canvas is white, CanvasText black). Match system draws the dark picture over the right half of the light one (::after). Every size is a
+   calc of the picture's width, so a narrow card draws a narrower mailbox. */
+.st-theme {
+  --st-l-ground: var(--chrome);
+  --st-l-sheet: var(--surface);
+  --st-l-ink: var(--text2);
+  --st-l-mute: var(--text3);
+  --st-l-tint: var(--accent-soft);
+  --st-l-dot: var(--accent);
+  /* FP2: the night window one step up and quieter, so it no longer outweighs the chosen card on a light page: its ground is the night
+     surface (#161A22 = --text 92 % towards --text3), its sheets the night raised tone (#1D222C, 82 %), its ink the night third grey
+     (#8D95A5, --text3 70 % towards white) and its lines a step under that. */
+  --st-d-ground: color-mix(in srgb, var(--text) 92%, var(--text3));
+  --st-d-sheet: color-mix(in srgb, var(--text) 82%, var(--text3));
+  --st-d-ink: color-mix(in srgb, var(--text3) 70%, Canvas);
+  --st-d-mute: color-mix(in srgb, var(--text3) 85%, Canvas);
+  --st-d-tint: color-mix(in srgb, var(--accent) 22%, var(--text));
+  --st-d-dot: color-mix(in srgb, var(--accent) 80%, Canvas);
+}
+:root[data-theme='dark'] .st-theme {
+  /* FP2: the day window a step down on a dark page (its sheets the day text tone #EDF0F6 instead of white, its ground 12 % towards the
+     third grey), so its glare does not outweigh the chosen card either. */
+  --st-l-ground: color-mix(in srgb, var(--text) 88%, var(--text3));
+  --st-l-sheet: var(--text);
+  --st-l-ink: color-mix(in srgb, var(--text3) 45%, var(--surface));
+  --st-l-mute: color-mix(in srgb, var(--text3) 60%, var(--surface));
+  --st-l-tint: color-mix(in srgb, var(--accent) 9%, Canvas);
+  --st-l-dot: var(--accent);
+  --st-d-ground: var(--surface);
+  --st-d-sheet: var(--raised);
+  --st-d-ink: var(--text3);
+  --st-d-mute: color-mix(in srgb, var(--text3) 80%, var(--surface));
+  --st-d-tint: var(--accent-soft);
+  --st-d-dot: var(--indicator);
+}
+.st-theme .ui-check::before,
+.st-theme .ui-check:has(> .ui-radio-input[value='system'])::after {
+  --st-w: calc(100% - var(--st-l) - 10px);
+  --st-lw: calc(var(--st-w) * 0.42);
+  --st-rw: calc(var(--st-w) * 0.58);
+  --st-c-ground: var(--st-l-ground);
+  --st-c-sheet: var(--st-l-sheet);
+  --st-c-ink: var(--st-l-ink);
+  --st-c-line: color-mix(in srgb, var(--st-l-mute) 42%, var(--st-l-sheet));
+  --st-c-edge: color-mix(in srgb, var(--st-l-mute) 26%, var(--st-l-ground));
+  --st-c-tint: var(--st-l-tint);
+  --st-c-dot: var(--st-l-dot);
+  content: '';
+  height: var(--st-art-h);
+  color-scheme: light;
+  /* FP2: the window stands 8px in from the picture's edge on the card's own tone (the padding shows the card: every layer and the ground
+     are clipped to the content box), so the night window is a smaller dark mass on a light page and the three pictures weigh closer to
+     each other (mean L* of the night picture against its card: 79.8 -> 42.0 on a light page; the day one on a dark page 77.2 -> 67.7). Its
+     inner edge, a hair of its ink, sits on the window (the light window would melt into a white card, the dark one into a dark card). */
+  box-sizing: border-box;
+  padding: 8px;
+  border-radius: 9px;
+  outline: 1px solid color-mix(in srgb, var(--st-c-ink) 20%, transparent);
+  outline-offset: -9px;
+  background:
+    /* The reader: the title cut short, the last line cut short, then the title and four lines, on its sheet. (The two cuts reach 1px past
+       the lines' end, onto the sheet, so no sliver of a line shows at their end whatever the rounding of the picture's width.) */
+    linear-gradient(var(--st-c-sheet), var(--st-c-sheet)) right 11px top 14px / calc((var(--st-rw) - 14px) * 0.4 + 1px) 4px no-repeat,
+    linear-gradient(var(--st-c-sheet), var(--st-c-sheet)) right 11px top 47px / calc((var(--st-rw) - 14px) * 0.45 + 1px) 3px no-repeat,
+    linear-gradient(
+        var(--st-c-ink) 0 4px,
+        transparent 4px 12px,
+        var(--st-c-line) 12px 15px,
+        transparent 15px 19px,
+        var(--st-c-line) 19px 22px,
+        transparent 22px 26px,
+        var(--st-c-line) 26px 29px,
+        transparent 29px 33px,
+        var(--st-c-line) 33px 36px,
+        transparent 36px
+      )
+      right 12px top 14px / calc(var(--st-rw) - 14px) 36px no-repeat,
+    /* The list: three rows (a sender dot, the sender, a line), the first one selected. */ linear-gradient(var(--st-c-dot), var(--st-c-dot))
+      calc(var(--st-l) + 6px) 13px / 7px 7px no-repeat,
+    linear-gradient(var(--st-c-ink), var(--st-c-ink)) calc(var(--st-l) + 17px) 13px / calc((var(--st-lw) - 22px) * 0.7) 3px no-repeat,
+    linear-gradient(var(--st-c-line), var(--st-c-line)) calc(var(--st-l) + 17px) 18px / calc(var(--st-lw) - 22px) 2px no-repeat,
+    linear-gradient(var(--st-c-tint), var(--st-c-tint)) calc(var(--st-l) + 3px) 9px / calc(var(--st-lw) - 6px) 15px no-repeat,
+    linear-gradient(var(--st-c-line), var(--st-c-line)) calc(var(--st-l) + 6px) 32px / 7px 7px no-repeat,
+    linear-gradient(var(--st-c-ink), var(--st-c-ink)) calc(var(--st-l) + 17px) 32px / calc((var(--st-lw) - 22px) * 0.55) 3px no-repeat,
+    linear-gradient(var(--st-c-line), var(--st-c-line)) calc(var(--st-l) + 17px) 37px / calc((var(--st-lw) - 22px) * 0.9) 2px no-repeat,
+    linear-gradient(var(--st-c-line), var(--st-c-line)) calc(var(--st-l) + 6px) 50px / 7px 7px no-repeat,
+    linear-gradient(var(--st-c-ink), var(--st-c-ink)) calc(var(--st-l) + 17px) 50px / calc((var(--st-lw) - 22px) * 0.62) 3px no-repeat,
+    linear-gradient(var(--st-c-line), var(--st-c-line)) calc(var(--st-l) + 17px) 55px / calc((var(--st-lw) - 22px) * 0.8) 2px no-repeat,
+    /* The two sheets, each with a hairline edge of the window's ink (as the app's sheet rings). */
+    linear-gradient(var(--st-c-sheet), var(--st-c-sheet)) var(--st-l) 6px / var(--st-lw) calc(100% - 12px) no-repeat,
+    linear-gradient(var(--st-c-sheet), var(--st-c-sheet)) right 6px top 6px / calc(var(--st-rw) - 4px) calc(100% - 12px) no-repeat,
+    linear-gradient(var(--st-c-edge), var(--st-c-edge)) calc(var(--st-l) - 1px) 5px / calc(var(--st-lw) + 2px) calc(100% - 10px) no-repeat,
+    linear-gradient(var(--st-c-edge), var(--st-c-edge)) right 5px top 5px / calc(var(--st-rw) - 2px) calc(100% - 10px) no-repeat,
+    /* The rail: the Compose pill and three folders, the first one open. */ linear-gradient(var(--accent), var(--accent)) 7px 9px /
+      calc(var(--st-l) - 14px) 7px no-repeat,
+    linear-gradient(var(--st-c-sheet), var(--st-c-sheet)) 5px 23px / calc(var(--st-l) - 10px) 8px no-repeat,
+    linear-gradient(var(--st-c-line), var(--st-c-line)) 8px 26px / calc(var(--st-l) - 20px) 2px no-repeat,
+    linear-gradient(var(--st-c-line), var(--st-c-line)) 8px 36px / calc(var(--st-l) - 22px) 2px no-repeat,
+    linear-gradient(var(--st-c-line), var(--st-c-line)) 8px 44px / calc(var(--st-l) - 18px) 2px no-repeat,
+    var(--st-c-ground);
+  background-origin: content-box;
+  background-clip: content-box;
+}
+.st-theme .ui-check::before {
+  grid-column: 1 / -1;
+}
+/* Dark: the night palette (the window ground the deepest tone, the sheets a step above it, as in the app), not the browser's black. */
+.st-theme .ui-check:has(> .ui-radio-input[value='dark'])::before,
+.st-theme .ui-check:has(> .ui-radio-input[value='system'])::after {
+  --st-c-ground: var(--st-d-ground);
+  --st-c-sheet: var(--st-d-sheet);
+  --st-c-ink: var(--st-d-ink);
+  --st-c-line: color-mix(in srgb, var(--st-d-mute) 46%, var(--st-d-sheet));
+  --st-c-edge: color-mix(in srgb, var(--st-d-mute) 42%, var(--st-d-ground));
+  --st-c-tint: var(--st-d-tint);
+  --st-c-dot: var(--st-d-dot);
+}
+/* Match system: the dark picture over the light one past a diagonal (the day turning to night), not a cut along the panes. */
+.st-theme .ui-check:has(> .ui-radio-input[value='system'])::after {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  left: 12px;
+  clip-path: polygon(60% 0, 100% 0, 100% 100%, 40% 100%);
+  pointer-events: none;
 }
 
 /* ---------- Notifications, Keyboard ---------- */
 
-/* The language list holds three names: as wide as a short field, not the whole card. */
-.st-dialog .au-lang {
-  max-width: 320px;
-}
 /* The notifications switch: its status line is the hint, red when the browser blocks notifications (the words say so too). */
 .st-push[data-denied='true'] .ui-hint {
   color: var(--danger);
 }
-.st-push + .ui-error {
-  margin-top: 12px;
-}
-/* The card's own action under a hairline: Send test notification. */
-.st-card-foot {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
-}
-.st-keys-title {
-  margin-top: 20px;
-}
 
-/* ---------- Security: the overview, one card of status rows ---------- */
+/* ---------- Security: the overview, a status card per thing ---------- */
 
-/* One card (J3-09: not a card per thing, no icon tiles): rows divided by hairlines. A row holds a small bare icon, the name with its
-   state, the lines under it, and the action at the right, centred on the text; a narrow card puts the action under the text. */
+/* A card per thing, one under the other: an icon tile (40px, 12px corners) in a soft neutral tone (the amber one when something needs
+   doing; the accent stays for the selection and the one primary action), the name with its state in a word, the lines as one paragraph,
+   and the action on the right edge of every card (one column for all of them); a narrow page (a phone) puts the action under the text. */
 .st-status-list {
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  container: st-cards / inline-size;
+}
+.ui-card.st-status-card {
+  padding: 18px 20px;
 }
 .st-status-row {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) auto;
+  grid-template-columns: 40px minmax(0, 1fr) max-content;
+  grid-template-rows: auto 1fr;
   grid-template-areas:
-    'icon top actions'
-    '. lines actions';
-  align-items: center;
-  gap: 2px 12px;
-  padding: 14px 16px;
+    'tile top actions'
+    'tile lines actions';
+  gap: 2px 16px;
 }
-.st-status-row + .st-status-row {
-  border-top: 1px solid var(--border);
+.st-status-tile {
+  display: grid;
+  grid-area: tile;
+  align-self: start;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--raised);
+  color: var(--text2);
 }
-.st-status-icon {
-  grid-area: icon;
-  color: var(--text3);
+:root[data-theme='dark'] .st-status-tile {
+  background: var(--surface);
 }
+.st-status-row[data-tone='warning'] .st-status-tile {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+/* The title and its state start level with the tile's top; the lines follow right under the title, beside the tile. */
 .st-status-top {
   display: flex;
   grid-area: top;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 8px;
+  gap: 0 10px;
   min-width: 0;
 }
 .st-status-title {
   margin: 0;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 15px;
+  line-height: 22px;
   font-weight: 600;
 }
-/* One reading measure for every row, whatever the width of its actions, so the right edge of the text does not zig-zag. */
-.st-status-lines {
-  display: flex;
-  grid-area: lines;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  max-width: 400px;
+/* The state in a word with its icon: On and Saved in the success colour, Off and a count of notices in the warning colour (4.5:1). */
+.st-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--text2);
 }
-/* A fact about the state (a date, a device): quieter than the explanation, figures in columns. */
+.st-state svg {
+  flex: none;
+}
+.st-state[data-tone='success'] {
+  color: var(--success);
+}
+.st-state[data-tone='warning'] {
+  color: var(--warning);
+}
+/* One reading measure for every card, whatever the width of its actions; the lines read as one paragraph, the facts under it. */
+.st-status-lines {
+  grid-area: lines;
+  align-self: start;
+  min-width: 0;
+  max-width: 540px;
+  font-size: 13px;
+  line-height: 20px;
+}
+.st-status-lines > .st-muted {
+  display: inline;
+}
+.st-status-lines > .st-muted + .st-muted::before {
+  content: ' ';
+}
+/* A fact about the state (a date, a device): quieter than the explanation, smaller, figures in columns. */
 .st-status-fact {
-  margin: 0;
+  margin: 4px 0 0;
   font-size: 12px;
   line-height: 18px;
-  color: var(--text2);
+  color: var(--text3);
   font-variant-numeric: tabular-nums;
 }
+/* The actions stand on the tile's middle line, on the right edge of every card. */
 .st-status-actions {
   display: flex;
   grid-area: actions;
   flex-wrap: wrap;
+  align-self: start;
   justify-content: flex-end;
   gap: 8px;
+  margin-top: calc((40px - var(--ui-h-sm)) / 2);
 }
 .st-status-error {
-  padding: 0 16px 14px 44px;
+  padding-inline: 4px;
 }
-@container st-cards (max-width: 520px) {
+@container st-cards (max-width: 560px) {
   .st-status-row {
-    grid-template-columns: 16px minmax(0, 1fr);
+    grid-template-columns: 40px minmax(0, 1fr);
+    grid-template-rows: minmax(40px, auto) auto;
     grid-template-areas:
-      'icon top'
-      '. lines'
-      '. actions';
+      'tile top'
+      'lines lines'
+      'actions actions';
+    row-gap: 10px;
+  }
+  .st-status-top {
+    align-self: center;
   }
   .st-status-actions {
     justify-content: flex-start;
-    margin-top: 10px;
+    margin-top: 4px;
+  }
+  /* A card with nothing to do (two-factor sign-in that an admin cannot turn off) has no actions row, nor the row gap above it (it ended
+     28px under its text, the others 16). */
+  .st-status-row:not(:has(> .st-status-actions)) {
+    grid-template-areas:
+      'tile top'
+      'lines lines';
   }
 }
 
 /* ---------- Security: one view at a time in place of the cards ---------- */
 
+/* While a view is open it is the page: its Back on top, where it is in its flow, its title at the page-title size, then its card. The page's
+   own header stays for screen readers (it names the section and takes the focus when the view opens) but is not drawn. */
+.st-page:has(> .st-push > .st-view) > .st-page-head {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .st-view {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  max-width: 560px;
+  max-width: 720px;
 }
-/* Back is a small ghost button above the view's title; its chevron, not its box, starts at the content edge. */
+/* Back is a small ghost button above the view's title; its chevron's INK, not its box, starts at the content edge (12px of padding and 6px
+   of the icon's own side bearing taken back: with -10px it stood 8px inside), and on a desktop it shares the Close button's line (32px). A
+   phone keeps its box 6px inside the sheet's scroller (the focus ring stays whole) and its chevron under the sheet's own Back (Settings). */
 .st-view-back {
-  margin: 0 0 -8px -10px;
+  margin: 0 0 -4px -18px;
+}
+/* A step with no Back (two-factor sign-in, step 2 of 3): its "Step 2 of 3" row is the panel's top row, the Close button's: centred on the
+   button (32px) and ending where the page title ends (48px before the edge), so the bar never runs under the button. */
+@media (min-width: 641px) {
+  .st-view > .au-steps:first-child {
+    min-height: 32px;
+    margin-inline-end: 48px;
+  }
 }
 .st-view-title {
-  margin: 0;
-  font-size: 16px;
-  line-height: 24px;
+  margin: 0 0 4px;
+  font-size: 24px;
+  line-height: 32px;
   font-weight: 600;
+  letter-spacing: -0.02em;
+}
+/* The action itself, straight on the page (no box round a whole flow): the form, the new key or codes (their SecretBox with the airmail
+   edge), the result. */
+.st-view-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
 .st-view-form {
   position: relative;
@@ -646,11 +979,14 @@
 .st-result[data-tone='danger'] {
   color: var(--danger);
 }
-/* The fresh code asked before a new recovery key replaces the old one (step-up): a box of its own above the key. */
-.ui-card.st-stepup {
+/* The fresh code asked before a new recovery key replaces the old one (step-up): a quiet well of its own above the key. */
+.st-stepup {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 5%, var(--raised));
 }
 /* A copy of the address for the password manager: there, not seen, not reachable. */
 .st-username {
@@ -661,39 +997,85 @@
   pointer-events: none;
 }
 
-/* ---------- Account activity (a view of Security): hairline lists in cards ---------- */
+/* ---------- Account activity (a view of Security): the notices, then the sign-ins as a quiet timeline ---------- */
 
+.st-activity {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 .ui-card.st-sub {
-  padding-bottom: 12px;
+  padding: 20px 20px 16px;
+}
+/* Nothing to know (no notices): one calm line with a check. */
+.st-calm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding-inline: 2px;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--text2);
+}
+.st-calm svg {
+  flex: none;
+  color: var(--success);
 }
 .st-list {
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.st-list > li + li {
-  border-top: 1px solid var(--border);
-}
 .st-notice {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding-block: 10px;
+  gap: 10px;
+  padding-block: 6px;
   font-size: 14px;
-  line-height: 20px;
+  line-height: 22px;
 }
 .st-notice svg {
   flex: none;
-  margin-top: 2px;
+  margin-top: 3px;
   color: var(--danger);
 }
+/* A dot per sign-in on one thin line; a failed one in the danger colour (and in words: Sign-in failed). */
 .st-entry {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding-block: 10px;
+  padding: 0 0 18px 26px;
   font-size: 13px;
   line-height: 20px;
+}
+.st-entry:last-child {
+  padding-bottom: 2px;
+}
+.st-entry::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 1px;
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-pill);
+  background: var(--st-card-bg);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--text3) 70%, transparent);
+}
+.st-entry:has(.st-entry-kind[data-ok='false'])::before {
+  background: var(--danger);
+  box-shadow: none;
+}
+.st-entry:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 21px;
+  bottom: 3px;
+  left: 5px;
+  width: 1px;
+  background: var(--border-strong);
 }
 .st-entry-top {
   display: flex;
@@ -710,7 +1092,7 @@
   color: var(--danger);
 }
 .st-entry-time {
-  color: var(--text2);
+  color: var(--text3);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -718,10 +1100,10 @@
   color: var(--text2);
   overflow-wrap: anywhere;
 }
-/* Show all / Show fewer under the sign-ins (ui/Disclosure, a small ghost button): its words, not its box, start on the edge of the rows above
-   (the 1px border and 10px padding of the small size are taken back). It stays under the list, so only the list grows when it opens. */
+/* Show all / Show fewer under the sign-ins (ui/Disclosure, a small ghost button): its words, not its box, start on the words of the rows
+   above (the 1px border and 10px padding of the small size are taken back). It stays under the list, so only the list grows when it opens. */
 .ui-btn.st-more {
-  margin-inline-start: -11px;
+  margin: 8px 0 0 calc(26px - 11px);
 }
 
 /* ---------- The locked-mail dialog ---------- */
@@ -732,58 +1114,73 @@
   gap: 16px;
 }
 
-/* ---------- The technical sections (admins) ---------- */
+/* ---------- The technical sections (admins): readable docs pages ---------- */
 
 .st-docs {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 32px;
+  max-width: 680px;
 }
+/* Prose at a reading size: 15/26, the measure of the page. */
 .st-docs-lead {
   margin: 0;
-  font-size: 14px;
-  line-height: 22px;
+  font-size: 15px;
+  line-height: 26px;
   color: var(--text2);
 }
-/* A note after the steps: a quiet box, so it reads as an aside and not as one more step. */
+.st-docs .ui-step {
+  font-size: 15px;
+  line-height: 24px;
+}
+.st-docs .ui-step-title {
+  font-size: 15px;
+  line-height: 24px;
+}
+.st-docs .ui-step-body {
+  gap: 12px;
+}
+.st-docs .ui-step-body .st-muted {
+  font-size: 14px;
+  line-height: 22px;
+}
+/* A note after the steps: a quiet tone, so it reads as an aside and not as one more step. */
 .st-docs-note {
   margin: 0;
-  padding: 12px 14px;
-  background: var(--raised);
-  border: 1px solid var(--border);
+  padding: 14px 16px;
+  background: color-mix(in srgb, var(--accent) 4%, var(--raised));
   border-radius: var(--radius-card);
   color: var(--text2);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: 14px;
+  line-height: 22px;
 }
 .st-docs-part {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-/* Sentences that hold names in chips get room between their lines, so the chips of two lines never touch. */
-.st-docs :is(.st-muted, .ui-step-body) {
-  line-height: 22px;
+  gap: 16px;
 }
 .st-docs-title {
   margin: 0;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 18px;
+  line-height: 26px;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 /* A name in the text (a file, a secret, a record): a quiet mono chip; a chip that wraps is drawn on each of its lines. */
 .st-docs code,
 .st-defs code {
-  padding: 1px 4px;
+  padding: 1px 5px;
   background: var(--raised);
-  border-radius: 4px;
-  box-shadow: inset 0 0 0 1px var(--border);
+  border-radius: 6px;
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 0.9em;
+  font-size: 0.86em;
   overflow-wrap: anywhere;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
+}
+:root[data-theme='dark'] .st-defs code {
+  background: var(--surface);
 }
 /* A dashboard path or the name of a button in a step: the text colour at 500, not a heavy bold inside the sentence. */
 .st-docs strong {
@@ -793,6 +1190,7 @@
 /* Commands with their Copy button in the top right corner, over the block's own padding. */
 .st-command {
   position: relative;
+  container: st-command / inline-size;
 }
 .st-command > .ui-code {
   padding-right: 88px;
@@ -802,65 +1200,87 @@
   top: 6px;
   right: 6px;
 }
-/* The parts of a deployment: one card, a row per part (an icon tile, the name, one or two sentences) split by hairlines. */
-.st-defs {
-  margin: 0;
-  padding: 4px 20px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  box-shadow:
-    var(--shadow-sm),
-    inset 0 1px 0 var(--inset-highlight);
+/* A block narrower than its longest command (353px of mono at 12px) beside the button (up to 126px in Vietnamese): a long line scrolls
+   sideways and its padding only shows at the end of the scroll, so the first two lines ran under the button (a phone: 'edging_mail_db'
+   and 'JWT_SECRET' covered). There the button leaves the corner for a row of its own under the block, on its right edge. */
+@container st-command (max-width: 520px) {
+  .st-command > .ui-code {
+    padding-right: 14px;
+  }
+  .ui-btn.st-command-copy {
+    position: static;
+    display: flex;
+    width: max-content;
+    margin: 6px 0 0 auto;
+  }
 }
-:root[data-theme='dark'] .st-defs {
-  background: var(--raised);
-  border-color: var(--border-strong);
+/* The parts of a deployment: one grouped card, a row per part (a neutral icon tile, the name, one or two sentences), inset hairlines. */
+.st-defs {
+  max-width: 720px;
+  margin: 0;
+  padding: 4px 0;
+  border-radius: var(--radius-card);
+  box-shadow: var(--sheet-shadow);
 }
 .st-def {
-  padding-block: 14px;
+  position: relative;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 2px 14px;
+  padding: 14px var(--st-row-x);
 }
-.st-def + .st-def {
-  border-top: 1px solid var(--border);
+.st-def + .st-def::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: calc(var(--st-row-x) + 46px);
+  height: 1px;
+  background: var(--border);
 }
 .st-def dt {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  display: contents;
   font-size: 14px;
-  line-height: 20px;
+  line-height: 22px;
   font-weight: 600;
 }
 .st-def-icon {
   display: grid;
-  flex: none;
+  grid-row: 1 / 3;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-control);
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
   background: var(--raised);
-  box-shadow: inset 0 0 0 1px var(--border);
   color: var(--text2);
 }
 :root[data-theme='dark'] .st-def-icon {
   background: var(--surface);
 }
 .st-def dd {
-  margin: 2px 0 0 40px;
-  font-size: 13px;
-  line-height: 20px;
+  grid-column: 2;
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
   color: var(--text2);
 }
 
 /* ---------- A phone: list, then section ---------- */
 
-/* The dialog is a sheet from the bottom edge (ui.css), always as high as it can be. It shows the list of sections, or one section with a
-   way back to the list (SettingsModal's pane): a tap on a row opens it, Back returns, each sliding 12px from the side it comes from. */
+/* The dialog is a sheet from the bottom edge (ui.css), always as high as it can be, on the page's ground with the rows on cards. It shows
+   the list of sections, or one section with a way back to the list (SettingsModal's pane): a tap on a row opens it, Back returns, each
+   sliding 12px from the side it comes from. */
 @media (max-width: 640px) {
+  /* A view's Back keeps its box 6px inside the sheet's scroller (its focus ring stays whole), its chevron under the sheet's own Back. */
+  .st-view-back {
+    margin-left: -10px;
+  }
   .ui-dialog.st-dialog {
+    --st-row-x: 16px;
+    --st-card-shadow: none;
     height: 92vh;
     height: 92dvh;
-    background: var(--st-page-bg);
+    background: var(--bg);
   }
   .st-dialog > .ui-dialog-head {
     align-items: center;
@@ -870,6 +1290,12 @@
      into the head's padding, which is only 6px here). */
   .st-dialog > .ui-dialog-head > .ui-btn {
     margin-right: 0;
+  }
+  /* The list's title is the sheet's big one (the identity card and the rows come under it). */
+  .st-dialog > .ui-dialog-head > .ui-dialog-title {
+    font-size: 22px;
+    line-height: 28px;
+    letter-spacing: -0.02em;
   }
   /* In a section the head is a nav bar: Back to the list where the title was (the title stays for screen readers: it names the dialog),
      the X on the right. Back sits in the page but is placed over the head, so it never scrolls away. */
@@ -899,50 +1325,95 @@
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
-    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
-    border-top: 1px solid var(--border);
-  }
-  .st-identity {
-    padding: 0 0 4px 2px;
+    padding: 6px 16px calc(24px + env(safe-area-inset-bottom));
   }
   .st-dialog > .ui-dialog-body {
-    padding: 16px 16px calc(24px + env(safe-area-inset-bottom));
-    border-top: 1px solid var(--border);
+    padding: 8px 16px calc(32px + env(safe-area-inset-bottom));
   }
   .st-nav {
+    gap: 0;
     animation: st-push-back var(--dur-slow) var(--ease-emph-enter);
   }
   .st-section {
     animation: st-push-forward var(--dur-slow) var(--ease-emph-enter);
   }
-  /* The rows: full width, 48px, hairlines between, a chevron at the end; no selection on a list that opens what is tapped. */
+  /* No capsule: a list that opens what is tapped shows no selection. */
+  .st-glide {
+    display: none;
+  }
+  /* Who is signed in: a card of its own at the top, a bigger avatar. */
+  .st-identity {
+    gap: 12px;
+    margin-bottom: 4px;
+    padding: 14px 12px;
+    border-radius: var(--radius-card);
+    background: var(--st-card-bg);
+    box-shadow: var(--st-card-shadow);
+  }
+  .st-identity-name {
+    font-size: 16px;
+    line-height: 22px;
+  }
+  .st-identity-address {
+    font-size: 13px;
+    line-height: 18px;
+  }
+  /* The rows: 56px on cards (one per group), the icon in a 32px neutral tile, a chevron at the end, hairlines between that start at the
+     words. */
   .ui-tabs.st-tabs {
     gap: 0;
-  }
-  .ui-tabs.st-tabs > .ui-ink {
-    display: none;
+    padding-top: 20px;
   }
   .ui-tabs.st-tabs > .ui-tab,
   .ui-tabs.st-tabs > .ui-tab[aria-selected='true'] {
-    min-height: 48px;
-    padding: 12px 36px 12px 4px;
+    min-height: 56px;
+    padding: 8px 40px 8px 12px;
     border-radius: 0;
-    background: transparent;
+    background: var(--st-card-bg);
     color: var(--text);
     font-size: 15px;
-    font-weight: 400;
+    line-height: 22px;
+    font-weight: 500;
+  }
+  .ui-tabs.st-tabs > .ui-tab:active:not(:disabled) {
+    background: color-mix(in srgb, var(--text) 6%, var(--st-card-bg));
   }
   .ui-tabs.st-tabs > .ui-tab > svg {
+    box-sizing: content-box;
+    width: 18px;
+    height: 18px;
+    padding: 7px;
+    border-radius: 9px;
+    background: var(--raised);
     color: var(--text2);
   }
-  /* A hairline between rows, from the start of the label (the icon stands in the margin, as in a phone's own settings). */
-  .ui-tabs.st-tabs > .ui-tab + .ui-tab {
-    background: linear-gradient(var(--border), var(--border)) 30px 0 / calc(100% - 30px) 1px no-repeat;
+  :root[data-theme='dark'] .ui-tabs.st-tabs > .ui-tab > svg {
+    background: var(--surface);
+  }
+  .ui-tabs.st-tabs > .ui-tab:first-of-type,
+  .ui-tabs.st-tabs > .ui-tab-group + .ui-tab {
+    border-top-left-radius: var(--radius-card);
+    border-top-right-radius: var(--radius-card);
+  }
+  .ui-tabs.st-tabs > .ui-tab:last-child,
+  .ui-tabs.st-tabs > .ui-tab:has(+ .ui-tab-group) {
+    border-bottom-right-radius: var(--radius-card);
+    border-bottom-left-radius: var(--radius-card);
+  }
+  .ui-tabs.st-tabs > .ui-tab + .ui-tab::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 56px;
+    height: 1px;
+    background: var(--border);
   }
   .ui-tabs.st-tabs > .ui-tab::after,
   .ui-tabs.st-tabs:not([data-ink]) > .ui-tab[aria-selected='true']::after {
+    content: '';
     top: 50%;
-    right: 14px;
+    right: 18px;
     bottom: auto;
     left: auto;
     width: 8px;
@@ -954,82 +1425,119 @@
     border-radius: 0;
     rotate: 45deg;
   }
+  /* The groups' titles sit on the ground above their card. */
   .ui-tabs.st-tabs > .ui-tab-group {
-    padding: 20px 4px 6px;
+    padding: 22px 12px 8px;
+    font-size: 13px;
+    line-height: 18px;
   }
-  .st-nav {
-    gap: 8px;
+  .ui-tabs.st-tabs > .ui-ink + .ui-tab-group {
+    padding-top: 0;
   }
+  /* The admin console and Sign out: a card of their own under the sections. */
   .st-nav-foot {
-    margin-top: 8px;
-    padding-top: 8px;
+    gap: 0;
+    margin-top: 24px;
+    padding: 0;
+    border-radius: var(--radius-card);
+    background: var(--st-card-bg);
+    box-shadow: var(--st-card-shadow);
   }
   .ui-btn.st-nav-link {
-    min-height: 48px;
-    padding: 0 10px 0 3px;
+    position: relative;
+    gap: 12px;
+    min-height: 56px;
+    padding: 8px 18px 8px 12px;
+    border-radius: 0;
     color: var(--text);
     font-size: 15px;
-    font-weight: 400;
+    font-weight: 500;
   }
-  .ui-btn.st-nav-link + .ui-btn.st-nav-link {
-    background: linear-gradient(var(--border), var(--border)) 30px 0 / calc(100% - 30px) 1px no-repeat;
+  .ui-btn.st-nav-link:first-child {
+    border-top-left-radius: var(--radius-card);
+    border-top-right-radius: var(--radius-card);
+  }
+  .ui-btn.st-nav-link:last-of-type {
+    border-bottom-right-radius: var(--radius-card);
+    border-bottom-left-radius: var(--radius-card);
+  }
+  .ui-btn.st-nav-link > svg:first-child {
+    box-sizing: content-box;
+    width: 18px;
+    height: 18px;
+    padding: 7px;
+    border-radius: 9px;
+    background: var(--raised);
+    color: var(--text2);
+  }
+  .ui-btn.st-nav-link + .ui-btn.st-nav-link::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 56px;
+    height: 1px;
+    background: var(--border);
+  }
+  .st-held-note,
+  .st-foot-msg {
+    padding: 0 16px 14px;
   }
   .st-page {
-    gap: 14px;
+    gap: 24px;
   }
-  .st-foot-msg {
-    padding-inline: 4px;
+  .st-page-title {
+    font-size: 22px;
+    line-height: 28px;
   }
-  /* The two theme cards side by side even at 320px: a smaller picture. */
-  .ui-radio-group.st-theme {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+  .st-view-title {
+    font-size: 22px;
+    line-height: 28px;
   }
-  .st-theme .ui-check {
-    padding: 8px 10px 10px;
+  /* Cards come to the screen's inset (16px): a little less room inside. */
+  .ui-card.st-status-card {
+    padding: 16px;
   }
-  .st-theme .ui-check::before {
-    height: 60px;
-  }
-  .st-theme .ui-check:has(> .ui-radio-input[value='system'])::after {
-    top: 8px;
-    right: 10px;
-    left: 10px;
-    height: 60px;
-  }
-  /* Three choices: three narrow cards in one row (a 2 + 1 grid stretched the third picture); a smaller picture, the name may wrap. */
+  /* Three theme cards in one row even at 320px: a smaller picture with a narrower rail; the name may wrap under the radio. */
+  .ui-radio-group.st-theme,
   .ui-radio-group.st-theme-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
+    gap: 8px;
   }
-  .st-theme-3 .ui-check {
+  .ui-radio-group.st-theme:not(.st-theme-3) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .st-theme .ui-check {
+    --st-l: 18px;
+    --st-art-h: 72px;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto 1fr auto;
-    align-items: start;
     justify-items: center;
-    gap: 6px;
-    padding: 6px 6px 8px;
+    gap: 8px;
+    padding: 4px 4px 10px;
     text-align: center;
   }
-  /* Picture, name, then the radio under it (as a phone's own appearance picker): the name has the whole width of the card. */
-  .st-theme-3 .ui-check > .ui-radio-input {
-    order: 2;
-  }
-  .st-theme-3 .ui-check {
-    --st-art-side: 18px;
-    --st-art-x: 24px;
-  }
-  .st-theme-3 .ui-check::before {
+  /* Picture, name, then the radio under it (as a phone's own appearance picker): the name has the whole width of the card. The window
+     stands 4px in on the card's tone here (64px high inside, as before the mat). */
+  .st-theme .ui-check::before {
     justify-self: stretch;
-    height: 52px;
+    border-radius: 10px;
   }
-  .st-theme-3 .ui-check:has(> .ui-radio-input[value='system'])::after {
-    top: 6px;
-    right: 6px;
-    left: 6px;
-    height: 52px;
+  .st-theme .ui-check::before,
+  .st-theme .ui-check:has(> .ui-radio-input[value='system'])::after {
+    padding: 4px;
+    outline-offset: -5px;
   }
-  .st-theme-3 .ui-check-text {
+  .st-theme .ui-check > .ui-radio-input {
+    order: 2;
+    margin-left: 0;
+  }
+  .st-theme .ui-check:has(> .ui-radio-input[value='system'])::after {
+    top: 4px;
+    right: 4px;
+    left: 4px;
+    border-radius: 10px;
+  }
+  .st-theme .ui-check-text {
     font-size: 13px;
     line-height: 18px;
   }

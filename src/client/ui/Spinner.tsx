@@ -13,18 +13,21 @@ interface SpinnerProps {
 }
 
 /**
- * A turning arc for work in progress. On its own it announces its label ("Loading…") to a screen reader; inside a busy button pass
- * `decorative`. Under reduced motion it stands still (`nm-spin`, see index.css) and its label is written beside it, so what is happening
- * is said in words rather than by movement.
+ * The wingbeat loader (v3 H8) for work in progress: three dots that rise and fall in a soft wave, like wings, in the current text colour,
+ * inside a `size` x `size` box (so it takes the place of a 16 px icon in a busy Button without moving anything). On its own it announces
+ * its label ("Loading…") to a screen reader; inside a busy button pass `decorative`. Under reduced motion the dots stand still
+ * (signature.css) and its label is written beside it (ui.css), so what is happening is said in words rather than by movement.
  */
 export function Spinner({ size = 16, decorative = false, label, className }: SpinnerProps): React.ReactElement {
   const tr = useT();
+  const box = { '--ui-wing-size': `${size}px` } as React.CSSProperties;
   return (
     <span className={cx('ui-spinner', className)} role={decorative ? undefined : 'status'}>
-      <svg className="nm-spin" width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity="0.25" strokeWidth="3" />
-        <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-      </svg>
+      <span className="ui-wing" aria-hidden="true" style={box}>
+        <span className="ui-wing-dot" />
+        <span className="ui-wing-dot" />
+        <span className="ui-wing-dot" />
+      </span>
       {decorative ? null : <span className="ui-spinner-label">{label ?? tr('common.loading')}</span>}
     </span>
   );

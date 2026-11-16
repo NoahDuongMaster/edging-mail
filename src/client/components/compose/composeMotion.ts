@@ -1,12 +1,13 @@
 import React from 'react';
 import { DURATION, EASING } from '../../../shared/design/tokens';
+import { foldAndFly } from '../../ui/homing';
 import { exitDuration, motionReduced } from '../../ui/motion';
 
-// The motion of the compose window (DESIGN.md section 3: M10 open/close, M11 send). Data and focus never wait for it: the window opens and
-// takes focus at once, and it is gone from the page (focus back on its opener) the moment it closes; the closing motion plays on an inert
-// copy. Under reduced motion only fades are left (150 ms), and no flight.
+// The motion of the compose window (DESIGN.md section 3: M10 open/close; DESIGN-v3 H4: send = fold and fly). Data and focus never wait for
+// it: the window opens and takes focus at once, and it is gone from the page (focus back on its opener) the moment it closes; the closing
+// motion plays on an inert copy. Under reduced motion only fades are left (150 ms), and no flight (Sent only catches it: a short highlight).
 
-/** How the window left: closed (Escape, X, discard: it goes back toward its opener) or sent (it shrinks away and Send's icon takes off). */
+/** How the window left: closed (Escape, X, discard: it goes back toward its opener) or sent (it folds into a letter that flies to Sent). */
 export type ComposeExit = 'close' | 'sent';
 
 const PHONE = '(max-width: 900px)';
@@ -131,73 +132,26 @@ function playOpen(root: HTMLElement, panel: HTMLElement, from: Origin | null): v
 }
 
 /**
- * M11 (J2-02, J2-14): Send's icon takes off at once on a short rising arc to the upper right, with two accent wing strokes trailing it. The
- * path runs DURATION.flight (480 ms) on a plain ease-out, cubic-bezier(0, 0, 0.58, 1): it leaves at once (16 % of the arc in the first
- * 10 % of the time) but keeps its momentum into the fade (79 % travelled when the fade starts at 60 %, still at 0.93x its average speed),
- * so the plane flies off instead of stopping and dissolving in place; the icon fades over the last 40 % in linear time. The wings run
- * DURATION.slow, the second DURATION.micro later. A fixed overlay at --z-float (compose.css `.cp-flight`) that nobody can click or read,
- * removed when it lands. No-op under reduced motion.
+ * v3 X1: the postmark lands on the envelope's stamp of the window that leaves (it fades in from 0.96 to its size in 200 ms on the settle
+ * curve, from the circle's centre), the first motion of a send. Without one (a window with no stamp), a step of no length: the fold
+ * starts at once. Only called when motion is allowed (playExit).
  */
-function sendFlight(fromEl: HTMLElement): void {
-  const rect = fromEl.getBoundingClientRect();
-  if (rect.width === 0 || rect.height === 0) {
-    return;
+function stampPostmark(panel: HTMLElement): Animation {
+  const mark = panel.querySelector<SVGElement>('.cp-postmark');
+  if (mark === null) {
+    return panel.animate([], { duration: 0 });
   }
-  const token = document.createElement('div');
-  token.className = 'cp-flight';
-  token.setAttribute('aria-hidden', 'true');
-  token.style.left = `${rect.left}px`;
-  token.style.top = `${rect.top}px`;
-  token.style.width = `${rect.width}px`;
-  token.style.height = `${rect.height}px`;
-  const icon = fromEl.cloneNode(true);
-  if (icon instanceof Element) {
-    for (const node of [icon, ...icon.querySelectorAll('[id]')]) {
-      node.removeAttribute('id');
-    }
-  }
-  const wings = [0, 1].map(() => {
-    const wing = document.createElement('span');
-    wing.className = 'cp-flight-wing';
-    return wing;
-  });
-  /* eslint-disable unicorn/prefer-dom-node-append -- @cloudflare/workers-types overrides Element.append with the HTMLRewriter signature */
-  for (const wing of wings) {
-    token.appendChild(wing);
-  }
-  token.appendChild(icon);
-  document.body.appendChild(token);
-  /* eslint-enable unicorn/prefer-dom-node-append */
-  const duration = DURATION.flight;
-  const path = token.animate(
+  mark.style.transformOrigin = '30% 50%';
+  return mark.animate(
     [
-      { transform: 'translate(0, 0) rotate(-10deg) scale(1)' },
-      { transform: 'translate(52px, -34px) rotate(-6deg) scale(0.9)', offset: 0.45 },
-      { transform: 'translate(120px, -76px) rotate(0deg) scale(0.7)' }
+      { opacity: 0, transform: 'scale(0.96)' },
+      { opacity: 1, transform: 'none' }
     ],
-    // CSS's own ease-out (0, 0, 0.58, 1): momentum kept into the fade (J2-14).
-    { duration, easing: 'ease-out', fill: 'forwards' }
+    { duration: DURATION.base, easing: EASING.settle, fill: 'backwards' }
   );
-  const fade = token.animate([{ opacity: 1 }, { opacity: 0 }], {
-    duration: duration * 0.4,
-    delay: duration * 0.6,
-    easing: 'linear',
-    fill: 'forwards'
-  });
-  const trails = wings.map((wing, index) =>
-    wing.animate(
-      [
-        { opacity: 0, transform: 'scaleX(0.4)' },
-        { opacity: 1, transform: 'scaleX(1)', offset: 0.25 },
-        { opacity: 0, transform: 'scaleX(0.3)' }
-      ],
-      { duration: DURATION.slow, delay: index * DURATION.micro, easing: EASING.standard, fill: 'forwards' }
-    )
-  );
-  void Promise.allSettled([path.finished, fade.finished, ...trails.map((trail) => trail.finished)]).then(() => token.remove());
 }
 
-/** M10 close / M11 send, played on an inert copy of the window that is put where the window was and removed when it is done. */
+/** M10 close / H4 send, played on an inert copy of the window that is put where the window was and removed when it is done. */
 function playExit(root: HTMLElement, kind: ComposeExit, to: DOMRect | null): void {
   const ghost = root.cloneNode(true);
   if (!(ghost instanceof HTMLElement)) {
@@ -210,8 +164,8 @@ function playExit(root: HTMLElement, kind: ComposeExit, to: DOMRect | null): voi
   ghost.inert = true;
   ghost.dataset.leaving = 'true';
   if (kind === 'sent') {
-    // On the flight's level, under it (it is drawn after): the icon that takes off is seen over the window that goes.
-    ghost.style.zIndex = 'var(--z-float)';
+    // Under the homing overlay (--z-float), where the folded letter flies: the veil that fades never covers it.
+    ghost.style.zIndex = 'var(--z-raise)';
   }
   // Not .append(): @cloudflare/workers-types overrides Element.append with the HTMLRewriter signature.
   // eslint-disable-next-line unicorn/prefer-dom-node-append -- see above
@@ -219,7 +173,8 @@ function playExit(root: HTMLElement, kind: ComposeExit, to: DOMRect | null): voi
   const panel = ghost.querySelector<HTMLElement>('.cp-panel');
   const reduced = motionReduced();
   const phone = window.matchMedia(PHONE).matches;
-  // Sent: a quick shrink and fade (the flight is the motion). Closed: back toward the opener, or down on a phone, at 0.7 of the open.
+  // Sent: the veil fades quickly (the fold and the flight are the motion). Closed: back toward the opener, or down on a phone, at 0.7 of
+  // the open.
   let duration: number = DURATION.quick;
   if (!reduced && kind === 'close') {
     duration = phone ? exitDuration(DURATION.slower) : exitDuration(DURATION.slow);
@@ -230,17 +185,23 @@ function playExit(root: HTMLElement, kind: ComposeExit, to: DOMRect | null): voi
   ];
   if (panel === null || reduced) {
     animations.push((panel ?? ghost).animate([{ opacity: 1 }, { opacity: 0 }], { duration, easing: 'linear', fill: 'forwards' }));
+    if (kind === 'sent') {
+      // Reduced motion: no fold and no flight; Sent catches the message with its short highlight only.
+      void foldAndFly(panel ?? ghost, 'sent');
+    }
   } else if (kind === 'sent') {
-    // J2-02: no hold, it goes from the first frame: scale .94 with a linear fade over the 150 ms.
-    animations.push(
-      panel.animate(
-        [
-          { transform: 'none', opacity: 1 },
-          { transform: 'scale(0.94)', opacity: 0 }
-        ],
-        { duration, easing: 'linear', fill: 'forwards' }
-      )
-    );
+    // H4 (J2-02: no hold, it goes from the first frame): ui/homing foldAndFly copies the window into the homing overlay at its place, folds
+    // the copy into a 120 x 80 letter whose flap closes, and flies it along the arc to the Sent folder (the 'menu' home on a phone, where
+    // the drawer is closed), which catches it. The copy it takes is made at once, so the window here only hides. v3 X1: first the postmark
+    // lands on the envelope's stamp (fade, 0.96 -> 1, 200 ms, the settle curve: the motion of the first frame), then the window folds.
+    const stamped = stampPostmark(panel);
+    animations.push(stamped);
+    // A stamp cut short (the copy removed early) still lets the letter go: the message is sent either way.
+    const fly = (): void => {
+      void foldAndFly(panel, 'sent');
+      panel.style.visibility = 'hidden';
+    };
+    void stamped.finished.then(fly, fly);
   } else {
     // The window's card stays solid while it travels and fades over the last part of the way (a fade of the whole layer from the start
     // reads as a dissolve in place, the page showing through the card's words).
@@ -265,14 +226,6 @@ function playExit(root: HTMLElement, kind: ComposeExit, to: DOMRect | null): voi
         { duration, easing: EASING.emphExit, fill: 'forwards' }
       )
     );
-  }
-  if (kind === 'sent' && !reduced) {
-    // The flight leaves from Send's icon on the copy (the foot's, or the head's when a phone on its side sent with the keyboard up: J5-25, the
-    // one that is drawn); it is drawn after the copy, so it is on top of it.
-    const icon = [...ghost.querySelectorAll<HTMLElement>('[data-send-icon]')].find((each) => each.getClientRects().length > 0);
-    if (icon !== undefined) {
-      sendFlight(icon);
-    }
   }
   void Promise.allSettled(animations.map((animation) => animation.finished)).then(() => ghost.remove());
 }

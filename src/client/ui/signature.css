@@ -1,0 +1,719 @@
+/* The v3 "Airmail" signature (DESIGN-v3 section 3): the homing flight layer, the trail, the catch of a folder, the odometer digits, the
+   glide capsule, the airmail edge, the wingbeat loader and the date-time picker. Owned by the signature primitives (homing.ts,
+   Odometer.tsx, glide.ts, FlightTrail.tsx, Spinner.tsx, DateTimePicker.tsx). Every move here has a reduced-motion rule (at the end of the
+   file, for the system setting and for the in-app choice); only transform, opacity and stroke-dashoffset move, except the 150 ms
+   highlight that replaces the catch under reduced motion. Colours are theme variables or color-mix() of them, stacking is --z-*. */
+
+/* ---------- H1 homing: the flight layer (homing.ts) ---------- */
+
+.ui-homing {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-float);
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+.ui-homing-trail {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+.ui-homing-trail mask,
+.ui-trail mask {
+  mask-type: alpha;
+}
+.ui-homing-dash {
+  fill: none;
+  stroke: color-mix(in srgb, var(--accent) 45%, transparent);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 5;
+  stroke-linecap: round;
+}
+.ui-homing-reveal {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+/* The letter token: a small sheet that floats (28 px, radius 9), initials on the sender's tint or an envelope glyph. */
+.ui-homing-token {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: var(--surface);
+  box-shadow: var(--float-shadow);
+  color: var(--accent-text);
+  font: 600 11px/1 var(--font-sans);
+  letter-spacing: 0.02em;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+.ui-homing-token[data-tint='true'] {
+  background: color-mix(in srgb, var(--ui-hue) 16%, var(--surface));
+  color: color-mix(in srgb, var(--ui-hue) 55%, var(--text));
+}
+.ui-homing-token[data-kind='spam'] {
+  color: var(--text3);
+  filter: saturate(0.1);
+}
+.ui-homing-glyph {
+  display: block;
+}
+.ui-homing-count {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--surface);
+  color: var(--on-accent);
+  font: 600 10px/16px var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.ui-homing-letter .ui-homing-count {
+  top: -14px;
+  right: -14px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px;
+  box-shadow: 0 0 0 6px var(--surface);
+  font-size: 24px;
+  line-height: 40px;
+}
+/* The send letter: drawn at 120 x 80 and scaled (a token at 0.25): a sheet with the airmail edge as its frame and a flap that closes. */
+.ui-homing-letter {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 120px;
+  height: 80px;
+  border: 7px solid transparent;
+  border-radius: 12px;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    repeating-linear-gradient(
+        -45deg,
+        var(--accent) 0 8px,
+        var(--surface) 8px 13px,
+        color-mix(in srgb, var(--accent) 60%, var(--surface)) 13px 21px,
+        var(--surface) 21px 26px
+      )
+      border-box;
+  box-shadow: var(--float-shadow);
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+.ui-homing-letter svg {
+  position: absolute;
+  inset: -7px;
+  overflow: visible;
+}
+.ui-homing-flap {
+  fill: var(--surface);
+  stroke: var(--border-strong);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  transform-box: fill-box;
+  transform-origin: top;
+}
+.ui-homing-fold {
+  stroke: var(--border);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+.ui-homing-ghost {
+  transform-origin: center;
+}
+/* The soft ring of a catch, laid over the home in the overlay (homing.ts ring()). */
+.ui-homing-ring {
+  position: absolute;
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--accent) 42%, transparent),
+    0 0 0 6px color-mix(in srgb, var(--accent) 12%, transparent);
+  opacity: 0;
+}
+
+/* catchHome: the home's icon (its svg child, or [data-home-icon]) pops 1 -> 1.18 -> 1 with the settle overshoot. */
+[data-catch] > svg,
+[data-catch] [data-home-icon] {
+  animation: ui-catch-pop 320ms var(--ease-settle);
+}
+@keyframes ui-catch-pop {
+  45% {
+    scale: 1.18;
+  }
+}
+/* Under reduced motion the catch is only this: the home's background flashes the accent tint for 150 ms. */
+@keyframes ui-catch-wash {
+  from {
+    background-color: var(--accent-soft);
+  }
+}
+
+/* ---------- H2 odometer (Odometer.tsx) ---------- */
+
+.ui-odo {
+  position: relative;
+  display: inline-flex;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ui-odo-face {
+  position: relative;
+  display: inline-flex;
+  user-select: none;
+}
+/* A digit cell clips its rolling glyphs (clip-path keeps the baseline, overflow would move it). */
+.ui-odo-d {
+  position: relative;
+  display: inline-block;
+  clip-path: inset(0);
+}
+.ui-odo-g {
+  display: block;
+}
+/* A separator or a word of the formatted text ("1 of 30"): a flex item of only a space collapses, so its spaces are kept as they are. */
+.ui-odo-s {
+  white-space: pre;
+}
+.ui-odo-old {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+.ui-odo-ghost {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  display: inline-flex;
+  white-space: nowrap;
+}
+
+/* ---------- H3 glide capsule (glide.ts): screens give it its fill and radius ---------- */
+
+.ui-glide-host {
+  position: relative;
+  isolation: isolate;
+}
+.ui-glide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: calc(var(--z-raise) * -1);
+  pointer-events: none;
+  transform-origin: 0 0;
+}
+.ui-glide[hidden] {
+  display: none;
+}
+
+/* ---------- H6 airmail edge ---------- */
+
+/* A 3 px band of 45 degree stripes: accent 8 px, a gap, the accent at 60 %, a gap (28 px across). [data-moving] slides it sideways
+   (a wider stripe layer moved by one period, transform only) while a send is held; tone 'panel' on the brand panel. */
+.ui-airmail {
+  /* Par avion: red, paper, blue, paper, at 45 degrees (one period is 24 px across the stripes, 33.94 px along the edge). The paper gaps are
+     the surface itself (not transparent), so the edge reads as airmail on any ground. */
+  --ui-airmail-a: var(--airmail-red);
+  --ui-airmail-b: var(--accent);
+  --ui-airmail-paper: var(--surface);
+  position: relative;
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  background: var(--ui-airmail-paper);
+}
+.ui-airmail[data-tone='panel'] {
+  --ui-airmail-b: var(--brand-panel-line);
+  --ui-airmail-paper: var(--on-brand-panel);
+}
+.ui-airmail::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(100% + 34px);
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--ui-airmail-a) 0 8px,
+    var(--ui-airmail-paper) 8px 12px,
+    var(--ui-airmail-b) 12px 20px,
+    var(--ui-airmail-paper) 20px 24px
+  );
+  content: '';
+}
+.ui-airmail[data-moving]::before {
+  animation: ui-airmail-slide 900ms linear infinite;
+}
+@keyframes ui-airmail-slide {
+  to {
+    transform: translateX(-33.94px);
+  }
+}
+
+/* ---------- H7 flight trail (FlightTrail.tsx) ---------- */
+
+.ui-trail {
+  display: block;
+  flex: none;
+  overflow: visible;
+}
+.ui-trail[data-size='lg'] {
+  width: 100%;
+  max-width: 520px;
+  height: auto;
+}
+/* Its stroke is the fade-in gradient of FlightTrail.tsx (an attribute), in the mask's colour. */
+.ui-trail-reveal {
+  fill: none;
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 0;
+  animation: ui-trail-draw 700ms var(--ease-emph-enter) both;
+}
+/* The secondary trails draw in a beat after the main one. */
+.ui-trail-reveal[data-echo='1'] {
+  animation-delay: 120ms;
+}
+.ui-trail-reveal[data-echo='2'] {
+  animation-delay: 220ms;
+}
+@keyframes ui-trail-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+.ui-trail-path {
+  fill: none;
+  stroke: color-mix(in srgb, var(--accent-text) 62%, transparent);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+.ui-trail[data-size='lg'] .ui-trail-path {
+  stroke-width: 2;
+}
+/* The small letter keeps a fine edge so its flap stays legible at 15 px. */
+.ui-trail[data-size='sm'] :is(.ui-trail-paper, .ui-trail-flap) {
+  stroke-width: 1.1;
+}
+.ui-trail-echo {
+  fill: none;
+  stroke: color-mix(in srgb, var(--accent-text) 40%, transparent);
+  stroke-linejoin: round;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+}
+.ui-trail-paper {
+  fill: var(--surface);
+  stroke: var(--accent-text);
+  stroke-width: 1.5;
+}
+.ui-trail-flap {
+  fill: none;
+  stroke: var(--accent-text);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ui-trail-letter {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ui-trail-letter 420ms var(--ease-settle) 520ms both;
+}
+@keyframes ui-trail-letter {
+  from {
+    opacity: 0;
+    transform: translateX(-8px) scale(0.7);
+  }
+}
+.ui-trail[data-tone='panel'] .ui-trail-path {
+  stroke: var(--brand-panel-line);
+}
+.ui-trail[data-tone='panel'] .ui-trail-echo {
+  stroke: color-mix(in srgb, var(--brand-panel-line) 60%, transparent);
+}
+/* On the brand panel the letter keeps its outlined construction: panel fill, a light edge. */
+.ui-trail[data-tone='panel'] .ui-trail-paper {
+  fill: var(--brand-panel);
+  stroke: var(--on-brand-panel);
+}
+.ui-trail[data-tone='panel'] .ui-trail-flap {
+  stroke: var(--on-brand-panel);
+}
+
+/* ---------- H8 wingbeat loader (Spinner.tsx) ---------- */
+
+/* Three dots in a size x size box (dots a quarter of it) that rise and fall in a wave, staggered like wings. */
+.ui-wing {
+  --ui-wing-size: 16px;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  width: var(--ui-wing-size);
+  height: var(--ui-wing-size);
+}
+.ui-spinner[role='status'] .ui-wing {
+  color: var(--text3);
+}
+.ui-wing-dot {
+  width: calc(var(--ui-wing-size) * 0.27);
+  height: calc(var(--ui-wing-size) * 0.27);
+  border-radius: var(--radius-pill);
+  background: currentColor;
+  animation: ui-wingbeat 960ms cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+.ui-wing-dot:nth-child(2) {
+  animation-delay: 120ms;
+}
+.ui-wing-dot:nth-child(3) {
+  animation-delay: 240ms;
+}
+@keyframes ui-wingbeat {
+  0%,
+  64%,
+  100% {
+    opacity: 0.6;
+    transform: translateY(calc(var(--ui-wing-size) * 0.1));
+  }
+  32% {
+    opacity: 1;
+    transform: translateY(calc(var(--ui-wing-size) * -0.16));
+  }
+}
+
+/* ---------- H9 date-time picker (DateTimePicker.tsx) ---------- */
+
+/* The trigger wears the field look of the Select box (ui.css .ui-select); icon first, value after it. */
+.ui-dtp-trigger {
+  justify-content: flex-start;
+  font: inherit;
+  font-size: var(--ui-field-size);
+  text-align: start;
+}
+.ui-select.ui-dtp-trigger[aria-expanded='true'] {
+  border-color: var(--focus);
+  box-shadow:
+    0 0 0 1px var(--focus),
+    0 0 0 4px color-mix(in srgb, var(--focus) 22%, transparent);
+}
+.ui-dtp-trigger[aria-expanded] .ui-dtp-icon {
+  color: var(--text3);
+  rotate: none;
+}
+.ui-dtp-value {
+  flex: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.ui-dtp-pop {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 320px;
+  padding: 16px;
+}
+.ui-dtp {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ui-dtp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-inline-start: 4px;
+}
+.ui-dtp-month {
+  margin: 0;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+  letter-spacing: -0.005em;
+}
+.ui-dtp-month::first-letter {
+  text-transform: uppercase;
+}
+.ui-dtp-nav {
+  display: flex;
+  gap: 2px;
+}
+.ui-dtp-grid {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 2px;
+  table-layout: fixed;
+}
+.ui-dtp-grid th {
+  padding: 0 0 4px;
+  color: var(--text3);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  text-align: center;
+}
+.ui-dtp-grid td {
+  padding: 0;
+  text-align: center;
+}
+.ui-dtp-day {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  max-width: 100%;
+  height: 36px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
+}
+@media (hover: hover) {
+  .ui-dtp-day:hover:not([aria-disabled='true'], [data-selected='true']) {
+    background: var(--hover);
+  }
+}
+.ui-dtp-day:active:not([aria-disabled='true'], [data-selected='true']) {
+  background: color-mix(in srgb, var(--hover) 100%, var(--text) 6%);
+}
+.ui-dtp-day:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+.ui-dtp-blank {
+  height: 36px;
+}
+/* Today: accent ink and a small dot under the number; the chosen day is the one filled cell. */
+.ui-dtp-day {
+  position: relative;
+}
+.ui-dtp-day[data-today='true'] {
+  font-weight: 600;
+}
+.ui-dtp-day[data-today='true']::after {
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  content: '';
+}
+.ui-dtp-day[data-selected='true'] {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+.ui-dtp-day[data-selected='true'][data-today='true']::after {
+  background: var(--on-accent);
+}
+.ui-dtp-day[aria-disabled='true'] {
+  box-shadow: none;
+  color: color-mix(in srgb, var(--text3) 55%, transparent);
+  font-weight: 400;
+  cursor: not-allowed;
+}
+.ui-dtp-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-inline-start: 2px;
+}
+.ui-dtp-chip {
+  min-height: var(--ui-h-sm);
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+  color: var(--text2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
+}
+@media (hover: hover) {
+  .ui-dtp-chip:hover:not(:disabled, [aria-pressed='true']) {
+    background: var(--hover);
+    color: var(--text);
+  }
+}
+.ui-dtp-chip:active:not(:disabled, [aria-pressed='true']) {
+  background: color-mix(in srgb, var(--hover) 100%, var(--text) 6%);
+}
+.ui-dtp-chip:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.ui-dtp-chip[aria-pressed='true'] {
+  background: var(--accent-soft);
+  box-shadow: none;
+  color: var(--accent-text);
+}
+.ui-dtp-chip:disabled {
+  color: color-mix(in srgb, var(--text3) 55%, transparent);
+  cursor: not-allowed;
+}
+.ui-dtp-time {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ui-dtp-time-label {
+  flex: 1;
+  padding-inline-start: 4px;
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 500;
+}
+.ui-dtp-time-part {
+  flex: none;
+  width: 66px;
+}
+.ui-dtp-time-part[data-period] {
+  width: 74px;
+}
+/* The time boxes hold two digits or a day period: a tighter inset than a full-width select, so the value is never cut. */
+.ui-dtp-time-part .ui-select {
+  gap: 2px;
+  padding: 0 6px 0 10px;
+  font-variant-numeric: tabular-nums;
+}
+.ui-dtp-time-part .ui-select-value {
+  overflow: visible;
+}
+.ui-dtp-colon {
+  color: var(--text3);
+  font-weight: 600;
+}
+.ui-dtp-summary {
+  margin: -4px 0 0;
+  padding-inline-start: 4px;
+  color: var(--text2);
+  font-size: 13px;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+}
+.ui-dtp-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 6px;
+}
+/* Phone: the bottom sheet (ui Dialog) with 44 px days, its content on the sheet's own edge. */
+.ui-dtp-sheet :is(.ui-dtp-head, .ui-dtp-time-label, .ui-dtp-summary, .ui-dtp-quick) {
+  padding-inline-start: 0;
+}
+.ui-dtp-sheet .ui-dtp-day {
+  width: 44px;
+  height: 44px;
+  font-size: 15px;
+}
+.ui-dtp-sheet .ui-dtp-blank {
+  height: 44px;
+}
+.ui-dtp-sheet .ui-dtp-time-part {
+  width: 80px;
+}
+
+/* ---------- Postmark (Postmark.tsx): the date stamp of a delivery ---------- */
+
+/* One ink for the rings, the waves and the date: --text3 at 55 % (the date a step stronger, so it still reads), in both themes. It never
+   moves by itself (compose stamps it at Send with its own guarded motion). */
+.ui-postmark {
+  display: block;
+  flex: none;
+  overflow: visible;
+  color: color-mix(in srgb, var(--text3) 55%, transparent);
+  pointer-events: none;
+}
+.ui-postmark-ring,
+.ui-postmark-wave {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+}
+.ui-postmark-wave {
+  stroke-linecap: round;
+}
+.ui-postmark-day,
+.ui-postmark-time {
+  fill: color-mix(in srgb, var(--text3) 78%, transparent);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  text-transform: uppercase;
+}
+.ui-postmark-day {
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+}
+.ui-postmark-time {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+/* ---------- Reduced motion (the system setting, then the in-app choice): nothing moves ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  [data-catch] > svg,
+  [data-catch] [data-home-icon],
+  .ui-airmail[data-moving]::before,
+  .ui-trail-reveal,
+  .ui-trail-letter,
+  .ui-wing-dot {
+    animation: none;
+  }
+  [data-catch] {
+    animation: ui-catch-wash 150ms linear;
+  }
+  .ui-wing-dot {
+    opacity: 0.8;
+  }
+  .ui-dtp-day,
+  .ui-dtp-chip {
+    transition: none;
+  }
+}
+:root[data-motion='reduce'] :is([data-catch] > svg, [data-catch] [data-home-icon]) {
+  animation: none;
+}
+:root[data-motion='reduce'] .ui-airmail[data-moving]::before {
+  animation: none;
+}
+:root[data-motion='reduce'] :is(.ui-trail-reveal, .ui-trail-letter, .ui-wing-dot) {
+  animation: none;
+}
+:root[data-motion='reduce'] [data-catch] {
+  animation: ui-catch-wash 150ms linear;
+}
+:root[data-motion='reduce'] .ui-wing-dot {
+  opacity: 0.8;
+}
+:root[data-motion='reduce'] :is(.ui-dtp-day, .ui-dtp-chip) {
+  transition: none;
+}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, EyeOff, Wand2 } from 'lucide-react';
+import { CircleAlert, Eye, EyeOff, Wand2 } from 'lucide-react';
 import type { ThemeTokens } from '../theme';
 import { useT } from '../lib/i18n';
 import { levelLabel, meterValueText, problemMessages, rulesText } from '../lib/password/messages';
@@ -165,6 +165,8 @@ export const PasswordField: React.FC<PasswordFieldProps> = ({
         ))}
       </div>
       <p id={`${id}-status`} aria-live="polite" className="au-status" data-tone={statusTone}>
+        {/* A problem is said with an icon too, as every field error is (ui Field), never by its colour alone. */}
+        {statusTone === 'danger' ? <CircleAlert size={14} strokeWidth={2.25} aria-hidden="true" className="au-status-icon" /> : null}
         {status}
       </p>
       {offerPassphrase ? (

@@ -32,6 +32,12 @@ export interface SegmentedControlProps<V extends string> {
   /** Where the row is too narrow (a phone, a long language), the segments wrap onto a second line instead of being cut: two by two, so four
    *  of them make two even rows. */
   wrap?: boolean;
+  /**
+   * The track spans its container and its segments share it EQUALLY, labels centred (a filter row as wide as its list). Every segment is
+   * at least as wide as the widest label (measured in the browser), so the shares stay equal; where one row cannot hold them all at that
+   * width, a `wrap` track breaks between its pairs and each pair is a row of two equal halves.
+   */
+  stretch?: boolean;
   className?: string;
 }
 
@@ -75,6 +81,44 @@ function inPairs(segments: React.ReactElement[]): React.ReactElement[] {
 }
 
 /**
+ * The width in px of the widest segment's own content (its label, which keeps the room of its bold form, and the segment's side padding),
+ * or null when nothing can be measured: the floor of every segment of a `stretch` track (ui.css `--ui-seg-cell`).
+ */
+function widestSegment(track: HTMLElement): number | null {
+  let widest = 0;
+  for (const item of track.querySelectorAll<HTMLElement>('.ui-seg-item')) {
+    const label = item.querySelector<HTMLElement>('.ui-seg-label');
+    const style = getComputedStyle(item);
+    const need = (label?.getBoundingClientRect().width ?? 0) + Number.parseFloat(style.paddingLeft) + Number.parseFloat(style.paddingRight);
+    widest = Math.max(widest, need);
+  }
+  return widest > 0 ? Math.ceil(widest) : null;
+}
+
+/** The floor of the equal segments of a `stretch` track: measured after the layout and again once the web fonts are in (null: not yet). */
+function useSegmentCell(trackRef: React.RefObject<HTMLDivElement | null>, enabled: boolean, labels: string): number | null {
+  const [cell, setCell] = React.useState<number | null>(null);
+  React.useLayoutEffect(() => {
+    const track = trackRef.current;
+    if (!enabled || track === null) {
+      return;
+    }
+    const measure = () => setCell(widestSegment(track));
+    measure();
+    let alive = true;
+    void document.fonts.ready.then(() => {
+      if (alive) {
+        measure();
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, [trackRef, enabled, labels]);
+  return enabled ? cell : null;
+}
+
+/**
  * Two to four short choices side by side in one track, the chosen one raised (a view switch, the filters of a list). The choice applies at
  * once; use RadioGroup for a setting in a form and Tabs for panels of content. Every segment is named by its text.
  */
@@ -86,6 +130,7 @@ export function SegmentedControl<V extends string>({
   mode = 'radio',
   size = 'sm',
   wrap = false,
+  stretch = false,
   className
 }: SegmentedControlProps<V>): React.ReactElement {
   const refs = React.useRef<(HTMLButtonElement | null)[]>([]);
@@ -94,6 +139,7 @@ export function SegmentedControl<V extends string>({
   // The lifted thumb slides to the chosen segment (browser only: the server lifts the chosen segment itself).
   const thumb = useInBrowser();
   useSlidingIndicator(trackRef, thumbRef, CHOSEN_SEGMENT, measureSegment, value);
+  const cell = useSegmentCell(trackRef, stretch, options.map((option) => option.label).join('\n'));
   const chosen = options.findIndex((option) => option.value === value);
   // The one Tab stop of a radiogroup: the chosen option, or the first one that can be chosen.
   const stop = chosen !== -1 && options[chosen].disabled !== true ? chosen : firstEnabled(options);
@@ -114,7 +160,11 @@ export function SegmentedControl<V extends string>({
     className: cx('ui-seg', className),
     'data-size': size,
     'data-wrap': wrap ? 'true' : undefined,
-    'data-thumb': thumb ? 'true' : undefined
+    'data-stretch': stretch ? 'true' : undefined,
+    'data-cell': cell === null ? undefined : 'true',
+    'data-thumb': thumb ? 'true' : undefined,
+    // The measured floor of the equal segments (ui.css reads it only with data-cell).
+    style: cell === null ? undefined : ({ '--ui-seg-cell': `${cell}px` } as React.CSSProperties)
   };
   const thumbElement = thumb ? <span ref={thumbRef} className="ui-seg-thumb" aria-hidden="true" /> : null;
 

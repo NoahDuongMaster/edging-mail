@@ -1,5 +1,5 @@
 import type React from 'react';
-import { Info, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import type { ThemeTokens } from '../../theme';
 import { fileTypeOf, formatBytes } from '../../lib/mail';
 import { useT } from '../../lib/i18n';
@@ -18,7 +18,8 @@ export interface AttachedFile {
  * The files attached to the message being written, as chips under the body (type, name, size, a remove button named after the file).
  * Its type tile is the reader's (FileTypeTile, J3-15). A file still being read shows a progress bar in place of its size (M12: a
  * progressbar for screen readers; the fill grows by `transform: scaleX` from the left, never by animating a width (J2-11); under reduced
- * motion it jumps). Then the quiet note that drafts do not keep attachments. Nothing when there are none.
+ * motion it jumps). Nothing when there are none. That a draft keeps no files is said once, in the header's autosave line (v3 X1: 'Draft
+ * saved, attachments not included'), and by the question a close with files asks.
  */
 export const AttachmentList: React.FC<{ t: ThemeTokens; files: readonly AttachedFile[]; onRemove: (id: string) => void }> = ({
   t,
@@ -62,10 +63,6 @@ export const AttachmentList: React.FC<{ t: ThemeTokens; files: readonly Attached
           );
         })}
       </ul>
-      <p className="cp-file-note">
-        <Info size={14} strokeWidth={1.75} aria-hidden="true" />
-        <span>{tr('compose.attachments_not_saved')}</span>
-      </p>
     </div>
   );
 };

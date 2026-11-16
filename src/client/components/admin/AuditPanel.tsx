@@ -1,10 +1,10 @@
 import React from 'react';
 import { TriangleAlert, UserRound } from 'lucide-react';
-import type { ThemeTokens } from '../../theme';
+import { avatarHue, type ThemeTokens } from '../../theme';
 import { fmt, tDyn, useT, type TFunction } from '../../lib/i18n';
 import { useAdminAudit } from '../../lib/admin/audit';
 import { adminErrorText, detailLine, type AuditEntry } from '../../lib/admin/types';
-import { Avatar, Button, EmptyState, ListSkeleton, Select } from '../../ui';
+import { Avatar, Button, EmptyState, FlightTrail, ListSkeleton, SegmentedControl, Select } from '../../ui';
 import { ErrorText, LoadError, PageHead } from './adminUi';
 
 /** The sentence for an audit action code (`audit.action.<code>`); a code this client does not know is named as it is, never hidden or shown as a bare key. */
@@ -83,7 +83,11 @@ function actorName(actor: string, tr: TFunction): string | null {
   return actor === 'scheduled job' ? tr('audit.actor_scheduled') : null;
 }
 
-/** One event: who did it (initials; a warning tile for a failure, a plain one when nobody is known), what was done, to whom, the details, the time. */
+/**
+ * One event on the log's line: who did it (their initials on their tint; a warning tile for a failure, a plain one when nobody is known) as
+ * the dot of the timeline, what was done, by whom to whom with the details, and the time of day (the day, Today or Yesterday or its date,
+ * is the heading above it).
+ */
 const Event: React.FC<{ entry: AuditEntry }> = ({ entry }) => {
   const tr = useT();
   const detail = detailLine(entry.detail);
@@ -97,7 +101,7 @@ const Event: React.FC<{ entry: AuditEntry }> = ({ entry }) => {
       </span>
     );
   } else if (known) {
-    tile = <Avatar name={entry.actor_email} size="sm" />;
+    tile = <Avatar name={entry.actor_email} size="sm" hue={avatarHue(entry.actor_email)} />;
   } else {
     tile = (
       <span className="ad-event-tile">
@@ -157,7 +161,7 @@ export const AuditPanel: React.FC<{ t: ThemeTokens }> = () => {
 
   if (query.isError && query.data === undefined) {
     return (
-      <div className="ad-pane">
+      <div className="ad-pane" data-width="narrow">
         {head}
         <LoadError
           error={query.error}
@@ -170,7 +174,7 @@ export const AuditPanel: React.FC<{ t: ThemeTokens }> = () => {
   }
   if (query.data === undefined) {
     return (
-      <div className="ad-pane">
+      <div className="ad-pane" data-width="narrow">
         {head}
         <ListSkeleton label={tr('audit.loading')} rows={6} lines={2} />
       </div>
@@ -178,20 +182,22 @@ export const AuditPanel: React.FC<{ t: ThemeTokens }> = () => {
   }
   if (loaded.length === 0) {
     return (
-      <div className="ad-pane">
+      <div className="ad-pane" data-width="narrow">
         {head}
-        <EmptyState title={tr('audit.empty')} />
+        <EmptyState art={<FlightTrail size="md" />} title={tr('audit.empty')} className="ad-empty" />
       </div>
     );
   }
 
   return (
-    <div className="ad-pane">
+    <div className="ad-pane" data-width="narrow">
       {head}
       <div className="ad-toolbar ad-filters">
         <Select
           id="audit-kind"
           label={tr('audit.filter_kind')}
+          hideLabel
+          className="ad-pill-select"
           options={[
             { value: 'all', label: tr('audit.kind_all') },
             { value: 'accounts', label: tr('audit.kind_accounts') },
@@ -208,6 +214,8 @@ export const AuditPanel: React.FC<{ t: ThemeTokens }> = () => {
         <Select
           id="audit-person"
           label={tr('audit.filter_person')}
+          hideLabel
+          className="ad-pill-select"
           options={[
             { value: '', label: tr('audit.person_all') },
             ...people.map((email) => ({ value: email, label: actorName(email, tr) ?? email }))
@@ -215,8 +223,8 @@ export const AuditPanel: React.FC<{ t: ThemeTokens }> = () => {
           value={person}
           onChange={setPerson}
         />
-        <Select
-          id="audit-range"
+        {/* The period as a segmented control: the last 7 days first, All time one press away. */}
+        <SegmentedControl<Range>
           label={tr('audit.filter_date')}
           options={[
             { value: '7', label: tr('audit.range_7') },
@@ -225,11 +233,16 @@ export const AuditPanel: React.FC<{ t: ThemeTokens }> = () => {
           ]}
           value={range}
           onChange={(next) => chooseRange(RANGES.find((value) => value === next) ?? '7')}
+          size="md"
+          wrap
+          className="ad-filter ad-range"
         />
       </div>
       {entries.length === 0 ? (
         <EmptyState
+          art={<FlightTrail size="md" />}
           title={tr('audit.filter_none')}
+          className="ad-empty"
           action={
             <Button
               size="sm"

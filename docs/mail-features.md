@@ -134,7 +134,7 @@ recipients stay readable to the server. While you write, the compose window save
 `Saving…` / `Draft saved`); close it and the draft stays in **Drafts**, click it to continue. Sending removes the draft, but only after the mail was really
 delivered and stored in Sent: a failed send keeps it. Drafts are never unread and never notify.
 
-- **Attachments are not saved** in drafts (the compose window says so when you attach a file). Re-attach them after reopening a draft.
+- **Attachments are not saved** in drafts (while files are attached, the compose window's status says `Draft saved, attachments not included`). Re-attach them after reopening a draft.
 - A draft that answers a mail remembers it (`in_reply_to`), so the reply lands in the same thread when it is sent.
 - `:id` is a UUID made by the browser, so the first save and every later save are the same `PUT /api/drafts/:id`. The body limits are in the
   [API reference](api.md#drafts).

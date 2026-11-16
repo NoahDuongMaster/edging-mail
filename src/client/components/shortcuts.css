@@ -1,36 +1,44 @@
 /* The list of keyboard shortcuts (components/ShortcutList.tsx), drawn in the ? dialog and in Settings > Keyboard. Classes are `sk-*`.
    Each row is what the keys do, then the keys at the end of the row: every description starts on the left edge and every key ends on the
    right one, in every group, and a wide combination (Shift+J or Shift+↓) never pushes the short ones away from their words. The DOM keeps
-   the keys first (dt, dd); only the grid places them. */
+   the keys first (dt, dd); only the grid places them. v3 (DESIGN-v3 2): no lines; each group is a soft raised card of rows with air
+   between them, the keys are ui Kbd caps. */
 .sk-groups {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 24px;
+  gap: 20px;
   max-width: 560px;
 }
 .sk-title {
-  margin: 0 0 4px;
+  margin: 0 0 6px;
+  padding-left: 14px;
   font-size: 12px;
   line-height: 16px;
   font-weight: 600;
-  color: var(--text2);
+  color: var(--text3);
 }
 .sk-list {
   display: flex;
   flex-direction: column;
   margin: 0;
+  padding: 4px;
+  border-radius: var(--radius-card);
+  background: var(--raised);
 }
-/* Each row on its own: the words take the width its keys leave (a wide combination in one row never wraps the words of another). A
-   hairline between rows ties the words to their keys across the row. */
+/* Each row on its own: the words take the width its keys leave (a wide combination in one row never wraps the words of another). The
+   row's own rounded fill on hover ties the words to their keys across the row; at rest, 36px rows and air. */
 .sk-row {
   display: flex;
   align-items: center;
   gap: 16px;
-  min-height: 32px;
-  padding: 4px 0;
+  min-height: 36px;
+  padding: 4px 10px;
+  border-radius: 10px;
 }
-.sk-row + .sk-row {
-  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+@media (hover: hover) {
+  .sk-row:hover {
+    background: var(--surface);
+  }
 }
 .sk-row dt {
   order: 2;
@@ -54,17 +62,14 @@
   }
   .sk-groups[data-columns='true'] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 28px;
+    column-gap: 24px;
     align-items: start;
     max-width: none;
   }
-  /* A rule between the columns, so a key at the end of the left column is never read with the words of the right one. */
+  /* Each column's groups are cards of their own, so a key at the end of the left column is never read with the words of the right one. */
   .sk-groups[data-columns='true'] .sk-group[data-group='act'] {
     grid-column: 2;
     grid-row: 1 / span 3;
-    align-self: stretch;
-    padding-left: 28px;
-    border-left: 1px solid var(--border);
   }
 }
 /* One rule for every combination (J3-28): "+" inside a chord, "or" between two ways to press it (more room around "or" than "+"). */
@@ -89,9 +94,8 @@
 }
 /* J6-38: under Act on a message, the keys that act on every ticked message (a quiet line, the keycaps after the words, wrapping as words). */
 .sk-note {
-  margin: 8px 0 0;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
+  margin: 10px 0 0;
+  padding: 0 14px;
   color: var(--text2);
   font-size: 13px;
   line-height: 20px;
@@ -111,9 +115,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px 16px;
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
+  margin-top: 20px;
 }
 .sk-more-text {
   margin: 0;

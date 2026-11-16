@@ -1,4 +1,5 @@
 import {
+  AVATAR_HUES,
   CONTROL_HEIGHT,
   DARK,
   DURATION,
@@ -177,6 +178,7 @@ export function themeCss(): string {
     `--radius-control:${RADIUS.control}px`,
     `--radius-card:${RADIUS.card}px`,
     `--radius-popup:${RADIUS.popup}px`,
+    `--radius-sheet:${RADIUS.sheet}px`,
     `--radius-dialog:${RADIUS.dialog}px`,
     `--radius-pill:${RADIUS.pill}px`,
     `--control-sm:${CONTROL_HEIGHT.sm}px`,
@@ -265,13 +267,26 @@ export const LABEL_HUES: readonly string[] = [
 
 /** The slot of a label name in LABEL_HUES: FNV-1a over its UTF-16 code units, so the same name is always the same colour, on every device. */
 export function labelHue(label: string): string {
+  return LABEL_HUES[fnv1a(label) % LABEL_HUES.length];
+}
+
+/** FNV-1a over the UTF-16 code units of a string (stable on every device). */
+function fnv1a(text: string): number {
   let hash = 0x81_1c_9d_c5;
-  for (let i = 0; i < label.length; i++) {
+  for (let i = 0; i < text.length; i++) {
     // eslint-disable-next-line unicorn/prefer-code-point -- the hash reads UTF-16 code units; codePointAt would change it for emoji
-    hash ^= label.charCodeAt(i);
+    hash ^= text.charCodeAt(i);
     hash = Math.imul(hash, 0x01_00_01_93) >>> 0;
   }
-  return LABEL_HUES[hash % LABEL_HUES.length];
+  return hash;
+}
+
+/** The tints of people's stamps (ui Avatar `hue`): AVATAR_HUES in src/shared/design/tokens.ts (the landing's sample people use them too). */
+export { AVATAR_HUES } from '../shared/design/tokens';
+
+/** The stamp tint of a person, from their address (or name when there is no address): the same person is the same colour everywhere. */
+export function avatarHue(address: string): string {
+  return AVATAR_HUES[fnv1a(address.trim().toLowerCase()) % AVATAR_HUES.length];
 }
 
 /** Labels are user-made, so a name picks its colour from the fixed palette by hash: the same name is always the same colour. */

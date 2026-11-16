@@ -80,14 +80,18 @@ describe('the row menu goes back to the item it came from', () => {
 });
 
 describe('the selection bar enters and leaves', () => {
-  it('enters with the standard fade and 8px move on the tokens, after the head has mostly faded (J2-23: 60ms)', () => {
+  it('v3: floats in at the bottom of the list (a 12px rise with the settle curve on the tokens; a fade only under reduced motion)', () => {
     expect(listCss).toMatch(
-      /\.ml-selbar,\s*\.ml-selbar-phone \{\s*animation: nm-slide-down var\(--dur-base\) var\(--ease-enter\) 60ms both;/
+      /\.ml-selbar,\s*\.ml-selbar-phone \{[^}]*animation: ml-dock-in var\(--dur-base\) var\(--ease-settle, var\(--ease-enter\)\) both;/
     );
+    expect(listCss).toMatch(
+      /@keyframes ml-dock-in \{\s*from \{\s*opacity: 0;\s*transform: translateY\(calc\(12px \* var\(--motion, 1\)\)\);/
+    );
+    expect(listCss).toMatch(/\.ml-selbar,\s*\.ml-selbar-phone \{[^}]*box-shadow: var\(--float-shadow\);/);
   });
 
   it('leaves by a fade-through on an inert copy laid over its place (90 ms, 8px up; a fade only under reduced motion)', () => {
-    expect(selectionBar.match(/useLeaveInPlace\(countRef, '/g)?.length).toBe(2);
+    expect(selectionBar.match(/useLeaveInPlace\(countRef, '\.ml-dock-anchor'\)/g)?.length).toBe(2);
     expect(selectionBar).toContain('fadeOutInPlace(bar, { lift: true, replacedBy });');
     const leave = shell.slice(shell.indexOf('export function fadeOutInPlace('));
     expect(shell).toContain('export const HEAD_FADE_OUT_MS = 90;');

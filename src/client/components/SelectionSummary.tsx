@@ -6,7 +6,9 @@ import { usePrefs } from '../lib/prefs';
 import { SHORTCUT_GROUPS } from '../lib/shortcuts';
 import { snoozePresets } from '../lib/snooze';
 import type { Message } from '../types';
-import { Button, Menu, type MenuItem, type MenuTriggerProps } from '../ui';
+import { avatarHue } from '../theme';
+import { Avatar, Button, Menu, type MenuItem, type MenuTriggerProps } from '../ui';
+import { RollingText } from './MessageList';
 import type { SelectionActions } from './SelectionBar';
 import { KeyRun } from './ShortcutList';
 
@@ -99,12 +101,15 @@ export function SelectionSummary({
           <ListChecks size={22} strokeWidth={1.75} />
         </span>
         <h2 id={SELECTION_SUMMARY_TITLE_ID} className="mb-selsum-title">
-          {tr('list.selected_count', { count })}
+          {/* The number rolls as rows are ticked (DESIGN-v3 H2); the heading is read as one text. */}
+          <RollingText text={tr('list.selected_count', { count })} count={count} />
         </h2>
         <p className="mb-selsum-lead">{tr('list.summary_lead')}</p>
         <ul className="mb-selsum-list">
           {named.map((m) => (
             <li key={m.id} className="mb-selsum-item">
+              {/* The people who write are stamps, in their own tint (as in the list, lead review 11). */}
+              <Avatar name={displayName(m)} hue={avatarHue(m.from_address)} shape="stamp" size="sm" className="mb-selsum-stamp" />
               <span className="mb-selsum-sender">{displayName(m)}</span>
               <span className="mb-selsum-subject">{subjectOf(m, tr('list.no_subject'))}</span>
             </li>

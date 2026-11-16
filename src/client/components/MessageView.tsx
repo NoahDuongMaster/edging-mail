@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import type { Attachment, Message } from '../types';
 import type { ThemeTokens } from '../theme';
-import { getLabelChip } from '../theme';
+import { avatarHue, getLabelChip } from '../theme';
 import {
   arrivedUnverified,
   bareAddress,
@@ -53,8 +53,11 @@ import {
   Disclosure,
   Divider,
   EmptyState,
+  FlightTrail,
   IconButton,
   Menu,
+  Odometer,
+  Postmark,
   SegmentedControl,
   Skeleton,
   Spinner,
@@ -253,15 +256,26 @@ const moreTrigger = (label: string, short: string, iconSize: number) =>
     );
   };
 
-/** The small menu beside Reply in the header (desktop): Reply all, Forward. */
-const replyMenuTrigger = (label: string) =>
-  function ReplyMenuTrigger(props: MenuTriggerProps): React.ReactElement {
-    return (
-      <IconButton label={label} size="sm" className="rd-reply-more" {...props}>
-        <ChevronDown size={14} strokeWidth={1.75} aria-hidden="true" />
-      </IconButton>
-    );
-  };
+/**
+ * The place of the open message ("3 of 30", "第 3 / 30 封"): its first number rolls like an odometer when the reader moves to the next or
+ * previous message (v3 H2; ui/Odometer: one text node for a screen reader, the digits drawn aria-hidden, plain text on the server and
+ * under reduced motion). A text without a number is shown as it is.
+ */
+function PositionCount({ position }: { position: string }): React.ReactElement {
+  const match = /\d+/.exec(position);
+  if (match === null) {
+    return <>{position}</>;
+  }
+  // Only the number is drawn by the Odometer (its face is a flex row of cells, where a cell of a lone space would collapse): the words
+  // around it stay plain text, read together with it.
+  return (
+    <>
+      {position.slice(0, match.index)}
+      <Odometer value={Number(match[0])} />
+      {position.slice(match.index + match[0].length)}
+    </>
+  );
+}
 
 /** One move of the toolbar: what it says, its icon, what it does. */
 interface Move {
@@ -321,7 +335,8 @@ const ReaderSkeleton: React.FC<{ compact: boolean; grace: boolean }> = ({ compac
       <VisuallyHidden>{tr('reader.loading_message')}</VisuallyHidden>
       <Skeleton width="64%" height={26} />
       <div className="rd-skel-sender">
-        <Skeleton circle width={40} height={40} />
+        {/* The sender's stamp is a square (56 px on a desktop, 40 on a phone): its placeholder is a square block of that size, not a circle. */}
+        <Skeleton width={compact ? 40 : 56} height={compact ? 40 : 56} />
         <div className="rd-skel-who">
           <Skeleton width="40%" height={14} />
           <Skeleton width="56%" height={12} />
@@ -405,7 +420,8 @@ export const MessageView: React.FC<MessageViewProps> = ({
   // The phone's label picker opens from the More menu of the bottom bar.
   const [labelsOpen, setLabelsOpen] = React.useState(false);
   const [paneRef, pane] = usePaneMeasure();
-  // The reply row is measured on its own: its width is the column's, scrollbar and page margins included.
+  // The reply row is measured on its own (the full-width row that holds the dock, not the dock, which is as wide as its buttons): its width
+  // is the column's, scrollbar and page margins included.
   const [replyRef, replyRow] = usePaneMeasure();
   const fontsLoaded = useFontsLoaded();
   // J6-31: the toolbar's tooltips name the single key of each action (lib/shortcuts.ts) while single-key shortcuts are on.
@@ -510,6 +526,13 @@ export const MessageView: React.FC<MessageViewProps> = ({
     rootRef.current = element;
     return paneRef(element);
   };
+  // The toolbar's shadow while the letter is scrolled under it: an attribute on the root, written from the scroll event (no render).
+  const markScrolled = (event: React.UIEvent<HTMLElement>) => {
+    const root = rootRef.current;
+    if (root !== null) {
+      root.dataset.scrolled = event.currentTarget.scrollTop > 0 ? 'true' : 'false';
+    }
+  };
 
   const inTrash = message?.folder === 'trash';
   const inSpam = message?.folder === 'spam';
@@ -533,8 +556,9 @@ export const MessageView: React.FC<MessageViewProps> = ({
   const priorityWords = priority.map((id) => tr(wordKeys[id])).join('\n');
   const widths = measuredWidths(priorityWords, fontsLoaded);
 
-  // Phone: one bar on top of the message (the app's own bar is gone while it is open): Back, the message's place in the list, Newer, Older.
-  // It stands in every state of the reader (loading, failed), so Back is always there.
+  // Phone: one bar on top of the message (the app's own bar is gone while it is open): Back, the message's place in the list, Newer, Older,
+  // and the star of the open message (v3: the compact header holds the star; the sender block keeps only who and when). It stands in every
+  // state of the reader (loading, failed), so Back is always there.
   const phoneTop = compact ? (
     <Toolbar aria-label={tr('reader.nav_label')} className="rd-top">
       {onBack ? (
@@ -545,7 +569,9 @@ export const MessageView: React.FC<MessageViewProps> = ({
           onClick={onBack}
         />
       ) : null}
-      <span className="rd-pos">{position}</span>
+      <span className="rd-pos">
+        <PositionCount position={position} />
+      </span>
       <ToolButton
         label={tr('reader.newer_message')}
         icon={<ChevronUp size={20} strokeWidth={1.75} aria-hidden="true" />}
@@ -560,6 +586,17 @@ export const MessageView: React.FC<MessageViewProps> = ({
         onClick={onNext}
         disabled={!hasNext}
       />
+      {message === null ? null : (
+        <IconButton
+          label={tr('action.star')}
+          size="md"
+          pressed={message.is_starred === 1}
+          className="rd-star"
+          onClick={() => onToggleStar(message)}
+        >
+          <Star size={20} strokeWidth={1.75} aria-hidden="true" />
+        </IconButton>
+      )}
     </Toolbar>
   ) : null;
 
@@ -575,6 +612,8 @@ export const MessageView: React.FC<MessageViewProps> = ({
   }
 
   if (message === null) {
+    // The quiet art of a reader with nothing to show (v3): a small flight trail over the words; Edgar only on the plain empty reader (settled).
+    const trailArt = <FlightTrail size="sm" />;
     // J3-17: the empty pane says what it is in the list's own type pair (heading and line), centred on the room under the pane header the
     // list shares (desktop: an empty band of the toolbar's height, without its hairline), so both empty states sit on one axis.
     return (
@@ -583,6 +622,7 @@ export const MessageView: React.FC<MessageViewProps> = ({
         <div className="rd-state">
           {loadFailed ? (
             <EmptyState
+              art={trailArt}
               title={tr('reader.load_failed')}
               description={tr('list.load_failed_hint')}
               action={
@@ -594,7 +634,7 @@ export const MessageView: React.FC<MessageViewProps> = ({
               }
             />
           ) : listEmpty ? (
-            <EmptyState title={tr('reader.none_selected')} description={tr('reader.none_selected_empty_hint')} />
+            <EmptyState art={trailArt} title={tr('reader.none_selected')} description={tr('reader.none_selected_empty_hint')} />
           ) : (
             <EmptyState illustration title={tr('reader.none_selected')} description={tr('reader.none_selected_hint')} />
           )}
@@ -780,6 +820,7 @@ export const MessageView: React.FC<MessageViewProps> = ({
             <Menu
               items={moreItems}
               align="end"
+              className="rd-more-menu"
               label={tr('reader.more_actions')}
               trigger={moreTrigger(tr('reader.more_actions'), tr('reader.bar_more'), iconSize)}
             />
@@ -832,7 +873,13 @@ export const MessageView: React.FC<MessageViewProps> = ({
       )}
       {compact ? null : (
         <>
-          {showCount ? <span className="rd-count">{position}</span> : <span className="rd-spacer" />}
+          {showCount ? (
+            <span className="rd-count">
+              <PositionCount position={position} />
+            </span>
+          ) : (
+            <span className="rd-spacer" />
+          )}
           <ToolButton
             label={tr('reader.newer_message')}
             icon={<ChevronLeft size={iconSize} strokeWidth={1.75} aria-hidden="true" />}
@@ -852,41 +899,26 @@ export const MessageView: React.FC<MessageViewProps> = ({
     </Toolbar>
   );
 
-  // Desktop: Reply in the header too (J6-10), beside the star, with Reply all and Forward in its small menu: the primary action of a long or
-  // HTML message is never only below the fold. The row under the message stays the primary place.
-  const replyMenu: MenuItem[] = [
-    {
-      id: 'reply-all',
-      label: tr('action.reply_all'),
-      icon: <ReplyAll size={16} strokeWidth={1.75} aria-hidden="true" />,
-      onSelect: () => onReplyAll(message)
-    },
-    ...(canForward
-      ? [
-          {
-            id: 'forward',
-            label: tr('action.forward'),
-            icon: <Forward size={16} strokeWidth={1.75} aria-hidden="true" />,
-            onSelect: () => onForward(message)
-          }
-        ]
-      : [])
-  ];
-
   const page = (
     <div ref={pageRef} className="rd-page" data-compact={compact}>
       <header className="rd-head">
+        {/* v3 P1: the postmark of the letter's arrival is the letter's corner ornament, top right where an envelope carries its postage
+            (decoration, aria-hidden: the date is written in words on the sender's line 2, the ring adds the year). The subject keeps
+            clear of it (reader.css); a column under 480 px has no room and does without it. */}
+        <Postmark date={message.created_at} size={64} waves="none" lower="year" className="rd-postmark" />
         <h2 id="msg-subject" className="rd-subject">
           {subjectOf(message, tr('reader.no_subject'))}
         </h2>
         {messageLabels.length > 0 || snoozeUntil !== null ? (
           <div ref={tagsRef} className="rd-tags">
             {snoozeUntil === null ? null : <SnoozeChip t={t} until={snoozeUntil} />}
-            {/* J4-42: each label chip takes itself off with its X ("Remove label Travel", 44 px on touch), says so, and hands focus on. */}
+            {/* J4-42: each label chip takes itself off with its X ("Remove label Travel", 44 px on touch), says so, and hands focus on. v3 R4:
+                quiet like the list's labels (the hue only in its dot, the name in text2, no fill); the X shows on hover and focus (and
+                always under a finger), and stays in the Tab order. */}
             {messageLabels.map((label, index) => (
               <Chip
                 key={label}
-                colors={getLabelChip(label, t)}
+                colors={{ bg: '', fg: 'var(--text2)', dot: getLabelChip(label, t).dot }}
                 className="rd-tag"
                 onRemove={() => {
                   tagFocus.current = index;
@@ -901,8 +933,13 @@ export const MessageView: React.FC<MessageViewProps> = ({
           </div>
         ) : null}
 
+        {/* The sender block (v3 R3): the sender's stamp (their own tint, the list row's), then two lines: who (name, address) and when
+            (the date first, always in this one place, J3-21; then the recipients' one disclosure and the quiet trust chips, which never move
+            the date). The star is the block's one tool on a desktop (R2: Reply lives at the end of the letter and on its key); a phone has it
+            in its top bar. v3 X1: the stamp is the letter's own (56 px, set on slightly askew); v3 P1: it stands alone (the postmark went
+            to the letter's corner). */}
         <div className="rd-sender">
-          <Avatar name={sender} size="lg" />
+          <Avatar name={sender} size={compact ? 40 : 'xl'} shape="stamp" hue={avatarHue(message.from_address)} className="rd-stamp-tile" />
           <div className="rd-who">
             <div className="rd-line">
               <span className="rd-from">
@@ -913,54 +950,43 @@ export const MessageView: React.FC<MessageViewProps> = ({
                     {recipientsOpen ? wrappableAddress(message.from_address) : message.from_address}
                   </span>
                 )}
-                {/* The trust chips belong to the sender: on its line, after the address (they wrap under it where the line is short, and never
-                    cover it: their touch box takes no more of the line than the chip). */}
-                {sealed || unverified ? (
-                  <span className="rd-prov">
-                    {sealed ? <E2eBadge t={t} sheet={compact} /> : null}
-                    {unverified ? <UnverifiedChip t={t} sheet={compact} onSpam={inSpam ? undefined : () => onSpam(message)} /> : null}
-                  </span>
-                ) : null}
               </span>
             </div>
-            {/* J3-21: the date has ONE place in every state and at every width: first on the line under the sender, before the recipients
-                (a trust chip wraps on the sender's line and never moves it; paging j/k keeps it still). */}
-            <div className="rd-meta">
-              <span className="rd-date">{formatFullDate(message.created_at)}</span>
-              {offerAll ? (
-                <Disclosure className="rd-rcpt" open={recipientsOpen} onOpenChange={setRecipientsOpen}>
-                  {recipientsLine}
-                </Disclosure>
-              ) : (
-                <p className="rd-rcpt">{recipientsLine}</p>
-              )}
+            {/* Line 2: "date · recipients" (one unit that never breaks at its dot, J3-21), then the quiet trust chips, which go to a line of
+                their own when the column is short: the date never moves for them. */}
+            <div className="rd-when">
+              <div className="rd-meta">
+                <span className="rd-date">{formatFullDate(message.created_at)}</span>
+                {offerAll ? (
+                  <Disclosure className="rd-rcpt" open={recipientsOpen} onOpenChange={setRecipientsOpen}>
+                    {recipientsLine}
+                  </Disclosure>
+                ) : (
+                  <p className="rd-rcpt">{recipientsLine}</p>
+                )}
+              </div>
+              {sealed || unverified ? (
+                <span className="rd-prov">
+                  {sealed ? <E2eBadge t={t} sheet={compact} /> : null}
+                  {unverified ? <UnverifiedChip t={t} sheet={compact} onSpam={inSpam ? undefined : () => onSpam(message)} /> : null}
+                </span>
+              ) : null}
             </div>
           </div>
-          <div className="rd-tools">
-            {compact ? null : (
-              <>
-                <IconButton label={tr('action.reply')} size="sm" shortcut={keyOf('reply')} onClick={() => onReply(message)}>
-                  <Reply size={16} strokeWidth={1.75} aria-hidden="true" />
-                </IconButton>
-                <Menu
-                  items={replyMenu}
-                  align="end"
-                  label={tr('reader.reply_options')}
-                  trigger={replyMenuTrigger(tr('reader.reply_options'))}
-                />
-              </>
-            )}
-            <IconButton
-              label={tr('action.star')}
-              size="sm"
-              pressed={starred}
-              shortcut={keyOf('star')}
-              className="rd-star"
-              onClick={() => onToggleStar(message)}
-            >
-              <Star size={16} strokeWidth={1.75} aria-hidden="true" />
-            </IconButton>
-          </div>
+          {compact ? null : (
+            <div className="rd-tools">
+              <IconButton
+                label={tr('action.star')}
+                size="sm"
+                pressed={starred}
+                shortcut={keyOf('star')}
+                className="rd-star"
+                onClick={() => onToggleStar(message)}
+              >
+                <Star size={16} strokeWidth={1.75} aria-hidden="true" />
+              </IconButton>
+            </div>
+          )}
         </div>
       </header>
 
@@ -1032,118 +1058,128 @@ export const MessageView: React.FC<MessageViewProps> = ({
         </div>
       )}
 
-      {attachments.length > 0 ? (
-        <section aria-labelledby="rd-files-title" className="rd-files">
-          <div className="rd-files-head">
-            <h3 id="rd-files-title" className="rd-files-title">
-              <Paperclip size={14} strokeWidth={1.75} aria-hidden="true" />
-              {/* One file: its card shows its size, so the heading only counts it; several: the count and their total. */}
-              {attachments.length === 1
-                ? tr('reader.one_attachment')
-                : tr('reader.attachments_summary', {
+      {/* W5 lead review 5: the attachments and the reply dock close the letter in ONE column, the dock's width (reader.css .rd-close), so
+          the cards and the dock end on one edge. This full-width block is what the reply row's density is measured on. */}
+      <div ref={replyRef} className="rd-close" data-compact={compact}>
+        {attachments.length > 0 ? (
+          <section aria-labelledby={attachments.length > 1 ? 'rd-files-title' : undefined} className="rd-files">
+            {/* v3 R5: one file is its card (name, type and size are on it); from two on, a caption counts them with their total, and
+                Download all (J6-43: saved one after the other, no archive format, no new dependency) sits at its end. */}
+            {attachments.length > 1 ? (
+              <div className="rd-files-head">
+                <h3 id="rd-files-title" className="rd-files-title">
+                  <Paperclip size={14} strokeWidth={1.75} aria-hidden="true" />
+                  {tr('reader.attachments_summary', {
                     count: attachments.length,
                     size: formatBytes(attachments.reduce((sum, a) => sum + a.size, 0))
                   })}
-            </h3>
-            {/* J6-43: two files or more: all of them, saved one after the other (no archive format, no new dependency). */}
-            {attachments.length > 1 ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="rd-dl-all"
-                loading={savingAll || downloads.busy === 'all'}
-                disabled={downloads.busy !== null || savingAll}
-                leadingIcon={<Download size={16} strokeWidth={1.75} aria-hidden="true" />}
-                onClick={downloadAll}
-              >
-                {tr('reader.download_all')}
-              </Button>
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rd-dl-all"
+                  loading={savingAll || downloads.busy === 'all'}
+                  disabled={downloads.busy !== null || savingAll}
+                  leadingIcon={<Download size={16} strokeWidth={1.75} aria-hidden="true" />}
+                  onClick={downloadAll}
+                >
+                  {tr('reader.download_all')}
+                </Button>
+              </div>
             ) : null}
-          </div>
-          <ul role="list" className="rd-file-list">
-            {attachments.map((att) => {
-              // PX-7: the name the sender gave is shown the way it is saved (no direction controls: "photo\u202Egpj.exe" would read
-              // "photoexe.jpg"), and the type tile is read from that same name.
-              const name = safeFileName(att.filename, tr('list.attachment'));
-              const type = fileTypeOf(name);
-              const fetching = downloads.busy === att.id;
-              const size = formatBytes(att.size);
-              // The name starts with what the card shows, in its order (type tile, name, size), then the action (2.5.3: checkers read the tile too).
-              const downloadLabel = tr('reader.download_file', { name, type, size });
-              const card = (
-                <>
-                  {/* The type tile: one look with the compose's file chips (FileTypeTile, J3-15). */}
-                  <FileTypeTile type={type} t={t} />
-                  {/* Spaces between the parts (the flex row ignores them): the card's text reads "PDF name size", not "PDFname". */}{' '}
-                  <span className="rd-file-main">
-                    <span className="rd-file-name">{name}</span> <span className="rd-file-size">{size}</span>
-                  </span>
-                  <span aria-hidden="true" className="rd-file-dl">
-                    {fetching ? <Spinner size={16} decorative /> : <Download size={16} strokeWidth={1.75} />}
-                  </span>
-                </>
-              );
-              // The whole card is the download (a link for a plain file; a button for an encrypted one, which is fetched and opened
-              // here, then saved: a plain link would save the encrypted bytes).
+            <ul role="list" className="rd-file-list">
+              {attachments.map((att) => {
+                // PX-7: the name the sender gave is shown the way it is saved (no direction controls: "photo\u202Egpj.exe" would read
+                // "photoexe.jpg"), and the type tile is read from that same name.
+                const name = safeFileName(att.filename, tr('list.attachment'));
+                const type = fileTypeOf(name);
+                const fetching = downloads.busy === att.id;
+                const size = formatBytes(att.size);
+                // The name starts with what the card shows, in its order (type tile, name, size), then the action (2.5.3: checkers read the tile too).
+                const downloadLabel = tr('reader.download_file', { name, type, size });
+                const card = (
+                  <>
+                    {/* The type tile: one look with the compose's file chips (FileTypeTile, J3-15). */}
+                    <FileTypeTile type={type} t={t} />
+                    {/* Spaces between the parts (the flex row ignores them): the card's text reads "PDF name size", not "PDFname". */}{' '}
+                    <span className="rd-file-main">
+                      <span className="rd-file-name">{name}</span> <span className="rd-file-size">{size}</span>
+                    </span>
+                    <span aria-hidden="true" className="rd-file-dl">
+                      {fetching ? <Spinner size={16} decorative /> : <Download size={16} strokeWidth={1.75} />}
+                    </span>
+                  </>
+                );
+                // The whole card is the download (a link for a plain file; a button for an encrypted one, which is fetched and opened
+                // here, then saved: a plain link would save the encrypted bytes).
+                return (
+                  <li key={att.id} className="rd-file-item">
+                    {message.enc_fmt === 1 ? (
+                      <button
+                        type="button"
+                        className="rd-file"
+                        aria-label={downloadLabel}
+                        aria-busy={fetching}
+                        disabled={downloads.busy !== null}
+                        onClick={() => downloads.saveAttachment(att)}
+                      >
+                        {card}
+                      </button>
+                    ) : (
+                      <DownloadLink href={`/api/attachments/${att.id}`} download={safeFileName(att.filename, '')} label={downloadLabel}>
+                        {card}
+                      </DownloadLink>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ) : null}
+
+        {/* Reply is the one primary action of the reader; Reply all and Forward are the secondary ones beside it. J6-42: not in Spam, nor for
+            a sender nobody verified: there a reply is something to think twice about, so it is a secondary button like the others. v3: the
+            three stand in a soft dock at the end of the letter (not sticky), the one Reply path of the reader with its key (R2). W5: no
+            trail leaves the dock (the trail stays in the empty states, sign-in and the send flight). */}
+        <div className="rd-reply-row" data-compact={compact}>
+          <div className="rd-reply" data-compact={compact}>
+            {replyActions.map((item, index) => {
+              const Icon = item.icon;
               return (
-                <li key={att.id} className="rd-file-item">
-                  {message.enc_fmt === 1 ? (
-                    <button
-                      type="button"
-                      className="rd-file"
-                      aria-label={downloadLabel}
-                      aria-busy={fetching}
-                      disabled={downloads.busy !== null}
-                      onClick={() => downloads.saveAttachment(att)}
-                    >
-                      {card}
-                    </button>
-                  ) : (
-                    <DownloadLink href={`/api/attachments/${att.id}`} download={safeFileName(att.filename, '')} label={downloadLabel}>
-                      {card}
-                    </DownloadLink>
-                  )}
-                </li>
+                <Button
+                  key={item.label}
+                  variant={index === 0 && !inSpam && !unverified ? 'primary' : 'secondary'}
+                  size={reply === 'full' ? 'md' : 'sm'}
+                  onClick={item.action}
+                  leadingIcon={reply === 'tight' ? undefined : <Icon size={16} strokeWidth={1.75} aria-hidden="true" />}
+                >
+                  {item.label}
+                </Button>
               );
             })}
-          </ul>
-        </section>
-      ) : null}
-
-      {/* Reply is the one primary action of the reader; Reply all and Forward are the secondary ones beside it. J6-42: not in Spam, nor for a
-          sender nobody verified: there a reply is something to think twice about, so it is a secondary button like the others. */}
-      <div ref={replyRef} className="rd-reply" data-compact={compact}>
-        {replyActions.map((item, index) => {
-          const Icon = item.icon;
-          return (
-            <Button
-              key={item.label}
-              variant={index === 0 && !inSpam && !unverified ? 'primary' : 'secondary'}
-              size={reply === 'full' ? 'md' : 'sm'}
-              onClick={item.action}
-              leadingIcon={reply === 'tight' ? undefined : <Icon size={16} strokeWidth={1.75} aria-hidden="true" />}
-            >
-              {item.label}
-            </Button>
-          );
-        })}
+          </div>
+        </div>
       </div>
 
-      {message.mail_state === 'ready' && hasText(message.r2_key) ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="rd-raw"
-          onClick={downloads.saveRaw}
-          disabled={downloads.busy !== null}
-          aria-busy={downloads.busy === 'raw'}
-          leadingIcon={
-            downloads.busy === 'raw' ? <Spinner size={16} decorative /> : <Download size={16} strokeWidth={1.75} aria-hidden="true" />
-          }
-        >
-          {downloads.busy === 'raw' ? tr('common.loading') : tr('mailcrypto.download_raw')}
-        </Button>
-      ) : null}
+      {/* The end of the letter, on purpose (v3 R6): under the dock only the quiet Download original (settled: a quiet text button), then
+          the page's own bottom margin: no empty band. */}
+      <div className="rd-end">
+        {message.mail_state === 'ready' && hasText(message.r2_key) ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="rd-raw"
+            onClick={downloads.saveRaw}
+            disabled={downloads.busy !== null}
+            aria-busy={downloads.busy === 'raw'}
+            leadingIcon={
+              downloads.busy === 'raw' ? <Spinner size={16} decorative /> : <Download size={16} strokeWidth={1.75} aria-hidden="true" />
+            }
+          >
+            {downloads.busy === 'raw' ? tr('common.loading') : tr('mailcrypto.download_raw')}
+          </Button>
+        ) : null}
+      </div>
       {downloads.error === null ? null : (
         <Banner tone="danger" className="rd-error">
           {downloads.error}
@@ -1165,9 +1201,14 @@ export const MessageView: React.FC<MessageViewProps> = ({
       onFocus={rememberTool}
     >
       {compact ? phoneTop : actionBar}
-
+      {/* v3 X1: an open letter is airmail: the par avion edge along the sheet's top (clipped by its corners, over the toolbar's empty top
+          padding). Only a letter on screen has it: not the empty reader, the skeleton or a failed load. */}
+      {waiting ? null : <span aria-hidden="true" className="ui-airmail rd-airmail" />}
       {/* While the next message loads the last one stays (its heading still names the article); once it is late, its skeleton. */}
-      <div className="rd-scroll">{waiting ? <ReaderSkeleton compact={compact} grace={false} /> : page}</div>
+      {/* The toolbar has no line under it until the letter scrolls under it: then a soft shadow (reader.css, data-scrolled on the root). */}
+      <div className="rd-scroll" onScroll={markScrolled}>
+        {waiting ? <ReaderSkeleton compact={compact} grace={false} /> : page}
+      </div>
 
       {compact ? actionBar : null}
       {compact ? (

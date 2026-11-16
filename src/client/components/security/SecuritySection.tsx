@@ -1,19 +1,19 @@
 import React from 'react';
-import { CircleAlert, CircleCheck, History, KeyRound, ListOrdered, Lock, LockKeyhole, ShieldCheck } from 'lucide-react';
+import { CircleAlert, History, KeyRound, ListOrdered, Lock, LockKeyhole, ShieldCheck } from 'lucide-react';
 import type { ThemeTokens } from '../../theme';
 import { describeDevice, describeKind, formatWhen, useAccountActivity } from '../../lib/activity';
 import { useSession } from '../../lib/auth';
 import type { SessionUser } from '../../lib/auth';
 import { useT } from '../../lib/i18n';
 import { bannerRows, useCancelLockedDelete, useLockedMail, type LockedMail } from '../../lib/lockedMail';
-import { Badge, Button } from '../../ui';
+import { Button } from '../../ui';
 import { AccountActivity } from '../AccountActivity';
 import { SettingsPage } from '../settings/SettingsPage';
 import { ChangePasswordView } from './ChangePasswordView';
 import { LockedMailDialog } from './LockedMailDialog';
 import { RecoveryKeyView } from './RecoveryKeyView';
 import { keyTestedAt } from './keyTested';
-import { StatusList, StatusRow, ViewFrame } from './securityUi';
+import { StatusList, StatusRow, StatusWord, ViewFrame } from './securityUi';
 import { TwoFactorView } from './TwoFactorView';
 import '../settings/settings.css';
 
@@ -80,6 +80,7 @@ const LockedRows: React.FC<{ onDelete: (mail: LockedMail) => void }> = ({ onDele
           key={row.mail.keyId}
           id={`security-locked-${row.mail.keyId}`}
           icon={Lock}
+          tone="warning"
           title={tr('locked.card_title')}
           lines={[
             row.state === 'ask'
@@ -109,9 +110,10 @@ const LockedRows: React.FC<{ onDelete: (mail: LockedMail) => void }> = ({ onDele
 };
 
 /**
- * The overview: ONE card with a row per thing (J3-09), each with its state where the app knows it and one action (two for the recovery
- * key: test it, or replace it). The recovery key's row says since when the current key exists (from the account activity) and when it was
- * last tested in this browser; the server keeps no count of the recovery codes left, so their row has no number.
+ * The overview: a status card per thing (v3), each with an icon tile in the tone of its state, the state in a word where the app knows it
+ * and one action (two for the recovery key: test it, or replace it). The recovery key's card says since when the current key exists (from
+ * the account activity) and when it was last tested in this browser; the server keeps no count of the recovery codes left, so their card
+ * has no number.
  */
 const Cards: React.FC<CardsProps> = ({ user, open, onDeleteLocked }) => {
   const tr = useT();
@@ -130,18 +132,13 @@ const Cards: React.FC<CardsProps> = ({ user, open, onDeleteLocked }) => {
       <StatusRow
         id="security-two-factor"
         icon={ShieldCheck}
+        tone={on ? 'success' : 'warning'}
         title={tr('term.two_factor')}
         status={
           on ? (
-            <Badge tone="success">
-              <CircleCheck size={12} aria-hidden="true" />
-              {tr('security.badge_on')}
-            </Badge>
+            <StatusWord tone="success">{tr('security.badge_on')}</StatusWord>
           ) : (
-            <Badge tone="warning">
-              <CircleAlert size={12} aria-hidden="true" />
-              {tr('security.badge_off')}
-            </Badge>
+            <StatusWord tone="warning">{tr('security.badge_off')}</StatusWord>
           )
         }
         lines={
@@ -176,15 +173,9 @@ const Cards: React.FC<CardsProps> = ({ user, open, onDeleteLocked }) => {
       <StatusRow
         id="security-key"
         icon={KeyRound}
+        tone={user.has_keys ? 'success' : 'neutral'}
         title={tr('term.recovery_key')}
-        status={
-          user.has_keys ? (
-            <Badge tone="success">
-              <CircleCheck size={12} aria-hidden="true" />
-              {tr('security.badge_saved')}
-            </Badge>
-          ) : undefined
-        }
+        status={user.has_keys ? <StatusWord tone="success">{tr('security.badge_saved')}</StatusWord> : undefined}
         lines={[tr('security.recovery_hint')]}
         facts={keyFacts}
       >
@@ -237,13 +228,11 @@ const Cards: React.FC<CardsProps> = ({ user, open, onDeleteLocked }) => {
       <StatusRow
         id="security-activity"
         icon={History}
+        tone={activity.notices > 0 ? 'warning' : 'neutral'}
         title={tr('account.activity_title')}
         status={
           activity.notices > 0 ? (
-            <Badge tone="warning">
-              <CircleAlert size={12} aria-hidden="true" />
-              {tr('account.notices_count', { count: activity.notices })}
-            </Badge>
+            <StatusWord tone="warning">{tr('account.notices_count', { count: activity.notices })}</StatusWord>
           ) : undefined
         }
         lines={[]}
@@ -296,8 +285,8 @@ function renderView(view: View, t: ThemeTokens, user: SessionUser, close: () => 
 }
 
 /**
- * Settings > Security: two-factor sign-in, the recovery key and codes, the password, the account activity and locked old mail, as rows of
- * one status card with one action each. An action swaps the cards for its view (only one at a time; it slides in from the side it goes to, and back);
+ * Settings > Security: two-factor sign-in, the recovery key and codes, the password, the account activity and locked old mail, as status
+ * cards with one action each. An action swaps the cards for its view (only one at a time; it slides in from the side it goes to, and back);
  * going back unmounts it, and with it everything it held (a typed password, an opened key, a new recovery key).
  */
 export const SecuritySection: React.FC<{ t: ThemeTokens }> = ({ t }) => {

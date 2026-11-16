@@ -129,6 +129,13 @@ const OLDER = en['reader.older_message'];
 const BACK = en['reader.back_to_list'];
 const REPLY = en['action.reply'];
 const MORE = en['reader.more_actions'];
+const STAR = en['action.star'];
+
+/** The counter of a toolbar ("1 of 7"): its number is a ui Odometer (one hidden text node; the drawn digits are aria-hidden), the words plain. */
+const count = (className: string, number: string, rest: string): RegExp =>
+  new RegExp(
+    `<span class="${className}"><span class="ui-odo"><span class="ui-visually-hidden">${number}</span><span class="ui-odo-face" aria-hidden="true">.*?</span></span>${rest}</span>`
+  );
 
 /** The tools of the reader's header (Reply, its menu, Star). */
 const tools = (html: string): string => html.slice(html.indexOf('class="rd-tools"'), html.indexOf('</header>'));
@@ -165,8 +172,8 @@ describe('the desktop toolbar', () => {
     expect(bar).not.toContain('aria-haspopup="menu"');
   });
 
-  it('says where the message is among the others', () => {
-    expect(render(message())).toContain('<span class="rd-count">1 of 7</span>');
+  it('says where the message is among the others, its number rolling as an odometer (v3 H2)', () => {
+    expect(render(message())).toMatch(count('rd-count', '1', ' of 7'));
   });
 
   it('is one plain row of buttons (an ARIA toolbar): the dividers, the label button and the counter are not extra buttons', () => {
@@ -178,15 +185,15 @@ describe('the desktop toolbar', () => {
 });
 
 describe('the phone toolbars', () => {
-  it('has one bar on top (Back, the place in the list, Newer, Older) and Archive, Move to Trash, Reply, Snooze and More in the bottom bar', () => {
+  it('has one bar on top (Back, the place in the list, Newer, Older, the star) and Archive, Move to Trash, Reply, Snooze and More in the bottom bar', () => {
     const html = render(message(), { compact: true });
     const [top, bottom] = toolbars(html);
-    expect(top).toEqual({ name: en['reader.nav_label'], buttons: [BACK, NEWER, OLDER] });
+    expect(top).toEqual({ name: en['reader.nav_label'], buttons: [BACK, NEWER, OLDER, STAR] });
     expect(bottom).toEqual({ name: en['reader.actions_label'], buttons: [ARCHIVE, TRASH, REPLY, SNOOZE, MORE] });
     expect(html).toContain('class="ui-toolbar rd-bar nm-bar"');
     expect(html).toContain('data-density="phone"');
     // The app's own bar is gone while a message is open (App.tsx), so the top bar says where the message is; the desktop counter is not there.
-    expect(html).toContain('<span class="rd-pos">1 of 7</span>');
+    expect(html).toMatch(count('rd-pos', '1', ' of 7'));
     expect(html).not.toContain('rd-count');
     // The bottom bar comes after the message in the page (and in Tab order): within reach of the thumb.
     expect(html.indexOf('class="rd-scroll"')).toBeLessThan(html.indexOf('class="ui-toolbar rd-bar nm-bar"'));
@@ -310,11 +317,13 @@ describe('the rest of the reader', () => {
     expect(render(null)).toContain('/edgar.svg');
   });
 
-  it('names itself with the heading and line of the list empty state when that list is empty: no second Edgar, no pointer at it', () => {
+  it('names itself with the heading and line of the list empty state when that list is empty, over a small flight trail: no second Edgar, no pointer at it', () => {
     const html = render(null, { listEmpty: true });
     expect(html).toContain('data-state="empty"');
     // J3-17: heading and line as the list's empty state (no quiet one-line label), under a blank band of the toolbar's height.
-    expect(html).toContain('<div class="ui-empty"><h2 class="ui-empty-title">');
+    expect(html).toMatch(
+      /<div class="ui-empty"><div class="ui-empty-slot" aria-hidden="true"><svg[^>]*class="ui-trail"[\s\S]*?<\/div><h2 class="ui-empty-title">/
+    );
     expect(html).toContain(en['reader.none_selected']);
     expect(html).toContain(en['reader.none_selected_empty_hint']);
     expect(html).toContain('class="rd-bar rd-bar-skel" data-blank="true"');
@@ -354,22 +363,27 @@ describe('the rest of the reader', () => {
     expect(render(message({ to_address: 'me@example.com, ann@example.com' }), { self: 'me@example.com' })).not.toContain(toMe);
   });
 
-  it('counts a single attachment without its size (the card shows it), and gives several their total', () => {
+  it('gives a single attachment no caption (its card says it all: v3 R5), and several their count and total', () => {
     const one = render(message({ has_attachments: 1 }), { attachments: [attachment()] });
-    expect(one).toContain(`${en['reader.one_attachment']}</h3>`);
+    expect(one).not.toContain('rd-files-title');
+    expect(one).not.toContain('aria-labelledby="rd-files-title"');
     // Seen once (the card); the card's accessible name also says it (J1-09), which is not text on screen.
     expect(one.replaceAll(/aria-label="[^"]*"/g, '').match(/2 KB/g)).toHaveLength(1);
     const two = render(message({ has_attachments: 1 }), { attachments: [attachment(), attachment({ id: 'a2', filename: 'b.pdf' })] });
     expect(two).toContain(en['reader.attachments_summary#other'].replace('{count}', '2').replace('{size}', '4 KB'));
   });
 
-  it('puts the trust chips on the sender line: the sealed one neutral, an unverified sender in the caution tone (J3-08, J4-01, J6-01)', () => {
+  it('puts the trust chips on line 2 of the sender block, after the date and the recipients: the sealed one neutral, an unverified sender in the caution tone, no chevron (J3-08, J4-01, J6-01, v3 R3)', () => {
     const html = render(message({ is_e2e: 1 }));
-    const from = html.slice(html.indexOf('class="rd-from"'), html.indexOf('class="rd-date"'));
-    expect(from).toContain('data-e2e-badge');
-    expect(from).toContain('data-tone="neutral"');
+    // Not on the name's line.
+    expect(html.slice(html.indexOf('class="rd-line"'), html.indexOf('class="rd-when"'))).not.toContain('data-e2e-badge');
+    const after = html.slice(html.indexOf('class="rd-when"'), html.indexOf('</header>'));
+    expect(after.indexOf('class="rd-date"')).toBeLessThan(after.indexOf('data-e2e-badge'));
+    expect(after).toContain('data-tone="neutral"');
+    // One disclosure in the block (the recipients): the chip says it opens with aria-haspopup, not with a chevron of its own.
+    expect(after).not.toContain('rd-badge-more');
     const outside = render(message({ origin: 'smtp', from_hosted: true }));
-    const line = outside.slice(outside.indexOf('class="rd-from"'), outside.indexOf('class="rd-date"'));
+    const line = outside.slice(outside.indexOf('class="rd-when"'), outside.indexOf('</header>'));
     expect(line).toContain('data-unverified-sender');
     expect(line).toContain('data-tone="warning"');
   });
@@ -387,15 +401,16 @@ describe('the rest of the reader', () => {
     }
   });
 
-  it('has Reply beside the star in the header on a desktop, with Reply all and Forward in its small menu (J6-10); not on a phone', () => {
+  it('has one Reply path: the dock at the end of the letter (and its key); the header keeps only the star, which a phone has in its top bar (v3 R2)', () => {
     const desktop = tools(render(message()));
-    expect(desktop).toContain(`aria-label="${en['action.star']}"`);
-    expect(desktop).toContain(`aria-label="${REPLY}"`);
-    expect(desktop).toContain(`aria-label="${en['reader.reply_options']}"`);
-    expect(desktop).toContain('aria-haspopup="menu"');
-    const phone = tools(render(message(), { compact: true }));
-    expect(phone).toContain(`aria-label="${en['action.star']}"`);
-    expect(phone).not.toContain(`aria-label="${REPLY}"`);
+    expect(desktop).toContain(`aria-label="${STAR}"`);
+    expect(desktop).not.toContain(`aria-label="${REPLY}"`);
+    expect(desktop).not.toContain('aria-haspopup="menu"');
+    const html = render(message());
+    expect(html.slice(html.indexOf('<header'), html.indexOf('</header>'))).not.toContain(`>${REPLY}<`);
+    const phone = render(message(), { compact: true });
+    expect(phone).not.toContain('class="rd-tools"');
+    expect(toolbars(phone)[0].buttons).toContain(STAR);
   });
 
   it('gives each button of the phone bottom bar a short word under its icon that is part of its name (J5-15, 2.5.3)', () => {

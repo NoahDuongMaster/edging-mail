@@ -99,10 +99,14 @@ describe('the admin console', () => {
     expect(css).toMatch(/\.ad-link-row\[data-state='disabled'\] :is\([^{]*\.ui-avatar[^{]*\) \{\s*color: var\(--text3\);/);
   });
 
-  it('filters the audit log by date, the last 7 days first (J6-23)', () => {
+  it('filters the audit log by date, the last 7 days first, with All time one press away (J6-23)', () => {
     const audit = read('AuditPanel.tsx');
     expect(audit).toMatch(/React\.useState<Range>\('7'\)/);
-    expect(audit).toMatch(/id="audit-range"/);
+    // The period is a segmented control (v3: the all-time toggle), named by the Date label; the event and the person stay ui Selects.
+    expect(audit).toMatch(/<SegmentedControl<Range>\s+label=\{tr\('audit\.filter_date'\)\}/);
+    expect(audit).toMatch(/\{ value: 'all', label: tr\('audit\.range_all'\) \}/);
+    expect(audit).toMatch(/id="audit-kind"/);
+    expect(audit).toMatch(/id="audit-person"/);
     expect(audit).toMatch(/entry\.at >= since &&/);
   });
 
@@ -157,6 +161,24 @@ describe('the admin console', () => {
     // No icon over the heading (the accent ShieldCheck tile is gone); the title is the h1 the dialog is named by.
     expect(frame).not.toMatch(/ShieldCheck/);
     expect(frame).toMatch(/<h1 id="admin-title" className="ad-title">/);
+  });
+
+  it('draws the console as the sheet of Settings: the nav with the gliding capsule of the open section, the page head with one action', () => {
+    const frame = read('AdminConsole.tsx');
+    // v3 signature H3: one capsule under the open section's tab, placed by ui/glide.ts, mounted with the console (so it finds its box at once).
+    expect(frame).toContain(`const OPEN_SECTION = '.ad-tabs > [role="tab"][aria-selected="true"]';`);
+    expect(frame).toMatch(/const capsule = useGlide\(navRef, OPEN_SECTION, \{ key: open \}\);/);
+    expect(frame).toMatch(/<div ref=\{capsule\} className="ui-glide ad-glide" aria-hidden="true" \/>/);
+    expect(frame).toMatch(/<SectionNav open=\{tab\}>[\s\S]*?<Tabs\s+id="admin"/);
+    // The Tabs' own sliding fill gives way to the capsule in the vertical nav; the phone's row of tabs keeps its sliding line, no capsule
+    // (and no identity row: the title bar names the console).
+    expect(css).toMatch(/\.ui-tabs\.ad-tabs\[aria-orientation='vertical'\] > \.ui-ink \{\s*display: none;/);
+    expect(css).toMatch(/\.ad-glide,\s*\.ad-identity \{\s*display: none;/);
+    // The page head: the h2 at 24/32 with one line under it, as a page of Settings; the content column is at most 1040px.
+    expect(css).toMatch(/\.ad-page-title \{[^}]*font-size: 24px;\s*line-height: 32px;/);
+    expect(css).toMatch(/--ad-max: 1040px;/);
+    // A mask or a filter on the page would hold the console's inline dialogs (fixed) inside it: the top fade is a sticky veil instead.
+    expect(css.replaceAll(/\/\*[\s\S]*?\*\//g, '')).not.toMatch(/mask-image|filter:|container-type|contain:/);
   });
 
   it('lists people and extra addresses in real tables with column headers, domains as cards and the audit log as a timeline by day', () => {
@@ -220,6 +242,28 @@ describe('the admin console', () => {
       expect(guide, key).toMatch(new RegExp(String.raw`tRich\(\s*'domains\.${key}'`));
     }
     expect(guide).toContain("tr('domains.guide_path_sending')");
+    // v3: the steps open in an admin dialog (ModalFrame, a ui Dialog) from the foot of the domain's card, not in a disclosure inside it.
+    expect(guide).toMatch(
+      /<ModalFrame t=\{t\} title=\{tr\('domains\.guide_title', \{ name: domain \}\)\} onClose=\{onClose\} maxWidth=\{640\}>/
+    );
+    const domains = read('DomainsPanel.tsx');
+    expect(domains).toMatch(
+      /\{guide \? <DomainGuideDialog t=\{t\} domain=\{domain\.name\} onClose=\{\(\) => setGuide\(false\)\} \/> : null\}/
+    );
+    expect(domains).toMatch(/aria-haspopup="dialog"\s+onClick=\{\(\) => setGuide\(true\)\}/);
+  });
+
+  it('lists what the DNS check found as a numbered checklist (ui Steps): each record with its type, its host, Copy and a status word', () => {
+    const domains = read('DomainsPanel.tsx');
+    expect(domains).toMatch(/<Steps className="ad-checklist">\s*\{parts\.map\(/);
+    expect(domains).toMatch(/<Step>\s*<section aria-label=\{part\.title\} className="ad-dns-part" data-ready=/);
+    // Copy is named by the host it copies (several Copy buttons in one card must say which); the value itself is never known here.
+    expect(domains).toMatch(/aria-label=\{tr\('domains\.copy_record', \{ name: host \}\)\}/);
+    expect(domains.match(/<CopyHost host=/g)).toHaveLength(2);
+    // A step's number sits on the tone of its state; the words say it too.
+    expect(css).toMatch(
+      /\.ui-steps\.ad-checklist > \.ui-step:has\(> \.ad-dns-part\[data-ready='false'\]\)::before \{\s*background: var\(--danger-soft\);/
+    );
   });
 
   it('chooses the default language with the ui Select, and saves only a language that differs from the one set', () => {
@@ -245,5 +289,27 @@ describe('the admin console', () => {
     expect(ui).toMatch(/<a href=\{DASHBOARD_URL\} target="_blank" rel="noopener noreferrer" className="ad-ext">/);
     expect(ui).toContain("const DASHBOARD_URL = 'https://dash.cloudflare.com/';");
     expect(ui).toMatch(/<VisuallyHidden>\{tr\('domains\.new_tab'\)\}<\/VisuallyHidden>/);
+  });
+
+  it('draws the desktop console as one sheet with one head line, rows apart by hairlines, words under their headers (FP2)', () => {
+    const plain = css.replaceAll(/\/\*[\s\S]*?\*\//g, '');
+    // Dark: the nav a step over the raised tone (1.18:1 against the page; the night ground merged with the window around the sheet).
+    expect(plain).toMatch(
+      /:root\[data-theme='dark'\] \.ad-console \{\s*--ad-nav-bg: color-mix\(in srgb, var\(--text\) 3%, var\(--raised\)\);/
+    );
+    expect(plain).toMatch(/\.ad-console \{[^}]*--ad-nav-bg: var\(--raised\);\s*--ad-page-bg: var\(--surface\);/);
+    // One head line: the page runs up to the sheet's top beside the nav's name, Close floats on it centred on the title's line, and the
+    // top veil sits in the page's padding (at `top: 0` it covered the head's first 12px).
+    expect(plain).toMatch(/\.ad-main \{\s*grid-column: 2;\s*grid-row: 1 \/ 3;/);
+    expect(plain).toMatch(/\.ui-btn\.ad-close \{\s*position: absolute;\s*top: 40px;[^}]*transform: translateY\(-50%\);/);
+    expect(plain).toMatch(/\.ad-main > \.ui-tabpanel::before \{[^}]*top: -24px;[^}]*margin: -24px 0 12px;/);
+    // People: an inset hairline between rows (from the name), none where the hover or keyboard capsule is; the role's words, the status
+    // markers and the two-factor shields start on their header's words.
+    expect(plain).toMatch(/\.ui-table\.ad-people > tbody > tr \+ tr > td:first-child \{\s*background-position: left 56px top;/);
+    expect(plain).toMatch(/\.ui-table\.ad-people > tbody > tr:hover \+ tr > td \{\s*background-image: none;/);
+    expect(plain).toMatch(/\.ad-cell-tag > \.ui-badge \{\s*margin-inline-start: -8px;/);
+    expect(plain).toMatch(/\.ad-state-icon:has\(> \.ad-dot\) \{\s*justify-content: flex-start;/);
+    // A role pill in a disabled row keeps the secondary grey (the third one fell to 3.8:1 on a hovered dark row).
+    expect(plain).toMatch(/\.ad-link-row\[data-state='disabled'\] \.ui-badge \{\s*color: var\(--text2\);/);
   });
 });

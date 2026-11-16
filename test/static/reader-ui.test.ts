@@ -116,9 +116,9 @@ describe('the reader stylesheet', () => {
     expect(cssCode).toMatch(/\.rd-addr-part \{\s*white-space: nowrap;\s*\}/);
     // The address is who the mail is from, in the face of the interface: not mono, which reads as code.
     expect(/\n\.rd-addr \{([^}]*)\}/.exec(cssCode)?.[1]).not.toMatch(/font-family/);
-    // The 40 px avatar stands beside two 20 px lines (name, address and the trust chips; then the date and the recipients, J3-21); Star and
-    // Reply are centred on the first.
-    expect(cssCode).toMatch(/\.rd-line \{[^}]*align-content: center;[^}]*min-height: 20px;/);
+    // The 44 px stamp stands beside two lines (name and address on 22 px; then the date, the recipients and the trust chips, J3-21); the star
+    // is centred on the first.
+    expect(cssCode).toMatch(/\.rd-line \{[^}]*align-content: center;[^}]*min-height: 22px;/);
     // J3-21: "date · to me" is one unit that never breaks at its dot; a column too narrow for both puts the recipients under the date, without it.
     expect(cssCode).toMatch(/\n\.rd-meta \{[^}]*display: flex;[^}]*flex-wrap: nowrap;/);
     expect(cssCode).toMatch(/\.rd-who \{[^}]*container: rd-who \/ inline-size;/);
@@ -127,8 +127,13 @@ describe('the reader stylesheet', () => {
     );
     // The date and the recipients are two facts: a quiet dot between them, with empty alternative text (not read out).
     expect(cssCode).toMatch(/\.rd-meta > \.rd-date::after \{\s*content: '\\00B7' \/ '';/);
-    expect(view).toMatch(/<Avatar name=\{sender\} size="lg" \/>/);
-    expect(cssCode).toMatch(/\.rd-tools \{[^}]*margin: calc\(\(20px - var\(--ui-h-sm\)\) \/ 2\)/);
+    // v3 R3, X1: the sender is a stamp in their own tint (avatarHue: the list row's tint), 56 px (40 on a phone), cancelled by the postmark.
+    expect(view).toMatch(
+      /<Avatar\s+name=\{sender\}\s+size=\{compact \? 40 : 'xl'\}\s+shape="stamp"\s+hue=\{avatarHue\(message\.from_address\)\}\s+className="rd-stamp-tile"\s+\/>/
+    );
+    expect(cssCode).toMatch(/\.rd-tools \{[^}]*min-height: 56px;\s*margin: 0 calc\(\(16px - var\(--ui-h-sm\)\) \/ 2\) 0 0;/);
+    // The trust chips go to a line of their own when line 2 is short, so the date never moves for them (J3-21).
+    expect(cssCode).toMatch(/\n\.rd-when \{[^}]*display: flex;[^}]*flex-wrap: wrap;/);
   });
 
   it('starts every phone bar slot at its top, so the icons share a row when a word takes two lines (J4-33)', () => {
@@ -147,10 +152,11 @@ describe('the mail frame', () => {
     expect(cssCode).toMatch(/\.rd-mail,\s*\.rd-frame \{\s*flex: 1 0 auto;\s*\}/);
     expect(cssCode).toMatch(/\.rd-frame > iframe \{\s*flex: 1 0 auto;\s*min-height: 240px;\s*\}/);
     expect(cssCode).toMatch(/\.rd-frame\[data-tall='true'\] > iframe \{\s*height: max\(240px, 100cqh - 48px\);\s*\}/);
-    // In the flex column the view switch and the Download button would stretch across the page.
-    expect(cssCode).toMatch(
-      /\.rd-page:has\(> \.rd-mail\) > \.rd-view,\s*\.rd-page:has\(> \.rd-mail\) > \.rd-raw \{\s*align-self: flex-start;/
-    );
+    // In the flex column the view switch would stretch across the page (the reply dock is as wide as its buttons, Download original sits in
+    // its own row).
+    expect(cssCode).toMatch(/\.rd-page:has\(> \.rd-mail\) > \.rd-view \{\s*align-self: flex-start;/);
+    expect(cssCode).toMatch(/\n\.rd-reply \{[^}]*width: fit-content;/);
+    expect(cssCode).toMatch(/\n\.rd-end \{\s*display: flex;/);
     expect(frame).toMatch(/<div className="rd-frame" data-tall=\{tall\}>/);
     expect(frame).toMatch(/const tall = React\.useMemo\(\(\) => looksLong\(html\), \[html\]\);/);
     // The guess reads the text only: no DOMParser, no element, nothing that could load what the mail points at.
@@ -180,8 +186,12 @@ describe('round-3 fixes of the reader (R3)', () => {
       "return canSnooze ? ['archive', 'main', 'snooze', 'unread', 'label', 'other'] : ['archive', 'main', 'unread', 'label', 'other'];"
     );
     expect(view).toMatch(/style=\{align === null \? undefined : \{ paddingInlineStart: align\.start, paddingInlineEnd: align\.end \}\}/);
-    // The column barDensity aligns to is the one reader.css draws.
-    expect(cssCode).toMatch(/\n\.rd-page \{\s*max-width: 784px;\s*margin: 0 auto;\s*padding: 28px 32px 48px;/);
+    // The column barDensity aligns to is the one reader.css draws (v3: 800 px centred over 880, else 784 from the left with 32 px margins;
+    // X1: 40 px over it, 8 px more air under the toolbar).
+    expect(cssCode).toMatch(/\n\.rd-page \{\s*max-width: 800px;\s*margin: 0 auto;\s*padding: 40px 40px 48px;/);
+    expect(cssCode).toMatch(
+      /@container \(max-width: 880px\) \{\s*\.rd-page:not\(\[data-compact='true'\]\) \{\s*max-width: 784px;\s*margin-inline: 0;\s*padding-inline: 32px;/
+    );
     expect(cssCode).toMatch(/@container \(max-width: 480px\) \{\s*\.rd-page:not\(\[data-compact='true'\]\) \{\s*padding-inline: 24px;/);
     expect(view).toMatch(/const layout = compact \? null : alignedLayout\(pane\.width, pane\.coarse, widths\);/);
   });
@@ -193,7 +203,8 @@ describe('round-3 fixes of the reader (R3)', () => {
   });
 
   it('offers Download all on the count line of two files or more, saved one after the other (J6-43)', () => {
-    expect(view).toMatch(/\{attachments\.length > 1 \? \(\s*<Button[\s\S]{0,80}className="rd-dl-all"/);
+    // The count line (and Download all at its end) exists from two files on (v3 R5).
+    expect(view).toMatch(/\{attachments\.length > 1 \? \(\s*<div className="rd-files-head">[\s\S]{0,600}className="rd-dl-all"/);
     expect(view).toMatch(/downloads\.saveAll\(attachments\)/);
     expect(view).toMatch(/window\.setTimeout\(resolve, DOWNLOAD_GAP_MS\)/);
   });
@@ -201,7 +212,11 @@ describe('round-3 fixes of the reader (R3)', () => {
   it("keeps one calendar glyph in the Snooze picker and says the picked time in the app's words (J3-39)", () => {
     expect(snooze.match(/\{picking \? null : <CalendarClock/g)).toHaveLength(2);
     expect(snooze.match(/<PickedTime id=\{`\$\{pickId\}-when`\} value=\{pick\} \/>/g)).toHaveLength(2);
-    expect(cssCode).toMatch(/\.rd-snooze-form input::-webkit-calendar-picker-indicator \{\s*opacity: 0\.55;/);
+    // v3 H9: the time is picked in the ui DateTimePicker (no browser date field left to restyle), which takes focus when the form opens.
+    expect(snooze.match(/<DateTimePicker\b/g)).toHaveLength(2);
+    expect(snooze).not.toMatch(/datetime-local/);
+    expect(snooze.match(/querySelector<HTMLElement>\('\.ui-dtp-trigger'\)\?\.focus\(\)/g)).toHaveLength(2);
+    expect(cssCode).not.toMatch(/webkit-calendar-picker-indicator/);
   });
 
   it('puts the phone top bar glyphs on the content column, in landscape too (J3-40)', () => {
@@ -217,5 +232,49 @@ describe('the label menu', () => {
     expect(menu).toMatch(/case 'Home':\s*case 'End': \{/);
     expect(menu).toMatch(/list\.includes\(document\.activeElement as HTMLElement\)/);
     expect(menu).toMatch(/list\.at\(event\.key === 'Home' \? 0 : -1\)\?\.focus\(\)/);
+  });
+});
+
+describe('the signature of the open letter (v3 X1)', () => {
+  it('gives only an open letter the airmail edge and a decorative postmark, and ends the letter with the dock (no trail since W5)', () => {
+    // One airmail edge, in the open letter's own return (not the empty reader, the first load or a late skeleton), drawn and not read.
+    expect(view.match(/rd-airmail/g)).toHaveLength(1);
+    expect(view).toMatch(/\{waiting \? null : <span aria-hidden="true" className="ui-airmail rd-airmail" \/>\}/);
+    expect(cssCode).toMatch(/\.ui-airmail\.rd-airmail \{[^}]*position: absolute;[^}]*z-index: var\(--z-raise\);/);
+    // v3 P1: the postmark (ui/Postmark, aria-hidden) is the letter's corner ornament, top right: the ring alone with the year, apart from
+    // the sender's stamp (which stands alone); the date written in words stays the one date a screen reader hears.
+    expect(view).toMatch(
+      /<header className="rd-head">\s*(\{\/\*[\s\S]*?\*\/\}\s*)?<Postmark date=\{message\.created_at\} size=\{64\} waves="none" lower="year" className="rd-postmark" \/>\s*<h2 id="msg-subject"/
+    );
+    expect(view).toMatch(/<span className="rd-date">\{formatFullDate\(message\.created_at\)\}<\/span>/);
+    expect(cssCode).toMatch(/\.ui-avatar\.rd-stamp-tile \{\s*rotate: -2deg;/);
+    // W5 lead review 7: its middle on the middle of the subject's first line (40 / 2 - 64 / 2; 32 / 2 - 64 / 2 in a compact column), its
+    // date printed at 10 px (64 px = the drawing's own units), its right edge on the column's; the subject and the labels keep 80 px clear
+    // of it while it shows, and a column under 480 px drops it (the subject is never squeezed or covered).
+    expect(cssCode).toMatch(/\.ui-postmark\.rd-postmark \{\s*float: right;\s*margin: -12px 0 20px 16px;/);
+    expect(cssCode).toMatch(/\.rd-page\[data-compact='true'\] \.ui-postmark\.rd-postmark \{\s*margin-top: -16px;/);
+    expect(cssCode).toMatch(/\.ui-postmark\.rd-postmark :is\(\.ui-postmark-day, \.ui-postmark-time\) \{[^}]*font-size: 10px;/);
+    expect(cssCode).toMatch(/\.rd-head > :is\(\.rd-subject, \.rd-tags\) \{\s*margin-inline-end: 80px;/);
+    // W5 lead review 4: the label row stands on the subject's ink edge with a relative shift (a negative margin is dropped beside the float).
+    expect(cssCode).toMatch(/\.rd-tags \{\s*position: relative;\s*left: -8px;[^}]*margin: 10px 0 0;/);
+    expect(cssCode).toMatch(/\.rd-head > \.rd-sender \{\s*clear: right;/);
+    expect(cssCode).toMatch(
+      /@container rd-head \(max-width: 479px\) \{\s*\.ui-postmark\.rd-postmark \{\s*display: none;\s*\}\s*\.rd-head > :is\(\.rd-subject, \.rd-tags\) \{\s*margin-inline-end: 0;/
+    );
+    // The typographic peak: the subject 32/40 650.
+    expect(cssCode).toMatch(/\n\.rd-subject \{[^}]*font-size: 32px;\s*line-height: 40px;\s*font-weight: 650;\s*letter-spacing: -0\.022em;/);
+    // W5 lead review 6: no trail leaves the dock (it read as a stray connector); the empty reader keeps its trail; no end mark either.
+    expect(view).not.toContain('rd-reply-trail');
+    expect(css).not.toContain('rd-reply-trail');
+    expect(view).toContain('const trailArt = <FlightTrail size="sm" />;');
+    expect(view).not.toContain('rd-end-mark');
+    // W5 lead review 5: the files and the dock close the letter in one column, the dock's width; the full-width block is what the reply
+    // row's density is measured on (never the fit-content dock: a feedback loop).
+    expect(view).toMatch(
+      /<div ref=\{replyRef\} className="rd-close" data-compact=\{compact\}>\s*(\{\/\*[\s\S]*?\*\/\}\s*)?\{attachments\.length > 0 \? \(/
+    );
+    expect(view).toMatch(/<div className="rd-reply-row" data-compact=\{compact\}>/);
+    expect(cssCode).toMatch(/\.rd-close:not\(\[data-compact='true'\]\) \{\s*display: grid;\s*grid-template-columns: fit-content\(100%\);/);
+    expect(cssCode).toMatch(/\.rd-close:not\(\[data-compact='true'\]\) > \.rd-files \{\s*contain: inline-size;/);
   });
 });

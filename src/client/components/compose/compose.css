@@ -1,7 +1,8 @@
-/* The compose window (ComposeModal and components/compose/*). Classes are `cp-*`. Colours, radii and control heights are the theme variables
-   (ui.css, index.css): nothing here names a colour. Above 900px it is a 760px window over a veil, in the material of a dialog (radius 12, a
-   layered shadow and an inner highlight); at 900px and below (the width where controls become 44px) it is the whole screen, as tall as what
-   the on-screen keyboard leaves. Its opening and closing motion (M10, M11) is in compose/composeMotion.ts. */
+/* The compose window (ComposeModal and components/compose/*), v3 "stationery". Classes are `cp-*`. Colours, radii and control heights are the
+   theme variables (ui.css, index.css): nothing here names a colour. Above 900px it is a 760px window over a veil: radius 20, the floating
+   shadow, the airmail edge as its top 3 px, rows told apart by hairlines that start at the text (inset), not at the window's edge; at 900px
+   and below (the width where controls become 44px) it is the whole screen, as tall as what the on-screen keyboard leaves. Its opening and
+   closing motion (M10 open, H4 fold and fly on Send) is in compose/composeMotion.ts. */
 
 .cp-root {
   position: fixed;
@@ -26,15 +27,21 @@
   /* A steady window: as tall as the screen allows up to 700px, whatever is typed. */
   height: min(100%, 700px);
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 0;
   border-radius: var(--radius-dialog);
-  box-shadow:
-    var(--shadow-lg),
-    inset 0 1px 0 var(--inset-highlight);
+  box-shadow: var(--float-shadow);
   overflow: hidden;
 }
-:root[data-theme='dark'] .cp-panel {
-  border-color: var(--border-strong);
+/* Dark: the window floats a step above the page (raised), as every dialog does; the full-screen phone compose keeps the page's surface. */
+@media (min-width: 901px) {
+  :root[data-theme='dark'] .cp-panel,
+  :root[data-theme='dark'] .cp-fmt-row {
+    background: var(--raised);
+  }
+}
+/* The airmail edge (signature.css .ui-airmail, 6 px): the top of the stationery, clipped by the window's corners (v3 X1: the envelope). */
+.cp-airmail {
+  flex: none;
 }
 
 /* The header: what this is, the autosave line, Close. The Close icon (18px in its button) ends on the content edge of the rows below (24px). */
@@ -44,13 +51,12 @@
   align-items: center;
   gap: 12px;
   min-height: 56px;
-  padding: 8px calc(24px - (var(--ui-h-md) - 18px) / 2) 8px 24px;
-  border-bottom: 1px solid var(--border);
+  padding: 8px calc(24px - (var(--ui-h-md) - 18px) / 2) 4px 24px;
 }
 .cp-title {
   flex: none;
   margin: 0;
-  font-size: 17px;
+  font-size: 16px;
   line-height: 24px;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -73,13 +79,41 @@
 }
 .cp-draft svg {
   flex: none;
-  color: var(--success);
+  color: color-mix(in srgb, var(--success) 80%, var(--text3));
+}
+.cp-draft[data-files='true'] svg {
+  color: var(--text3);
 }
 /* The header's X never gives way to a long status ("Could not save the draft" in a long language): the words wrap instead, and it stays a
    whole 44 px target on touch, in the corner a thumb reaches last (J5-20, J1-21). */
 .cp-head .ui-icon-btn.cp-close {
   flex: none;
   min-width: var(--ui-h-md);
+}
+/* v3 X1: the envelope's stamp, top right before Close: the first recipient's stamp (40 px, 4 degrees askew), with room on its left for the
+   circle of the postmark that cancels it at Send (composeMotion stamps it in the window that leaves: it is never seen in a live window). */
+.cp-stamp {
+  position: relative;
+  top: 3px;
+  display: flex;
+  flex: none;
+  margin-inline: 28px 4px;
+}
+.ui-avatar.cp-stamp-tile {
+  rotate: -4deg;
+}
+/* The 52 px circle (its centre 26 px into its box) on the stamp's left edge, 10 px left of it and 10 px down (its top stays inside the
+   window): its date stands beside the initials, never on them, and its short waves run across the stamp's top and end short of Close. */
+.ui-postmark.cp-postmark {
+  position: absolute;
+  top: -16px;
+  left: -36px;
+  /* Drawn into the window at Send, but shown only in the copy that leaves (composeMotion stamps it there) and the letter it folds into:
+     the live window may still be on screen for a moment, and must not show it before its stamp lands. */
+  opacity: 0;
+}
+:is(.cp-root[data-leaving], .ui-homing-ghost) .ui-postmark.cp-postmark {
+  opacity: 1;
 }
 .cp-draft[data-state='error'] {
   color: var(--danger);
@@ -123,18 +157,28 @@
   flex: none;
 }
 
-/* ---------- The fields: one group of hairline rows, the label inline ---------- */
+/* ---------- The fields: airy rows, the label inline, no lines (v3 X1) ---------- */
 
 /* A recipient row and, while they are open, its suggestions (J6-44): on a desktop they hang from here, over what follows. */
 .cp-rcpt {
   position: relative;
 }
+/* A row: its inline label (text3), then the field. Rows are told apart by space, not by hairlines; only a field with a problem draws a line
+   under itself (in the danger colour, below), inset like the text. */
 .cp-row {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 12px;
   padding: 4px 24px;
-  border-bottom: 1px solid var(--border);
+}
+.cp-row::after {
+  position: absolute;
+  inset: auto 24px 0;
+  height: 1px;
+  background: transparent;
+  content: '';
+  pointer-events: none;
 }
 .cp-label {
   display: flex;
@@ -145,7 +189,7 @@
   min-height: var(--ui-h-md);
   font-size: 13px;
   line-height: 20px;
-  color: var(--text2);
+  color: var(--text3);
 }
 .cp-field {
   display: flex;
@@ -156,25 +200,34 @@
   min-width: 0;
   min-height: var(--ui-h-md);
 }
-/* J6-30: From is text, not a field: the account's name, then its address in text2, on the column of the other fields' text (4 px in). */
-.cp-from {
+/* J6-30: From is text, not a field. v3 X1: one quiet line on top of the letter, like a return address: 'From', the account's name and its
+   address in angle brackets, 13 px (the name a step darker), cut with an ellipsis where the window is narrow. */
+.cp-field.cp-from {
+  display: block;
+  flex: none;
+  min-height: 0;
   margin: 0;
-  padding: 0 4px;
-  font-size: 14px;
-  line-height: 20px;
-}
-.cp-from-text {
-  min-width: 0;
+  padding: 6px 24px 4px;
   overflow: hidden;
+  font-size: 13px;
+  line-height: 20px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.cp-from-name {
-  color: var(--text);
-  font-weight: 500;
-}
+.cp-from-label,
 .cp-from-addr {
+  color: var(--text3);
+}
+/* 'From' stands in the labels' column (64 px, then the 12 px gap less the space after it, about 0.25em), so the name starts where the
+   recipients do. */
+.cp-from-label {
+  display: inline-block;
+  width: 64px;
+  margin-inline-end: calc(12px - 0.25em);
+}
+.cp-from-name {
   color: var(--text2);
+  font-weight: 500;
 }
 .cp-input {
   flex: 1 1 140px;
@@ -195,6 +248,9 @@
 .cp-input[data-empty='true']:not(:focus) {
   flex: 0 0 0;
   min-width: 0;
+  /* It gives back the field's 6 px column gap too, so a chip that fills the line never pushes it (0 px wide but 44 px high) onto an
+     empty line of its own under the chips. */
+  margin-inline-start: -6px;
   padding: 0;
 }
 .cp-input::placeholder {
@@ -206,19 +262,45 @@
   -webkit-text-fill-color: var(--text);
   box-shadow: 0 0 0 100px var(--surface) inset;
 }
+/* The subject reads as the letter's title: 18/26 500. v3 X1: no label beside it (its name is a hidden label and its placeholder), so it
+   starts on the column of the From line, the labels and the body text. */
+.cp-row.cp-row-subject {
+  gap: 0;
+  padding-top: 2px;
+}
+.cp-row-subject .cp-input {
+  padding-inline: 0;
+}
+/* An address field with no chip yet: its words start where a first chip would (and where the From line's name does), v3 X1. */
+.cp-field > .cp-input:first-child {
+  padding-left: 0;
+}
+.cp-row-subject .cp-error {
+  padding-inline: 0;
+}
 .cp-subject {
+  font-size: 18px;
+  line-height: 26px;
   font-weight: 500;
 }
 /* A placeholder is not a subject: it keeps the weight of the other fields' placeholders. */
 .cp-subject::placeholder {
   font-weight: 400;
 }
-/* The ring goes round the whole row (inside it, so the scrolling pane does not cut it), not round a bare input among chips. */
+/* The ring goes round the whole row (inside it, so the scrolling pane does not cut it), not round a bare input among chips. v3: a rounded
+   ring inset from the window's edges (8 px outside the row's text column), not a square frame on the window's own edge. */
 @supports selector(:has(*)) {
   .cp-input:focus-visible {
     outline: none;
   }
-  .cp-row:has(.cp-input:focus-visible) {
+  .cp-row::before {
+    position: absolute;
+    inset: 0 16px;
+    border-radius: var(--radius-control);
+    content: '';
+    pointer-events: none;
+  }
+  .cp-row:has(.cp-input:focus-visible)::before {
     outline: 2px solid var(--focus);
     outline-offset: -2px;
   }
@@ -232,10 +314,26 @@
   margin-top: calc((var(--ui-h-md) - var(--ui-h-sm)) / 2);
   margin-right: -11px;
 }
-/* A recipient: a pill with the person's initials (22 px, inside the 28 px pill), the whole address and its X. */
+/* A secondary control of the row: it speaks as the labels do (text3, regular weight; the ghost's own hover and focus). */
+.ui-btn.cp-toggle[data-variant='ghost'] {
+  color: var(--text3);
+  font-weight: 400;
+}
+@media (hover: hover) {
+  .ui-btn.cp-toggle[data-variant='ghost']:hover {
+    color: var(--text);
+  }
+}
+/* A recipient: a pill with the person's stamp (28 px, the pill's height, with four clean teeth a side: the perforation reads at chip size,
+   v3 X1; in their own tint: v3 R8), the whole address and its X. The pill's left end is less round, so the stamp sits square on it. */
 .ui-chip.cp-chip[data-removable='true'] {
   gap: 6px;
-  padding-left: 3px;
+  padding-left: 0;
+  border-radius: 4px 14px 14px 4px;
+}
+.cp-chip .ui-avatar.cp-avatar[data-shape='stamp'] {
+  --ui-stamp-hole: 1.6px;
+  --ui-stamp-pitch: calc(var(--ui-avatar-size) / 4);
 }
 /* A line of chips is as tall as a line with the field (the 28px pill centred in the field's height): the first chip sits level with the
    label beside it. Each chip is wrapped in a span that its address tooltip hangs from. */
@@ -246,11 +344,6 @@
   margin-block: calc((var(--ui-h-md) - 28px) / 2);
 }
 .ui-avatar.cp-avatar[data-size] {
-  width: 22px;
-  height: 22px;
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px var(--border-strong);
-  font-size: 10px;
   letter-spacing: 0;
 }
 /* J1-24: the chip whose X has keyboard focus (Backspace in the empty field went to it; a second Backspace removes it) reads as chosen. */
@@ -270,13 +363,13 @@
   z-index: var(--z-float);
   width: min(420px, calc(100% - 100px - 24px));
   margin: 0;
-  padding: 4px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  padding: 6px;
+  background: var(--ui-pop-bg);
+  border: 0;
   border-radius: var(--radius-popup);
   box-shadow:
-    var(--pop-shadow),
-    inset 0 1px 0 var(--inset-highlight);
+    0 0 0 1px var(--ui-pop-ring),
+    var(--pop-shadow);
   transition:
     opacity var(--dur-base) var(--ease-enter),
     transform var(--dur-base) var(--ease-enter);
@@ -304,9 +397,6 @@
   :root[data-motion='reduce'] .cp-suggest {
     transform: none;
   }
-}
-:root[data-theme='dark'] .cp-suggest {
-  border-color: var(--border-strong);
 }
 .ui-option.cp-option {
   justify-content: flex-start;
@@ -346,8 +436,8 @@
 /* A field with a problem (not an address, or empty at Send): the row's hairline turns red and the problem stands on a line of its own under
    the field, in the flow, so it never covers the row below (the rows under it move down once when it comes and back once when it goes). It
    stays until that field is right (ComposeModal), not one keystroke. It is an alert, and the field is described by it. */
-.cp-row:has(.cp-input[aria-invalid='true']) {
-  border-bottom-color: var(--danger);
+.cp-row:has(.cp-input[aria-invalid='true'])::after {
+  background: var(--danger);
 }
 .cp-error {
   display: flex;
@@ -368,28 +458,55 @@
   margin-top: 3px;
 }
 
-/* The quiet lines under the recipients (what this message will be; where a reply really goes). Information, not a warning. */
+/* The quiet line under the recipients where a reply really goes (ReplyRedirectNote). Information, not a warning. */
 .cp-note {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 8px;
   margin: 0;
-  padding: 8px 24px;
-  border-bottom: 1px solid var(--border);
+  padding: 10px 24px;
   font-size: 13px;
   line-height: 20px;
   color: var(--text2);
   overflow-wrap: anywhere;
 }
-/* The icon stands at the end of the label column, the words in the column of the values above and below (the label's 12px gap and the
-   4px inside a field). */
+/* The icon stands on the column of the values above and below (the label's 64px and 12px gap, and the 4px inside a field), the words
+   after it: the note reads as a line of the form, not a footnote in the gutter. */
 .cp-note {
-  gap: 16px;
+  gap: 8px;
 }
 .cp-note svg {
   flex: none;
   margin-top: 2px;
-  margin-inline-start: calc(64px - 16px);
+  margin-inline-start: calc(64px + 12px + 4px);
+}
+/* EC-4 (ComposeState), v3 X1: what this message will be, as a lock at the end of the To row (before Cc/Bcc): its sentence is its tooltip
+   under the mouse and its status text; with no mouse (a phone, a narrow window) the sentence is a quiet 12 px line under the row (below). */
+.cp-lock {
+  display: inline-flex;
+  flex: none;
+  align-self: flex-start;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 24px;
+  height: var(--ui-h-md);
+  margin-inline-end: 6px;
+  color: var(--text3);
+}
+.cp-lock svg {
+  flex: none;
+}
+@media (min-width: 901px) and (hover: hover) {
+  .cp-lock-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 
 /* ---------- The formatting toolbar: one Tab stop, one row; what does not fit goes into More formatting ---------- */
@@ -402,7 +519,6 @@
   position: sticky;
   top: 0;
   z-index: var(--z-raise);
-  border-bottom: 1px solid var(--border);
   background: var(--surface);
 }
 .cp-fmt {
@@ -410,16 +526,17 @@
   flex-wrap: nowrap;
   align-items: center;
   gap: 2px;
-  padding: 6px 16px 6px 15px;
+  padding: 8px 16px 4px 15px;
   overflow: hidden;
 }
 .cp-fmt > * {
   flex: none;
 }
-/* The hairline between the groups (FormatToolbar counts its width and margins). */
+/* The break between the groups: space, drawn in no colour (FormatToolbar counts its width and margins). */
 .cp-fmt .cp-fmt-sep.ui-divider {
   height: 20px;
   margin: 0 4px;
+  background: transparent;
 }
 .cp-style {
   width: auto;
@@ -477,8 +594,8 @@
   display: block;
   flex: 1 0 auto;
   width: 100%;
-  min-height: 140px;
-  padding: 18px 24px;
+  min-height: 160px;
+  padding: 16px 24px 20px;
   background: transparent;
   color: var(--text);
   font-size: 15px;
@@ -493,9 +610,10 @@
 .cp-quote {
   padding: 0 24px 12px;
 }
-/* A quiet outlined button with a hairline, the same control as the reader's fold (J6-29). */
+/* A quiet pill of the raised tone, the same control as the reader's fold (J6-29). */
 .ui-btn.cp-quote-btn {
-  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--raised);
   color: var(--text2);
 }
 
@@ -518,11 +636,10 @@
   gap: 8px;
   max-width: 100%;
   min-height: 44px;
-  padding: 4px 2px 4px 6px;
-  border: 1px solid var(--border);
+  padding: 5px 4px 5px 6px;
+  border: 0;
   border-radius: var(--radius-card);
   background: var(--raised);
-  box-shadow: var(--control-shadow);
 }
 /* The type of the file: the reader's tile (FileTypeTile, fileTile.css, size sm), so PDF and DOCX read the same in both places (J3-15). */
 .cp-file-main {
@@ -575,41 +692,25 @@
 :root[data-motion='reduce'] .cp-progress-fill {
   transition: none;
 }
-.cp-file-note {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 10px 0 0;
-  font-size: 13px;
-  line-height: 20px;
-  color: var(--text2);
-}
-.cp-file-note svg {
-  flex: none;
-}
 
 /* ---------- The footer: Send, its shortcut, then the tools ---------- */
 
+/* The foot: Send (the window's one primary: airmail blue, the paper plane; its key in its tooltip, v3 X1), then the tools. The inset
+   hairline over it (as the rows') appears where the letter scrolls under it. */
 .cp-foot {
+  position: relative;
   display: flex;
   flex: none;
   align-items: center;
-  gap: 10px;
-  padding: 12px calc(24px - (var(--ui-h-md) - 18px) / 2) 12px 24px;
-  border-top: 1px solid var(--border);
+  gap: 12px;
+  padding: 14px calc(24px - (var(--ui-h-md) - 18px) / 2) 16px 24px;
 }
-.cp-hint {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text2);
-}
-.cp-keys {
-  display: inline-flex;
-  gap: 2px;
+.cp-foot::before {
+  position: absolute;
+  inset: 0 24px auto;
+  height: 1px;
+  background: var(--border);
+  content: '';
 }
 .cp-tools {
   display: flex;
@@ -617,11 +718,12 @@
   gap: 2px;
   margin-left: auto;
 }
-/* Discard: set apart from the other tools by a hairline, quiet until the pointer is on it, then in the danger colour (it asks before
+/* Discard: set apart from the other tools by space (no line), quiet until the pointer is on it, then in the danger colour (it asks before
    anything is lost). */
 .cp-tools .cp-sep.ui-divider {
   height: 20px;
   margin: 0 6px;
+  background: transparent;
 }
 @media (hover: hover) {
   .cp-tools .ui-btn.cp-discard[data-variant]:hover:not(:disabled) {
@@ -630,10 +732,21 @@
   }
 }
 
-/* No keyboard to press Ctrl+Enter on a touch screen, and no room for the hint on a narrow one. */
-@media (max-width: 900px), (hover: none) {
-  .cp-hint {
-    display: none;
+/* A wide touch screen has no mouse to point at the lock either: its sentence is the same quiet line under the To row. */
+@media (min-width: 901px) and (hover: none) {
+  .cp-row-to {
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+  .cp-row-to .cp-lock {
+    order: 3;
+    flex: 1 0 100%;
+    justify-content: flex-start;
+    height: auto;
+    margin-inline-end: 0;
+    padding: 0 0 4px calc(64px + 12px);
+    font-size: 12px;
+    line-height: 16px;
   }
 }
 
@@ -664,9 +777,32 @@
   }
   /* J5-16: a phone in landscape draws under its notch and rounded corners (viewport-fit=cover): every row keeps its 16 px from the safe
      area's edge, on both sides. J3-40: the X's glyph (18 px in its 44 px button) ends on that same content edge, inset or not. */
+  /* The airmail edge stands under the status bar's inset (the page's surface above it), the head under the edge. */
+  .cp-airmail {
+    margin-top: env(safe-area-inset-top, 0px);
+  }
   .cp-head {
-    padding: max(8px, env(safe-area-inset-top, 0px)) calc(max(16px, env(safe-area-inset-right, 0px)) - (var(--ui-h-md) - 18px) / 2) 8px
+    padding: 6px calc(max(16px, env(safe-area-inset-right, 0px)) - (var(--ui-h-md) - 18px) / 2) 4px
       max(16px, env(safe-area-inset-left, 0px));
+  }
+  /* v3 X1: the autosave line goes under the title (its own 16 px line, kept while idle so nothing moves), so a long status never squeezes
+     between the title and the stamp. */
+  .cp-head {
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+  .cp-title {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .cp-draft {
+    order: 5;
+    flex: 1 0 100%;
+    justify-content: flex-start;
+    min-height: 16px;
+    margin-top: -4px;
+    padding-bottom: 4px;
+    text-align: left;
   }
   .cp-notice {
     padding: 8px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px));
@@ -674,6 +810,23 @@
   .cp-row {
     gap: 8px;
     padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px));
+  }
+  .cp-row::after {
+    inset: auto max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px));
+  }
+  .cp-row::before {
+    inset: 0 calc(max(16px, env(safe-area-inset-right, 0px)) - 8px) 0 calc(max(16px, env(safe-area-inset-left, 0px)) - 8px);
+  }
+  .cp-field.cp-from {
+    padding: 4px max(16px, env(safe-area-inset-right, 0px)) 2px max(16px, env(safe-area-inset-left, 0px));
+  }
+  .cp-from-label {
+    width: 56px;
+    margin-inline-end: calc(8px - 0.25em);
+  }
+  .cp-row.cp-row-subject {
+    gap: 0;
+    padding-top: 4px;
   }
   .cp-label {
     width: 56px;
@@ -699,17 +852,42 @@
     padding-inline: 8px;
   }
   .cp-note {
-    gap: 12px;
+    gap: 8px;
     padding: 8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px));
   }
   .cp-note svg {
-    margin-inline-start: calc(56px - 16px);
+    margin-inline-start: calc(56px + 8px + 4px);
+  }
+  /* EC-4 without a mouse: the lock's sentence is a quiet line of its own under the To row, on the column of the field. */
+  .cp-row-to {
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+  .cp-row-to .cp-lock {
+    order: 3;
+    flex: 1 0 100%;
+    align-items: flex-start;
+    justify-content: flex-start;
+    height: auto;
+    margin-inline-end: 0;
+    padding: 0 0 4px calc(56px + 8px);
+    font-size: 12px;
+    line-height: 16px;
+    overflow-wrap: anywhere;
+  }
+  .cp-row-to .cp-lock svg {
+    width: 14px;
+    height: 14px;
+    margin-top: 1px;
   }
   .cp-fmt {
     padding: 4px max(8px, env(safe-area-inset-right, 0px)) 4px max(7px, env(safe-area-inset-left, 0px));
   }
+  /* A phone writes at reading size: 16/26 (DESIGN-v3 4.2). */
   .cp-editor {
     padding: 16px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px));
+    font-size: 16px;
+    line-height: 26px;
   }
   .cp-quote {
     padding: 0 max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px));
@@ -735,10 +913,13 @@
     display: none;
   }
   /* Send starts on the column of the labels (16px), the trash icon's glyph ends on the content edge, as in the header (J3-40). */
+  .cp-foot::before {
+    inset: 0 max(16px, env(safe-area-inset-right, 0px)) auto max(16px, env(safe-area-inset-left, 0px));
+  }
   .cp-foot {
     gap: 4px;
-    padding: 8px calc(max(16px, env(safe-area-inset-right, 0px)) - (var(--ui-h-md) - 18px) / 2) calc(8px + env(safe-area-inset-bottom, 0px))
-      max(16px, env(safe-area-inset-left, 0px));
+    padding: 8px calc(max(16px, env(safe-area-inset-right, 0px)) - (var(--ui-h-md) - 18px) / 2)
+      calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
   }
 }
 
@@ -766,36 +947,6 @@
   }
 }
 
-/* ---------- M11: the send flight (compose/composeMotion.ts) ---------- */
-
-/* Send's icon takes off from the window that closes: a fixed overlay at --z-float, under nothing, read by nobody (aria-hidden). Its two wing
-   strokes are 14 x 2 px in the indicator colour, trailing behind the icon. */
-.cp-flight {
-  position: fixed;
-  z-index: var(--z-float);
-  display: grid;
-  place-items: center;
-  color: var(--accent-text);
-  pointer-events: none;
-}
-.cp-flight > svg {
-  width: 20px;
-  height: 20px;
-}
-.cp-flight-wing {
-  position: absolute;
-  top: 40%;
-  right: 78%;
-  width: 14px;
-  height: 2px;
-  border-radius: var(--radius-pill);
-  background: var(--indicator);
-  transform-origin: right center;
-}
-.cp-flight-wing + .cp-flight-wing {
-  top: 62%;
-  width: 10px;
-}
 /* M10: the window starts in the look of the Compose button (its accent fill and radius), which fades into the window's surface. */
 .cp-morph {
   position: absolute;

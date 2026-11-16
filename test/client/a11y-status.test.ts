@@ -110,7 +110,8 @@ describe('the Toast markup', () => {
 
   it('has an Undo with its keyboard shortcut, a Dismiss X and a countdown bar hidden from screen readers', () => {
     const html = render({ text: 'Archived', undo: noop });
-    expect(html).toMatch(/<div class="ui-toast tst-root"[^>]*style="[^"]*left:256px/);
+    // v3: 16px inside the list sheet's bottom-left corner (the rail's width + 16px).
+    expect(html).toMatch(/<div class="ui-toast tst-root"[^>]*style="[^"]*left:calc\(var\(--mb-rail-w, 264px\) \+ 16px\)/);
     expect(html).toMatch(
       /<button type="button" class="ui-toast-action tst-undo nm-tap-h" aria-keyshortcuts="Control\+Z Meta\+Z"[^>]*>Undo<\/button>/
     );
@@ -148,7 +149,9 @@ describe('the Toast markup', () => {
   });
 
   it('holds one width for the common words, never wider than the screen (J2-16: a replaced toast keeps its Undo and X in place)', () => {
-    expect(render({ text: 'Archived', undo: noop })).toMatch(/style="[^"]*min-width:min\(20rem, calc\(100vw - 288px\)\)/);
+    expect(render({ text: 'Archived', undo: noop })).toMatch(
+      /style="[^"]*min-width:min\(20rem, calc\(100vw - var\(--mb-rail-w, 264px\) - 48px\)\)/
+    );
     expect(render({ text: 'Archived', undo: noop }, false)).toMatch(/style="[^"]*min-width:min\(20rem, calc\(100vw - 32px\)\)/);
   });
 });

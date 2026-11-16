@@ -85,6 +85,15 @@ describe('SegmentedControl', () => {
     const three = render(h(SegmentedControl, { label: 'Filter', wrap: true, options: options.slice(0, 3), value: 'a', onChange: noop }));
     expect(three.split('<div class="ui-seg-pair">')).toHaveLength(3);
   });
+
+  it('stretch: says so on the track; the equal floor is measured in the browser only (the server writes no size)', () => {
+    const html = render(h(SegmentedControl, { label: 'Filter', wrap: true, stretch: true, options, value: 'a', onChange: noop }));
+    expect(html).toMatch(/^<div role="radiogroup" aria-label="Filter" class="ui-seg" data-size="sm" data-wrap="true" data-stretch="true">/);
+    expect(html).not.toContain('data-cell');
+    expect(html).not.toContain('--ui-seg-cell');
+    expect(html.split('<div class="ui-seg-pair">')).toHaveLength(3);
+    expect(render(h(SegmentedControl, { label: 'View', options, value: 'a', onChange: noop }))).not.toContain('data-stretch');
+  });
 });
 
 describe('CopyButton', () => {

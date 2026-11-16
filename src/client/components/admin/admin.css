@@ -1,26 +1,36 @@
-/* The admin console (components/admin/*): an Operate surface. Classes are `ad-*`.
-   Colours, radii, heights and durations are the variables of the theme (see ui/ui.css and theme.ts); the only inline style left is the width
-   of a dialog, which is a prop. main.tsx imports index.css (and with it ui.css) before App, so this file comes later in the cascade: a rule
-   here wins over a `ui-*` rule of the same specificity, and has to be more specific only to beat a stronger one (a hover or a size rule).
+/* The admin console (components/admin/*), v3 "Airmail": an Operate surface in the language of Settings. Classes are `ad-*`.
+   Colours, radii, heights and durations are the variables of the theme (ui/ui.css, theme.ts); the only inline style left is the width of a
+   dialog, which is a prop. main.tsx imports index.css (and with it ui.css) before App, so this file comes later in the cascade: a rule here
+   wins over a `ui-*` rule of the same specificity, and has to be more specific only to beat a stronger one (a hover or a size rule).
 
-   Desktop: a page over the mailbox in the app's material. The window ground (`--chrome`) holds the title, Close and the list of sections
-   down the left side; the section itself is a page on ONE rounded content sheet (surface, radius 12, hairline, the sheet shadow) 8px in from
-   the right and bottom edges, as the mailbox's list and reader are (DESIGN.md section 2). The page has a head (title, one line, the primary
-   action) and its content in a column of at most --ad-max.
+   Desktop: ONE sheet on the window ground (12px from the window's edges, the sheet radius and shadow), in two tones with no line between
+   them: the nav of sections on the raised tone (dark: a step over it) with the gliding capsule of the open section, and the page on the
+   surface. One head line runs across the sheet: the console's name over the nav, the page's title and action, Close at the top right;
+   under it the nav and the page scroll on their own. A page has a head (h2 24/32, one line, the one primary action) and its content in a
+   column of at most --ad-max.
+   Cards and grouped rows are the cards of Settings: the surface with a hairline ring in light, one step up in dark.
 
-   Phones (640px and less): the sections are a 2x2 grid under the title, the page fills the screen, and every table becomes a stacked list
-   (one block per row, no column headers on screen, nothing scrolls sideways); the cells are written so that they say what they are without
-   their header. Every button is 44px high there: the ui controls do it with --ui-h-*, and `.nm-admin button` (index.css) holds the rest. */
+   Phones (640px and less): the console is the whole screen on the surface, the title bar stays at the top, the sections are one row of tabs
+   under it that scrolls sideways, and every table becomes a stacked list (one block per row, no column headers on screen, nothing scrolls
+   sideways); the cells are written so that they say what they are without their header. Every button is 44px high there: the ui controls do
+   it with --ui-h-*, and `.nm-admin button` (index.css) holds the rest. */
 
-/* ---------- Frame: title, the list of sections, the sheet ---------- */
+/* ---------- Frame: one sheet, the nav and the page ---------- */
 
 .ad-console {
-  /* The page's content sits in a centred column of at most --ad-max on the sheet; --ad-inset is the side padding that puts it there (the
-     percentage is the sheet's width where the padding is used). */
-  --ad-gutter: 32px;
-  --ad-max: 880px;
+  /* The page's content sits in a centred column of at most --ad-max; --ad-inset is the side padding that puts it there (the percentage is
+     the page's width where the padding is used). */
+  --ad-gutter: 40px;
+  --ad-max: 1040px;
   --ad-inset: max(var(--ad-gutter), calc((100% - var(--ad-max)) / 2));
-  --ad-side-w: 232px;
+  --ad-nav-w: 240px;
+  /* The nav on the raised tone (as the nav of Settings), the page on the sheet's surface. */
+  --ad-nav-bg: var(--raised);
+  --ad-page-bg: var(--surface);
+  /* A card on the page: the surface with a hairline ring (two surfaces of one tone meet), no shadow, as the cards of Settings. */
+  --ad-card-bg: var(--surface);
+  --ad-card-ring: 0 0 0 1px var(--border);
+  --ad-row-x: 20px;
   position: fixed;
   inset: 0;
   z-index: var(--z-console);
@@ -32,39 +42,103 @@
   background: var(--chrome);
   color: var(--text);
   outline: none;
+  animation: ad-fade-in var(--dur-base) var(--ease-standard);
+}
+/* Dark: the window ground (chrome) < the page (surface, 1.14:1 over the ground, with the sheet's ring) < the nav, lifted a step over the
+   raised tone so it stands apart from the page (1.18:1; the raised tone alone was 1.09:1, the night ground merged with the window around the
+   sheet at 1.02:1). Cards one step up on the raised tone. */
+:root[data-theme='dark'] .ad-console {
+  --ad-nav-bg: color-mix(in srgb, var(--text) 3%, var(--raised));
+  --ad-card-bg: var(--raised);
+}
+@keyframes ad-fade-in {
+  from {
+    opacity: 0;
+  }
 }
 
-.ad-head {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 12px;
-  min-height: 56px;
-  padding: env(safe-area-inset-top) 12px 0 24px;
-}
-.ad-title {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.ad-body {
+.ad-sheet {
+  position: relative;
   display: flex;
   flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
   min-height: 0;
 }
-.ad-side {
-  flex: none;
-  width: var(--ad-side-w);
-  /* 8px on the right: the gap between the list of sections and the sheet is the sheet's gap to the window's right and bottom edges. */
-  padding: 4px 8px 16px 12px;
-  overflow-y: auto;
+.ad-title {
+  min-width: 0;
+  margin: 0;
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
 }
-/* The number of people at the end of the People row: quiet, in figures of one width. */
+.ad-side {
+  min-width: 0;
+}
+/* Who acts here, at the top of the nav (as Settings shows who is signed in): their own avatar, the name and the address, cut, never wrapped. */
+.ad-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  margin-bottom: 16px;
+  padding: 0 8px 0 12px;
+}
+.ad-identity > .ui-avatar {
+  flex: none;
+}
+.ad-identity-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ad-identity-name,
+.ad-identity-address {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ad-identity-name {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.ad-identity-address {
+  color: var(--text3);
+  font-size: 12px;
+  line-height: 16px;
+}
+/* The open section's capsule (useGlide): the accent's soft tone under the row, gliding to the next one in --dur-glide; the row's own words
+   and icon take the accent text colour. The Tabs' own sliding fill gives way to it in the vertical nav. */
+.ad-glide {
+  border-radius: var(--radius-control);
+  background: var(--accent-soft);
+}
+.ui-tabs.ad-tabs[aria-orientation='vertical'] > .ui-ink {
+  display: none;
+}
+.ui-tabs.ad-tabs .ui-tab {
+  min-height: var(--ui-h-md);
+}
+.ui-tabs.ad-tabs[aria-orientation='vertical'] > .ui-tab {
+  gap: 12px;
+  padding: 8px 12px;
+  color: var(--text2);
+}
+.ui-tabs.ad-tabs[aria-orientation='vertical'] > .ui-tab[aria-selected='true'] {
+  color: var(--accent-text);
+}
+@media (hover: hover) {
+  .ui-tabs.ad-tabs[aria-orientation='vertical'] > .ui-tab:hover:not(:disabled, [aria-selected='true']) {
+    color: var(--text);
+  }
+}
+.ui-tabs.ad-tabs[aria-orientation='vertical'] > .ui-tab:active:not(:disabled, [aria-selected='true']) {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+/* The number of people at the end of the People row: quiet, in figures of one width (it rolls when it changes). */
 .ad-count {
   margin-inline-start: auto;
   color: var(--text3);
@@ -73,51 +147,118 @@
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
-.ui-tabs.ad-tabs .ui-tab {
-  min-height: 36px;
+.ui-tab[aria-selected='true'] .ad-count {
+  color: var(--accent-text);
 }
 
 .ad-main {
   display: flex;
-  flex: 1 1 auto;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  margin: 0 8px 8px 0;
-  overflow: hidden;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-dialog);
-  box-shadow: var(--sheet-shadow);
 }
-/* The section that is shown; a new one fades in (--dur-quick, 150ms, no movement: the fade-through of a switch of section). */
+/* The section that is shown; a new one fades in (--dur-quick, no movement: the fade-through of a switch of section). */
 .ad-main > .ui-tabpanel {
   display: flex;
-  flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
-  overflow-y: auto;
-  padding: 28px var(--ad-inset) calc(32px + env(safe-area-inset-bottom));
   outline-offset: -2px;
   animation: ad-fade-in var(--dur-quick) var(--ease-standard);
 }
-/* The page's scrollbar runs inside the sheet, clear of its rounded corners. */
-.ad-main > .ui-tabpanel::-webkit-scrollbar-track {
-  margin-block: 12px;
-}
-@keyframes ad-fade-in {
-  from {
-    opacity: 0;
+
+@media (min-width: 641px) {
+  .ad-console {
+    padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left));
+  }
+  .ad-sheet {
+    display: grid;
+    grid-template-columns: var(--ad-nav-w) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    overflow: hidden;
+    border-radius: var(--radius-sheet);
+    background: linear-gradient(to right, var(--ad-nav-bg) var(--ad-nav-w), var(--ad-page-bg) var(--ad-nav-w));
+    box-shadow: var(--sheet-shadow);
+  }
+  /* One header line (FP2): the console's name over the nav, the page title and its action, and Close share one line 24px under the sheet's
+     edge (the names on one baseline, Close and the action centred on the title). The page runs up to the sheet's top under Close, which
+     floats on the page's tone (what scrolls under it never shows through); the page keeps 64px on its right for it. */
+  .ad-head {
+    display: contents;
+  }
+  /* The console's name over the nav is quiet (15/24 in the second grey, as the name of Settings), so the page title is the one heading of
+     the line it shares. */
+  .ad-title {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+    padding: 31px 16px 4px 24px;
+    font-size: 15px;
+    line-height: 24px;
+    color: var(--text2);
+  }
+  .ui-btn.ad-close {
+    position: absolute;
+    /* Centred on the head line (24px down, 32px high) whatever its height (36px with a mouse, 44px on touch and up to 900px); transform,
+       since a press moves the button with `translate`. */
+    top: 40px;
+    right: 16px;
+    z-index: var(--z-raise);
+    margin: 0;
+    transform: translateY(-50%);
+  }
+  .ui-btn.ad-close:not(:hover, :active) {
+    background: var(--ad-page-bg);
+  }
+  .ad-side {
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 12px 12px 16px;
+  }
+  .ad-main {
+    grid-column: 2;
+    grid-row: 1 / 3;
+  }
+  .ad-main > .ui-tabpanel {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 24px max(var(--ad-inset), 64px) calc(48px + env(safe-area-inset-bottom)) var(--ad-inset);
+    scroll-padding-block: 24px;
+  }
+  /* What scrolls up to the sheet's top edge fades in over 12px instead of being cut by it: a sticky veil of the page's tone, not a mask (a
+     mask would hold the console's inline dialogs inside the page). It sits in the page's top padding, clear of the head line under it:
+     Blink measures a sticky offset from the scroller's padding edge inward, so `top` takes the 24px of padding back, and the margins take
+     them back from its place in the flow and give back its own 12px. (FP2: at `top: 0` it lay over the first 12px of the page, which drew
+     the Add person button's top as a stray light strip over a dark band and faded the title's caps.) */
+  .ad-main > .ui-tabpanel::before {
+    content: '';
+    position: sticky;
+    top: -24px;
+    z-index: var(--z-raise);
+    flex: none;
+    height: 12px;
+    margin: -24px 0 12px;
+    background: linear-gradient(var(--ad-page-bg), transparent);
+    pointer-events: none;
+  }
+  /* The page's scrollbar runs inside the sheet, clear of its rounded corners. */
+  .ad-main > .ui-tabpanel::-webkit-scrollbar-track {
+    margin-block: 12px;
   }
 }
 
-/* One section's page. */
+/* One section's page. Domains and the Audit log read best in a narrower column (their lines are sentences, not columns of a table). */
 .ad-pane {
   display: flex;
   flex: none;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
   min-width: 0;
+}
+.ad-pane[data-width='narrow'] {
+  max-width: 800px;
 }
 /* People: the table grows with its rows and the page scrolls (one scroller, no box that scrolls inside the sheet). Its box is the
    container of its layout: a table where it has 680px or more, one block per person below (see the container queries further down), so
@@ -125,20 +266,26 @@
 .ui-table-wrap:has(> .ad-people) {
   container: ad-people / inline-size;
 }
-.ad-pane > .ui-empty {
-  padding: 40px 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
+/* The table stands on the page itself, no card: inset hairlines and the hover capsules separate the rows. The capsules reach 12px past the
+   column's edges, so the words of the first and last columns line up with the page's head and toolbar. */
+.ad-pane > .ui-table-wrap:has(> .ad-people) {
+  margin-inline: -12px;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+/* Nothing to list: the flight trail, a headline and its action, on the page. */
+.ui-empty.ad-empty {
+  padding: 48px 16px 40px;
 }
 
-/* The head of a page: the title and its one line on the left, the primary action on the right. */
+/* The head of a page: the title and its one line on the left, the primary action on the right, level with the title. */
 .ad-page-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 12px 24px;
+  gap: 16px 24px;
 }
 .ad-page-heading {
   flex: 1 1 320px;
@@ -146,8 +293,8 @@
 }
 .ad-page-title {
   margin: 0;
-  font-size: 22px;
-  line-height: 28px;
+  font-size: 24px;
+  line-height: 32px;
   font-weight: 600;
   letter-spacing: -0.02em;
 }
@@ -156,46 +303,79 @@
   margin: 4px 0 0;
   color: var(--text2);
   font-size: 14px;
-  line-height: 20px;
+  line-height: 22px;
   text-wrap: pretty;
 }
+/* The page's one action. From 641px it is centred on the title's 32px line whatever its height (36px, 44px on touch): a box of the line's
+   height that the button overflows evenly. */
 .ad-page-action {
   display: flex;
   flex: none;
   gap: 8px;
 }
+@media (min-width: 641px) {
+  .ad-page-action {
+    align-items: center;
+    height: 32px;
+  }
+}
 
-/* Search and filters over a list. */
+/* Search and filters over a list: the search pill grows into the room it has (up to 360px), the status filter (segmented) and the two-factor
+   list stand together at the right end, 12px between every control. */
 .ad-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 12px;
+  gap: 10px 12px;
+  margin-top: -4px;
 }
 .ad-toolbar > .ui-field {
-  flex: 1 1 160px;
+  flex: 1 1 240px;
   max-width: 360px;
 }
 .ad-filter {
   margin-inline-start: auto;
 }
-/* The filter track is as high as the search field beside it: the ui track adds its 2px padding and 1px edge to its segments' height. */
-.ui-seg.ad-filter[data-size='md'] .ui-seg-item {
-  height: calc(var(--ui-h-md) - 6px);
+/* One shape for the whole filter row on a desktop: the search pill, the status filter and the lists are all pills on the raised fill (the
+   search icon, the chevron and the words say what each is), as tall as each other. A phone's filter wraps in two rows: it keeps the track's
+   own corners there. */
+@media (min-width: 641px) {
+  .ui-seg.ad-filter,
+  .ui-seg.ad-filter .ui-seg-thumb,
+  .ui-seg.ad-filter .ui-seg-item {
+    border-radius: var(--radius-pill);
+  }
+  .ui-seg.ad-filter .ui-seg-item {
+    padding-inline: 14px;
+  }
 }
-/* The two-factor list after the status filter, as wide as its longest choice. */
-.ad-toolbar > .ui-field:has(> .ad-filter-2fa) {
+/* The filter track is as high as the search pill beside it: the ui track adds its 3px padding to its segments' height. */
+.ui-seg.ad-filter[data-size='md'] .ui-seg-item {
+  height: calc(var(--ui-h-field, 40px) - 6px);
+}
+/* A list of a filter row (two-factor, an event, who did it), as wide as its longest choice, in the pill look of the row. */
+.ad-toolbar > .ui-field:has(> .ad-pill-select) {
   flex: 0 0 auto;
 }
-.ui-select.ad-filter-2fa {
+.ui-select.ad-pill-select {
   width: auto;
+  padding-inline: 16px 12px;
+  background: var(--raised);
+  border-color: transparent;
+  border-radius: var(--radius-pill);
+  box-shadow: none;
 }
-/* The audit log's lists side by side, each the width of its longest choice. */
+@media (hover: hover) {
+  .ui-select.ad-pill-select:hover:not([aria-expanded='true']) {
+    background: color-mix(in srgb, var(--text) 6%, var(--raised));
+  }
+}
+/* The audit log: the event and who did it as two pills, the period at the end of the row. */
 .ad-filters {
-  align-items: flex-end;
+  align-items: center;
 }
-.ad-filters > .ui-field {
-  flex: 1 1 200px;
+.ui-seg.ad-range {
+  flex: none;
 }
 
 /* Under a list: the count, Load more, an error. */
@@ -205,14 +385,112 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 16px;
-  color: var(--text2);
+  color: var(--text3);
   font-size: 13px;
   line-height: 20px;
   font-variant-numeric: tabular-nums;
 }
 
-.ad-setting {
-  max-width: 400px;
+/* ---------- Grouped cards of rows (Group, Row: a page of Settings) ---------- */
+
+.ad-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  max-width: 720px;
+}
+/* The column's gap is the space between its groups: without this, ui.css's 32px between two Sections came on top of it (60px between
+   Language and Two-factor sign-in, against Settings' 28). */
+.ad-cards > .ui-section + .ui-section {
+  margin-top: 0;
+}
+.ad-group > .ui-section-head {
+  margin-bottom: 8px;
+}
+.ad-group .ui-section-title {
+  font-size: 13px;
+  line-height: 20px;
+  letter-spacing: 0;
+  color: var(--text2);
+}
+.ad-group .ui-section-description {
+  max-width: 62ch;
+  color: var(--text3);
+  text-wrap: pretty;
+}
+.ad-group > .ui-group {
+  background: var(--ad-card-bg);
+  box-shadow: var(--ad-card-ring);
+}
+.ad-group > .ui-group > * {
+  padding: 16px var(--ad-row-x);
+}
+.ad-group > .ui-group > * + *::before {
+  left: var(--ad-row-x);
+}
+/* A row: its words on the left, its control on the right (under the words where the card is narrow). */
+.ad-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 24px;
+}
+.ad-row-text {
+  display: flex;
+  flex: 1 1 240px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ad-row-label {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
+/* A row's name breaks before a lone last word (the policy switch in Vietnamese left 'lớp' alone under a 255px line), as its hint does. */
+.ad-group :is(.ad-row-label, .ui-label) {
+  text-wrap: pretty;
+}
+.ad-row-hint {
+  max-width: 62ch;
+  color: var(--text3);
+  font-size: 13px;
+  line-height: 20px;
+  text-wrap: pretty;
+}
+.ad-row-control {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ui-select.ad-select {
+  min-width: 200px;
+}
+/* The words of a switch row: 14/500 like a row's label, its hint quiet. */
+.ui-switch-row.ad-switch .ui-label {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
+.ui-switch-row.ad-switch .ui-hint {
+  color: var(--text3);
+}
+/* What a row's change did (Saved, an error): a quiet line of its own at the end of the card. */
+.ad-group > .ui-group > .ad-row-note {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-block: 12px;
+}
+/* The question of a rule that is turned off: a row of the card on the raised tone. */
+.ad-group > .ui-group > .ad-confirm {
+  border-radius: 0;
+  box-shadow: none;
+}
+.ad-group > .ui-group > .ad-confirm:last-child {
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
 }
 
 /* ---------- Text ---------- */
@@ -220,7 +498,7 @@
 .ad-text {
   margin: 0;
   font-size: 14px;
-  line-height: 20px;
+  line-height: 22px;
 }
 .ad-muted {
   margin: 0;
@@ -265,7 +543,7 @@
   font-size: 13px;
   line-height: 20px;
 }
-/* A field whose value is refused paints its box in the danger colour (the error line under it says why). */
+/* A field whose value is refused paints its edge in the danger colour (the error line under it says why). */
 .nm-admin .ui-input:has(> .ui-input-el[aria-invalid='true']) {
   border-color: var(--danger);
 }
@@ -289,7 +567,9 @@
 .ad-cell-title {
   display: block;
   color: var(--text);
-  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
 }
 .ad-sub {
   display: block;
@@ -302,14 +582,38 @@
   display: none;
 }
 
-/* People: comfortable rows (an avatar and two lines of text). The whole row opens the person (the name is the button); it is tinted on hover
-   (110ms, ui.css) and the chevron at its end steps forward. */
+/* People: airy rows of 56px (a 32px avatar in the person's tint, the name over the address). The whole row opens the person (the name is
+   the button); it takes the hover capsule (ui.css) and its Manage at the end lifts into a button's look. */
 .ui-table[data-dense='true'].ad-people td {
-  padding-block: 10px;
+  padding-block: 9px;
+}
+.ui-table.ad-people th:first-child,
+.ui-table.ad-people td:first-child {
+  padding-left: 12px;
+}
+.ui-table.ad-people th:last-child,
+.ui-table.ad-people td:last-child {
+  padding-right: 12px;
+}
+/* The header's hairline runs from the column's edge to the column's edge (the hover capsules reach 12px past them). */
+.ui-table.ad-people th:first-child {
+  box-shadow: none;
+  background:
+    linear-gradient(var(--border), var(--border)) left 12px bottom / calc(100% - 12px) 1px no-repeat,
+    var(--ad-page-bg);
+}
+.ui-table.ad-people th:last-child {
+  box-shadow: none;
+  background:
+    linear-gradient(var(--border), var(--border)) left bottom / calc(100% - 12px) 1px no-repeat,
+    var(--ad-page-bg);
+}
+.ui-table.ad-people th {
+  background-color: var(--ad-page-bg);
 }
 /* The columns where the table has room (680px and more): the role, the status, two-factor and the last sign-in as wide as their words,
    the person takes the rest of the row and gives way first: a long name or address is cut with an ellipsis (the dialog shows all of it),
-   so the table never grows wider than its box. The last sign-in stands at the right end with the chevron. */
+   so the table never grows wider than its box. The last sign-in stands at the right end before Manage. */
 @container ad-people (min-width: 680px) {
   .ad-people :is(.ad-col-person, .ad-cell-person) {
     width: 100%;
@@ -337,18 +641,52 @@
   .ad-people :is(.ad-col-tag, .ad-cell-tag) {
     width: 1%;
     white-space: nowrap;
+    padding-inline: 20px;
   }
   .ad-people :is(.ad-col-when, .ad-cell-when) {
     width: 1%;
     text-align: right;
     white-space: nowrap;
   }
-  /* The header ends where the dates end, before the chevron (16px) and its gap (12px). */
-  .ad-people .ad-col-when {
-    padding-inline-end: 40px;
+  /* The header ends where the dates end, before Manage (its width and gap). */
+  .ui-table.ad-people th.ad-col-when {
+    padding-inline-end: calc(var(--ad-manage-w, 92px) + 20px);
   }
 }
+/* FP2: rows are told apart by a hairline between them as well as the hover capsule (in dark the capsule alone left the eye slipping from row
+   to row): inset like the rows of a grouped card, from the name (after the 32px initials and their 12px gap) to the end of the last column;
+   none above the first row (the header's line) or under the last (the count). A row under the pointer or the keyboard drops the lines that
+   touch its capsule. The stacked list (less than 680px) draws the same line on its rows, further down. */
+@container ad-people (min-width: 680px) {
+  .ui-table.ad-people > tbody > tr + tr > td {
+    background-image: linear-gradient(var(--border), var(--border));
+    background-position: left top;
+    background-size: 100% 1px;
+    background-repeat: no-repeat;
+  }
+  .ui-table.ad-people > tbody > tr + tr > td:first-child {
+    background-position: left 56px top;
+    background-size: calc(100% - 56px) 1px;
+  }
+  .ui-table.ad-people > tbody > tr + tr > td:last-child {
+    background-size: calc(100% - 12px) 1px;
+  }
+  .ui-table.ad-people > tbody > tr.ad-link-row:has(.ad-person:focus-visible) > td,
+  .ui-table.ad-people > tbody > tr.ad-link-row:has(.ad-person:focus-visible) + tr > td {
+    background-image: none;
+  }
+  @media (hover: hover) {
+    .ui-table.ad-people > tbody > tr:hover > td,
+    .ui-table.ad-people > tbody > tr:hover + tr > td {
+      background-image: none;
+    }
+  }
+}
+/* A narrower table (680-899px): the count of extra addresses as "+2" (the words stay for screen readers) and Manage as its chevron. */
 @container ad-people (min-width: 680px) and (max-width: 899px) {
+  .ad-people {
+    --ad-manage-w: 28px;
+  }
   .ad-people .ad-extra-long {
     position: absolute;
     width: 1px;
@@ -363,8 +701,7 @@
     height: 18px;
     padding: 0 6px;
     background: var(--raised);
-    border: 1px solid var(--border);
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     color: var(--text2);
     font-size: 11px;
     line-height: 16px;
@@ -377,6 +714,9 @@
   .ad-people .ad-sub-extra {
     margin-inline-start: 6px;
   }
+  .ad-people .ad-manage-word {
+    display: none;
+  }
 }
 /* A header that sorts its column: the words and an arrow, a 24px target in the header row's height. */
 .ad-sort {
@@ -384,15 +724,17 @@
   align-items: center;
   gap: 4px;
   min-height: 24px;
-  margin: -4px -4px;
+  margin: -4px;
   padding: 0 4px;
   border: 0;
-  border-radius: 4px;
+  border-radius: 6px;
   background: none;
   color: inherit;
   font: inherit;
   cursor: pointer;
-  transition: color var(--dur-fast) var(--ease-standard);
+  transition:
+    color var(--dur-fast) var(--ease-standard),
+    background-color var(--dur-fast) var(--ease-standard);
 }
 .ad-sort > svg {
   flex: none;
@@ -406,21 +748,20 @@ th[aria-sort] > .ad-sort {
 @media (hover: hover) {
   .ad-sort:hover {
     color: var(--text);
+    background: var(--hover);
   }
 }
-/* The end of the list with its count: a quiet band that closes the table. */
+/* The end of the list with its count: quiet words under the last row, no band and no line. */
 .ui-table .ad-table-foot {
-  padding: 8px 12px;
-  background: var(--raised);
-  border-top: 1px solid var(--border);
-  border-bottom: 0;
-  color: var(--text2);
-  font-size: 12px;
-  line-height: 16px;
+  padding: 14px 12px 4px;
+  color: var(--text3);
+  font-size: 13px;
+  line-height: 20px;
   font-weight: 500;
 }
-/* A status in words (Active, Not signed in, Disabled; two-factor On or Off) after a 14px icon: every value of a column has the same shape,
-   so its words start at one edge under the header. 20px high and centred in the row, as the role's pill. An exception takes its tone. */
+/* A status in words (Active, Not signed in, Disabled; two-factor On or Off; Ready, Found, Missing) after a 14px icon: every value of a
+   column has the same shape, so its words start at one edge under the header. 20px high and centred in the row, as the role's pill. An
+   exception, or a check that passed, takes its tone. */
 .ad-plain {
   display: inline-flex;
   align-items: center;
@@ -429,8 +770,12 @@ th[aria-sort] > .ad-sort {
   color: var(--text2);
   font-size: 13px;
   line-height: 20px;
+  font-weight: 500;
   white-space: nowrap;
   vertical-align: middle;
+}
+.ad-plain[data-tone='success'] {
+  color: var(--success);
 }
 .ad-plain[data-tone='warning'] {
   color: var(--warning);
@@ -446,20 +791,38 @@ th[aria-sort] > .ad-sort {
   width: 14px;
   height: 14px;
 }
+/* FP2: the marker's ink starts on the column's edge, where the header's words start (measured): the shields draw 2px in from their box, so
+   they step back 1px; the Active dot stands at the slot's start (a centred 8px dot started 3px in). The words after any marker start at
+   one edge: the slot is 14px whatever it holds. */
+.ad-state-icon > .lucide-shield-check,
+.ad-state-icon > .lucide-shield-off {
+  margin-inline-start: -2px;
+}
+.ad-state-icon:has(> .ad-dot) {
+  justify-content: flex-start;
+}
 .ad-cell-tag > .ui-badge,
 .ad-badges > .ui-badge {
   vertical-align: middle;
 }
-/* The admin role is the same pill as the member one, a step stronger (the text colour, not the accent of the controls). */
+/* In a column of the table the role's words start on the header's words: the pill hangs out by its padding and edge (8px) into the column's
+   gap (the stacked list keeps the pill on the line's edge). */
+@container ad-people (min-width: 680px) {
+  .ad-cell-tag > .ui-badge {
+    margin-inline-start: -8px;
+  }
+}
+/* The admin role: the same pill as the member one, a step stronger (the text colour; the accent stays with the controls). */
 .ui-badge.ad-role-admin {
   color: var(--text);
 }
+/* Active: a small dot in the success colour before the word (the word says it; the dot is the calm cue). */
 .ad-dot {
   flex: none;
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: var(--text3);
+  background: var(--success);
 }
 /* The extra addresses after the address, on the same line: every row has the same height. */
 .ad-sub > span + .ad-sub-extra::before {
@@ -471,33 +834,37 @@ th[aria-sort] > .ad-sort {
   display: none;
 }
 /* A disabled account: quieter words (its name in the second grey, the rest and its initials in the third, which still reads at 4.5:1 on
-   the avatar's fill and on a hovered row); its status says Disabled. No opacity: it would take the initials under 4.5:1. */
+   the avatar's neutral fill and on a hovered row); its status says Disabled. No opacity: it would take the initials under 4.5:1. */
 .ad-link-row[data-state='disabled'] .ad-cell-title {
   color: var(--text2);
 }
-.ad-link-row[data-state='disabled'] :is(.ad-sub, .ad-plain:not([data-tone]), .ad-when, .ad-when-sub, .ui-avatar, .ui-badge) {
+.ad-link-row[data-state='disabled'] :is(.ad-sub, .ad-plain:not([data-tone]), .ad-when, .ui-avatar) {
   color: var(--text3);
+}
+/* FP2: a role pill keeps the secondary grey in a disabled row (the third grey on the pill's fill fell to 3.8:1 on a hovered dark row; the
+   secondary is 5.2:1 there): quieter than an admin's pill elsewhere, still read. */
+.ad-link-row[data-state='disabled'] .ui-badge {
+  color: var(--text2);
 }
 /* Never signed in: the status already says so, so the word is the quietest grey. */
 .ad-never {
   color: var(--text3);
 }
-/* Never signed in, on a temporary password: when it stops working is the one fact to act on (J4-44), in the secondary grey. */
+/* Never signed in, on a temporary password: when it stops working is the one fact to act on (J4-44), in the secondary grey, on two short
+   lines where the column is narrow rather than one long one that pushes the other columns aside; 18px lines keep the row at 56px. */
 .ad-temp-expiry {
+  display: inline-block;
+  width: 172px;
   color: var(--text2);
+  line-height: 18px;
+  white-space: normal;
+  text-wrap: balance;
 }
 .ad-when-main {
-  display: block;
+  display: inline-block;
 }
 .ad-when-main::first-letter {
   text-transform: uppercase;
-}
-/* The date and time of a recent sign-in, under "2 hours ago". */
-.ad-when-sub {
-  display: block;
-  color: var(--text3);
-  font-size: 12px;
-  line-height: 16px;
 }
 .ad-link-row {
   cursor: pointer;
@@ -511,17 +878,39 @@ th[aria-sort] > .ad-sort {
 .ad-who > .ui-avatar {
   flex: none;
 }
-/* The last sign-in and the chevron after it. */
+/* The last sign-in and Manage after it. */
 .ad-when-row {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 8px;
 }
 .ad-when {
   display: inline-block;
+  color: var(--text2);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+/* Manage: the quiet word and a chevron at the end of every row, a picture of what a click on the row does. On the row's hover (or while
+   the name has the keyboard) it lifts into the look of a secondary button. */
+.ad-manage {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  min-width: var(--ad-manage-w, 92px);
+  height: 28px;
+  padding: 0 6px 0 10px;
+  border-radius: var(--radius-pill);
+  color: var(--text3);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
 }
 .ad-go {
   flex: none;
@@ -533,7 +922,21 @@ th[aria-sort] > .ad-sort {
 .ad-link-row:has(.ad-person:focus-visible) > td {
   background: var(--hover);
 }
+.ad-link-row:has(.ad-person:focus-visible) .ad-manage {
+  background: var(--surface);
+  box-shadow:
+    0 0 0 1px var(--border),
+    var(--control-shadow);
+  color: var(--text);
+}
 @media (hover: hover) {
+  .ad-link-row:hover .ad-manage {
+    background: var(--surface);
+    box-shadow:
+      0 0 0 1px var(--border),
+      var(--control-shadow);
+    color: var(--text);
+  }
   .ad-link-row:hover .ad-go {
     color: var(--text2);
     translate: 2px 0;
@@ -549,9 +952,9 @@ th[aria-sort] > .ad-sort {
   min-width: 0;
   max-width: 100%;
   margin: 0;
-  padding: 2px 0;
+  padding: 0;
   border: 0;
-  border-radius: 4px;
+  border-radius: 6px;
   background: none;
   color: inherit;
   font: inherit;
@@ -572,18 +975,22 @@ th[aria-sort] > .ad-sort {
   }
 }
 
-/* ---------- Domains: one card each, the DNS checklist, the setup steps ---------- */
+/* ---------- Domains: one card each, the numbered DNS checklist, the setup steps ---------- */
 
 .ad-add-domain {
   gap: 8px;
 }
+.ad-add-domain .ad-inline {
+  max-width: 600px;
+}
 .ad-add-domain > .ad-note {
-  max-width: 560px;
+  max-width: 600px;
+  color: var(--text3);
 }
 .ad-domains {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -593,21 +1000,35 @@ th[aria-sort] > .ad-sort {
   flex-direction: column;
   gap: 16px;
 }
+.ad-domains-loading > .ui-skeleton {
+  border-radius: var(--radius-card);
+}
 .ad-domain {
   min-width: 0;
 }
-/* The card's head: the name and its status on the left, Check DNS and Remove on the right (under them on a narrow page). */
+.ui-card.ad-domain-card {
+  padding: 20px var(--ad-row-x) 14px;
+  background: var(--ad-card-bg);
+  box-shadow: var(--ad-card-ring);
+}
+/* The card's head: the name and its meta line on the left, Check DNS and Remove on the right (under them on a narrow page). */
 .ad-domain-card > .ui-section-head {
   flex-wrap: wrap;
+  margin-bottom: 20px;
 }
-.ad-domains-loading > .ui-skeleton {
-  border-radius: var(--radius-card);
+.ad-domain-card .ui-section-title {
+  font-size: 17px;
+  line-height: 26px;
+  letter-spacing: -0.01em;
 }
 .ad-domain-meta {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 12px;
+  margin-top: 4px;
+  color: var(--text2);
+  font-variant-numeric: tabular-nums;
 }
 /* Remove stands a little apart from the check in the card's head: the routine action and the destructive one are not neighbours. Remove
    and "In use" (in its place) share one width, so Check DNS stands at the same place on every card (J3-38). */
@@ -630,7 +1051,7 @@ th[aria-sort] > .ad-sort {
   min-width: 84px;
   min-height: var(--ui-h-sm);
   margin-inline-start: 8px;
-  color: var(--text2);
+  color: var(--text3);
   font-size: 13px;
   line-height: 18px;
 }
@@ -640,109 +1061,98 @@ th[aria-sort] > .ad-sort {
   gap: 16px;
   min-width: 0;
 }
-/* The disclosures of a card (the records of a step, the setup steps) are quiet buttons whose words line up with the text above them. Open,
-   they keep the look they have closed (the chevron turns): the pressed fill of an open menu button is not theirs. */
+/* The foot of a card: the setup steps (a dialog), quiet and aligned with the words above. */
+.ad-domain-foot {
+  display: flex;
+  margin-top: -4px;
+}
+/* The disclosures and the quiet openers of a card (the records of a step, the setup steps) are ghost buttons whose words line up with the
+   text above them. Open, they keep the look they have closed (the chevron turns): the pressed fill of an open menu button is not theirs. */
 .ui-btn.ad-toggle {
   justify-self: start;
-  margin-inline-start: -10px;
-  color: var(--text2);
+  margin-inline-start: -12px;
+  color: var(--accent-text);
 }
 .ui-btn.ad-toggle[aria-expanded='true']:not(:hover, :active) {
   background: transparent;
   box-shadow: none;
 }
-.ad-guide-wrap {
+
+/* What the last check found: a numbered checklist (ui Steps), the step to act on first. Each number sits on the tone of its step's state
+   (success when it works, danger when it does not); the words say it too. */
+.ui-steps.ad-checklist > .ui-step {
+  padding-bottom: 20px;
+}
+.ui-steps.ad-checklist > .ui-step:last-child {
+  padding-bottom: 0;
+}
+.ui-steps.ad-checklist > .ui-step:has(> .ad-dns-part[data-ready='true'])::before {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.ui-steps.ad-checklist > .ui-step:has(> .ad-dns-part[data-ready='false'])::before {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.ad-dns-part {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-}
-.ad-guide-wrap > .ui-collapse {
-  align-self: stretch;
-}
-
-/* What the last check found: a checklist, the step to act on first. The steps share their columns (name, Ready or Not ready, what was
-   found, the records' disclosure), so their parts line up from one step to the next. */
-.ad-dns {
+  gap: 2px;
   min-width: 0;
 }
-.ad-checklist {
-  display: grid;
-  /* Name, status, what was found, the disclosure, then the rest of the width (where the text under a step may run). */
-  grid-template-columns: max-content max-content minmax(0, max-content) max-content minmax(0, 1fr);
-  column-gap: 12px;
-  row-gap: 4px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.ad-check,
-.ad-dns-part {
-  display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: subgrid;
+.ad-dns-head {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  min-width: 0;
-}
-/* A hairline between two steps. */
-.ad-check + .ad-check {
-  padding-top: 6px;
-  border-top: 1px solid var(--border);
-}
-/* A badge keeps its own width in its column. */
-.ad-dns-part > .ui-badge {
-  justify-self: start;
+  gap: 2px 12px;
 }
 .ad-dns-title {
   font-size: 14px;
   line-height: 20px;
-  font-weight: 500;
+  font-weight: 600;
 }
-/* In a step the disclosure keeps its padding: its words stand clear of what was found. */
-.ad-check .ui-btn.ad-toggle {
-  margin-inline-start: 0;
-}
-/* After the status: what was found. A wrapped line does not leave one word alone on its last line. */
+/* Under the name: what was found. A wrapped line does not leave one word alone on its last line. */
 .ad-dns-line {
-  min-width: 0;
+  max-width: 72ch;
+  margin: 0;
   color: var(--text2);
   font-size: 13px;
   line-height: 20px;
   text-wrap: pretty;
 }
-/* What is wrong and where to fix it, under the line of a step that does not work, then its records. These span the four columns without
-   widening them (no inline size of their own: the columns are set by the steps' lines). */
-.ad-dns-detail {
+/* The records' disclosure and, on a step that does not work, the dashboard link with the way to its page. */
+.ad-dns-tools {
   display: flex;
-  flex-direction: column;
-  grid-column: 1 / -1;
-  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 16px;
   margin-top: 4px;
-  contain: inline-size;
+}
+.ad-dns-tools > .ui-btn.ad-toggle {
+  margin-inline-start: -12px;
 }
 .ad-dns-panel {
-  grid-column: 1 / -1;
-  contain: inline-size;
+  min-width: 0;
 }
 .ad-dns-records {
   padding-top: 8px;
 }
-/* The records, on a quiet well (no box in the card's box): the type, the host name and what the check found, in columns as wide as their
-   words, so a row reads at a glance instead of across the card. */
+/* The records, on a quiet raised well (no box in the card's box, no lines between them): the type, the host name, then what the check
+   found and Copy, in columns as wide as their words, so a row reads at a glance instead of across the card. */
 .ad-records {
   display: grid;
   grid-template-columns: auto minmax(0, max-content) auto;
-  column-gap: 16px;
+  column-gap: 14px;
   width: fit-content;
   max-width: 100%;
   margin: 0;
-  padding: 4px 14px;
+  padding: 6px 6px 6px 14px;
   list-style: none;
   background: var(--raised);
-  border-radius: var(--radius-card);
-  box-shadow: var(--field-shadow);
+  border-radius: 12px;
+}
+:root[data-theme='dark'] .ad-records {
+  background: var(--surface);
 }
 .ad-record {
   display: grid;
@@ -750,34 +1160,47 @@ th[aria-sort] > .ad-sort {
   grid-template-columns: subgrid;
   align-items: center;
   min-width: 0;
-  padding: 6px 0;
-}
-.ad-record + .ad-record {
-  border-top: 1px solid var(--border);
+  padding: 4px 0;
 }
 .ad-rtype {
+  display: inline-flex;
+  justify-self: start;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--surface);
   color: var(--text2);
   font-family: var(--font-mono);
   font-size: 11px;
-  line-height: 20px;
+  line-height: 16px;
   font-weight: 600;
+}
+:root[data-theme='dark'] .ad-rtype {
+  background: var(--raised);
 }
 .ad-record-name {
   min-width: 0;
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 12.5px;
   line-height: 20px;
   overflow-wrap: anywhere;
 }
 .ad-record-end {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.ui-btn.ad-copy {
+  color: var(--text2);
 }
 /* Under a missing record: where its value is (the app cannot know it). */
 .ad-record-hint {
   grid-column: 2 / -1;
-  color: var(--text2);
+  margin-bottom: 2px;
+  color: var(--text3);
   font-size: 12px;
   line-height: 16px;
   text-wrap: pretty;
@@ -815,7 +1238,7 @@ th[aria-sort] > .ad-sort {
   }
 }
 .ad-dash-path {
-  color: var(--text2);
+  color: var(--text3);
   font-size: 12px;
 }
 /* When the shown check ran, after what it found. */
@@ -825,74 +1248,108 @@ th[aria-sort] > .ad-sort {
   font-variant-numeric: tabular-nums;
 }
 
+/* The setup steps (in their dialog): the dashboard link, then each part's numbered steps under a quiet heading. */
 .ad-guide {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  max-width: 80ch;
-  padding-top: 8px;
+  gap: 10px;
   overflow-wrap: anywhere;
 }
 .ad-guide-title {
-  margin: 8px 0 0;
-  font-size: 13px;
-  line-height: 20px;
+  margin: 16px 0 2px;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 24px;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
-.ad-guide-title:first-child {
-  margin-top: 0;
+/* The subdomain case reads as the steps do (it is as much an instruction), not as a footnote. */
+.ad-guide > .ad-guide-note {
+  margin: 0;
+  color: var(--text2);
+  font-size: 14px;
+  line-height: 22px;
+}
+.ad-guide > .ad-dash + .ad-guide-title {
+  margin-top: 6px;
 }
 .ad-code {
   padding: 1px 4px;
-  border-radius: 4px;
+  border-radius: 5px;
   background: var(--raised);
   color: var(--text);
   font-family: var(--font-mono);
   font-size: 12px;
 }
 
-/* ---------- Audit log: a timeline, one card a day ---------- */
+/* ---------- Audit log: a timeline by day ---------- */
 
-/* One card for the whole log; each day starts with a band that names it. */
+/* Each day under its quiet heading; its events hang on one thin line that runs from the initials of one to the next. No card: the page. */
 .ad-timeline {
-  overflow: hidden;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
 }
 .ad-day {
   min-width: 0;
 }
-.ad-day + .ad-day {
-  border-top: 1px solid var(--border);
-}
+/* A day's heading is a waypoint of the rail: a small ring on the line, the day's name beside it in the quiet grey. */
 .ad-day-title {
-  margin: 0;
-  padding: 6px 16px;
-  background: var(--raised);
-  border-bottom: 1px solid var(--border);
-  color: var(--text2);
-  font-size: 12px;
+  position: relative;
+  margin: 0 0 4px;
+  padding-left: 42px;
+  color: var(--text3);
+  font-size: 13px;
   line-height: 20px;
   font-weight: 600;
+}
+.ad-day-title::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ad-page-bg);
+  box-shadow: inset 0 0 0 2px var(--ad-rail);
+}
+.ad-timeline {
+  --ad-rail: color-mix(in srgb, var(--accent) 38%, var(--border-strong));
+}
+/* The end of the log (No more events in this period, Show older events) starts on the events' words, not in the lane of their initials. */
+.ad-timeline + .ad-foot {
+  padding-left: 42px;
 }
 .ad-events {
   margin: 0;
   padding: 0;
   list-style: none;
 }
-/* One event: who (initials, or a tile), what and to whom with the details, the time. */
+/* One event: who (initials on their tint, or a tile) on the line, what was done and by whom to whom, when. */
 .ad-event {
   position: relative;
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: start;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: 14px;
+  padding: 6px 0 10px;
 }
-.ad-event + .ad-event {
-  border-top: 1px solid var(--border);
+/* The rail: a dashed flight path (the trail of the homing signature) from each event's initials to the next one, through the day headings,
+   so the whole log is one line. Decoration only: the order is in the list itself. */
+.ad-event:not(:last-child)::after,
+.ad-day:not(:last-child) .ad-event:last-child::after {
+  content: '';
+  position: absolute;
+  top: 38px;
+  bottom: -4px;
+  left: 13px;
+  width: 2px;
+  background: repeating-linear-gradient(to bottom, var(--ad-rail) 0 3px, transparent 3px 8px);
+}
+/* The last event of a day reaches over the gap and the next day's heading (36px + 24px + 6px - 4px). */
+.ad-day:not(:last-child) .ad-event:last-child::after {
+  bottom: -62px;
 }
 /* The tile of an event with no known person, or of a failure (a warning icon on the warning tint: the failure stands out in its day). */
 .ad-event-tile {
@@ -918,6 +1375,7 @@ th[aria-sort] > .ad-sort {
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  padding-top: 3px;
 }
 .ad-event-action {
   margin: 0;
@@ -930,7 +1388,7 @@ th[aria-sort] > .ad-sort {
   margin: 0;
   color: var(--text2);
   font-size: 13px;
-  line-height: 18px;
+  line-height: 20px;
 }
 .ad-event-detail {
   color: var(--text3);
@@ -940,33 +1398,29 @@ th[aria-sort] > .ad-sort {
   margin-inline: 6px;
 }
 .ad-event-time {
-  color: var(--text2);
+  padding-top: 3px;
+  color: var(--text3);
   font-size: 12px;
   line-height: 20px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-/* ---------- Settings of the organisation: one card a rule ---------- */
-
-.ad-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  max-width: 720px;
-}
-.ad-setting-card > .ad-feedback,
-.ad-setting-card > .ad-error,
-.ad-setting-card > .ad-confirm {
-  margin-top: 12px;
-}
-
 /* ---------- Dialogs (ModalFrame: a ui Dialog whose panel is .ad-dialog) ---------- */
 
+/* In a dialog a card is a soft tone, not a ring (the panel is the surface): the raised fill; dark, where the panel stands on the raised tone,
+   a step up again. */
+.ad-dialog {
+  --ad-card-bg: var(--raised);
+  --ad-card-ring: 0 0 0 0 transparent;
+}
+:root[data-theme='dark'] .ad-dialog {
+  --ad-card-bg: color-mix(in srgb, var(--text) 5%, var(--raised));
+}
 .ad-dialog > .ui-dialog-body {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 28px;
 }
 .ad-form {
   display: flex;
@@ -975,23 +1429,20 @@ th[aria-sort] > .ad-sort {
   min-width: 0;
   margin: 0;
 }
-/* The buttons of a dialog, right-aligned under a hairline that runs from edge to edge of the panel (to the scrollbar's lane on the right:
-   ui.css --ui-dialog-end), so they end where the content and the close button end. */
+/* The buttons of a dialog, right-aligned under the content: space above them, no band and no line. */
 .ad-dialog-foot {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
-  margin: 0 calc(-1 * var(--ui-dialog-end)) 0 -20px;
-  padding: 16px var(--ui-dialog-end) 0 20px;
-  border-top: 1px solid var(--border);
+  padding-top: 8px;
 }
 
-/* The top of a person's dialog: initials, address, badges, last sign-in. */
+/* The top of a person's dialog: their initials (56px, their tint), the address, the role, status and two-factor in words, the last sign-in. */
 .ad-summary {
   display: flex;
-  align-items: flex-start;
-  gap: 14px;
+  align-items: center;
+  gap: 16px;
   min-width: 0;
 }
 .ad-summary > .ui-avatar {
@@ -1000,71 +1451,74 @@ th[aria-sort] > .ad-sort {
 .ad-summary-text {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 }
 .ad-summary-address {
   margin: 0;
   color: var(--text2);
   font-size: 14px;
-  line-height: 20px;
-}
-
-/* The parts of a person's dialog, separated by hairlines. */
-.ad-dsec {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 0;
-  margin: 0;
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
-}
-.ad-dsec-title {
-  margin: 0;
-  font-size: 15px;
   line-height: 22px;
-  font-weight: 600;
-  letter-spacing: -0.005em;
 }
 .ad-badges {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 8px;
+  gap: 4px 14px;
 }
-/* The account's actions, one per line: what follows from it on the left, its button on the right; the buttons share one column as wide as
-   the widest, so their edges line up. Delete account last, apart under a hairline. On a phone the button goes under its line. */
-.ad-actions-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px 16px;
+
+/* The parts of a person's dialog: a quiet label, then its card (space sets them apart, no hairlines). */
+.ad-dsec {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
 }
-.ad-action {
-  display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: subgrid;
-  align-items: center;
-  gap: 8px 16px;
+.ad-dsec-title {
+  margin: 0;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
-.ad-action > .ui-btn {
-  justify-self: stretch;
+.ad-dsec > .ad-muted:not(.ad-feedback) {
+  color: var(--text3);
 }
-.ad-danger {
-  margin-top: 4px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
+/* A part of a person's dialog that is a form (the name, the extra addresses) stands on the panel itself: only the account's actions are a
+   card, so the panel never stacks slab on slab. */
+.ad-card {
+  min-width: 0;
 }
-/* Extra addresses: a quiet list under hairlines (not a box that looks like a field), its addresses on the edge of the other text; one
-   column, so its header row is for screen readers only. */
-.ui-table-wrap .ad-table-aliases td:first-child {
-  padding-inline-start: 0;
+/* Extra addresses: the addresses as rows of the card (one column, so its header row is for screen readers only), then the field that adds
+   one under an inset hairline. */
+/* Extra addresses: the addresses as rows (one column, so its header row is for screen readers only; the hover capsule reaches 12px past
+   the text), then the field that adds one. */
+.ad-card.ad-alias-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
-.ui-table-wrap:has(> .ad-table-aliases) {
+.ad-alias-none {
+  color: var(--text3);
+}
+.ad-card > .ui-table-wrap:has(> .ad-table-aliases) {
+  margin-inline: -12px;
+  padding: 0;
   background: transparent;
-  border-width: 1px 0;
   border-radius: 0;
   box-shadow: none;
+}
+.ui-table.ad-table-aliases td {
+  padding-block: 4px;
+}
+.ui-table.ad-table-aliases td:first-child {
+  padding-left: 12px;
+  font-size: 14px;
+}
+.ui-table.ad-table-aliases td:last-child {
+  padding-right: 4px;
 }
 .ad-table-aliases > thead {
   position: absolute;
@@ -1074,29 +1528,69 @@ th[aria-sort] > .ad-sort {
   clip-path: inset(50%);
   white-space: nowrap;
 }
-/* A field and its button on one line (the button lines up with the box, not with the label). */
-.ad-inline {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 8px;
+.ui-table.ad-table-aliases tbody::before {
+  height: 0;
 }
-.ad-inline > .ui-field {
-  flex: 1 1 220px;
+/* The account's actions as the rows of one card: what follows from it on the left, its button on the right; the buttons share one column
+   as wide as the widest, so their edges line up. Delete account is the last row, its words and button in the danger tone's quiet look. On
+   a phone the button goes under its line. */
+.ad-actions-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
 }
-.ad-pane > form .ad-inline {
-  max-width: 560px;
+.ad-action {
+  position: relative;
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 14px 16px;
+  background: var(--ad-card-bg);
 }
-/* A question that replaced the row of buttons (Make admin, Disable account, ...): Cancel and the action right-aligned under the text, as in
-   every other confirmation. */
+.ad-action:first-child {
+  border-top-left-radius: var(--radius-card);
+  border-top-right-radius: var(--radius-card);
+}
+.ad-action:last-child,
+.ad-action:has(+ .ad-danger) {
+  border-bottom-right-radius: var(--radius-card);
+  border-bottom-left-radius: var(--radius-card);
+}
+/* Delete account: a card of its own under the others, set apart by space (the one action that cannot be undone); its button lines up with
+   the buttons above. */
+.ad-action.ad-danger {
+  margin-top: 16px;
+  border-radius: var(--radius-card);
+}
+.ad-actions-row > .ad-action.ad-danger::before {
+  content: none;
+}
+.ad-action + .ad-action::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 16px;
+  height: 1px;
+  background: var(--border);
+}
+.ad-action > .ui-btn {
+  justify-self: stretch;
+}
+.ad-action > .ad-muted {
+  color: var(--text2);
+}
+/* A question that replaced the row of actions (Make admin, Disable account, ...): a card of its own, Cancel and the action right-aligned
+   under the text, as in every other confirmation. */
 .ad-confirm {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 12px 14px;
-  background: var(--raised);
-  border: 1px solid var(--border);
+  padding: 16px;
+  background: var(--ad-card-bg);
   border-radius: var(--radius-card);
+  box-shadow: var(--ad-card-ring);
 }
 .ad-confirm-foot {
   display: flex;
@@ -1108,15 +1602,19 @@ th[aria-sort] > .ad-sort {
 .ad-confirm-title {
   margin: 0;
   color: var(--text);
-  font-size: 15px;
-  line-height: 22px;
+  font-size: 16px;
+  line-height: 24px;
   font-weight: 600;
+  letter-spacing: -0.01em;
   overflow-wrap: anywhere;
 }
 /* A long text on request (MoreText): the disclosure's words line up with the paragraphs above. */
 .ad-more {
   display: grid;
   justify-items: start;
+}
+.ad-more .ui-btn.ad-toggle {
+  margin-inline-start: -12px;
 }
 .ad-more .ad-muted {
   margin: 4px 0 0;
@@ -1155,49 +1653,64 @@ th[aria-sort] > .ad-sort {
 .ad-at {
   display: inline-flex;
   align-items: center;
-  height: var(--ui-h-md);
-  color: var(--text2);
+  height: var(--ui-h-field, 40px);
+  color: var(--text3);
+  font-size: 15px;
 }
 .ad-domain-name {
   display: inline-flex;
   flex: 1 1 140px;
   align-items: center;
   min-width: 0;
-  min-height: var(--ui-h-md);
+  min-height: var(--ui-h-field, 40px);
+  padding: 0 12px;
+  border-radius: var(--radius-control);
+  background: var(--raised);
+  color: var(--text2);
   font-size: 14px;
   overflow-wrap: anywhere;
 }
-
+/* A field and its button on one line (the button lines up with the box, not with the label). */
+.ad-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+.ad-inline > .ui-field {
+  flex: 1 1 220px;
+}
+/* The button is as tall as the box beside it. */
+.ad-inline > .ui-btn {
+  min-height: var(--ui-h-field, 40px);
+}
 /* What deleting an account loses: the words on the danger tint with a danger icon (the text keeps the text colour). */
 .ad-warn {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: 10px;
+  padding: 12px 14px;
   background: var(--danger-soft);
-  border: 1px solid color-mix(in srgb, var(--danger) 30%, var(--border));
   border-radius: var(--radius-card);
 }
 .ad-warn > svg {
   flex: none;
-  margin-top: 2px;
+  margin-top: 3px;
   color: var(--danger);
 }
-
-/* The notes of a temporary password: a quiet box of three lines whose text starts on the inner edge of the password box above it (16px);
-   the small bullets hang in that padding. */
+/* The notes of a temporary password: a quiet raised box of three lines whose text starts on the inner edge of the password box above it
+   (20px, the ui SecretBox's inset); the small bullets hang in that padding. */
 .ad-list {
   display: flex;
   flex-direction: column;
   gap: 4px;
   margin: 0;
-  padding: 12px 16px;
+  padding: 14px 20px;
   list-style: none;
   color: var(--text2);
   font-size: 13px;
   line-height: 20px;
   background: var(--raised);
-  border: 1px solid var(--border);
   border-radius: var(--radius-card);
 }
 .ad-list > li {
@@ -1207,7 +1720,7 @@ th[aria-sort] > .ad-sort {
   content: '';
   position: absolute;
   top: 8px;
-  inset-inline-start: -9px;
+  inset-inline-start: -11px;
   width: 4px;
   height: 4px;
   border-radius: 50%;
@@ -1215,42 +1728,80 @@ th[aria-sort] > .ad-sort {
 }
 /* The six digits of the authenticator code. */
 .ui-input-el.ad-otp {
+  font-size: 18px;
   letter-spacing: 0.3em;
   text-align: center;
 }
 
-@media (max-width: 900px) {
+@media (min-width: 641px) and (max-width: 900px) {
   .ad-console {
-    --ad-gutter: 24px;
-    --ad-side-w: 200px;
+    --ad-gutter: 28px;
+    --ad-nav-w: 208px;
   }
 }
 
-/* ---------- Phones: the sections a grid, the page the whole screen, tables stacked lists ---------- */
+/* ---------- Phones: the sections a row of tabs, the page the whole screen, tables stacked lists ---------- */
 
 @media (max-width: 640px) {
   .ad-console {
     --ad-gutter: 16px;
     --ad-inset: var(--ad-gutter);
+    --ad-row-x: 16px;
     background: var(--surface);
   }
+  /* Audit log: the time stays on the action's line and the words under it run on below the time, to the row's end (a column of their own
+     beside the time left 68px of each 358px row empty and broke 'second factor' and 'a → b' over three lines). */
+  .ad-event {
+    grid-template-areas:
+      'tile action time'
+      'tile who who';
+    row-gap: 2px;
+  }
+  .ad-event > :first-child {
+    grid-area: tile;
+  }
+  .ad-event-text {
+    display: contents;
+  }
+  .ad-event-action {
+    grid-area: action;
+  }
+  .ad-event-who {
+    grid-area: who;
+  }
+  .ad-event-time {
+    grid-area: time;
+  }
+  /* The whole screen scrolls as one under the title bar, which stays (no second fixed band that eats the screen). */
+  .ad-sheet {
+    overflow-y: auto;
+  }
   .ad-head {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-raise);
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 8px;
     min-height: 52px;
     padding: env(safe-area-inset-top) 4px 0 16px;
+    background: var(--surface);
   }
   .ad-title {
+    flex: 1;
+    color: var(--text);
     font-size: 18px;
     line-height: 26px;
   }
-  /* Under the title the page scrolls as one: the sections, then the page (no second fixed band that eats the screen). */
-  .ad-body {
-    flex-direction: column;
-    overflow-y: auto;
-  }
   .ad-side {
-    width: auto;
-    padding: 0;
-    overflow: visible;
+    flex: none;
+  }
+  /* The capsule belongs to the desktop nav; the row of tabs has its own sliding line. The title bar names the console; who acts is in
+     Settings. */
+  .ad-glide,
+  .ad-identity {
+    display: none;
   }
   /* The four sections are one row of tabs under the title (ui/Tabs `phoneRow`): it scrolls sideways where a language does not fit (vi),
      its hidden side fading as the list's filter chips do. The first tab's words start on the content's edge; the icons stay on the desktop
@@ -1267,11 +1818,11 @@ th[aria-sort] > .ad-sort {
   .ui-tabs.ad-tabs .ui-tab > svg {
     display: none;
   }
-  /* In a segment of the grid the count follows its label instead of standing at the far edge. */
+  /* In a tab of the row the count follows its label instead of standing at the far edge. */
   .ad-count {
     margin-inline-start: 0;
   }
-  /* The selected segment above already names the page: its title stays for screen readers only, the line under it stays on screen. */
+  /* The selected tab above already names the page: its title stays for screen readers only, the line under it stays on screen. */
   .ad-page-title {
     position: absolute;
     width: 1px;
@@ -1283,58 +1834,23 @@ th[aria-sort] > .ad-sort {
   .ad-page-desc {
     margin-top: 0;
   }
-  /* A DNS record on two lines: the type and the host, then its status under the host. */
-  .ad-records {
-    grid-template-columns: auto minmax(0, 1fr);
-    width: auto;
+  .ad-page-action {
+    margin-top: 0;
   }
-  .ad-record-end {
-    grid-column: 2;
+  .ui-table.ad-people tbody::before {
+    height: 0;
   }
-  /* A step of the checklist: its name and status on one line, what was found and the records under them. */
-  .ad-checklist {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .ad-check {
-    display: block;
-  }
-  .ad-dns-part {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 10px;
-  }
-  .ad-dns-line,
-  .ad-dns-detail,
-  .ad-dns-panel {
-    flex: 1 1 100%;
-  }
-  .ad-check .ui-btn.ad-toggle {
-    margin-inline-start: -10px;
-  }
-  /* A host name breaks where the line ends, not at its hyphens (a part cut at a hyphen reads as a name of its own); the type stays on the
-     first line. */
-  .ad-record {
-    align-items: start;
-  }
-  .ad-record-name {
-    word-break: break-all;
-  }
-  /* The page starts under the hairline of the tab row: no second rule, no gap. */
   .ad-main {
     flex: none;
-    margin: 0;
-    overflow: visible;
-    border-width: 0;
-    border-radius: 0;
-    box-shadow: none;
   }
   .ad-main > .ui-tabpanel {
-    flex: none;
-    overflow: visible;
-    padding: 20px var(--ad-inset) calc(24px + env(safe-area-inset-bottom));
+    padding: 20px var(--ad-inset) calc(32px + env(safe-area-inset-bottom));
+  }
+  .ad-pane {
+    gap: 20px;
+  }
+  .ad-pane > .ui-table-wrap:has(> .ad-people) {
+    margin-inline: calc(-1 * var(--ad-inset));
   }
   .ad-toolbar > .ui-field {
     max-width: none;
@@ -1344,7 +1860,30 @@ th[aria-sort] > .ad-sort {
     margin-inline-start: 0;
   }
   .ad-filters > .ui-field {
-    flex: 1 1 100%;
+    flex: 1 1 0;
+  }
+  .ad-filters > .ui-field > .ui-select.ad-pill-select {
+    width: 100%;
+  }
+  .ui-card.ad-domain-card {
+    padding: 16px 16px 10px;
+  }
+  /* A DNS record on two lines: the type and the host, then its status and Copy under the host. */
+  .ad-records {
+    grid-template-columns: auto minmax(0, 1fr);
+    width: auto;
+  }
+  .ad-record-end {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+  /* A host name breaks where the line ends, not at its hyphens (a part cut at a hyphen reads as a name of its own); the type stays on the
+     first line. */
+  .ad-record {
+    align-items: start;
+  }
+  .ad-record-name {
+    word-break: break-all;
   }
   .ad-dialog-foot > .ui-btn,
   .ad-confirm-foot > .ui-btn {
@@ -1352,13 +1891,12 @@ th[aria-sort] > .ad-sort {
   }
   .ad-actions-row {
     grid-template-columns: minmax(0, 1fr);
-    row-gap: 20px;
   }
   .ad-dialog > .ui-dialog-body {
     padding-bottom: calc(16px + env(safe-area-inset-bottom));
   }
-  .ad-event {
-    padding-inline: 12px;
+  .ad-summary {
+    align-items: flex-start;
   }
 
   /* The header row is still there for screen readers, but not on screen. */
@@ -1380,26 +1918,20 @@ th[aria-sort] > .ad-sort {
     align-items: center;
     gap: 4px 8px;
     padding: 12px 16px;
-    border-bottom: 1px solid var(--border);
   }
-  .ad-table > tbody > tr:last-child {
-    border-bottom: 0;
-  }
-  /* The count under a stacked list: a band of its own under the last row. */
+  /* The count under a stacked list: quiet words of their own under the last row. */
   .ad-table > tfoot,
   .ad-table > tfoot > tr {
     display: block;
   }
   .ui-table-wrap .ui-table.ad-table .ad-table-foot {
     display: block;
-    padding: 10px 16px;
-    border-top: 1px solid var(--border);
+    padding: 12px 16px 4px;
   }
   .ui-table-wrap .ui-table.ad-table td {
     display: block;
     min-width: 0;
     padding: 0;
-    border: 0;
   }
   .ad-table .ad-end {
     text-align: left;
@@ -1424,13 +1956,15 @@ th[aria-sort] > .ad-sort {
     white-space: normal;
   }
 
-  /* Extra addresses: one line each, the remove button at the end. */
+  /* Extra addresses: one line each, the remove button at the end: its 44px box reaches the row's bleed edge so its X lands where the
+     sheet's Close X does (5px inside the content edge; with 4px of padding it stood 10px inside, under Save name and Add). */
   .ad-table-aliases > tbody > tr {
     flex-wrap: nowrap;
-    padding: 0 4px 0 12px;
+    padding: 2px 0 2px 12px;
   }
   .ad-table .ad-cell-alias {
     flex: 1 1 0;
+    align-self: center;
   }
   .ad-table .ad-cell-remove {
     flex: none;
@@ -1447,8 +1981,8 @@ th[aria-sort] > .ad-sort {
 
 /* ---------- People where its table has less than 680px (a narrow window, a phone): one block per person ----------
    The same stacked rows as every table on a phone (above), decided by the width the table has rather than by the window's, so no width
-   gets a table wider than its box: the name on its own line, then the role, the status and two-factor in words, then the last
-   sign-in on a line of its own; the chevron stands level with the name. */
+   gets a table wider than its box: the name on its own line, then the role, the status and two-factor in words, then the last sign-in on a
+   line of its own; the chevron stands level with the name. */
 @container ad-people (max-width: 679px) {
   .ad-people > thead {
     position: absolute;
@@ -1464,30 +1998,28 @@ th[aria-sort] > .ad-sort {
   .ad-people > tfoot > tr {
     display: block;
   }
-  /* Every line after the name starts where the name does (after the 28px initials and their 12px gap), also a line that wraps: the row
-     is padded to that edge and only the person's cell steps back out of it. */
+  /* Every line after the name starts where the name does (after the 32px initials and their 12px gap), also a line that wraps: the row is
+     padded to that edge and only the person's cell steps back out of it. */
   .ad-people > tbody > tr {
     position: relative;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 6px 12px;
-    padding: 12px 44px 12px 56px;
-    border-bottom: 1px solid var(--border);
+    gap: 6px 14px;
+    padding: 12px 44px 12px 60px;
   }
-  .ad-people > tbody > tr:last-child {
-    border-bottom: 0;
+  /* FP2: the hairline between two people, from the name's edge to 16px before the row's end (as the table's). */
+  .ad-people > tbody > tr + tr {
+    background: linear-gradient(var(--border), var(--border)) left 60px top / calc(100% - 76px) 1px no-repeat;
   }
   .ui-table-wrap .ui-table.ad-people td {
     display: block;
     min-width: 0;
     padding: 0;
-    border: 0;
   }
   .ui-table-wrap .ui-table.ad-people .ad-table-foot {
     display: block;
-    padding: 10px 16px;
-    border-top: 1px solid var(--border);
+    padding: 12px 16px 4px;
   }
   .ad-people .ad-wide {
     display: none;
@@ -1500,7 +2032,7 @@ th[aria-sort] > .ad-sort {
     flex: 1 1 100%;
   }
   .ad-people .ad-cell-person {
-    margin-inline-start: -40px;
+    margin-inline-start: -44px;
   }
   .ad-people .ad-cell-when {
     white-space: normal;
@@ -1531,15 +2063,23 @@ th[aria-sort] > .ad-sort {
     margin-inline: 0;
     text-align: center;
   }
-  /* The chevron stands level with the initials and the name. */
+  /* The chevron (Manage, without its word) stands level with the initials and the name. */
   .ad-people .ad-when-row {
     justify-content: flex-start;
   }
-  .ad-people .ad-go {
+  .ad-people .ad-when {
+    color: var(--text3);
+  }
+  .ad-people .ad-manage {
     position: absolute;
-    top: 30px;
-    right: 14px;
+    top: 32px;
+    right: 8px;
+    min-width: 0;
+    padding: 0 4px;
     translate: 0 -50%;
+  }
+  .ad-people .ad-manage-word {
+    display: none;
   }
   .ad-people .ad-cell-when[data-none='true'] .ad-when-row {
     display: contents;
@@ -1553,8 +2093,15 @@ th[aria-sort] > .ad-sort {
     .ad-people > tbody > tr:hover {
       background: var(--hover);
     }
+    .ad-people > tbody > tr:hover + tr {
+      background-image: none;
+    }
     .ui-table-wrap .ui-table.ad-people tbody tr:hover td {
       background: transparent;
+    }
+    .ad-people > tbody > tr:hover .ad-manage {
+      background: transparent;
+      box-shadow: none;
     }
   }
 }
@@ -1583,8 +2130,9 @@ th[aria-sort] > .ad-sort {
   }
 }
 
-/* Reduced motion (the system's or the app's own choice): the page does not fade in and nothing steps; colour changes stay. */
+/* Reduced motion (the system's or the app's own choice): the console and its pages do not fade in and nothing steps; colour changes stay. */
 @media (prefers-reduced-motion: reduce) {
+  .ad-console,
   .ad-main > .ui-tabpanel {
     animation: none;
   }
@@ -1595,7 +2143,7 @@ th[aria-sort] > .ad-sort {
     translate: none;
   }
 }
-:root[data-motion='reduce'] .ad-main > .ui-tabpanel {
+:root[data-motion='reduce'] :is(.ad-console, .ad-main > .ui-tabpanel) {
   animation: none;
 }
 :root[data-motion='reduce'] .ad-go {

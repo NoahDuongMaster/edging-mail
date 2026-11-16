@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import type { Message } from '../types';
 import type { ThemeTokens } from '../theme';
-import { getLabelChip } from '../theme';
+import { avatarHue as personHue, getLabelChip } from '../theme';
 import {
   GROUP_ORDER,
   displayName,
@@ -30,23 +30,26 @@ import {
   subjectOf
 } from '../lib/mail';
 import { extendSelection, selectRange, toggleOne } from '../lib/selection';
-import { fadeOutInPlace, returnRow } from '../lib/shellMotion';
+import { landRow, returnRow } from '../lib/shellMotion';
 import { SNOOZE_GROUP_ORDER, snoozeGroupOf } from '../lib/snooze';
-import { useT, type TFunction } from '../lib/i18n';
+import { fmt, useT, type TFunction } from '../lib/i18n';
 import {
   Avatar,
   Button,
   Checkbox,
   Chip,
   EmptyState,
+  FlightTrail,
   IconButton,
   ListSkeleton,
+  Odometer,
   SegmentedControl,
   VisuallyHidden,
   durationFor,
   enterRow,
   leaveRow,
-  motionReduced
+  motionReduced,
+  useGlide
 } from '../ui';
 import { segmentTarget } from '../ui/SegmentedControl';
 import { RowMenu, type RowMenuAnchor, type RowMenuView } from './RowMenu';
@@ -108,6 +111,8 @@ interface MessageListProps {
   /** The folder behind `messages` ('inbox', 'spam', 'label:Work' ...): picks the filters, the empty-state hint and the Trash line. */
   folder: string;
   subtitle: string;
+  /** The number inside `subtitle` ("3 unread"): it rolls when it changes (DESIGN-v3 H2). */
+  subtitleCount?: number;
   filter: MailFilter;
   onFilterChange: (filter: MailFilter) => void;
   onMarkAllRead: () => void;
@@ -126,7 +131,7 @@ interface MessageListProps {
   resultsText?: string;
   /** Trash and Spam: deletes everything in the folder for good (the caller asks first). Offered while the folder has mail. */
   onEmptyFolder?: () => void;
-  /** Phone: the search field, which scrolls away with the list (the app bar stays). */
+  /** The search field: under the title in the sheet's head on a desktop; on a phone it scrolls away with the list (the app bar stays). */
   searchSlot?: React.ReactNode;
   /** The Drafts folder: rows name the recipients instead of the sender and are dated by their last save. */
   isDrafts?: boolean;
@@ -149,7 +154,7 @@ interface MessageListProps {
    */
   selection?: ReadonlySet<string>;
   onSelectionChange?: (next: Set<string>) => void;
-  /** Desktop: the selection bar, shown in place of the list's head while something is ticked. */
+  /** Desktop: the selection bar, floating at the bottom of the list sheet while something is ticked (DESIGN-v3 4.1). */
   selectionBar?: React.ReactNode;
   /** The line under the selection bar (J6-39: every row of the page is ticked: Select all in the folder), under the head or the phone's tools. */
   selectionNote?: React.ReactNode;
@@ -398,12 +403,39 @@ function matchHint(m: Message, query: string, shown: string[], tr: TFunction): s
   return address === undefined ? null : tr('list.match_to', { address });
 }
 
+/**
+ * A short text with a number in it ("3 unread", "2 selected") whose number rolls when it changes (DESIGN-v3 H2, ui/Odometer): the words stay,
+ * the digits move. The whole text is read as one (Odometer says its value once); without a number in the text it is the plain text.
+ */
+export function RollingText({ text, count }: { text: string; count: number | undefined }): React.ReactElement {
+  const digits = count === undefined ? '' : String(count);
+  const at = digits === '' ? -1 : text.indexOf(digits);
+  if (count === undefined || at === -1) {
+    return <>{text}</>;
+  }
+  return (
+    <>
+      {text.slice(0, at)}
+      <Odometer value={count} format={(value) => fmt.number(value)} />
+      {text.slice(at + digits.length)}
+    </>
+  );
+}
+
+/**
+ * A row shows at most this many labels (a quiet dot and name, lead review 4: chips cut the preview and added colour); the rest are said by a
+ * quiet "+N" (and in full to screen readers); the reader shows them all.
+ */
+const ROW_LABELS_MAX = 1;
+
 interface RowButtonProps {
   t: ThemeTokens;
   message: Message;
   sender: string;
   /** The name the avatar's initials come from. */
   avatar: string;
+  /** Whose hue the avatar wears (the sender's address: one tint per person, DESIGN-v3 2). */
+  avatarHue: string;
   subject: string;
   /** The row's time, already in words. */
   time: string;
@@ -454,6 +486,7 @@ const RowButton: React.FC<RowButtonProps> = ({
   message: m,
   sender,
   avatar,
+  avatarHue,
   subject,
   time,
   snoozedUntil,
@@ -509,7 +542,7 @@ const RowButton: React.FC<RowButtonProps> = ({
     >
       <span aria-hidden="true" className="ml-dot" />
       {pick === undefined ? (
-        <Avatar name={avatar} selected={selected} className="ml-avatar" />
+        <Avatar name={avatar} hue={personHue(avatarHue)} shape="stamp" size={compact ? 'lg' : 'md'} className="ml-avatar" />
       ) : (
         <span aria-hidden="true" className="ml-pick" data-checked={pick ? 'true' : undefined}>
           {pick ? <Check size={18} strokeWidth={2.25} /> : null}
@@ -552,11 +585,22 @@ const RowButton: React.FC<RowButtonProps> = ({
                   <Chip icon={<FolderOpen size={12} strokeWidth={1.75} aria-hidden="true" />}>{folderChip}</Chip>
                 )}
                 {snoozedUntil === null || compact ? null : <SnoozeChip t={t} until={snoozedUntil} selected={selected} />}
-                {labels.map((label) => (
-                  <Chip key={label} colors={getLabelChip(label, t)}>
-                    {label}
-                  </Chip>
+                {labels.slice(0, ROW_LABELS_MAX).map((label) => (
+                  <span key={label} className="ml-label">
+                    {/* The label's hue is data: the only colour of the label is its dot. */}
+                    <span aria-hidden="true" className="ml-label-dot" style={{ background: getLabelChip(label, t).dot }} />
+                    <span className="ml-label-text">{label}</span>
+                  </span>
                 ))}
+                {labels.length > ROW_LABELS_MAX ? (
+                  <>
+                    {/* The rest: a quiet count on screen, the names for a screen reader (the row's name keeps every label). */}
+                    <span aria-hidden="true" className="ml-more-labels">
+                      +{fmt.number(labels.length - ROW_LABELS_MAX)}
+                    </span>
+                    <VisuallyHidden>{labels.slice(ROW_LABELS_MAX).join(', ')}</VisuallyHidden>
+                  </>
+                ) : null}
               </span>
             ) : null}
           </span>
@@ -680,6 +724,7 @@ interface CompactRowProps {
   message: Message;
   sender: string;
   avatar: string;
+  avatarHue: string;
   subject: string;
   time: string;
   /** Wake time of a snoozed mail: shown in place of the date, because that is what matters in the Snoozed folder. */
@@ -719,6 +764,7 @@ const CompactRow: React.FC<CompactRowProps> = ({
   message: m,
   sender,
   avatar,
+  avatarHue,
   subject,
   time,
   snoozedUntil,
@@ -918,6 +964,7 @@ const CompactRow: React.FC<CompactRowProps> = ({
           message={m}
           sender={sender}
           avatar={avatar}
+          avatarHue={avatarHue}
           subject={subject}
           time={time}
           snoozedUntil={snoozedUntil}
@@ -1107,6 +1154,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   title,
   folder,
   subtitle,
+  subtitleCount,
   filter,
   onFilterChange,
   onMarkAllRead,
@@ -1114,7 +1162,6 @@ export const MessageList: React.FC<MessageListProps> = ({
   onRefresh,
   isLoading,
   searchQuery,
-  onClearSearch,
   scope = 'folder',
   onScopeChange,
   resultsText = '',
@@ -1157,6 +1204,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   };
   const filters = filterOptions(folder, tr);
   // The scrollbar shows while the list scrolls (with a mouse; messagelist.css): set on each scroll, cleared a moment after the last one.
+  // data-stuck: the rows' top is above the scroller's (a day heading sticks there), so the rows fade in under it (messagelist.css).
   React.useEffect(() => {
     const scroller = scrollerRef.current;
     if (scroller === null) {
@@ -1165,6 +1213,8 @@ export const MessageList: React.FC<MessageListProps> = ({
     let timer: number | undefined;
     const onScroll = () => {
       scroller.dataset.scrolling = '';
+      const body = scroller.querySelector('.ml-body');
+      scroller.toggleAttribute('data-stuck', body !== null && body.getBoundingClientRect().top < scroller.getBoundingClientRect().top - 1);
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
         delete scroller.dataset.scrolling;
@@ -1520,10 +1570,9 @@ export const MessageList: React.FC<MessageListProps> = ({
         void returnRow(el);
         continue;
       }
+      // H5: its height opens and it drops in (M4), settling with a small overshoot under a soft accent wash that fades (lib/shellMotion).
       void enterRow(el);
-      const row = el.querySelector('.ml-row');
-      row?.classList.add('nm-anim-highlight');
-      row?.addEventListener('animationend', () => row.classList.remove('nm-anim-highlight'), { once: true });
+      landRow(el);
     }
   }, [messages, view]);
 
@@ -1558,33 +1607,21 @@ export const MessageList: React.FC<MessageListProps> = ({
     }
   };
 
-  // J2-23: the head and the selection bar trade places by a fade-through. The head's parts (the heading, its actions) leave a copy that fades
-  // out in 90 ms when the bar takes their place; back from a selection the head fades in after 60 ms (messagelist.css [data-return]).
-  const showsBar = selecting && selectionBar !== undefined && !compact;
-  const [barShown, setBarShown] = React.useState(showsBar);
-  const [headReturns, setHeadReturns] = React.useState(false);
-  if (barShown !== showsBar) {
-    setBarShown(showsBar);
-    setHeadReturns(!showsBar);
-  }
-  const headPartRef = React.useCallback((node: HTMLDivElement | null) => {
-    if (node === null) {
-      return;
-    }
-    return () => {
-      fadeOutInPlace(node, { lift: false, replacedBy: '.ml-selbar' });
-    };
-  }, []);
+  // DESIGN-v3 H3: one capsule marks the open row and glides to the next one (a desktop; never while rows are ticked, the ticked ones stand
+  // out then). It is a child of the scrolled content, under the rows.
+  const bodyRef = React.useRef<HTMLDivElement | null>(null);
+  const glideRef = useGlide(bodyRef, ".ml-cell[data-selected='true']", { key: selectedId, enabled: !compact && !selecting });
 
   const filterBar = isDrafts ? null : compact ? (
     <FilterChips label={tr('list.filter_label')} options={filters} value={filter} onChange={onFilterChange} />
   ) : (
     <div className="ml-filters">
-      <SegmentedControl label={tr('list.filter_label')} wrap options={filters} value={filter} onChange={onFilterChange} />
+      <SegmentedControl label={tr('list.filter_label')} wrap stretch options={filters} value={filter} onChange={onFilterChange} />
     </div>
   );
 
-  // The scope of a search: the open folder or all mail, and (desktop) the way out of the search.
+  // The scope of a search: the open folder or all mail. ONE Clear control (J6-37): the search field's own, which stands right above it now
+  // on a desktop too (DESIGN-v3 4.1: the search is the list sheet's).
   const scopeBar =
     searching && onScopeChange !== undefined ? (
       <div className="ml-scope">
@@ -1597,11 +1634,6 @@ export const MessageList: React.FC<MessageListProps> = ({
           value={scope}
           onChange={onScopeChange}
         />
-        {compact || onClearSearch === undefined ? null : (
-          <Button variant="ghost" size="sm" onClick={onClearSearch}>
-            {tr('app.clear_search')}
-          </Button>
-        )}
       </div>
     ) : null;
 
@@ -1623,36 +1655,18 @@ export const MessageList: React.FC<MessageListProps> = ({
       data-compact={compact ? 'true' : undefined}
       data-selecting={selecting ? 'true' : undefined}
     >
-      {compact ? null : selecting && selectionBar !== undefined ? (
-        // While rows are ticked the head is the selection bar (J6-26); the page keeps its heading for screen readers.
-        <div className="ml-head" data-selecting="true">
-          <h1 id="list-title" className="ui-visually-hidden">
-            {title}
-          </h1>
-          {selectionBar}
-        </div>
-      ) : (
-        <div className="ml-head" data-return={headReturns ? 'true' : undefined}>
+      {compact ? null : (
+        <div className="ml-head">
           {/* The title and its count cross-fade when the folder changes (M8); a search turns them into the results and their count. Only
-              the quoted search gives way when the column is narrow: the count and where it looked never do (J6-37, J4-38). Back from a
-              selection, the head fades in after the bar's copy has mostly gone (J2-23: data-return); it fades out the same way for the bar. */}
-          <div
-            key={searching ? 'search' : title}
-            ref={headPartRef}
-            className="ml-heading"
-            data-search={searching ? 'true' : undefined}
-            onAnimationEnd={(event) => {
-              if (event.target === event.currentTarget) {
-                setHeadReturns(false);
-              }
-            }}
-          >
+              the quoted search gives way when the column is narrow: the count and where it looked never do (J6-37, J4-38). The count's
+              number rolls (DESIGN-v3 H2). */}
+          <div key={searching ? 'search' : title} className="ml-heading" data-search={searching ? 'true' : undefined}>
             <h1 id="list-title" className="ml-title">
               {searching ? <ResultsTitle query={query} /> : title}
             </h1>
-            <span className="ml-subtitle">{searching ? resultsText : subtitle}</span>
+            <span className="ml-subtitle">{searching ? resultsText : <RollingText text={subtitle} count={subtitleCount} />}</span>
           </div>
-          <div ref={headPartRef} className="ml-actions">
+          <div className="ml-actions">
             {/* Drafts are never unread, Trash and Spam are not read from the list, and with nothing unread there is nothing to mark. */}
             {isDrafts || bin || !canMarkAllRead ? null : (
               <IconButton label={tr('list.mark_all_read')} size="sm" onClick={onMarkAllRead}>
@@ -1668,6 +1682,7 @@ export const MessageList: React.FC<MessageListProps> = ({
 
       {compact ? null : (
         <>
+          {searchSlot === undefined ? null : <div className="ml-search">{searchSlot}</div>}
           {scopeBar}
           {binLine}
           {filterBar}
@@ -1711,7 +1726,8 @@ export const MessageList: React.FC<MessageListProps> = ({
             </div>
           ) : null}
           {/* A new view's rows fade in (M8): the body is drawn afresh for each folder, search and filter. */}
-          <div key={bodyKey} className="ml-body" data-still={stillBody === bodyKey ? 'true' : undefined}>
+          <div ref={bodyRef} key={bodyKey} className="ui-glide-host ml-body" data-still={stillBody === bodyKey ? 'true' : undefined}>
+            {compact ? null : <div ref={glideRef} aria-hidden="true" className="ui-glide ml-glide" />}
             {isLoading && groups.length === 0 ? <ListSkeleton className="ml-skel" label={tr('list.loading')} lines={3} /> : null}
 
             {groups.map((g) => (
@@ -1729,6 +1745,8 @@ export const MessageList: React.FC<MessageListProps> = ({
                     const menuOpen = menu?.message.id === m.id;
                     const sender = partyLabel(m, isDrafts, tr);
                     const avatar = avatarName(m, isDrafts);
+                    // One tint per person: the sender's address (in Drafts, the first recipient's).
+                    const avatarHue = isDrafts ? avatar : m.from_address;
                     // A row under a day heading of its own time says only the clock time (not Yesterday twice); Snoozed is grouped by wake day.
                     const time = formatRowTime(isDrafts ? m.updated_at : m.created_at, !isSnoozed);
                     const subject = subjectOf(m, tr('list.no_subject'));
@@ -1744,6 +1762,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                           message={m}
                           sender={sender}
                           avatar={avatar}
+                          avatarHue={avatarHue}
                           subject={subject}
                           time={time}
                           snoozedUntil={snoozedUntil}
@@ -1801,6 +1820,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                             message={m}
                             sender={sender}
                             avatar={avatar}
+                            avatarHue={avatarHue}
                             subject={subject}
                             time={time}
                             snoozedUntil={snoozedUntil}
@@ -1840,6 +1860,7 @@ export const MessageList: React.FC<MessageListProps> = ({
               <EmptyState
                 className="ml-empty"
                 illustration={caughtUp || loadFailed}
+                art={caughtUp || loadFailed ? undefined : <FlightTrail size="md" />}
                 idle={caughtUp}
                 title={
                   loadFailed
@@ -1893,6 +1914,14 @@ export const MessageList: React.FC<MessageListProps> = ({
           </div>
         </div>
       </div>
+      {compact ? null : (
+        // The selection's bar floats at the bottom centre of the list sheet while rows are ticked (DESIGN-v3 4.1); the anchor stays, so
+        // the bar's copy can fade out in place when it goes (SelectionBar useLeaveInPlace).
+        <div className="ml-dock">
+          <span aria-hidden="true" className="ml-dock-anchor" />
+          {selecting ? selectionBar : null}
+        </div>
+      )}
       {rowActions === undefined ? null : (
         <RowMenu
           message={menu?.message ?? null}

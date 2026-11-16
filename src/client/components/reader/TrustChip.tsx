@@ -1,5 +1,4 @@
 import React from 'react';
-import { ChevronDown } from 'lucide-react';
 import { Badge, Button, Dialog, Popover, type BadgeTone } from '../../ui';
 
 /** One action the explanation offers (an unverified sender: "Move to Spam"). */
@@ -30,9 +29,9 @@ interface TrustChipProps {
 }
 
 /**
- * A trust chip of the reader's header (sealed end to end, sender not verified): a badge that is a button (a chevron says it opens: neutral
- * for the sealed one, the caution tone for an unverified sender), and the explanation it
- * opens in a popover (a small non-modal dialog). A keyboard or pointer open moves focus to the explanation, so a screen reader reads it;
+ * A trust chip of the reader's header (sealed end to end, sender not verified): quiet words with their icon that are a button (neutral for the
+ * sealed one, the caution tone for an unverified sender; no chevron, the recipients keep the sender block's one disclosure), and the
+ * explanation it opens in a popover (a small non-modal dialog). A keyboard or pointer open moves focus to the explanation, so a screen reader reads it;
  * Escape closes it and gives focus back to the chip, Tab closes it and goes on from the chip, a press outside closes it. It is drawn in the
  * body, so the pane never clips it. Never a colour alone: the chip has its words and its icon. On a phone (`sheet`) the explanation is a
  * bottom sheet (ui Dialog: full width, grab handle, scrim; focus on the sheet itself, Escape and the scrim close it, focus returns to the
@@ -87,11 +86,10 @@ export const TrustChip: React.FC<TrustChipProps> = ({ tone, icon, label, heading
         aria-controls={open && !sheet ? noteId : undefined}
         onClick={() => setOpen((value) => !value)}
       >
+        {/* Quiet words with their icon (v3 R3): no chevron of its own; aria-haspopup says it opens, the pointer gets a soft fill. */}
         <Badge tone={tone} className="rd-badge">
           {icon}
           {label}
-          {/* It opens: a small chevron says so (the words and the icon say what it is). */}
-          <ChevronDown size={12} strokeWidth={2} aria-hidden="true" className="rd-badge-more" />
         </Badge>
       </button>
       {sheet ? (

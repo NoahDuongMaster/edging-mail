@@ -1,4 +1,5 @@
 import { DURATION, EASING } from '../../shared/design/tokens';
+import * as homing from '../ui/homing';
 import { durationFor, exitDuration, motionReduced } from '../ui/motion';
 
 // The motion of the mailbox shell that CSS cannot do alone (DESIGN.md section 3: M9 on a phone, M14, M1 played backwards): a phone pane or the
@@ -283,4 +284,102 @@ export function fadeOutInPlace(node: HTMLElement, options: { lift: boolean; repl
       copy.remove();
     });
   });
+}
+
+// ---- v3 HOMING wiring of the mailbox (DESIGN-v3 H1, H5): where a message flies when it goes, and how it comes back on Undo. The flights
+// are pixels only (ui/homing): they never delay the data, the selection, focus or the Undo toast, and they do nothing under reduced motion
+// (the home only lights up).
+
+/** The folders that are homes (DESIGN-v3 H1); labels are `label:<name>`. */
+const FOLDER_HOMES: ReadonlySet<string> = new Set(['inbox', 'starred', 'snoozed', 'sent', 'drafts', 'archive', 'spam', 'trash']);
+
+/**
+ * The ref callback that makes its element the home of `id` (a folder's icon, the phone's menu button, the Compose button): ui/homing's
+ * stable one, so a re-render never registers it again and an unmount forgets exactly its element.
+ */
+export const homeRef = homing.homeRef;
+
+/** The home of `folder` ('archive', 'label:Work' ...), or the phone's menu button while the drawer that holds the folders is shut. */
+export function homeOf(folder: string): homing.HomeId | null {
+  if (!FOLDER_HOMES.has(folder) && !folder.startsWith('label:')) {
+    return null;
+  }
+  // The checks above leave only the names of the HomeId type.
+  const id = folder as homing.HomeId;
+  return homing.homeElement(id) === undefined && homing.homeElement('menu') !== undefined ? 'menu' : id;
+}
+
+/** A box worth flying from or to: on the screen, not empty. */
+function onScreen(el: Element | null): DOMRect | null {
+  const box = el?.getBoundingClientRect();
+  if (box === undefined || box.width === 0 || box.height === 0 || box.bottom < 0 || box.top > window.innerHeight) {
+    return null;
+  }
+  return box;
+}
+
+/**
+ * A message (or `options.count` of them) leaves for `folder`: a letter token lifts off `from` (its row, or the reader's subject) and flies
+ * home. The box is read now, before the row's own exit moves it.
+ */
+export function flyAway(from: Element | null, folder: string, options: homing.FlyHomeOptions): void {
+  const home = homeOf(folder);
+  const box = onScreen(from);
+  if (home === null || box === null) {
+    return;
+  }
+  // ui/homing never throws: a flight that cannot play resolves at once.
+  void homing.flyHome(box, home, options);
+}
+
+/** How long the way back waits at most for the row that came back to open its height (lib/shellMotion returnRow, ui/motion enterRow). */
+const BACK_WAIT_MS = 500;
+
+/**
+ * Undo: the token flies back out of `folder` and lands on `to` (the row that came back, or the reader's subject), once that row has opened
+ * its height (it re-enters from nothing): the landing is where the row will stand, never a box of no height.
+ */
+export function flyBack(folder: string, to: Element | null, options: homing.FlyHomeOptions): void {
+  const home = homeOf(folder);
+  if (home === null || to === null) {
+    return;
+  }
+  const started = performance.now();
+  const go = () => {
+    const box = onScreen(to);
+    const open = box !== null && (!(to instanceof HTMLElement) || box.height >= to.scrollHeight - 2);
+    if (!open && performance.now() - started < BACK_WAIT_MS) {
+      window.requestAnimationFrame(go);
+      return;
+    }
+    if (box !== null) {
+      void homing.flyFrom(home, box, { ...options, kind: options.kind ?? 'restore' });
+    }
+  };
+  go();
+}
+
+/** The 1.2 s wash a new message lands with (H5), after its drop: long enough to be seen, short enough to be gone before the next. */
+const LANDING_WASH_MS = 1200;
+
+/**
+ * H5: a new message lands at the top of the list: it drops 10 px from above with the settle curve (a small overshoot) while its height
+ * opens, then an accent-soft wash on its row fades out (messagelist.css `[data-landed]`). Reduced motion: no drop, the wash only.
+ */
+export function landRow(el: HTMLElement): void {
+  const row = el.querySelector<HTMLElement>('.ml-row') ?? el;
+  row.dataset.landed = 'true';
+  window.setTimeout(() => {
+    delete row.dataset.landed;
+  }, LANDING_WASH_MS);
+  if (motionReduced()) {
+    return;
+  }
+  el.animate(
+    [
+      { opacity: 0, transform: 'translateY(-10px)' },
+      { opacity: 1, transform: 'none' }
+    ],
+    { duration: DURATION.slow + 20, easing: EASING.settle, fill: 'backwards' }
+  );
 }

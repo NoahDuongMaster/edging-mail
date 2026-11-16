@@ -172,7 +172,8 @@ describe('the component library (src/client/ui)', () => {
     const disabled = /\n\.ui-btn\[data-variant\]:is\(:disabled, \[aria-disabled='true'\]\):not\(\[aria-busy='true'\]\) \{([^}]*)\}/.exec(
       ui
     );
-    expect(disabled?.[1]).toMatch(/background: var\(--raised\);\s*border-color: var\(--border\);\s*color: var\(--text3\);/);
+    // v3: the hairline edge of the neutral box is a ring drawn with box-shadow (buttons have no border at all).
+    expect(disabled?.[1]).toMatch(/background: var\(--raised\);\s*box-shadow: inset 0 0 0 1px var\(--border\);\s*color: var\(--text3\);/);
     expect(ui).toMatch(
       /\n\.ui-btn\[data-variant='ghost'\]:is\(:disabled, \[aria-disabled='true'\]\):not\(\[aria-busy='true'\]\) \{[^}]*background: transparent;/
     );
@@ -304,8 +305,83 @@ describe('the component library (src/client/ui)', () => {
     }
     // One theme-specific hover rule would be more specific than the pressed rules and hide the press: themes change variables instead.
     expect(ui).not.toMatch(/:root\[data-theme='dark'\] \.ui-btn\[data-variant='(primary|secondary|ghost|danger)'\]:(hover|active)/);
-    expect(ui).toMatch(/\.ui-btn:active:not\(:disabled, \[aria-disabled='true'\]\) \{\s*translate: 0 calc\(1px \* var\(--motion, 1\)\);/);
+    // v3: a press sinks half a pixel (and its shadow goes inset), scaled by --motion.
+    expect(ui).toMatch(
+      /\.ui-btn:active:not\(:disabled, \[aria-disabled='true'\]\) \{\s*translate: 0 calc\(0\.5px \* var\(--motion, 1\)\);/
+    );
     // The focus ring is index.css's for every variant: no button rule touches the outline.
     expect(ui).not.toMatch(/\.ui-btn[^{]*:focus(-visible)?[^{]*\{[^}]*outline/);
+  });
+});
+
+describe('the v3 "Airmail" material (DESIGN-v3 section 2)', () => {
+  const ui = read('src', 'client', 'ui', 'ui.css');
+  const code = ui.replaceAll(/\/\*[\s\S]*?\*\//g, '');
+  const rule = (selector: string): string => {
+    const at = code.indexOf(`\n${selector} {`);
+    return at === -1 ? '' : code.slice(at, code.indexOf('}', at));
+  };
+
+  it('draws edges as rings in the shadow, not as borders: buttons, popups, cards, tables, dialogs, badges, chips and wells', () => {
+    expect(rule('.ui-btn')).toMatch(/border: 0;/);
+    expect(rule(".ui-btn[data-variant='secondary']")).toMatch(/box-shadow:\s*inset 0 0 0 1px var\(--ui-btn-ring\)/);
+    expect(rule('.ui-popover')).toMatch(/border: 0;[\s\S]*box-shadow:\s*0 0 0 1px var\(--ui-pop-ring\),\s*var\(--pop-shadow\);/);
+    expect(rule('.ui-card')).toMatch(/border: 0;[\s\S]*box-shadow: var\(--sheet-shadow\);/);
+    expect(rule('.ui-table-wrap')).toMatch(/border: 0;[\s\S]*box-shadow: var\(--sheet-shadow\);/);
+    expect(rule('.ui-dialog')).toMatch(/border: 0;[\s\S]*box-shadow: var\(--float-shadow\);/);
+    // No visible hairline round a badge, a chip, a well, a track or a banner (a badge and a chip keep a transparent 1px edge for area states).
+    for (const selector of ['.ui-badge', '.ui-chip', '.ui-secret', '.ui-code', '.ui-seg', '.ui-banner']) {
+      expect(rule(selector), selector).not.toMatch(/border: 1px solid var/);
+    }
+    // No line between table rows, between placeholder rows, between sections, or above a dialog's buttons.
+    expect(rule('.ui-table td')).not.toMatch(/border-bottom/);
+    expect(rule('.ui-skel-row')).not.toMatch(/border-bottom/);
+    expect(rule('.ui-section + .ui-section')).not.toMatch(/border-top/);
+    expect(code).not.toMatch(/\.ui-dialog-body:not\(:empty\) \+ \.ui-dialog-foot \{[^}]*border-top/);
+  });
+
+  it('keeps the 3:1 --control edge on fields (WCAG 1.4.11), 40px fields on a desktop and 44px on touch, and the search pill without one', () => {
+    expect(code).toMatch(/\.ui-input,\n\.ui-select \{[^}]*min-height: var\(--ui-h-field\);[^}]*border: 1px solid var\(--control\);/);
+    expect(code).toMatch(/--ui-h-field: calc\(var\(--control-md\) \+ 4px\);/);
+    expect(code).toMatch(/--ui-h-md: var\(--control-touch\);\s*--ui-h-field: var\(--control-touch\);/);
+    // The search pill is identified by its magnifier and placeholder (text3, 4.5:1 on the raised fill in both themes), not by an edge.
+    expect(rule(".ui-input[data-variant='search']")).toMatch(
+      /--ui-placeholder: var\(--text3\);[\s\S]*background: var\(--raised\);[\s\S]*border-color: transparent;[\s\S]*border-radius: var\(--radius-pill\);/
+    );
+  });
+
+  it("makes the one solid danger button the confirmation's, through variables (no state selector per theme or per place)", () => {
+    expect(rule(".ui-dialog[role='alertdialog']")).toMatch(
+      /--ui-danger-fill: var\(--ui-danger-solid\);\s*--ui-danger-ink: var\(--ui-on-danger\);/
+    );
+    expect(rule(".ui-btn[data-variant='danger']")).toMatch(/background: var\(--ui-danger-fill\);\s*color: var\(--ui-danger-ink\);/);
+    expect(code).not.toMatch(/alertdialog[^{]*\.ui-btn[^{]*:(hover|active)/);
+  });
+
+  it('marks the option the arrows are on with a tint AND an --indicator pill, never a fill alone', () => {
+    expect(rule(".ui-option[data-active='true']")).toMatch(/background: var\(--ui-item-active\);/);
+    expect(rule(".ui-option[data-active='true']::before")).toMatch(/width: 3px;[\s\S]*background: var\(--indicator\);/);
+    expect(rule(".ui-table tbody tr[aria-selected='true'] td:first-child::before")).toMatch(
+      /width: 3px;[\s\S]*background: var\(--indicator\);/
+    );
+  });
+
+  it('lets reduced motion stop the v3 signature durations too, and keeps the scrollbar pill to a fine pointer', () => {
+    const index = read('src', 'client', 'index.css');
+    for (const block of [
+      /@media \(prefers-reduced-motion: reduce\) \{\s*html:root \{([^}]*)\}/.exec(index)?.[1] ?? '',
+      /html:root\[data-motion='reduce'\] \{([^}]*)\}/.exec(index)?.[1] ?? ''
+    ]) {
+      expect(block).toMatch(/--dur-homing: 0ms;/);
+      expect(block).toMatch(/--dur-roll: 150ms;/);
+      expect(block).toMatch(/--dur-glide: 150ms;/);
+    }
+    // Chrome 121+: the standard properties are set back to auto under a fine pointer, where the ::-webkit-scrollbar pill is drawn.
+    expect(index).toMatch(
+      /@media \(pointer: fine\) \{\s*@supports selector\(::-webkit-scrollbar\) \{\s*\* \{\s*scrollbar-width: auto;\s*scrollbar-color: auto;\s*\}\s*\}\s*\*::-webkit-scrollbar \{/
+    );
+    expect(index).toMatch(/::selection \{\s*background: color-mix\(in srgb, var\(--accent\) 22%, transparent\);/);
+    expect(index).toMatch(/caret-color: var\(--accent\);/);
+    expect(index).toMatch(/input:-webkit-autofill,[\s\S]*?box-shadow: 0 0 0 100px var\(--surface\) inset;/);
   });
 });

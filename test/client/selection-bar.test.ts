@@ -44,6 +44,24 @@ const base: BarProps = {
 const render = (props: Partial<BarProps> = {}): string => renderToStaticMarkup(createElement(SelectionBar, { ...base, ...props }));
 const named = (html: string, name: string): boolean => html.includes(`aria-label="${name}"`);
 
+/** The text a screen reader gets: aria-hidden subtrees dropped, tags stripped (the count's number is ui/Odometer's, said once). */
+function spoken(html: string): string {
+  let hidden = 0;
+  let out = '';
+  for (const part of html.split(/(<[^>]+>)/)) {
+    if (part.startsWith('</')) {
+      hidden = Math.max(0, hidden - (hidden > 0 ? 1 : 0));
+    } else if (part.startsWith('<')) {
+      if (hidden > 0 || part.includes('aria-hidden="true"')) {
+        hidden += part.endsWith('/>') ? 0 : 1;
+      }
+    } else if (hidden === 0) {
+      out += part;
+    }
+  }
+  return out;
+}
+
 describe('the desktop selection bar', () => {
   const html = render();
 
@@ -55,7 +73,9 @@ describe('the desktop selection bar', () => {
     );
     expect(html).toContain(tr('list.select_all'));
     expect(html).toContain('type="checkbox"');
-    expect(html).toContain(tr('list.selected_count', { count: 3 }));
+    // The count's number rolls (DESIGN-v3 H2): the words are one text for a screen reader, the digits a picture of it.
+    expect(spoken(html)).toContain(tr('list.selected_count', { count: 3 }));
+    expect(html).toMatch(/class="ml-selbar-count"><span class="ui-odo">/);
   });
 
   it('offers Archive, Move to Trash, Snooze, Mark as read, Star, Move to folder, Add label and Clear, each named', () => {
@@ -131,13 +151,13 @@ describe('fittingActions (how many actions of the desktop bar fit beside the cou
 });
 
 describe("the phone's selection bar", () => {
-  it('is the app bar: Close, the count, Archive, Move to Trash and More (a sheet with the rest)', () => {
+  it('is a floating bar in thumb reach: Close, the count, Archive, Move to Trash and More (a sheet with the rest)', () => {
     const html = render({ phone: true });
-    expect(html).toContain('mb-phone-bar ml-selbar-phone');
+    expect(html).toMatch(/^<div class="ml-selbar-phone">/);
     for (const name of [tr('list.clear_selection'), tr('action.archive'), tr('action.move_to_trash'), tr('list.more_actions')]) {
       expect(named(html, name), name).toBe(true);
     }
-    expect(html).toContain(tr('list.selected_count', { count: 3 }));
+    expect(spoken(html)).toContain(tr('list.selected_count', { count: 3 }));
     expect(html).not.toContain('role="toolbar"');
   });
 });
@@ -180,12 +200,18 @@ describe('the selection summary in the reading pane', () => {
   it('names the pane with N selected, lists the first ticked senders and subjects, and counts the rest', () => {
     const html = summary({ rows: ['a', 'b', 'c', 'd', 'e', 'f'].map((id) => mail(id)) });
     expect(html).toContain(`id="${SELECTION_SUMMARY_TITLE_ID}"`);
-    expect(html).toContain(tr('list.selected_count', { count: 6 }));
+    // The heading's number rolls (DESIGN-v3 H2); a screen reader still reads "6 selected" as one text.
+    expect(spoken(html)).toContain(tr('list.selected_count', { count: 6 }));
     for (const id of ['a', 'b', 'c', 'd']) {
       expect(html, id).toContain(`Subject ${id}`);
     }
     expect(html).not.toContain('Subject e');
     expect(html).toContain(tr('list.summary_more', { count: 2 }));
+    // Lead review 11: the senders it names are stamps in their own tint (as in the list), hidden from screen readers.
+    const stamps = html.match(
+      /<span class="ui-avatar mb-selsum-stamp" data-size="sm" data-shape="stamp" data-hue="true"[^>]*aria-hidden="true"/g
+    );
+    expect(stamps).toHaveLength(4);
   });
 
   it('offers the bar actions as labelled buttons in one group, and Clear selection', () => {

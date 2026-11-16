@@ -90,15 +90,18 @@ describe('the Settings dialog', () => {
 
   it('shows an admin the ten sections as one vertical tab list in the nav (the toolbar slot), Profile first and selected, then the admin console as a button, not a tab', () => {
     const html = render();
-    // The nav sits between the title and the content: who is signed in, the tab list (Up and Down move), then its foot.
+    // The nav sits between the title and the content: the glide capsule of the open row (decorative), who is signed in, the tab list (Up
+    // and Down move), then its foot.
     expect(html).toMatch(
-      /<\/h2>[\s\S]*?<div class="ui-dialog-toolbar"><div class="st-nav" data-pane="nav"><div class="st-identity">[\s\S]*?<div role="tablist" aria-label="Settings sections" aria-orientation="vertical" class="ui-tabs st-tabs">[\s\S]*?<div class="ui-dialog-body">/
+      /<\/h2>[\s\S]*?<div class="ui-dialog-toolbar"><div class="st-nav ui-glide-host" data-pane="nav"><div class="ui-glide st-glide" aria-hidden="true"><\/div><div class="st-identity">[\s\S]*?<div role="tablist" aria-label="Settings sections" aria-orientation="vertical" class="ui-tabs st-tabs">[\s\S]*?<div class="ui-dialog-body">/
     );
     const found = tabs(html);
     expect(found.map((tag) => /id="([^"]+)"/.exec(tag)?.[1])).toEqual([...ACCOUNT_IDS, ...DOCS_IDS]);
     expect(found[0]).toContain('aria-selected="true"');
     expect(found.slice(1).every((tag) => tag.includes('aria-selected="false"') && tag.includes('tabindex="-1"'))).toBe(true);
-    // The technical group has a visual label only (a tab list holds tabs): read out, each tab's own name stands alone.
+    // The two groups (the account, the technical sections) have a visual label only (a tab list holds tabs): read out, each tab's own name
+    // stands alone.
+    expect(html).toContain('<span class="ui-tab-group" aria-hidden="true">Account</span>');
     expect(html).toContain('<span class="ui-tab-group" aria-hidden="true">Technical</span>');
     const panel = tagOf(html, 'settings-panel-profile');
     expect(panel).toContain('role="tabpanel"');
@@ -230,7 +233,7 @@ const docs = (tab: 'architecture' | 'deployment' | 'routing'): string =>
   renderToStaticMarkup(createElement(DeveloperDocs, { t: getTokens(false), tab }));
 
 describe('the technical tabs', () => {
-  it('list the parts of the deployment as a hairline description list, no cards and no coloured icons', () => {
+  it('list the parts of the deployment as one grouped card of rows (a description list), no inline colours', () => {
     const html = docs('architecture');
     expect(html).toMatch(/^<dl class="st-defs">/);
     expect(html.match(/<div class="st-def">/g)).toHaveLength(9);

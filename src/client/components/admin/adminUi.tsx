@@ -3,7 +3,7 @@ import { Ban, CircleAlert, Clock, ExternalLink, ShieldCheck, ShieldOff } from 'l
 import type { ThemeTokens } from '../../theme';
 import { adminErrorText, type AdminUser } from '../../lib/admin/types';
 import { useT } from '../../lib/i18n';
-import { Badge, Banner, Button, Dialog, Disclosure, DisclosurePanel, VisuallyHidden } from '../../ui';
+import { Badge, Banner, Button, Dialog, Disclosure, DisclosurePanel, Section, VisuallyHidden } from '../../ui';
 
 /**
  * A long text that is there for whoever wants it (the full statement of what admins can and cannot do): a quiet disclosure with `label`,
@@ -62,9 +62,9 @@ export function personState(user: AdminUser): PersonState {
 
 /**
  * A state in words after a 14px icon, never a pill, so every value of a column starts its text at the same edge. `tone` colours an
- * exception (the words and the icon say it too).
+ * exception or a check that passed (the words and the icon say it too).
  */
-const StateWord: React.FC<{ icon: React.ReactNode; tone?: 'warning' | 'danger'; children: React.ReactNode }> = ({
+export const StateWord: React.FC<{ icon: React.ReactNode; tone?: 'success' | 'warning' | 'danger'; children: React.ReactNode }> = ({
   icon,
   tone,
   children
@@ -135,16 +135,53 @@ export const PersonRole: React.FC<{ user: AdminUser }> = ({ user }) => {
 };
 
 /**
- * The head of a section of the console: its title (the h2 under the console's h1), one line that says what the section is for, and on the
- * right the section's one primary action.
+ * The head of a section of the console, as a page of Settings has it: its title (the h2 under the console's h1, 24/32), one line that says
+ * what the section is for, and on the right the section's one primary action.
  */
 export const PageHead: React.FC<{ title: string; description: string; action?: React.ReactNode }> = ({ title, description, action }) => (
-  <div className="ad-page-head">
+  <header className="ad-page-head">
     <div className="ad-page-heading">
       <h2 className="ad-page-title">{title}</h2>
       <p className="ad-page-desc">{description}</p>
     </div>
     {action === undefined ? null : <div className="ad-page-action">{action}</div>}
+  </header>
+);
+
+/**
+ * One grouped card of rows (ui Section `grouped`, the card of a Settings page): each direct child is a row, separated from the next by a
+ * hairline that starts at the text. `title` is the quiet label over the card.
+ */
+export const Group: React.FC<{ title?: string; description?: string; headingLevel?: 3 | 4; children: React.ReactNode }> = ({
+  title,
+  description,
+  headingLevel = 3,
+  children
+}) => (
+  <Section grouped className="ad-group" title={title} description={description} headingLevel={headingLevel}>
+    {children}
+  </Section>
+);
+
+/** A row of a Group: its words (a label, a hint under it) on the left, its control on the right; under the words on a narrow card. */
+export const Row: React.FC<{ label?: string; hint?: string; hintId?: string; children?: React.ReactNode }> = ({
+  label,
+  hint,
+  hintId,
+  children
+}) => (
+  <div className="ad-row">
+    {label === undefined && hint === undefined ? null : (
+      <div className="ad-row-text">
+        {label === undefined ? null : <span className="ad-row-label">{label}</span>}
+        {hint === undefined ? null : (
+          <span id={hintId} className="ad-row-hint">
+            {hint}
+          </span>
+        )}
+      </div>
+    )}
+    {children === undefined ? null : <div className="ad-row-control">{children}</div>}
   </div>
 );
 

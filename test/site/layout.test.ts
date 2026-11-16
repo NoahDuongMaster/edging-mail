@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DARK, FONT_SANS, LIGHT, paletteToCssVars } from '../../src/shared/design/tokens';
+import { AVATAR_HUES, DARK, FONT_SANS, LIGHT, paletteToCssVars } from '../../src/shared/design/tokens';
 import { LANDING_CSS } from '../../src/worker/site/landing.css';
 
 const rule = (selector: string): string => LANDING_CSS.split('\n').find((line) => line.startsWith(`${selector}{`)) ?? '';
@@ -44,9 +44,10 @@ describe("the landing stylesheet's look", () => {
   });
 
   it('has no colour of its own: every hex colour in it is a token', () => {
-    // Every field of Palette is a string, but Object.values of an interface says `any`.
+    // Every field of Palette is a string, but Object.values of an interface says `any`. The person tints of the sample senders' stamps
+    // (AVATAR_HUES, v3) are tokens of the same file, so they count as tokens too.
     const tokens = new Set(
-      [...(Object.values(LIGHT) as string[]), ...(Object.values(DARK) as string[])].map((value) => value.toLowerCase())
+      [...(Object.values(LIGHT) as string[]), ...(Object.values(DARK) as string[]), ...AVATAR_HUES].map((value) => value.toLowerCase())
     );
     const hexes = LANDING_CSS.match(/#[0-9a-fA-F]{3,8}\b/g) ?? [];
     expect(hexes.length).toBeGreaterThan(0);

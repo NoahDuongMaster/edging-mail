@@ -61,10 +61,10 @@ describe('the Settings dialog and its sections', () => {
     expect(dialog).toMatch(/className="st-dialog"/);
     expect(settings).not.toMatch(/createPortal|className="ui-dialog/);
     // A desktop: the nav down the left and the page on the right, each scrolling on its own, so the nav stays in view however long the
-    // page is (1024x768, 1440x600); the dialog is about 880px wide.
+    // page is (1024x768, 1440x600); the v3 two-pane sheet is up to 1040px wide.
     const desktop = /@media \(min-width: 641px\) \{([\s\S]*?)\n\}/.exec(cssCode)?.[1] ?? '';
     expect(desktop).toMatch(
-      /\.ui-dialog\.st-dialog \{[^}]*display: grid;[^}]*grid-template-columns: var\(--st-nav-w\) minmax\(0, 1fr\);[^}]*max-width: 880px;/
+      /\.ui-dialog\.st-dialog \{[^}]*display: grid;[^}]*grid-template-columns: var\(--st-nav-w\) minmax\(0, 1fr\);[^}]*max-width: 1040px;/
     );
     expect(desktop).toMatch(/\.st-dialog > \.ui-dialog-toolbar \{[^}]*grid-column: 1;[^}]*min-height: 0;[^}]*overflow-y: auto;/);
     expect(desktop).toMatch(/\.st-dialog > \.ui-dialog-body \{[^}]*grid-column: 2;/);
@@ -108,17 +108,55 @@ describe('the Settings dialog and its sections', () => {
     );
   });
 
+  it('draws each theme in its own palette and speaks one selection language on Appearance (v3 P1)', () => {
+    // Each picture's six colours come from its own palette, per page theme (the night one is never the browser's black). FP2: on a light
+    // page the night window is the night surface and raised tones (a step up, so it does not outweigh the chosen card).
+    expect(cssCode).toMatch(
+      /\n\.st-theme \{\s*--st-l-ground: var\(--chrome\);[^}]*--st-d-ground: color-mix\(in srgb, var\(--text\) 92%, var\(--text3\)\);\s*--st-d-sheet: color-mix\(in srgb, var\(--text\) 82%, var\(--text3\)\);/
+    );
+    expect(cssCode).toMatch(
+      /:root\[data-theme='dark'\] \.st-theme \{\s*--st-l-ground: color-mix\(in srgb, var\(--text\) 88%, var\(--text3\)\);\s*--st-l-sheet: var\(--text\);[^}]*--st-d-ground: var\(--surface\);\s*--st-d-sheet: var\(--raised\);/
+    );
+    expect(cssCode).not.toMatch(/color-scheme: dark;/);
+    // The chosen card and the chosen Motion / Density row: the accent's soft tint; the card adds the 2px indicator ring.
+    expect(cssCode).toMatch(
+      /\.st-theme \.ui-check:has\(> \.ui-radio-input:checked\) \{\s*background: var\(--accent-soft\);\s*box-shadow: inset 0 0 0 2px var\(--indicator\);/
+    );
+    expect(cssCode).toMatch(
+      /\.ui-radio-group\.st-choices > \.ui-check:has\(> \.ui-radio-input:checked\) \{\s*background: var\(--accent-soft\);/
+    );
+  });
+
+  it('ends a short page under its last group, with no decoration; the panel keeps one height (v3 P1, FP2)', () => {
+    expect(settings).toMatch(/<SectionBody key=\{current\.id\}>\{contentOf\(current\)\}<\/SectionBody>/);
+    // FP2: the end mark (a small FlightTrail under the last group) read as a stray doodle: gone, and nothing replaces it.
+    expect(settings).toMatch(
+      /function SectionBody\(\{ children \}: \{ children: React\.ReactNode \}\): React\.ReactElement \{\s*return <div className="st-section">\{children\}<\/div>;\s*\}/
+    );
+    expect(settings).not.toMatch(/FlightTrail|st-end-mark|END_MARK_ROOM/);
+    expect(cssCode).not.toMatch(/st-end-mark/);
+    expect(cssCode).toMatch(/\.ui-dialog\.st-dialog \{[^}]*height: min\(760px, 100%\);/);
+  });
+
   it('on a phone, shows the list of sections, then one section with a way back: no row scrolls sideways or is cut, a tap opens, arrows do not', () => {
     // The nav is ui/Tabs vertical (a list down the side, Up and Down move); a click or Enter on a row opens its section on a phone
     // (onActivate), the arrows only move the selection, so moving through the list never hides it under the keyboard's focus.
     expect(settings).toMatch(/<Tabs\s+id=\{TABS_ID\}\s+className="st-tabs"\s+orientation="vertical"\s/);
     expect(settings).toMatch(/onActivate=\{\(\) => \{\s*if \(!secretHeld\) \{\s*setPane\('section'\);/);
     expect(settings).toMatch(/onClick=\{\(\) => setPane\('nav'\)\}/);
+    // The open section's row carries the gliding capsule of the v3 signature (ui/glide.ts), keyed on the open section; the Tabs' own ink
+    // gives way to it.
+    expect(settings).toMatch(/const capsule = useGlide\(navRef, OPEN_ROW, \{ key: `\$\{openKey\} \$\{settled\}` \}\);/);
+    expect(settings).toMatch(/<NavFrame pane=\{pane\} openKey=\{current\.id\}>/);
+    expect(settings).toMatch(/<div ref=\{capsule\} className="ui-glide st-glide" aria-hidden="true" \/>/);
+    expect(cssCode).toMatch(/\.ui-tabs\.st-tabs > \.ui-ink \{\s*display: none;/);
     const phone = /@media \(max-width: 640px\) \{([\s\S]*?)\n\}/.exec(cssCode)?.[1] ?? '';
     expect(phone).toMatch(
       /\.st-dialog:has\(\.st-nav\[data-pane='nav'\]\) > \.ui-dialog-body,\s*\.st-dialog:has\(\.st-nav\[data-pane='section'\]\) > \.ui-dialog-toolbar \{\s*display: none;/
     );
-    expect(phone).toMatch(/\.ui-tabs\.st-tabs > \.ui-tab,[^{]*\{[^}]*min-height: 48px;/);
+    // Big rows (56px, the icon in a tile, a chevron) on a phone; the open section's glide capsule is a desktop thing only.
+    expect(phone).toMatch(/\.ui-tabs\.st-tabs > \.ui-tab,[^{]*\{[^}]*min-height: 56px;/);
+    expect(phone).toMatch(/\.st-glide \{\s*display: none;/);
     // In a section a phone's head is a nav bar: Back to the list over the head, on the left; the title is kept for screen readers only.
     expect(phone).toMatch(/\.st-back \{\s*position: absolute;[^}]*display: block;/);
     expect(phone).toMatch(

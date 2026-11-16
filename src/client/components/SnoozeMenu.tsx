@@ -13,7 +13,7 @@ import {
   tomorrowMorning,
   type SnoozePreset
 } from '../lib/snooze';
-import { Button, Chip, Dialog, Popover, TextField } from '../ui';
+import { Button, Chip, DateTimePicker, Dialog, Popover } from '../ui';
 import { ToolButton } from './reader/ToolButton';
 import './messagelist.css';
 
@@ -136,7 +136,7 @@ export const SnoozeMenu: React.FC<SnoozeMenuProps> = ({
   React.useEffect(() => {
     if (picking) {
       formRef.current?.scrollIntoView({ block: 'nearest' });
-      formRef.current?.querySelector<HTMLInputElement>('input')?.focus();
+      formRef.current?.querySelector<HTMLElement>('.ui-dtp-trigger')?.focus();
     }
   }, [picking]);
 
@@ -221,9 +221,8 @@ export const SnoozeMenu: React.FC<SnoozeMenuProps> = ({
         </button>
         {picking ? (
           <form id={formId} ref={formRef} noValidate onSubmit={submit} className="ml-snooze-form rd-snooze-form">
-            <TextField
+            <DateTimePicker
               id={pickId}
-              type="datetime-local"
               label={tr('snooze.date_time_label')}
               hideLabel
               value={pick}
@@ -231,8 +230,8 @@ export const SnoozeMenu: React.FC<SnoozeMenuProps> = ({
               max={toLocalInputValue(new Date(menu.now.getTime() + MAX_SNOOZE_MS))}
               aria-invalid={problem !== null}
               aria-describedby={problem === null ? (parseLocalInput(pick) === null ? undefined : `${pickId}-when`) : `${pickId}-problem`}
-              onChange={(e) => {
-                setPick(e.target.value);
+              onChange={(next) => {
+                setPick(next);
                 setProblem(null);
               }}
             />
@@ -378,7 +377,7 @@ function OpenSnoozeSheet({
   React.useEffect(() => {
     if (picking) {
       formRef.current?.scrollIntoView({ block: 'nearest' });
-      formRef.current?.querySelector<HTMLInputElement>('input')?.focus();
+      formRef.current?.querySelector<HTMLElement>('.ui-dtp-trigger')?.focus();
     }
   }, [picking]);
 
@@ -442,9 +441,8 @@ function OpenSnoozeSheet({
         </button>
         {picking ? (
           <form id={formId} ref={formRef} noValidate onSubmit={submit} className="rd-sheet-form rd-snooze-form">
-            <TextField
+            <DateTimePicker
               id={pickId}
-              type="datetime-local"
               label={tr('snooze.date_time_label')}
               hideLabel
               value={pick}
@@ -452,8 +450,8 @@ function OpenSnoozeSheet({
               max={toLocalInputValue(new Date(opened.getTime() + MAX_SNOOZE_MS))}
               aria-invalid={problem !== null}
               aria-describedby={problem === null ? (parseLocalInput(pick) === null ? undefined : `${pickId}-when`) : `${pickId}-problem`}
-              onChange={(e) => {
-                setPick(e.target.value);
+              onChange={(next) => {
+                setPick(next);
                 setProblem(null);
               }}
             />

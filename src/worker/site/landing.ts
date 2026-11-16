@@ -15,6 +15,7 @@ import {
   composeFragment,
   deployButton,
   domainFragment,
+  flightTrail,
   footer,
   icon,
   keyFragment,
@@ -82,7 +83,8 @@ const DEPLOY_COMMANDS: readonly (readonly string[])[] = [
 ];
 
 // The headline, the facts in pills, the lead and the two buttons, left-aligned over a faint grid, then the product in an app window
-// with a soft accent glow behind it. The screenshot is the first image of the page, so it loads at once and has its size.
+// with a soft accent glow behind it, the airmail edge along its top and a still flight trail taking off from it towards the buttons.
+// The screenshot is the first image of the page, so it loads at once and has its size.
 function hero(copy: LandingCopy): string {
   const { app } = languageOf(copy.lang);
   const [licence, platform] = copy.ui.heroPills;
@@ -96,7 +98,7 @@ function hero(copy: LandingCopy): string {
         </div>
       </div>
       <div class="wrap shot">
-        ${productFrame({
+        ${flightTrail('trail-hero')}${productFrame({
           light: `${SCREENSHOT_PATH}/app-light.${app}.png`,
           dark: `${SCREENSHOT_PATH}/app-dark.${app}.png`,
           width: SCREENSHOT_WIDTH,

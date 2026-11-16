@@ -5,13 +5,14 @@ import type { ThemeTokens } from '../../theme';
 import { announce } from '../../lib/announce';
 import { LANGUAGE_NAMES, LOCALES, useT } from '../../lib/i18n';
 import { useOrgSettings, useSaveDefaultLanguage } from '../../lib/language';
-import { Card, Select } from '../../ui';
+import { Select } from '../../ui';
 import { TwoFactorPolicy } from './TwoFactorPolicy';
-import { ErrorText, PageHead } from './adminUi';
+import { ErrorText, Group, PageHead, Row } from './adminUi';
 
 /**
- * The organisation's settings, one card each: the default language (what the sign-in screens and anyone who has not chosen a language
- * see; saved as soon as it is chosen) and whether everyone must use two-step sign-in.
+ * The organisation's settings, as a page of Settings has them: grouped cards of rows. The default language (what the sign-in screens and
+ * anyone who has not chosen a language see; saved as soon as it is chosen) is a row with its list on the right; whether everyone must use
+ * two-step sign-in is a card of its own (TwoFactorPolicy).
  */
 export const LanguagePanel: React.FC<{ t: ThemeTokens }> = () => {
   const tr = useT();
@@ -33,8 +34,8 @@ export const LanguagePanel: React.FC<{ t: ThemeTokens }> = () => {
     <div className="ad-pane">
       <PageHead title={tr('term.settings')} description={tr('admin.settings_desc')} />
       <div className="ad-cards">
-        <Card title={tr('lang.org_default')} description={tr('lang.org_default_hint')} headingLevel={3} className="ad-setting-card">
-          <div className="ad-setting">
+        <Group title={tr('lang.label')}>
+          <Row label={tr('lang.org_default')} hint={tr('lang.org_default_hint')}>
             <Select
               id="admin-language"
               label={tr('lang.org_default')}
@@ -49,16 +50,21 @@ export const LanguagePanel: React.FC<{ t: ThemeTokens }> = () => {
                   save.mutate(next);
                 }
               }}
+              className="ad-select"
             />
-          </div>
-          {saved ? (
-            <p className="ad-feedback">
-              <CircleCheck size={16} aria-hidden="true" />
-              {tr('settings.saved')}
-            </p>
+          </Row>
+          {saved || loadError !== undefined || saveError !== undefined ? (
+            <div className="ad-row-note">
+              {saved ? (
+                <p className="ad-feedback">
+                  <CircleCheck size={16} aria-hidden="true" />
+                  {tr('settings.saved')}
+                </p>
+              ) : null}
+              {loadError === undefined && saveError === undefined ? null : <ErrorText>{saveError ?? loadError}</ErrorText>}
+            </div>
           ) : null}
-          {loadError === undefined && saveError === undefined ? null : <ErrorText>{saveError ?? loadError}</ErrorText>}
-        </Card>
+        </Group>
         <TwoFactorPolicy required={settings.data?.settings.require_2fa} />
       </div>
     </div>

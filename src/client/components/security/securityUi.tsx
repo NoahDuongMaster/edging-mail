@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronLeft, type LucideIcon } from 'lucide-react';
+import { ChevronLeft, CircleAlert, CircleCheck, type LucideIcon } from 'lucide-react';
 import type { ThemeTokens } from '../../theme';
 import { useT } from '../../lib/i18n';
 import { Banner, Button, Card, TextField } from '../../ui';
@@ -8,19 +8,24 @@ import { AuthButton, AuthSteps, ErrorLine, type AuthStep } from '../auth/authUi'
 import { sixDigits } from '../auth/TwoFactorEnrolment';
 import '../settings/settings.css';
 
-// The small pieces the views of the Security section share: the status card of the overview, a frame with a Back button and the name of
+// The small pieces the views of the Security section share: the status cards of the overview, a frame with a Back button and the name of
 // the action, the fields for a password and a six-digit code, the closing line of a finished action and the last failure. The look is in
-// settings.css (`st-status*`, `st-view*`); the steps shown once (the recovery key, the codes, the enrolment) come from auth/ and look the
-// same here as there.
+// settings.css (the status and view classes); the steps shown once (the recovery key, the codes, the enrolment) come from auth/ and look
+// the same here as there.
 
 export const CODE_LENGTH = 6;
+
+/** How a status card reads at a glance: on and fine (success), something to do (warning), or a plain fact (neutral). */
+export type StatusTone = 'success' | 'warning' | 'neutral';
 
 interface StatusRowProps {
   /** Prefix of the ids: the title is `${id}-label`. */
   id: string;
   icon: LucideIcon;
   title: string;
-  /** A Badge after the title: the state in a word (On, Off, Saved, a count). */
+  /** The soft tone of the icon tile: the state of the thing, never decoration. */
+  tone?: StatusTone;
+  /** The state in a word after the title (StatusWord: On, Off, Saved, a count). */
   status?: React.ReactNode;
   /** Plain lines under the title (each one different): what it is for. */
   lines: readonly string[];
@@ -33,47 +38,67 @@ interface StatusRowProps {
 /** No facts (one array for every row without any, so the default prop is stable). */
 const NO_FACTS: readonly string[] = [];
 
+/** The state of a status card in one word with an icon (a check for on and saved, an alert for what needs doing), in the tone's colour. */
+export const StatusWord: React.FC<{ tone: StatusTone; children: React.ReactNode }> = ({ tone, children }) => {
+  const Icon = tone === 'success' ? CircleCheck : CircleAlert;
+  return (
+    <span className="st-state" data-tone={tone}>
+      <Icon size={14} strokeWidth={2} aria-hidden="true" />
+      {children}
+    </span>
+  );
+};
+
 /**
- * One thing of the account's security on the overview: a row of the one Security card (StatusList), divided from the next by a hairline:
- * a small bare icon, its name and state, a line or two, and what can be done about it on the right.
+ * One thing of the account's security on the overview, as a status card of its own: an icon tile in a soft tone of its state, its name and
+ * state in a word, a line or two, and what can be done about it on the right.
  */
-export const StatusRow: React.FC<StatusRowProps> = ({ id, icon: Icon, title, status, lines, facts = NO_FACTS, children }) => (
+export const StatusRow: React.FC<StatusRowProps> = ({
+  id,
+  icon: Icon,
+  title,
+  tone = 'neutral',
+  status,
+  lines,
+  facts = NO_FACTS,
+  children
+}) => (
   // Read in order: the title and its status, what it means, then the action; settings.css puts the action at the right of the text and
   // under it in a narrow card, so a short action never squeezes the text into a narrow column.
-  <div className="st-status-row">
-    <Icon size={16} strokeWidth={1.75} aria-hidden="true" className="st-status-icon" />
-    <div className="st-status-top">
-      <h4 id={`${id}-label`} className="st-status-title">
-        {title}
-      </h4>
-      {status}
-    </div>
-    {lines.length === 0 && facts.length === 0 ? null : (
-      <div className="st-status-lines">
-        {lines.map((line) => (
-          <p key={line} className="st-muted">
-            {line}
-          </p>
-        ))}
-        {facts.map((fact) => (
-          <p key={fact} className="st-status-fact">
-            {fact}
-          </p>
-        ))}
+  <Card className="st-status-card">
+    <div className="st-status-row" data-tone={tone}>
+      <span className="st-status-tile" aria-hidden="true">
+        <Icon size={20} strokeWidth={1.75} />
+      </span>
+      <div className="st-status-top">
+        <h4 id={`${id}-label`} className="st-status-title">
+          {title}
+        </h4>
+        {status}
       </div>
-    )}
-    {children === undefined ? null : <div className="st-status-actions">{children}</div>}
-  </div>
+      {lines.length === 0 && facts.length === 0 ? null : (
+        <div className="st-status-lines">
+          {lines.map((line) => (
+            <p key={line} className="st-muted">
+              {line}
+            </p>
+          ))}
+          {facts.map((fact) => (
+            <p key={fact} className="st-status-fact">
+              {fact}
+            </p>
+          ))}
+        </div>
+      )}
+      {children === undefined ? null : <div className="st-status-actions">{children}</div>}
+    </div>
+  </Card>
 );
 
-/** The one card of the Security overview: its rows (StatusRow) under each other, hairlines between (J3-09: no card per row). */
+/** The status cards of the Security overview, one under the other (StatusRow). */
 export const StatusList: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  // .st-cards is the container whose width puts the actions under the text in a narrow card (settings.css).
-  <div className="st-cards">
-    <Card padding="none" className="st-status-list">
-      {children}
-    </Card>
-  </div>
+  // The list is the container whose width puts the actions under the text in a narrow card (settings.css).
+  <div className="st-status-list">{children}</div>
 );
 
 interface ViewFrameProps {
@@ -86,7 +111,10 @@ interface ViewFrameProps {
   children: React.ReactNode;
 }
 
-/** What replaces the cards of the section while one action is open: a Back button above, the name of the action, and the action itself. */
+/**
+ * What replaces the cards of the section while one action is open: a Back button above, where it is in its flow (Step 2 of 3), the name of
+ * the action at the page-title size, and the action itself.
+ */
 export const ViewFrame: React.FC<ViewFrameProps> = ({ title, onBack, step, children }) => {
   const tr = useT();
   const heading = React.useRef<HTMLHeadingElement>(null);
@@ -110,7 +138,7 @@ export const ViewFrame: React.FC<ViewFrameProps> = ({ title, onBack, step, child
       <h4 ref={heading} tabIndex={-1} className="st-view-title st-focus-title">
         {title}
       </h4>
-      {children}
+      <div className="st-view-card">{children}</div>
     </div>
   );
 };

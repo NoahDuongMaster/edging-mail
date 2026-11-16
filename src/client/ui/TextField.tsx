@@ -1,3 +1,4 @@
+import { Search } from 'lucide-react';
 import React from 'react';
 import { cx } from './cx';
 import { describedBy, Field, has } from './Field';
@@ -17,21 +18,30 @@ interface FieldOptions {
   mono?: boolean;
 }
 
-export type TextFieldProps = FieldOptions & Omit<React.ComponentProps<'input'>, 'size'>;
+export type TextFieldProps = FieldOptions &
+  Omit<React.ComponentProps<'input'>, 'size'> & {
+    /**
+     * `search`: the filled search pill of the list and the header (no edge at rest, a magnifier inside its left edge, the surface and the focus
+     * ring while it has focus). Pass `leading` to replace the magnifier. Default: the bordered field.
+     */
+    variant?: 'search';
+  };
 export type TextAreaProps = FieldOptions & React.ComponentProps<'textarea'>;
 
 interface ShellProps extends Pick<FieldOptions, 'leading' | 'trailing'> {
   invalid: boolean;
   disabled: boolean | undefined;
   multiline: boolean;
+  variant?: 'search';
   children: React.ReactNode;
 }
 
 /** The bordered box around the input and its adornments. The focus ring is drawn on this box (see ui.css). */
-function Shell({ invalid, disabled, multiline, leading, trailing, children }: ShellProps) {
+function Shell({ invalid, disabled, multiline, variant, leading, trailing, children }: ShellProps) {
   return (
     <div
       className="ui-input"
+      data-variant={variant}
       data-invalid={invalid ? 'true' : undefined}
       data-disabled={disabled === true ? 'true' : undefined}
       data-multiline={multiline ? 'true' : undefined}
@@ -45,7 +55,8 @@ function Shell({ invalid, disabled, multiline, leading, trailing, children }: Sh
 
 /**
  * A one-line text field with its label, hint and error: text, email, password, search, number. Use `leading` and `trailing` for an
- * icon or a button inside the box. Every field has a label (hide it with `hideLabel` when the layout says it already).
+ * icon or a button inside the box, and `variant="search"` for the filled search pill. Every field has a label (hide it with `hideLabel`
+ * when the layout says it already).
  */
 export function TextField({
   label,
@@ -55,6 +66,7 @@ export function TextField({
   leading,
   trailing,
   mono,
+  variant,
   id,
   className,
   ...input
@@ -62,9 +74,10 @@ export function TextField({
   const generated = React.useId();
   const fieldId = id ?? generated;
   const describedby = [describedBy(fieldId, hint, error), input['aria-describedby']].filter(has).join(' ');
+  const lead = leading ?? (variant === 'search' ? <Search size={16} aria-hidden="true" /> : undefined);
   return (
     <Field id={fieldId} label={label} hideLabel={hideLabel} hint={hint} error={error}>
-      <Shell invalid={has(error)} disabled={input.disabled} multiline={false} leading={leading} trailing={trailing}>
+      <Shell invalid={has(error)} disabled={input.disabled} multiline={false} variant={variant} leading={lead} trailing={trailing}>
         <input
           id={fieldId}
           className={cx('ui-input-el', mono === true && 'nm-mono', className)}

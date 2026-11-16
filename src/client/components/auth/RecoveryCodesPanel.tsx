@@ -73,7 +73,10 @@ export const RecoveryCodesPanel: React.FC<RecoveryCodesPanelProps> = ({ t, codes
       <p className="au-text">{tr('twofa.codes_lead')}</p>
       <p className="au-muted">{tr('twofa.codes_not_key')}</p>
 
-      <SecretBox label={tr('term.recovery_codes')} value={codes} className="au-key au-codes" />
+      <div className="au-secret-frame">
+        <span className="ui-airmail au-secret-edge" aria-hidden="true" />
+        <SecretBox label={tr('term.recovery_codes')} value={codes} className="au-key au-codes" />
+      </div>
 
       <div className="au-actions">
         <CopyButton text={codes.join('\n')} size="lg" className="au-btn" onResult={(result) => setCopyFailed(result === 'failed')} />

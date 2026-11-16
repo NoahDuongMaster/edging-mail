@@ -3,8 +3,9 @@ import { icon, type IconName } from './icons';
 import { windowDots } from './windowDots';
 
 /**
- * The product screenshot in an app window: a window bar (three neutral dots and the address in a pill) above the picture, a hairline,
- * radius 12 and the large shadow; the accent glow behind it comes from CSS. The picture follows the visitor's light or dark setting.
+ * The product screenshot in an app window: a window bar (three neutral dots and the address in a pill, the airmail edge of the app's
+ * compose window along its top, drawn by CSS) above the picture, a hairline, the app's sheet radius (18) and the large shadow; the accent
+ * glow behind it comes from CSS. The picture follows the visitor's light or dark setting.
  * On a small tablet CSS crops the same file to its left part (folders and list), and on a phone to the message list alone at
  * a readable size, instead of shrinking the whole window.
  */

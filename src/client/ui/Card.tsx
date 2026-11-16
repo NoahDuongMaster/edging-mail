@@ -38,15 +38,16 @@ interface SectionProps extends Omit<SectionHeaderProps, 'titleId'> {
 }
 
 /**
- * A part of a page with a title, an optional description and optional actions on the right (Settings, a form). It has no box: the space
- * and a hairline between sections do the separating. For a bordered surface use Card.
+ * A part of a page with a title, an optional description and optional actions on the right (Settings, a form). It has no box: space sets
+ * sections apart. With `grouped` its rows sit in one card (the iOS-like settings group): each direct child is a row, separated from the
+ * next by a hairline that starts at the text. For a single bordered surface use Card.
  */
-export function Section({ className, children, ...header }: SectionProps): React.ReactElement {
+export function Section({ className, children, grouped = false, ...header }: SectionProps & { grouped?: boolean }): React.ReactElement {
   const titleId = React.useId();
   return (
     <section className={cx('ui-section', className)} aria-labelledby={has(header.title) ? titleId : undefined}>
       <SectionHeader titleId={titleId} {...header} />
-      {children}
+      {grouped ? <div className="ui-group">{children}</div> : children}
     </section>
   );
 }
@@ -55,15 +56,15 @@ interface CardProps extends SectionProps {
   /** `none` when the content is a table or a list that runs to the edges. */
   padding?: 'md' | 'none';
   /**
-   * The whole card is one link or button (a domain card that opens its page): it lifts 2 px with a deeper shadow on hover. Put the link or
+   * The whole card is one link or button (a domain card that opens its page): it lifts 1 px with a deeper shadow on hover. Put the link or
    * button inside; never on a card that only holds controls, and never on message rows.
    */
   interactive?: boolean;
 }
 
 /**
- * A bordered surface (hairline, 8 px corners, a small shadow and the inset highlight of the site's cards) for one self-contained thing: an
- * account, a domain, a form, a security status. Do not put a Card in a Card.
+ * A floating surface (the v3 sheet material: the surface, 14 px corners and the sheet shadow, no hairline) for one self-contained thing:
+ * an account, a domain, a form, a security status. Do not put a Card in a Card.
  */
 export function Card({ className, padding = 'md', interactive = false, children, ...header }: CardProps): React.ReactElement {
   const titleId = React.useId();

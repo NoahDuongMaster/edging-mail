@@ -2,7 +2,7 @@ import type React from 'react';
 import type { ThemeTokens } from '../../theme';
 import { tRich, useT } from '../../lib/i18n';
 import { Step, Steps } from '../../ui';
-import { DashboardLink } from './adminUi';
+import { DashboardLink, ModalFrame } from './adminUi';
 
 // Names the Cloudflare dashboard shows and the DNS records it adds: shown as they are, never translated.
 const BOUNCE_HOST = 'cf-bounce';
@@ -49,7 +49,7 @@ export const DomainGuide: React.FC<{ t: ThemeTokens; domain: string }> = ({ doma
         <Step>{tRich('domains.guide_out3', { code: <span className="ad-code">{ERROR_CODE}</span> })}</Step>
       </Steps>
       <h4 className="ad-guide-title">{tr('domains.guide_subdomain_title')}</h4>
-      <p className="ad-muted">
+      <p className="ad-guide-note">
         {tRich(
           'domains.guide_subdomain',
           {
@@ -62,5 +62,18 @@ export const DomainGuide: React.FC<{ t: ThemeTokens; domain: string }> = ({ doma
         )}
       </p>
     </div>
+  );
+};
+
+/**
+ * The setup steps of one domain in a dialog of their own (opened from the foot of the domain's card), wide enough for the dashboard's paths
+ * to read on one line; Close, Escape and the scrim close it and the focus goes back to the button that opened it.
+ */
+export const DomainGuideDialog: React.FC<{ t: ThemeTokens; domain: string; onClose: () => void }> = ({ t, domain, onClose }) => {
+  const tr = useT();
+  return (
+    <ModalFrame t={t} title={tr('domains.guide_title', { name: domain })} onClose={onClose} maxWidth={640}>
+      <DomainGuide t={t} domain={domain} />
+    </ModalFrame>
   );
 };

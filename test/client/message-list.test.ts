@@ -85,22 +85,27 @@ describe('the desktop list', () => {
     expect(tagOf(rows[0], 'ml-row')).not.toContain('aria-current');
   });
 
-  it('shows the avatar, the sender (or the bare address), the subject, the preview, the paperclip and the label chip in one row', () => {
+  it('shows the avatar, the sender (or the bare address), the subject, the preview, the paperclip and the quiet label in one row', () => {
     expect(html).toContain('Dana Whitfield');
     expect(html).toContain('noreply@example.org');
     expect(html).toContain('Quarterly plan');
     expect(html).toContain('Meet at the harbour on Friday');
     expect(html).toContain(`aria-label="${tr('list.has_attachments')}"`);
+    // Lead review 4: a label is a quiet dot of its hue and its name (no chip fill); its name is in the row's name.
     expect(html).toMatch(
-      /<span class="ui-chip" data-kind="label" style="[^"]*"><span aria-hidden="true" class="ui-chip-dot"[^>]*><\/span><span class="ui-chip-text">Work<\/span>/
+      /<span class="ml-label"><span aria-hidden="true" class="ml-label-dot" style="background:[^"]+"><\/span><span class="ml-label-text">Work<\/span><\/span>/
     );
-    // The avatar is the library's neutral initials tile, hidden from screen readers (the name is written beside it), never a hue per
-    // person; the open row's sender takes the accent tint.
+    expect(html).not.toContain('data-kind="label"');
+    const three = render({ messages: [mail({ id: 'l', labels: JSON.stringify(['Work', 'Travel', 'Family']) })] });
+    expect(three.match(/class="ml-label"/g)).toHaveLength(1);
+    expect(three).toContain('<span aria-hidden="true" class="ml-more-labels">+2</span>');
+    expect(three).toContain('<span class="ui-visually-hidden">Travel, Family</span>');
+    // v3: the avatar is the library's initials tile on the person's own soft tint (ui Avatar `hue`: the sender's address through
+    // labelHue), hidden from screen readers (the name is written beside it); the open row is told by its capsule, not by its avatar.
     const avatars = [...html.matchAll(/<span class="ui-avatar ml-avatar"[^>]*>([^<]*)<\/span>/g)];
     expect(avatars.map((match) => match[1])).toEqual(['DW', 'N']);
     expect(avatars[0][0]).toContain('aria-hidden="true"');
-    expect(avatars[0][0]).not.toContain('data-selected');
-    expect(avatars[1][0]).toContain('data-selected="true"');
+    expect(avatars[1][0]).not.toContain('data-selected');
     expect(html).not.toMatch(/border-radius:\s*50%/);
   });
 
@@ -213,6 +218,7 @@ describe('the phone board', () => {
   it('shows a star only on a starred row, leaves the labels out, never marks an open row, and has no archive label at rest', () => {
     expect((html.match(/class="ml-star"/g) ?? []).length).toBe(1);
     expect(html).not.toContain('ui-chip-text');
+    expect(html).not.toContain('ml-label');
     expect(html).not.toContain('aria-current');
     expect(html).not.toContain('ml-swipe-reveal');
     expect(html).not.toContain('transform');
@@ -260,9 +266,10 @@ describe('the states of an empty list', () => {
     expect(searched).toContain(tr('list.try_other_search'));
     expect(searched).not.toContain('/edgar.svg');
     expect(searched).not.toContain(tr('app.clear_search'));
-    // ONE Clear control (J6-37): the head's (with the scope switch); the empty state only offers to look in all mail.
+    // ONE Clear control (J6-37): the search field's own X (App's search, which the list sheet's head holds now, DESIGN-v3 4.1); the list
+    // adds none of its own, and the empty state only offers to look in all mail.
     const cleared = render({ searchQuery: 'zebra', onClearSearch: noop, onScopeChange: noop });
-    expect(cleared.match(new RegExp(`<button[^>]*>${tr('app.clear_search')}</button>`, 'g'))).toHaveLength(1);
+    expect(cleared).not.toContain(tr('app.clear_search'));
     expect(cleared).toMatch(new RegExp(`<button[^>]*>${tr('list.search_all')}</button>`));
     const filtered = render({ filter: 'unread' });
     expect(filtered).toContain(tr('list.no_match'));
@@ -372,14 +379,15 @@ describe('multi-select and the row names (J6-26, J1-20)', () => {
     expect(render({ messages: rows, onSelectionChange: noop, isDrafts: true, folder: 'drafts' })).not.toContain('ml-check');
   });
 
-  it('marks the ticked rows, says "Selected" in their name, and shows the selection bar in place of the head', () => {
+  it('marks the ticked rows, says "Selected" in their name, and floats the selection bar at the bottom of the sheet (the head stays)', () => {
     const html = render({ messages: rows, onSelectionChange: noop, selection: new Set(['b']), selectionBar: '<BAR>' });
     expect(html).toContain('data-selecting="true"');
     expect(html.match(/data-checked="true"/g)).toHaveLength(1);
     expect(html).toContain(tr('list.selected_sr'));
-    expect(html).toContain('&lt;BAR&gt;');
-    expect(html).toMatch(/<h1 id="list-title" class="ui-visually-hidden">Inbox<\/h1>/);
-    expect(html).not.toContain('class="ml-heading"');
+    expect(html).toMatch(/<div class="ml-dock"><span aria-hidden="true" class="ml-dock-anchor"><\/span>&lt;BAR&gt;<\/div>/);
+    expect(html).toMatch(/<h1 id="list-title" class="ml-title">Inbox<\/h1>/);
+    // Nothing ticked: the dock is empty (its anchor only).
+    expect(render({ messages: rows, onSelectionChange: noop, selectionBar: '<BAR>' })).not.toContain('&lt;BAR&gt;');
   });
 
   it('on the phone board: the avatar becomes a round tick, the row a toggle (aria-pressed), and no swipe while selecting', () => {

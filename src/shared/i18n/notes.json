@@ -777,13 +777,29 @@
     "security": true
   },
   "auth.forgot_hint": {
-    "context": "Sign-in screen: one line under the 'Forgot password' link (auth.forgot_password). Resetting the password needs the recovery key the person saved when the account was set up. Screen readers also read it as the link's description.",
+    "context": "Sign-in screen: one quiet line under the password field, about the 'Forgot password' link (auth.forgot_password) on the field's label row. Resetting the password needs the recovery key the person saved when the account was set up. Screen readers also read it as the link's description.",
     "security": true
   },
   "auth.forgot_password": {
-    "context": "Button: link under the sign-in form that opens the forgotten-password flow (no question mark: it is a button).",
+    "context": "Button: a text link on the label row of the password field (sign-in and unlock) that opens the forgotten-password flow (no question mark: it is a button).",
     "security": true,
     "max": 26
+  },
+  "auth.panel_proof_host": {
+    "context": "Brand panel of the sign-in screens (desktop, right half): the second of three short proof lines under the statement, with a building icon. The app runs on the organisation's own account, not a mail provider's.",
+    "security": true
+  },
+  "auth.panel_proof_no_admin": {
+    "context": "Brand panel of the sign-in screens (desktop, right half): the first of three short proof lines under the statement, with a lock icon. Mail is encrypted to each person's own key, so nobody else can open it, admins included (as forgot.lost_key says).",
+    "security": true
+  },
+  "auth.panel_proof_two_factor": {
+    "context": "Brand panel of the sign-in screens (desktop, right half): the third of three short proof lines, with a shield icon. Admin accounts always have two-factor sign-in (members when the organisation requires it).",
+    "security": true
+  },
+  "auth.panel_statement": {
+    "context": "Brand panel of the sign-in screens (desktop, right half): one large statement in display type. Mail is stored encrypted and only the person's password, in their own browser, opens it.",
+    "security": true
   },
   "auth.password_required": {
     "context": "Sign-in, unlock, and the password asked once more after a reload in the middle of a first sign-in: red line under the password field after the person pressed the button with the field empty.",
@@ -969,10 +985,6 @@
     "context": "Error when a chosen file cannot be read by the browser",
     "security": false
   },
-  "compose.attachments_not_saved": {
-    "context": "Small note under the attachment list: draft autosave does not keep attachments",
-    "security": false
-  },
   "compose.attachments_too_large": {
     "context": "Error when attachments plus text pass the size limit; {max} is a number of megabytes (25)",
     "security": false
@@ -1037,6 +1049,11 @@
     "context": "Draft autosave status in the compose header",
     "security": false,
     "max": 24
+  },
+  "compose.draft_saved_no_files": {
+    "context": "Draft autosave status in the compose header when files are attached: the text was saved, the attached files were not (drafts never keep attachments)",
+    "security": false,
+    "max": 44
   },
   "compose.draft_saving": {
     "context": "Draft autosave status in the compose header",
@@ -1189,11 +1206,6 @@
     "security": false,
     "max": 120
   },
-  "compose.send_shortcut": {
-    "context": "Hint next to the Send button (desktop only); {keys} is replaced by two key caps, Ctrl and Enter",
-    "security": false,
-    "max": 16
-  },
   "compose.send_undone": {
     "context": "Screen-reader announcement after Undo on the 'Sending…' toast: the message did not leave and the compose window is open again.",
     "security": false,
@@ -1318,6 +1330,53 @@
   "crash.reload_hint": {
     "context": "Second line of the crash screen (shown when the app fails to render); says that mail already saved is still on the server (it does not promise that nothing was lost)",
     "security": true
+  },
+  "datetime.day_period": {
+    "context": "Label (screen readers) of the AM/PM switch in the date-time picker of a 12-hour language",
+    "security": false
+  },
+  "datetime.dialog_label": {
+    "context": "Accessible name and phone sheet title of the date-time picker dialog (calendar + time)",
+    "security": false
+  },
+  "datetime.empty": {
+    "context": "Placeholder in the date-time picker field while no date and time is chosen",
+    "security": false
+  },
+  "datetime.hour": {
+    "context": "Label (screen readers) of the hour list in the date-time picker",
+    "security": false
+  },
+  "datetime.minute": {
+    "context": "Label (screen readers) of the minute list in the date-time picker",
+    "security": false
+  },
+  "datetime.next_month": {
+    "context": "Icon button label in the date-time picker: show the next month of the calendar",
+    "security": false
+  },
+  "datetime.prev_month": {
+    "context": "Icon button label in the date-time picker: show the previous month of the calendar",
+    "security": false
+  },
+  "datetime.set": {
+    "context": "Button of the date-time picker: keeps the chosen date and time and closes the picker",
+    "security": false,
+    "max": 16
+  },
+  "datetime.time_label": {
+    "context": "Label in front of the hour and minute lists of the date-time picker",
+    "security": false
+  },
+  "datetime.today": {
+    "context": "Button (quick date chip) in the date-time picker: picks today",
+    "security": false,
+    "max": 16
+  },
+  "datetime.tomorrow": {
+    "context": "Button (quick date chip) in the date-time picker: picks tomorrow",
+    "security": false,
+    "max": 16
   },
   "docs.arch_assets": {
     "context": "Card text: the web app is served by the Worker's static assets feature; /api is the path of the server routes (not translated).",
@@ -1554,6 +1613,10 @@
     "context": "DNS check result: when the check ran. {when} is a date and time already formatted for the language.",
     "security": false
   },
+  "domains.copy_record": {
+    "context": "DNS checklist of a domain: accessible name of the Copy button next to a DNS record host name ({name} is the host, e.g. cf-bounce.example.com). The button shows Copy.",
+    "security": false
+  },
   "domains.empty": {
     "context": "Admin Domains tab when no domain exists.",
     "security": false
@@ -1638,6 +1701,10 @@
     "context": "Setup steps: the name of the Subdomains section of Cloudflare Email Routing settings (bold, inside a sentence).",
     "security": false
   },
+  "domains.guide_title": {
+    "context": "Title of the dialog with the Cloudflare setup steps of one domain ({name} is the domain, e.g. example.com).",
+    "security": false
+  },
   "domains.guide_worker": {
     "context": "Setup steps: how to name the Cloudflare Worker that runs the app (fills {worker}).",
     "security": false
@@ -1645,11 +1712,6 @@
   "domains.hide_records": {
     "context": "DNS checklist of a domain: disclosure that hides the DNS records of a step.",
     "security": false
-  },
-  "domains.hide_steps": {
-    "context": "Button on a domain card that closes the Cloudflare setup steps.",
-    "security": false,
-    "max": 28
   },
   "domains.in_use": {
     "context": "Admin console, Domains: a quiet word in place of Remove on a domain that addresses still use (the server refuses to remove it); the count of addresses is in the line under the name.",
@@ -1767,7 +1829,7 @@
     "security": false
   },
   "domains.show_steps": {
-    "context": "Button on a domain card that opens the Cloudflare setup steps.",
+    "context": "Button at the foot of a domain card that opens the Cloudflare setup steps in a dialog.",
     "security": false,
     "max": 28
   },
@@ -2496,7 +2558,7 @@
     "max": 20
   },
   "keys.unlock_forgot_hint": {
-    "context": "Unlock screen: line under the 'Forgot password' link (the link signs out and opens the forgotten-password flow).",
+    "context": "Unlock screen: ONE short line under the 'Forgot password' link (the link signs out on this device and opens the forgotten-password flow, which asks for the recovery key). Keep it to one line (about 55 Latin characters).",
     "security": true
   },
   "keys.unlock_host": {
@@ -3372,18 +3434,9 @@
     "security": false,
     "max": 24
   },
-  "reader.one_attachment": {
-    "context": "Reader attachments heading when the message has exactly one file (the file's card shows its size, so the heading only counts it).",
-    "security": false
-  },
   "reader.remove_label": {
     "context": "Screen-reader name and tooltip of the x button on a label chip in the reader's header; {label} is the label's name",
     "security": false
-  },
-  "reader.reply_options": {
-    "context": "Reader header on a desktop: label and tooltip of the small chevron beside Reply; it opens a menu with Reply all and Forward.",
-    "security": false,
-    "max": 40
   },
   "reader.show_quoted": {
     "context": "Reader: button under a received reply (plain text), and the control drawn inside an HTML mail, that shows the quoted original message folded away at the end of the reply (same words as compose.show_quoted)",
@@ -4641,6 +4694,11 @@
   "users.make_member_desc": {
     "context": "Person dialog: one line next to the Make member button, saying what it does.",
     "security": false
+  },
+  "users.manage": {
+    "context": "People table: the quiet word at the end of each row that says the row opens the person (a picture of the action; the name is the button).",
+    "security": false,
+    "max": 14
   },
   "users.never": {
     "context": "People table, Last sign-in column: the person never signed in.",

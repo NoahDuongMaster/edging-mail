@@ -1,8 +1,9 @@
-/* The mailbox shell (App.tsx, Sidebar, BrandMark, NoticesBanner, LockedMailBanner, ErrorBoundary's status page): the Operate surface. On a
-   desktop the window ground (`--chrome`) holds the header and the folders, and ONE rounded content sheet (surface, radius 12, hairline, the
-   sheet shadow) holds the list and the reader, 8px in from the right and bottom edges of the window (DESIGN.md section 2: the inset canvas).
-   On a phone one pane fills the screen. Classes are `mb-*`. Colours, radii, heights, durations are the variables of ui.css and theme.ts;
-   nothing here names a colour.
+/* The mailbox shell (App.tsx, Sidebar, BrandMark, NoticesBanner, LockedMailBanner, the status pages App draws): the Operate surface in the v3
+   "Airmail" layout (DESIGN-v3 4.1). On a desktop the window ground (`--chrome`) holds the left rail (brand, Compose, the folders, the
+   labels, the account at its foot) and TWO floating sheets: the list and the reader (surface, `--radius-sheet`, `--sheet-shadow`, no
+   border), 12px apart and 12px from the window's top, right and bottom. Space, tone and soft elevation structure the page; a hairline only
+   where two surfaces of one tone meet with nothing else between them. On a phone one pane fills the screen on the surface. Classes are
+   `mb-*`. Colours, radii, heights, durations are the variables of ui.css and theme.ts; nothing here names a colour.
 
    Order: main.tsx imports index.css (and with it ui.css) before App, so this file comes later in the cascade: a rule here wins over a ui
    primitive's rule of the same specificity (`.ui-btn[data-size]` is 0,2,0) and has to be more specific only to beat a stronger one. */
@@ -10,16 +11,27 @@
 /* ---------- The page ---------- */
 
 .mb-root {
-  /* The columns of a desktop: the folders, the list (the header's search takes its width), and the reader that takes the rest. */
-  --mb-side-w: 240px;
-  --mb-list-w: clamp(336px, 28vw + 32px, 440px);
-  /* How far the content sheet stands in from the window's right and bottom edges. */
-  --mb-gap: 8px;
+  /* The columns of a desktop: the rail (272px from a 1440px window: a 24-character address fits at its foot), the list sheet, and the
+     reader sheet that takes the rest. */
+  --mb-rail-w: clamp(232px, 14vw + 72px, 272px);
+  --mb-list-w: clamp(360px, 20vw + 152px, 440px);
+  /* The air round and between the sheets. */
+  --mb-gap: 12px;
   /* The phone's Compose button: its height and its distance from the bottom edge. The list scrolls its last row above it with the clearance
-     these make (--ml-fab-clear, read by messagelist.css): the button, its offset and 8px. */
+     these make (--ml-fab-clear, read by messagelist.css): the button, its offset and 64px; over the same zone the rows fade out
+     (--ml-fab-fade), so no text runs into the button. */
   --mb-fab-h: 48px;
-  --mb-fab-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
-  --ml-fab-clear: calc(var(--mb-fab-h) + var(--mb-fab-bottom) + 16px);
+  --mb-fab-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  --ml-fab-clear: calc(var(--mb-fab-h) + var(--mb-fab-bottom) + 64px);
+  /* The fade behind the button (W5 lead review 12): only the band the button floats in, 96px at the foot (the button and 28px over its top
+     edge; taller when a home indicator lifts the button), so the row under the button stays readable. messagelist.css draws it with these:
+     the rows are whole down to the band's top, at 60 % at the button's top edge (never under 50 % above it), at 40 % 16px lower (what
+     shows round the button's rounded corner stays quiet) and at 30 % at the screen's foot (the surface at about 70 % over them). */
+  --ml-fab-top: calc(var(--mb-fab-h) + var(--mb-fab-bottom));
+  --ml-fab-fade: calc(var(--ml-fab-top) + 28px);
+  --ml-fab-mid: 60%;
+  --ml-fab-low: 40%;
+  --ml-fab-floor: 30%;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -28,9 +40,9 @@
   background: var(--chrome);
   color: var(--text);
   font-size: 14px;
-  line-height: 20px;
+  line-height: 22px;
 }
-/* On a phone the list and the reader fill the screen, so the page behind them is the surface. */
+/* On a phone the list and the reader fill the screen, so the page behind them is the surface (no sheets). */
 .mb-root[data-layout='phone'] {
   background: var(--surface);
 }
@@ -46,14 +58,10 @@
   min-width: 0;
   min-height: 0;
 }
-/* The content sheet: the notices, then the list and the reader, on one rounded surface lifted off the ground. */
+/* The desktop: the sheets float on the ground, 12px from the window's edges and from the rail; the notices (when any) stand above them. */
 .mb-root[data-layout='desktop'] .mb-main {
-  margin: 0 var(--mb-gap) var(--mb-gap) 0;
-  overflow: hidden;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-dialog);
-  box-shadow: var(--sheet-shadow);
+  gap: var(--mb-gap);
+  padding: var(--mb-gap) var(--mb-gap) var(--mb-gap) 0;
 }
 
 /* ---------- The brand: Edgar's tile and the wordmark (BrandMark.tsx) ---------- */
@@ -61,13 +69,13 @@
 .mb-brand {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
 }
 .mb-brand-tile {
   display: block;
   flex: none;
-  border-radius: var(--radius-control);
+  border-radius: 8px;
 }
 .mb-wordmark {
   font-size: 16px;
@@ -83,90 +91,362 @@
   color: var(--text2);
 }
 
-/* ---------- Desktop header: mark, search, theme, account ---------- */
+/* ---------- The search pill (App.tsx renderSearch): in the list sheet's head on a desktop, under the title on a phone ---------- */
 
-/* On the window ground, in the columns of the page under it: the mark over the folders (its tile over their icons), the search over the list
-   column with the list's edges, the theme and the account on the right, the account's edge on the sheet's right edge. */
-.mb-header {
-  display: grid;
-  flex: none;
-  grid-template-columns: var(--mb-side-w) var(--mb-list-w) minmax(0, 1fr);
-  align-items: center;
-  height: 56px;
-  padding-right: var(--mb-gap);
-}
-.mb-header-brand {
-  min-width: 0;
-  padding-inline: 17px 12px;
-}
-.mb-header-search {
-  min-width: 0;
-}
-.mb-header-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-  min-width: 0;
-}
 .mb-search {
   width: 100%;
   min-width: 0;
   margin: 0;
 }
-/* The search is a FILLED field, not a well (a resting edge of --control beside the header read as focused): the raised fill and a hairline at
-   rest, its magnifier (text3, 4.9:1 light / 5.2:1 dark on the fill) and its placeholder (the same) say what it is (1.4.11 Understanding:
-   a field identified by its text and icon needs no 3:1 edge); hovered, the edge firms up; focused, it takes the surface and the full --focus
-   ring of ui.css. Light theme on the desktop header: the window ground is a step under --raised, so the field is the surface there. */
+/* A FILLED pill, not a well: the raised fill and no edge at rest; its magnifier (text3) and its placeholder (text3, 4.5:1+ on the fill in
+   both themes) say what it is (1.4.11 Understanding: a field identified by its text and icon needs no 3:1 edge). Hovered, the fill steps; focused,
+   it takes the surface, the focus edge and the focus ring of ui.css. 40px high with a mouse (44 on touch). */
 .mb-search .ui-input {
-  background: var(--mb-search-fill, var(--raised));
-  border-color: var(--border);
+  min-height: max(40px, var(--ui-h-md));
+  padding-inline: 14px 6px;
+  background: var(--raised);
+  border-color: transparent;
+  border-radius: var(--radius-pill);
   box-shadow: none;
 }
-/* Its placeholder and its magnifier are what say it is a field (the fill and the hairline are 1.2:1 and 1.3:1 in the dark theme), so the
-   placeholder is the full text3 there too (5.3:1 on the dark fill, 1.4.3), not the dimmer mix ui.css gives other fields. */
+/* Its placeholder and its magnifier are what say it is a field, so the placeholder is the full text3 (not the dimmer mix of other fields). */
 .mb-search {
   --ui-placeholder: var(--text3);
 }
-:root[data-theme='light'] .mb-header-search {
-  --mb-search-fill: var(--surface);
+.mb-search .ui-input > .ui-adorn:first-child {
+  color: var(--text3);
+}
+/* The app has its own clear button: Chrome's X of a search field would make two. */
+.mb-search input[type='search']::-webkit-search-cancel-button {
+  appearance: none;
 }
 @media (hover: hover) {
   .mb-search .ui-input:hover:not([data-disabled='true'], [data-invalid='true'], :focus-within) {
-    border-color: var(--border-strong);
+    background: color-mix(in srgb, var(--text) 7%, var(--surface));
   }
 }
 @supports selector(:has(*)) {
   .mb-search .ui-input:has(> .ui-input-el:focus-visible) {
     background: var(--surface);
+    border-color: var(--focus);
   }
 }
 
-/* The owner's round avatar: the one way into Settings. The button is as high as any control (44px on touch), the face is 32px. */
+/* The owner's round avatar (the phone bar): the one way into Settings there. The button is 44px on touch, the face is 32px. */
 .mb-account.ui-icon-btn {
   border-radius: 999px;
 }
-.mb-phone-bar > .mb-mark-read {
-  margin-right: 8px;
+/* The person's own face: the accent tint (DESIGN-v3 2: everybody else wears their own hue). */
+.mb-account .ui-avatar,
+.mb-account-row .ui-avatar {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: 600;
 }
 
-/* ---------- Phone header: menu, folder title, mark all read, account ---------- */
+/* ---------- Desktop rail: brand, Compose, folders, labels, account ---------- */
+
+/* On the window ground beside the sheets: no surface, no edge of its own. */
+.mb-sidebar {
+  display: flex;
+  flex: 0 0 var(--mb-rail-w, 272px);
+  flex-direction: column;
+  width: var(--mb-rail-w, 272px);
+  min-height: 0;
+  color: var(--text);
+}
+/* In the phone drawer the panel decides the width. */
+.mb-sidebar[data-drawer] {
+  flex: 1 1 auto;
+  width: 100%;
+}
+/* The rail's columns stand 8px in from its edges (Compose is the rail's width less 16); the icons of the brand, Compose and the folders
+   line up 20px from the window's edge. */
+.mb-sidebar-top {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  margin-top: var(--mb-gap, 12px);
+  padding: 0 8px 0 20px;
+}
+.mb-sidebar[data-drawer] .mb-sidebar-top {
+  margin-top: 8px;
+  padding-right: 8px;
+}
+/* Compose (lead review 1): a TONAL pill, the accent tint with the accent text, a faint accent ring and the small control shadow (on the
+   window ground the tint alone is the ground's own lightness); it no longer competes with the reader's Reply (the one filled blue of the
+   page). Hover deepens the tint (the accent at 18% into the surface; 30% in the dark, where the tint already is about 15%), a press sinks
+   (ui.css's half-pixel, a deeper tint, the press shadow). 14/600, 44px, the rail's width less 16. accent-text on its fills: 6.6 / 5.7 /
+   5.3:1 light, 7.1 / 6.2 / 5.5:1 dark (rest / hover / pressed; v3/s1b/contrast_s1b.py). The phone's Compose wears the same. */
+.mb-root {
+  --mb-tonal-ring: inset 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent);
+  --mb-tonal-hover: color-mix(in srgb, var(--accent) 18%, var(--surface));
+  --mb-tonal-press: color-mix(in srgb, var(--accent) 24%, var(--surface));
+  --mb-fab-fill: var(--accent-soft);
+}
+/* In the dark the tint is about the surface's own lightness: the phone's floating Compose takes a step more of the accent (24%: the text
+   6.6:1 on it), so it reads as the thing that floats over the list. */
+:root[data-theme='dark'] .mb-root {
+  --mb-tonal-ring: inset 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent);
+  --mb-tonal-hover: color-mix(in srgb, var(--accent) 30%, var(--surface));
+  --mb-tonal-press: color-mix(in srgb, var(--accent) 40%, var(--surface));
+  --mb-fab-fill: color-mix(in srgb, var(--accent) 24%, var(--surface));
+}
+.mb-compose-wrap {
+  flex: none;
+  padding: 8px 8px 16px;
+}
+/* The desktop rail (W5 lead review 11): its columns end 16px before the list sheet (Compose, the folders' capsule, the account), not 8px,
+   so the rail's content does not run into the sheet; the rail stays 272px and its icons stay 20px from the window's edge. */
+.mb-sidebar:not([data-drawer]) :is(.mb-compose-wrap, .mb-sidebar-scroll, .mb-rail-foot) {
+  padding-right: 16px;
+}
+.mb-root .mb-compose.ui-btn[data-size] {
+  justify-content: flex-start;
+  gap: 12px;
+  height: 44px;
+  padding-inline: 12px 18px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  box-shadow: var(--mb-tonal-ring), var(--control-shadow);
+  font-size: 14px;
+  font-weight: 600;
+}
+@media (hover: hover) {
+  .mb-root .mb-compose.ui-btn[data-size]:hover {
+    background: var(--mb-tonal-hover);
+    box-shadow: var(--mb-tonal-ring), var(--control-shadow);
+  }
+}
+.mb-root .mb-compose.ui-btn[data-size]:active {
+  background: var(--mb-tonal-press);
+  box-shadow: var(--press-shadow);
+}
+/* The folders and the labels scroll on a short window. */
+.mb-sidebar-scroll {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 8px 12px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.mb-sidebar-scroll::-webkit-scrollbar {
+  display: none;
+}
+/* The folders and the labels share one capsule (useGlide): it stands under the rows of both. */
+.mb-rail-nav {
+  position: relative;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 20px;
+}
+.mb-rail-nav > :not(.ui-glide) {
+  position: relative;
+}
+.mb-nav-glide {
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--sheet-shadow);
+}
+
+.mb-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mb-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: max(36px, var(--ui-h-md));
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text2);
+  font: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
+}
+.mb-nav-item:active {
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+}
+@media (hover: hover) {
+  .mb-nav-item:hover:not([aria-current='page']) {
+    background: var(--hover);
+    color: var(--text);
+  }
+}
+.mb-nav-icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--text3);
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+/* The open folder: the capsule under it (surface + the sheet's shadow, gliding from the last one), its label in the text colour at 600 and
+   its icon in the accent: three cues, none of them colour alone. */
+.mb-nav-item[aria-current='page'] {
+  color: var(--text);
+  font-weight: 600;
+}
+.mb-nav-item[aria-current='page'] .mb-nav-icon {
+  color: var(--accent);
+}
+/* Before the capsule is placed (or where it cannot be: no :has), the open row draws the same capsule itself. */
+.mb-rail-nav:not(:has(> .ui-glide:not([hidden]):is([style], [data-placed]))) .mb-nav-item[aria-current='page'] {
+  background: var(--surface);
+  box-shadow: var(--sheet-shadow);
+}
+.mb-nav-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mb-nav-count {
+  flex: none;
+  color: var(--text3);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+/* The Inbox shows its unread mail in the weight of the text; the other counts are quiet. The open folder's count takes its label's colour. */
+.mb-nav-count-unread {
+  color: var(--text);
+  font-weight: 600;
+}
+.mb-nav-item[aria-current='page'] .mb-nav-count {
+  color: inherit;
+}
+/* The label colour is user data (a hue per name); the swatch is as wide as a folder icon so the names line up with the folders. */
+.mb-label-swatch {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+}
+.mb-label-swatch > span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.mb-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+/* A group heading of the rail, as the list's day headings: 13/20 600 in text2. */
+.mb-labels-title {
+  margin: 0;
+  padding: 0 12px;
+  color: var(--text2);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 600;
+}
+
+/* The rail's foot: the account (THE way into Settings: the avatar, the name, the address) and the theme switch beside it. */
+.mb-rail-foot {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 8px var(--mb-gap, 12px);
+}
+.mb-account-row {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 52px;
+  padding: 6px 6px 6px 8px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--dur-fast) var(--ease-standard);
+}
+.mb-account-row:active {
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+}
+@media (hover: hover) {
+  .mb-account-row:hover {
+    background: var(--hover);
+  }
+}
+.mb-account-row .ui-avatar {
+  flex: none;
+}
+.mb-account-text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+.mb-account-name,
+.mb-account-addr {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mb-account-name {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.mb-account-addr {
+  color: var(--text3);
+  font-size: 12px;
+  line-height: 16px;
+}
+.mb-rail-foot > .ui-icon-btn {
+  flex: none;
+}
+
+/* ---------- Phone header: menu, folder title and count, mark all read, account ---------- */
 
 /* With viewport-fit=cover (index.html) an installed app draws under the status bar and beside a notch in landscape: the bar keeps clear of
-   both with the safe-area insets (0 in a browser tab, so nothing moves there). */
+   both with the safe-area insets (0 in a browser tab, so nothing moves there). J3-40: the glyphs of the bar's first and last buttons stand
+   on the content column, which is max(20px, the safe insets) from each edge (messagelist.css --ml-edge, --ml-end): the bar pads that much
+   less the button's own inset (12px round a 20px icon in a 44px box on the left, 6px round the 32px avatar face on the right). */
 .mb-phone-bar {
   display: flex;
   align-items: center;
   gap: 4px;
-  /* J3-40: the glyphs of the bar's first and last buttons stand on the content column, which is max(20px, the safe insets) from each edge
-     (messagelist.css --ml-edge, --ml-end): the bar pads that much less the button's own inset (12px round a 20px icon in a 44px box on the
-     left, 6px round the 32px avatar face on the right), so the menu glyph and the avatar line up with the search field in both orientations. */
-  padding: calc(8px + env(safe-area-inset-top, 0px)) calc(max(20px, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px)) - 6px)
-    2px calc(max(20px, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px)) - 12px);
+  min-height: 56px;
+  padding: calc(6px + env(safe-area-inset-top, 0px)) calc(max(20px, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px)) - 6px)
+    0 calc(max(20px, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px)) - 12px);
 }
-/* Back from a selection the app bar fades in after the selection bar's copy has mostly gone (J2-23, lib/shellMotion fadeOutInPlace). */
-.mb-phone-bar[data-return='true'] {
-  animation: nm-fade var(--dur-fast) linear 60ms both;
+.mb-phone-bar > .mb-mark-read {
+  margin-right: 4px;
 }
 /* The open message has no app bar (the reader's own bar is the top of the screen): the pane takes the inset itself. */
 .mb-root[data-layout='phone'] .mb-pane[data-pane='reader'] {
@@ -184,7 +464,7 @@
   align-items: baseline;
   column-gap: 8px;
   min-width: 0;
-  padding-left: 8px;
+  padding-left: 6px;
 }
 .mb-phone-title h1 {
   max-width: 100%;
@@ -192,57 +472,82 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 20px;
-  line-height: 28px;
+  font-size: 18px;
+  line-height: 26px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 .mb-phone-count {
   flex: none;
-  color: var(--text2);
+  color: var(--text3);
   font-size: 13px;
   line-height: 20px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-/* Compose on a phone: the one primary button, in the corner the thumb reaches (clear of a landscape notch, J5-16). It says its name at the
-   top of the list and folds to its icon (a 48px square) while the list scrolls down; scrolling up unfolds it. The name stays its accessible
-   name. The fold moves nothing in the layout (J2-11): the button keeps its size, a clip shows only its first 48px (the icon) and a
-   transform slides that square to the corner, the name fades; the clip also takes the hidden part out of reach of a tap. Its shadow is on
-   the wrapper (a drop shadow follows the clipped shape; a box shadow would be clipped away), which lets taps through around the button. */
+/* Compose on a phone (lead review 1): the same TONAL pill as the rail's (the accent tint, the accent text), 48px, in the corner the thumb
+   reaches (clear of a landscape notch, J5-16), floating on the floating shadow. It says its name at the top of the list and folds to its
+   icon (a 48px circle) while the list scrolls down; scrolling up unfolds it. The name stays its accessible name. The fold moves nothing in
+   the layout (J2-11): the button keeps its size, a clip shows only its first 48px (the icon) and a transform slides that circle to the
+   corner, the name fades; the clip also takes the hidden part out of reach of a tap. The clip would cut a shadow of the button's own, so
+   the floating shadow (--float-shadow itself) is drawn by a plate under it (the wrapper's ::before), as wide as what is seen: the whole
+   pill, or the circle at the corner. The wrapper lets taps through around it. */
 .mb-fab-wrap {
   position: absolute;
-  right: max(16px, env(safe-area-inset-right, 0px));
+  right: max(20px, env(safe-area-inset-right, 0px));
   bottom: var(--mb-fab-bottom);
   z-index: var(--z-float);
   display: flex;
   pointer-events: none;
-  filter: drop-shadow(0 6px 12px color-mix(in srgb, var(--accent) 28%, transparent))
-    drop-shadow(0 1px 2px color-mix(in srgb, var(--text) 16%, transparent));
+}
+.mb-fab-wrap::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  border-radius: var(--radius-pill);
+  /* A 6px ring of the list's own surface first: the button sits in a notch cut out of the rows, so no glyph (a time's last digit) peeks
+     round its rounded corners; on the plain list the ring is invisible. */
+  box-shadow:
+    0 0 0 6px var(--surface),
+    var(--float-shadow);
+  transition: width var(--dur-base) var(--ease-standard);
+}
+.mb-fab-wrap:has(> .mb-fab[data-short='true'])::before {
+  width: var(--mb-fab-h);
 }
 .mb-fab-wrap[hidden] {
   display: none;
 }
 .mb-root .mb-fab.ui-btn[data-size] {
-  gap: 8px;
+  position: relative;
+  gap: 10px;
   height: var(--mb-fab-h);
   padding: 0 20px 0 14px;
-  border-radius: var(--radius-dialog);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--on-accent) 22%, transparent);
+  border-radius: var(--radius-pill);
+  background: var(--mb-fab-fill);
+  color: var(--accent-text);
+  box-shadow: none;
   font-size: 15px;
   font-weight: 600;
   pointer-events: auto;
-  clip-path: inset(0 0 0 0 round var(--radius-dialog));
+  clip-path: inset(0 0 0 0 round var(--radius-pill));
   transition:
     background-color var(--dur-fast) var(--ease-standard),
     translate var(--dur-micro) var(--ease-standard),
     transform var(--dur-base) var(--ease-standard),
     clip-path var(--dur-base) var(--ease-standard);
 }
-/* The ring is drawn inside the button (an outer ring would be clipped), in the on-accent colour (5.5:1 on the accent). */
+.mb-root .mb-fab.ui-btn[data-size]:active {
+  background: var(--mb-tonal-press);
+  box-shadow: var(--press-shadow);
+}
+/* The ring is drawn inside the button (an outer ring would be clipped): the focus colour on the tint (4.8:1 light, 5.8:1 dark). */
 .mb-root .mb-fab.ui-btn[data-size]:focus-visible {
-  outline: 2px solid var(--on-accent);
+  outline: 2px solid var(--focus);
   outline-offset: -4px;
 }
 .mb-fab-label {
@@ -252,18 +557,26 @@
 }
 .mb-root .mb-fab.ui-btn[data-short='true'] {
   transform: translateX(calc(100% - var(--mb-fab-h)));
-  clip-path: inset(0 calc(100% - var(--mb-fab-h)) 0 0 round var(--radius-dialog));
+  clip-path: inset(0 calc(100% - var(--mb-fab-h)) 0 0 round var(--radius-pill));
 }
 .mb-fab[data-short='true'] .mb-fab-label {
   opacity: 0;
 }
-/* A phone on its side shows about two rows: the Compose button would cover the second one's time at rest. There it stays its icon (48px)
+/* A phone on its side shows about two rows: the Compose button would cover the second one's time at rest. There it stays its icon (52px)
    in a lane of its own at the end of the rows, whose content (time, star) ends 8px before it; the list's end clearance (--ml-fab-clear)
-   still lets the last row scroll above it. It does not fold there, so it IS the icon: a 48px square box (no clip, no slide) with the name
+   still lets the last row scroll above it. It does not fold there, so it IS the icon: a 48px circle (no clip, no slide) with the name
    visually hidden (still its accessible name), so its box, its tap area and what is seen are one, inside the safe area. */
 @media (orientation: landscape) and (max-height: 500px) {
   .mb-root[data-layout='phone'] .ml-root[data-compact='true'] {
-    --ml-end: calc(max(16px, env(safe-area-inset-right, 0px)) + var(--mb-fab-h) + 8px);
+    --ml-end: calc(max(20px, env(safe-area-inset-right, 0px)) + var(--mb-fab-h) + 8px);
+  }
+  /* The button has a lane of its own beside the rows: only a short fade at the foot, clear at the edge. */
+  .mb-root[data-layout='phone'] {
+    --ml-fab-fade: 24px;
+    --ml-fab-top: 12px;
+    --ml-fab-mid: 40%;
+    --ml-fab-low: 0%;
+    --ml-fab-floor: 0%;
   }
   .mb-root[data-layout='phone'] .mb-fab.ui-btn[data-size] {
     justify-content: center;
@@ -284,196 +597,13 @@
   }
 }
 
-/* ---------- Sidebar ---------- */
-
-/* On the window ground beside the sheet, so it needs no edge of its own. */
-.mb-sidebar {
-  display: flex;
-  flex: 0 0 var(--mb-side-w, 240px);
-  flex-direction: column;
-  width: var(--mb-side-w, 240px);
-  min-height: 0;
-  color: var(--text);
-}
-/* In the phone drawer the panel decides the width. */
-.mb-sidebar[data-drawer] {
-  flex: 1 1 auto;
-  width: 100%;
-}
-.mb-sidebar-top {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: space-between;
-  height: 60px;
-  padding: 8px 8px 0 17px;
-}
-/* The folders and the labels scroll on a short screen. */
-.mb-sidebar-scroll {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 16px;
-  min-height: 0;
-  padding: 12px;
-  overflow-y: auto;
-}
-.mb-sidebar-scroll > * {
-  flex: none;
-}
-/* Desktop: Compose stands in the band of the list's head and the reader's toolbar beside it (the sheet's 1px edge, 8px, a small button, 8px),
-   on the same middle line as the folder's title and the toolbar's icons. */
-.mb-sidebar:not([data-drawer]) .mb-sidebar-scroll {
-  padding-top: calc(1px + 8px + (var(--ui-h-sm) - var(--ui-h-md)) / 2);
-}
-/* Compose: the one primary button of the page. Label on the left, the key of its shortcut on the right. Its icon, label and key stand in the
-   columns of the folders under it (icon 10px in, label 12px after it, the key where the counts end): 9px of padding beside the 1px border. */
-.mb-sidebar .mb-compose {
-  justify-content: flex-start;
-  gap: 12px;
-  padding-inline: 9px;
-}
-.mb-compose-key {
-  display: inline-flex;
-  margin-left: auto;
-}
-/* The key of the shortcut (C) on the Compose button: white on a chip of the pressed accent (accentHover), 7.4:1 light and 7.2:1 dark (a
-   chip of white mixed into the accent fell under 4.5:1, 1.4.3). The chip is a step darker than the button, so it reads as a key on it. */
-.mb-compose .ui-kbd {
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
-  background: var(--accent-hover);
-  border: 0;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--on-accent) 24%, transparent);
-  color: var(--on-accent);
-  font-size: 11px;
-}
-
-.mb-nav-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.mb-nav-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: var(--ui-h-md);
-  padding: 0 10px;
-  border: 0;
-  border-radius: var(--radius-control);
-  background: transparent;
-  color: var(--text2);
-  font: inherit;
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 500;
-  text-align: left;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition:
-    background-color var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard);
-}
-.mb-nav-item:active {
-  background: color-mix(in srgb, var(--text) 10%, transparent);
-}
-@media (hover: hover) {
-  .mb-nav-item:hover:not([aria-current='page']) {
-    background: var(--hover);
-    color: var(--text);
-  }
-}
-.mb-nav-item svg {
-  flex: none;
-  color: var(--text3);
-}
-/* The open folder: an accent-soft pill with a 3px indicator bar at its left edge and a heavier weight, so it is not told by colour alone. */
-.mb-nav-item[aria-current='page'] {
-  position: relative;
-  background: var(--accent-soft);
-  color: var(--accent-text);
-  font-weight: 600;
-}
-/* The bar is a 3px pill inset from the item's rounded corners (top and bottom 10px), so it stays straight: a border-left or an inset shadow
-   on a rounded box bends into a crescent at the corners. The same rule as the open row of the list. */
-.mb-nav-item[aria-current='page']::before {
-  content: '';
-  position: absolute;
-  top: 10px;
-  bottom: 10px;
-  left: 0;
-  width: 3px;
-  border-radius: var(--radius-pill);
-  background: var(--indicator);
-}
-.mb-nav-item[aria-current='page'] svg {
-  color: currentcolor;
-}
-.mb-nav-label {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.mb-nav-count {
-  flex: none;
-  color: var(--text3);
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-}
-/* The Inbox shows its unread mail in the weight of the text; the other counts are quiet. */
-.mb-nav-count[data-unread] {
-  color: var(--text);
-  font-weight: 600;
-}
-.mb-nav-item[aria-current='page'] .mb-nav-count {
-  color: inherit;
-}
-/* The label colour is user data (a hue per name); the swatch is as wide as a nav icon so the names line up with the folders. */
-.mb-label-swatch {
-  display: inline-flex;
-  flex: none;
-  justify-content: center;
-  width: 18px;
-}
-.mb-label-swatch > span {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.mb-labels {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-}
-.mb-labels-title {
-  margin: 0 0 2px;
-  padding: 0 10px;
-  color: var(--text3);
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 600;
-}
-
-/* ---------- Panes ---------- */
+/* ---------- Panes: the list sheet and the reader sheet ---------- */
 
 .mb-panes {
   display: flex;
   flex: 1 1 auto;
+  gap: var(--mb-gap);
   min-height: 0;
-  background: var(--surface);
 }
 .mb-pane {
   display: flex;
@@ -481,8 +611,13 @@
   min-height: 0;
   background: var(--surface);
 }
-/* The edge between the panes is the shell's hairline. Whatever the list or the reader draws round itself (a border, a radius, a shadow) would
-   double it, so the outer element of a pane is flat. */
+/* A desktop pane IS a sheet: the surface floating on the ground, rounded, lifted by the sheet shadow (a ring and a long soft shadow), no
+   border. What the list or the reader draws round itself (a border, a radius, a shadow) would double it, so their outer element is flat. */
+.mb-root[data-layout='desktop'] .mb-pane {
+  overflow: hidden;
+  border-radius: var(--radius-sheet, 18px);
+  box-shadow: var(--sheet-shadow);
+}
 .mb-pane > * {
   border: 0 !important;
   border-radius: 0 !important;
@@ -493,18 +628,16 @@
 }
 .mb-panes > .mb-pane[data-pane='reader'] {
   flex: 1 1 0;
-  border-left: 1px solid var(--border);
 }
-/* While a toast is up on a desktop it stands over the bottom of the list: the list gets room under its last row and keeps a row reached
-   with the keyboard above it (2.4.11). */
-.mb-root[data-layout='desktop'] .mb-body[data-toast] .ml-scroll {
-  scroll-padding-bottom: 80px;
+/* While a toast is up on a desktop it stands over the bottom of the list sheet (its top about 68px up): the rows fade out above it and are
+   gone by its top, the list gets that room under its last row, and a row reached with the keyboard stays above it (2.4.11; messagelist.css
+   reads --ml-fade-end for the scroll padding and the body's end). */
+.mb-root[data-layout='desktop'] .mb-body[data-toast] .ml-root {
+  --ml-fade-end: 112px;
+  --ml-fade-gone: 68px;
 }
-.mb-root[data-layout='desktop'] .mb-body[data-toast] .ml-body {
-  padding-bottom: 72px;
-}
-/* On a phone the toast stands above the Compose button (104px up) and is about 48px high: while it is up the list's last row scrolls clear of
-   it (--ml-fab-clear, read by messagelist.css) and a row or a reader control reached with the keyboard stays above it (2.4.11). */
+/* On a phone the toast stands above the Compose button and is about 52px high: while it is up the list's last row scrolls clear of it
+   (--ml-fab-clear, read by messagelist.css) and a row or a reader control reached with the keyboard stays above it (2.4.11). */
 .mb-root[data-layout='phone'] .mb-body[data-toast] {
   --ml-fab-clear: calc(168px + env(safe-area-inset-bottom, 0px));
 }
@@ -539,9 +672,9 @@
   z-index: var(--z-float);
 }
 
-/* The reading pane while messages are ticked (SelectionSummary.tsx, J6-38): 3 selected, the first senders and subjects, the selection's
-   actions as labelled buttons, Clear selection. Centred in the pane's upper half, as the empty reader is, and scrolls when the pane is short.
-   The open message stays mounted under it (its frame keeps its page), hidden until the selection is cleared. */
+/* The reading pane while messages are ticked (SelectionSummary.tsx, J6-38): the count (rolling), the first senders and subjects, the
+   selection's actions as labelled buttons, Clear selection. Centred in the sheet's upper half, as the empty reader is, and scrolls when the
+   sheet is short. The open message stays mounted under it (its frame keeps its page), hidden until the selection is cleared. */
 .mb-pane[data-pane='reader'][data-summary='true'] > :not(.mb-selsum) {
   display: none;
 }
@@ -552,7 +685,7 @@
   justify-content: center;
   min-width: 0;
   overflow-y: auto;
-  padding: 32px;
+  padding: 40px 32px;
   animation: nm-fade var(--dur-quick) var(--ease-enter);
 }
 .mb-selsum-card {
@@ -560,24 +693,24 @@
   flex-direction: column;
   align-items: center;
   width: 100%;
-  max-width: 600px;
+  max-width: 560px;
   text-align: center;
 }
 .mb-selsum-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
-  margin-bottom: 16px;
-  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 20px;
+  border-radius: 18px;
   background: var(--accent-soft);
   color: var(--accent-text);
 }
 .mb-selsum-title {
   margin: 0;
-  font-size: 22px;
-  line-height: 28px;
+  font-size: 24px;
+  line-height: 32px;
   font-weight: 600;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
@@ -587,34 +720,36 @@
   margin: 8px 0 0;
   color: var(--text2);
   font-size: 14px;
-  line-height: 20px;
+  line-height: 22px;
 }
-/* The first ticked messages: sender, then subject, one line each, on a quiet card (what the actions will touch). */
+/* The first ticked messages: sender, then subject, one line each, on a quiet raised card (what the actions will touch); no lines between. */
 .mb-selsum-list {
+  display: grid;
+  grid-template-columns: 28px fit-content(40%) minmax(0, 1fr);
+  column-gap: 16px;
   align-self: stretch;
-  margin: 20px 0 0;
-  padding: 4px 0;
+  margin: 24px 0 0;
+  padding: 8px;
   list-style: none;
-  border: 1px solid var(--border);
   border-radius: var(--radius-card);
-  background: var(--surface);
+  background: var(--raised);
   text-align: left;
 }
+/* One grid for the list (each row a subgrid of it): the stamps, then the senders as wide as the longest one (at most 40%), then the
+   subjects, so every subject starts at the same x and no gutter is left empty after short names. */
 .mb-selsum-item,
 .mb-selsum-rest {
-  display: grid;
-  grid-template-columns: minmax(0, 34%) minmax(0, 1fr);
-  gap: 12px;
+  grid-column: 1 / -1;
   min-width: 0;
-  padding: 6px 12px;
+  padding: 6px 10px;
   font-size: 13px;
   line-height: 20px;
 }
-.mb-selsum-item + .mb-selsum-item,
-.mb-selsum-item + .mb-selsum-rest {
-  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+.mb-selsum-item {
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
 }
-/* One column for the senders, one for the subjects: every subject starts at the same x. */
 .mb-selsum-sender {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -641,7 +776,7 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  margin-top: 20px;
+  margin-top: 24px;
 }
 .mb-selsum-row {
   display: flex;
@@ -668,20 +803,16 @@
   justify-content: center;
 }
 
-/* ---------- Notices above the panes ---------- */
+/* ---------- Notices above the sheets ---------- */
 
+/* A desktop's notices stand on the ground above both sheets, as ui Banners (soft tone fills, their own radius): no strip, no hairline. */
 .mb-strip {
   flex: none;
-  /* The list's left edge (--ml-edge, 24px): one text edge for the banner and the rows under it (J3-30). */
-  padding: 12px 24px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  padding: 0;
 }
-/* On a phone the notices come under the header (App.tsx), on the same surface as the search under them: no hairline, the search's own 4px
-   above it make the 8px between them. */
+/* On a phone the notices come under the header (App.tsx), on the surface, inset to the content edge. */
 .mb-root[data-layout='phone'] .mb-strip {
   padding: 8px 20px 4px;
-  border-bottom: 0;
 }
 .mb-strip-list {
   display: flex;
@@ -712,9 +843,10 @@
 
 /* ---------- The mailbox drawer on a phone ---------- */
 
-/* M14: the panel slides in from the left in --dur-slow (300ms, emphasized), the scrim fades in --dur-gentle (250ms), both from their
-   @starting-style. It closes on an inert copy (lib/shellMotion leaveDrawer): back out in 0.7 of those (exitDuration). Under reduced motion
-   --motion is 0 and the --dur-* are capped at 150ms, so the panel starts in place and only fades in (its opacity starts at --motion). */
+/* The rail on a sheet of its own: the surface, rounded 20px on its right edge, the floating shadow. M14: the panel slides in from the left
+   in --dur-slow (300ms, emphasized), the scrim fades in --dur-gentle (250ms), both from their @starting-style. It closes on an inert copy
+   (lib/shellMotion leaveDrawer): back out in 0.7 of those (exitDuration). Under reduced motion --motion is 0 and the --dur-* are capped at
+   150ms, so the panel starts in place and only fades in (its opacity starts at --motion). */
 .mb-drawer-root {
   position: fixed;
   inset: 0;
@@ -732,19 +864,30 @@
   z-index: var(--z-raise);
   display: flex;
   flex-direction: column;
-  width: min(300px, 86vw);
+  width: min(304px, 86vw);
   height: 100%;
   /* Under the status bar and beside a notch of an installed app (viewport-fit=cover); 0 in a browser tab. */
   padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   box-sizing: border-box;
-  background: var(--chrome);
-  border-right: 1px solid var(--border);
+  background: var(--surface);
   border-radius: 0 var(--radius-dialog) var(--radius-dialog) 0;
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--float-shadow);
   outline: none;
   transition:
     translate var(--dur-slow) var(--ease-emph-enter),
     opacity var(--dur-quick) linear;
+}
+/* On the drawer's surface the capsule of the open folder is the accent tint (a surface capsule would not show on the surface). */
+.mb-drawer .mb-nav-glide,
+.mb-drawer .mb-rail-nav:not(:has(> .ui-glide:not([hidden]):is([style], [data-placed]))) .mb-nav-item[aria-current='page'] {
+  background: var(--accent-soft);
+  box-shadow: none;
+}
+.mb-drawer .mb-nav-item[aria-current='page'] {
+  color: var(--accent-text);
+}
+.mb-drawer .mb-nav-item[aria-current='page'] .mb-nav-icon {
+  color: var(--accent-text);
 }
 /* A sideways drag is the swipe that puts the drawer away (useSwipeToDismiss): the browser keeps only the vertical scroll, also on the
    folders (a scroller: touch-action is not inherited past it), so a drag that starts on a folder button is the swipe too. */
@@ -766,12 +909,12 @@
   }
 }
 
-/* ---------- Status screens: the server cannot be reached, the app crashed ---------- */
+/* ---------- Status screens: the server cannot be reached ---------- */
 
 /* Scrolls as a normal web page, like the screens before the mailbox (auth.css): body is let scroll while a status screen is shown, so on a
-   short window or at 200% text the message is reached by scrolling the window, and its auto margins (not justify/align centre,
-   which push an overflow past the top edge) keep the top in reach. A browser without :has() scrolls the box itself. The page is the
-   landing hero's: the ground with a faint hairline grid that fades out from the middle and one soft accent glow behind the card. */
+   short window or at 200% text the message is reached by scrolling the window, and its auto margins (not justify/align centre, which push
+   an overflow past the top edge) keep the top in reach. A browser without :has() scrolls the box itself. DESIGN-v3 4.3: card-less on the
+   page: Edgar with his flight trail behind him, the headline, one line, the action. */
 .mb-status {
   position: relative;
   isolation: isolate;
@@ -781,65 +924,53 @@
   background: var(--bg);
   color: var(--text);
 }
-.mb-status::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1px);
-  background-position: calc(50% - 24px) calc(50% - 24px);
-  background-size: 48px 48px;
-  -webkit-mask-image: radial-gradient(ellipse 60% 55% at 50% 45%, var(--text) 25%, transparent 75%);
-  mask-image: radial-gradient(ellipse 60% 55% at 50% 45%, var(--text) 25%, transparent 75%);
-  pointer-events: none;
-}
-.mb-status::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse 34% 30% at 50% 46%, color-mix(in srgb, var(--accent) 16%, transparent), transparent);
-  pointer-events: none;
-}
-:root[data-theme='dark'] .mb-status::after {
-  background: radial-gradient(ellipse 34% 30% at 50% 46%, color-mix(in srgb, var(--accent) 12%, transparent), transparent);
-}
 .mb-status > * {
   position: relative;
   z-index: var(--z-raise);
   margin: auto;
 }
-/* J3-34: Trying again in 3 s is helper text of the Try again button: 12px under it, text2, 13px, tabular figures (the seconds do not jitter). */
-.mb-retry {
-  margin: 12px 0 0;
-  color: var(--text2);
-  font-size: 13px;
-  line-height: 20px;
-  font-variant-numeric: tabular-nums;
-}
-/* The message of the page is a card (as the sign-in's): Edgar, the headline, one line, the action. */
-.mb-status > .ui-empty {
+.mb-status-scene {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   width: 100%;
   max-width: 440px;
-  padding: 36px 32px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-dialog);
-  box-shadow:
-    var(--shadow-lg),
-    inset 0 1px 0 var(--inset-highlight);
 }
-.mb-status > .ui-empty .ui-empty-title {
-  font-size: 20px;
-  line-height: 28px;
-  letter-spacing: -0.01em;
+/* The trail arcs behind Edgar, from his left to a little letter up on his right. */
+.mb-status-trail {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  z-index: 0;
+  translate: -50% 0;
+  pointer-events: none;
 }
-.mb-status > .ui-empty .ui-empty-description {
+.mb-status-scene > .ui-empty {
+  position: relative;
+  z-index: var(--z-raise);
+  width: 100%;
+  padding: 0;
+}
+.mb-status .ui-empty-title {
+  font-size: 24px;
+  line-height: 32px;
+  letter-spacing: -0.02em;
+}
+.mb-status .ui-empty-description {
   max-width: 340px;
   text-wrap: balance;
 }
-.mb-status > .ui-empty .ui-empty-action {
-  margin-top: 16px;
+.mb-status .ui-empty-action {
+  margin-top: 20px;
+}
+/* J3-34: Trying again in 3 s is helper text of the Try again button: 12px under it, text3, 13px, tabular figures (the seconds do not jitter). */
+.mb-retry {
+  margin: 12px 0 0;
+  color: var(--text3);
+  font-size: 13px;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
 }
 body:has(.mb-status) {
   overflow-y: auto;
@@ -858,11 +989,17 @@ body:has(.mb-status) {
 
 @media (prefers-reduced-motion: reduce) {
   .mb-nav-item,
+  .mb-nav-icon,
+  .mb-account-row,
+  .mb-fab-wrap::before,
   .mb-root .mb-fab.ui-btn[data-size],
   .mb-fab-label {
     transition: none;
   }
 }
-:root[data-motion='reduce'] :is(.mb-nav-item, .mb-root .mb-fab.ui-btn[data-size], .mb-fab-label) {
+:root[data-motion='reduce'] :is(.mb-nav-item, .mb-nav-icon, .mb-account-row, .mb-root .mb-fab.ui-btn[data-size], .mb-fab-label) {
+  transition: none;
+}
+:root[data-motion='reduce'] .mb-fab-wrap::before {
   transition: none;
 }

@@ -18,6 +18,8 @@ export interface ButtonProps extends Omit<React.ComponentProps<'button'>, 'type'
   fullWidth?: boolean;
   /** `submit` makes it the button that Enter presses in a form. Default: `button`. */
   type?: 'button' | 'submit';
+  /** `pill`: fully rounded ends, for the Compose button and the phone's floating Compose. Default: the control radius. */
+  shape?: 'pill';
 }
 
 /**
@@ -32,6 +34,7 @@ export function Button({
   trailingIcon,
   fullWidth = false,
   type = 'button',
+  shape,
   className,
   onClick,
   children,
@@ -50,6 +53,7 @@ export function Button({
       className={cx('ui-btn', fullWidth && 'ui-btn-full', className)}
       data-variant={variant}
       data-size={size}
+      data-shape={shape}
       aria-busy={loading ? true : undefined}
       aria-disabled={loading ? true : undefined}
       onClick={handleClick}

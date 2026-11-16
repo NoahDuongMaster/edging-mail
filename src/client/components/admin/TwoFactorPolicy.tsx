@@ -7,8 +7,8 @@ import { announce } from '../../lib/announce';
 import { sessionKey, useSession } from '../../lib/auth';
 import { useT } from '../../lib/i18n';
 import { orgSettingsKey } from '../../lib/language';
-import { Button, Card, Switch, TextField } from '../../ui';
-import { ErrorText } from './adminUi';
+import { Button, Switch, TextField } from '../../ui';
+import { ErrorText, Group } from './adminUi';
 import { useAdminAction } from './useAdminAction';
 
 const SWITCH_ID = 'admin-require-2fa';
@@ -77,7 +77,7 @@ export const TwoFactorPolicy: React.FC<{ required: boolean | undefined }> = ({ r
   };
 
   return (
-    <Card title={tr('admin.policy_title')} description={tr('admin.policy_desc')} headingLevel={3} className="ad-setting-card">
+    <Group title={tr('admin.policy_title')} description={tr('admin.policy_desc')}>
       <Switch
         id={SWITCH_ID}
         label={tr('admin.policy_switch')}
@@ -97,6 +97,7 @@ export const TwoFactorPolicy: React.FC<{ required: boolean | undefined }> = ({ r
             setConfirming(true);
           }
         }}
+        className="ad-switch"
       />
       {confirming ? (
         // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Escape is a shortcut for the Cancel button of this form; the buttons are the controls
@@ -139,13 +140,17 @@ export const TwoFactorPolicy: React.FC<{ required: boolean | undefined }> = ({ r
           </div>
         </form>
       ) : null}
-      {saved ? (
-        <p className="ad-feedback">
-          <CircleCheck size={16} aria-hidden="true" />
-          {tr('settings.saved')}
-        </p>
+      {saved || action.error !== null ? (
+        <div className="ad-row-note">
+          {saved ? (
+            <p className="ad-feedback">
+              <CircleCheck size={16} aria-hidden="true" />
+              {tr('settings.saved')}
+            </p>
+          ) : null}
+          {action.error === null ? null : <ErrorText>{action.error}</ErrorText>}
+        </div>
       ) : null}
-      {action.error === null ? null : <ErrorText>{action.error}</ErrorText>}
-    </Card>
+    </Group>
   );
 };

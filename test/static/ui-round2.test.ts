@@ -115,7 +115,8 @@ describe('admin console', () => {
 
   it('starts the notes of a temporary password on the inner edge of the password box (J3-29)', () => {
     const admin = withoutComments(component('admin', 'admin.css'));
-    expect(admin).toMatch(/\.ad-list \{[^}]*padding: 12px 16px;[^}]*list-style: none;/);
+    // v3: the ui SecretBox insets its value 20px; the notes' text starts on that edge.
+    expect(admin).toMatch(/\.ad-list \{[^}]*padding: 14px 20px;[^}]*list-style: none;/);
   });
 });
 

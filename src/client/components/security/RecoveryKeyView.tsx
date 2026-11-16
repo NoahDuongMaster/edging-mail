@@ -8,7 +8,7 @@ import { RecoveryKeyDraft } from '../../lib/crypto/recoveryDraft';
 import { useFieldFocus } from '../../lib/fieldFocus';
 import { useT } from '../../lib/i18n';
 import { useAction } from '../../lib/useAction';
-import { Card, TextField } from '../../ui';
+import { TextField } from '../../ui';
 import { AuthButton, ErrorLine } from '../auth/authUi';
 import { RecoveryKeyPanel } from '../auth/RecoveryKeyPanel';
 import { CredentialForm } from './CredentialForm';
@@ -213,12 +213,12 @@ const NewKey: React.FC<InnerProps> = ({ t, user, onBack }) => {
     return (
       <ViewFrame t={t} title={tr('recovery.title_new')} onBack={null}>
         {needCode ? (
-          // The server wants a fresh code before it replaces the key (step-up): asked above the key, in a box of its own, with the
+          // The server wants a fresh code before it replaces the key (step-up): asked above the key, in a quiet well of its own, with the
           // one-time-code field (paste and the phone's autofill work).
-          <Card className="st-stepup">
+          <div className="st-stepup">
             <p className="st-lead">{tr('security.step_up_lead')}</p>
             <CodeInput t={t} id="security-step-up" value={code} onChange={setCode} />
-          </Card>
+          </div>
         ) : null}
         {draft === null ? null : (
           <RecoveryKeyPanel

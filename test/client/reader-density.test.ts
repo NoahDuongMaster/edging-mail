@@ -12,8 +12,9 @@ import {
 } from '../../src/client/components/reader/barDensity';
 
 // How the desktop reader toolbar fits its pane. The buttons have a fixed width (32 px with a mouse, 40 px on a touch screen wider than a phone), and the
-// pane's width decides which actions show their words (`labelled`: the most used first), the side padding, and whether the counter ("1 of 7") has
-// room. The numbers are the arithmetic in reader/barDensity.ts (8 buttons, 2 dividers that keep a margin in every density).
+// pane's width decides whether every action shows its words (`labelled`) or none does (v3 lead review R1: never a mix), the side padding, and
+// whether the counter ("1 of 7") has room. The numbers are the arithmetic in reader/barDensity.ts (8 buttons, 2 group breaks drawn as space
+// that keep a margin in every density).
 
 const FINE = BAR_BUTTON_WIDTH.fine * 8;
 const COARSE = BAR_BUTTON_WIDTH.coarse * 8;
@@ -24,9 +25,9 @@ describe('barLayout with a mouse', () => {
     expect(barLayout(null, true)).toEqual({ density: 'full', words: 0 });
   });
 
-  it('is full from 414 px, snug from 354 px, and tight under that', () => {
-    expect(barLayout(414, false).density).toBe('full');
-    expect(barLayout(413, false).density).toBe('snug');
+  it('is full from 420 px, snug from 354 px, and tight under that (W5: the groups 20 px apart in the roomy densities)', () => {
+    expect(barLayout(420, false).density).toBe('full');
+    expect(barLayout(419, false).density).toBe('snug');
     expect(barLayout(354, false).density).toBe('snug');
     expect(barLayout(353, false).density).toBe('tight');
   });
@@ -44,10 +45,10 @@ describe('barLayout with a mouse', () => {
 });
 
 describe('barLayout on a touch screen', () => {
-  it('is full from 484 px, snug from 424 px, and tight under that (the buttons are 40 px wide; the two moves keep a 6 px gap, J5-10)', () => {
+  it('is full from 490 px, snug from 424 px, and tight under that (the buttons are 40 px wide; the two moves keep a 6 px gap, J5-10)', () => {
     expect(MOVE_GAP_COARSE).toBe(6);
-    expect(barLayout(484, true).density).toBe('full');
-    expect(barLayout(483, true).density).toBe('snug');
+    expect(barLayout(490, true).density).toBe('full');
+    expect(barLayout(489, true).density).toBe('snug');
     expect(barLayout(424, true).density).toBe('snug');
     expect(barLayout(423, true).density).toBe('tight');
   });
@@ -64,40 +65,34 @@ describe('barLayout on a touch screen', () => {
   });
 });
 
-describe('barLayout with words beside the icons, the most used actions first (J4-18, J6-09)', () => {
-  // The words are measured in the browser (wordWidths: their words in Geist 500 13 px + LABELLED_CHROME each), in the order they get them. Inbox
-  // in en: Archive 90, Move to Trash 130, Snooze 90, Add label 102, Mark as unread 139, Move to Spam 132 (the rare one last).
+describe('barLayout with words beside the icons: every action or none (J4-18, J6-09, v3 R1)', () => {
+  // The words are measured in the browser (wordWidths: their words in Geist 500 13 px + LABELLED_CHROME each), one per action. Inbox in en:
+  // Archive 90, Move to Trash 130, Snooze 90, Add label 102, Mark as unread 139, Move to Spam 132.
   const EN_INBOX = [90, 130, 90, 102, 139, 132];
   // Trash in vi: Chuyển về Hộp thư đến 193, Xóa vĩnh viễn 125, Lưu trữ 88, Gắn nhãn 102, Đánh dấu chưa đọc 161, Chuyển vào Thư rác 163.
   const VI_TRASH = [193, 125, 88, 102, 161, 163];
 
-  it('labels Archive, Move to Trash, Snooze, Label and Mark as unread before Move to Spam on a 1440 px window (a pane of about 790 px)', () => {
-    // 70 + 72 + 3 x 32 + (90 + 130 + 90 + 102 + 139) = 789.
-    expect(barLayout(790, false, EN_INBOX)).toEqual({ density: 'labelled', words: 5 });
-    expect(barLayout(789, false, EN_INBOX)).toEqual({ density: 'labelled', words: 5 });
-    expect(barLayout(788, false, EN_INBOX)).toEqual({ density: 'labelled', words: 4 });
-    // Every word: 70 + 72 + 2 x 32 + 683 = 889.
-    expect(barLayout(889, false, EN_INBOX)).toEqual({ density: 'labelled', words: 6 });
-    expect(barLayout(888, false, EN_INBOX)).toEqual({ density: 'labelled', words: 5 });
-  });
-
-  it('gives words one action at a time, from the most used, and none where not even Archive fits', () => {
-    // Archive and Move to Trash: 70 + 72 + 6 x 32 + 220 = 554; Archive alone: 70 + 72 + 7 x 32 + 90 = 456.
-    expect(barLayout(554, false, EN_INBOX).words).toBe(2);
-    expect(barLayout(553, false, EN_INBOX).words).toBe(1);
-    expect(barLayout(456, false, EN_INBOX).words).toBe(1);
-    expect(barLayout(455, false, EN_INBOX)).toEqual({ density: 'full', words: 0 });
-    // Trash and Spam: Move to Inbox, then Delete forever (named as soon as there is room).
-    expect(barLayout(70 + 72 + 6 * 32 + 193 + 125, false, VI_TRASH).words).toBe(2);
+  it('labels every action once all the words fit, and none below that (never a mix of labelled and bare actions)', () => {
+    // 76 + 72 + 2 x 32 + 683 = 895 (the padding and the group breaks: 24 + 2 x 10 + 2 x 16; W5: groups 20 px apart).
+    expect(barLayout(895, false, EN_INBOX)).toEqual({ density: 'labelled', words: 6 });
+    expect(barLayout(894, false, EN_INBOX)).toEqual({ density: 'full', words: 0 });
+    // A 1440 px window (a reader sheet of about 704 px) is icons with tooltips.
+    expect(barLayout(704, false, EN_INBOX)).toEqual({ density: 'full', words: 0 });
+    // Trash and Spam: three group breaks (Delete forever stands apart): 94 + 72 + 2 x 32 + 832 = 1062.
+    expect(barLayout(1062, false, VI_TRASH, 3)).toEqual({ density: 'labelled', words: 6 });
+    expect(barLayout(1061, false, VI_TRASH, 3).words).toBe(0);
+    for (let width = 300; width <= 1600; width += 1) {
+      expect([0, EN_INBOX.length], `${width} px`).toContain(barLayout(width, false, EN_INBOX).words);
+    }
     // Not measured (the server, the first render): icons, never words that might not fit.
     expect(barLayout(1200, false, null)).toEqual({ density: 'full', words: 0 });
     expect(barLayout(1200, false)).toEqual({ density: 'full', words: 0 });
   });
 
   it('counts the wider icon buttons of a touch screen, and the gap between its two bins (J5-10)', () => {
-    // 70 + 6 + 72 + 6 x 40 + 220 = 608.
-    expect(barLayout(608, true, EN_INBOX).words).toBe(2);
-    expect(barLayout(607, true, EN_INBOX).words).toBe(1);
+    // 76 + 6 + 72 + 2 x 40 + 683 = 917.
+    expect(barLayout(917, true, EN_INBOX).words).toBe(6);
+    expect(barLayout(916, true, EN_INBOX).words).toBe(0);
   });
 
   it('never needs more than the pane has: a labelled bar fits whenever it is chosen', () => {
@@ -143,27 +138,35 @@ describe('replyDensity: Reply, Reply all and Forward on one row of a desktop col
 });
 
 describe('the toolbar glyphs on the reading column (J3-36)', () => {
-  // en Inbox, the words in the order they get them: Archive, Move to Trash, Snooze, Mark unread, Labels, Move to Spam.
+  // en Inbox, one word per action: Archive, Move to Trash, Snooze, Mark unread, Labels, Move to Spam (649 + 212 = 861 px to label them all).
   const WORDS = [90, 130, 90, 119, 88, 132];
 
-  it('puts the first glyph (a labelled Archive) and the last (Older) on the content edges of the column when the bar has the room', () => {
-    // 1440 px window, a pane of 754: four words (699 px), 55 px left over; the column's content starts 32 px in.
-    const layout = barLayout(754, false, WORDS);
-    expect(layout).toEqual({ density: 'labelled', words: 4 });
-    expect(barAlignment(754, false, layout, WORDS)).toEqual({ start: 32 - 11, end: 32 - 8 });
-    // A wide pane centres the column: the glyphs follow it.
+  it('puts the first glyph and the last (Older) on the content edges of the column when the bar has the room', () => {
+    // A sheet of 876 px (880 or less: the letter starts on the left, its content 32 px in). Icons: the glyphs reach the column.
+    const icons = barLayout(876, false, null);
+    expect(icons).toEqual({ density: 'full', words: 0 });
+    expect(barAlignment(876, false, icons)).toEqual({ start: 32 - 8, end: 32 - 8 });
+    // All six words (861 px) leave 15 px of the 21 the glyphs want: they move in that far, in proportion (a labelled Archive draws its
+    // icon 11 px in).
+    const layout = barLayout(876, false, WORDS);
+    expect(layout).toEqual({ density: 'labelled', words: 6 });
+    expect(barAlignment(876, false, layout, WORDS)).toEqual({ start: 12 + 6, end: 12 + 8 });
+    // A sheet wider than 880 px centres the letter (800 px: 720 of content and 40 each side): the glyphs follow it.
     const wide = barLayout(1200, false, null);
     const column = (1200 - READING_COLUMN.max) / 2 + READING_COLUMN.side;
+    expect(READING_COLUMN).toMatchObject({ max: 800, side: 40, wide: 880, midSide: 32 });
     expect(barAlignment(1200, false, wide)).toEqual({ start: column - 8, end: column - 8 });
   });
 
-  it('gives the last word back to its icon rather than leave the glyphs off the column (alignedLayout)', () => {
-    // 760 px: five words fit (755) with no room to move the glyphs; aligned, four words and the glyphs on the column.
-    expect(barLayout(760, false, WORDS)).toEqual({ density: 'labelled', words: 5 });
-    const layout = alignedLayout(760, false, WORDS);
-    expect(layout).toEqual({ density: 'labelled', words: 4 });
-    expect(barAlignment(760, false, layout, WORDS)).toEqual({ start: 32 - 11, end: 32 - 8 });
-    // Never fewer than one word, and the other densities are barLayout's.
+  it('keeps every word when the room is too small for the glyphs to reach the column (alignedLayout: never a word given back, R1)', () => {
+    // 870 px: the six words fit (861) with 9 px to spare; the glyphs move in as far as those 9 px allow.
+    const layout = alignedLayout(870, false, WORDS);
+    expect(layout).toEqual({ density: 'labelled', words: 6 });
+    expect(barAlignment(870, false, layout, WORDS)).toEqual({ start: 12 + 3, end: 12 + 5 });
+    for (let width = 300; width <= 1600; width += 1) {
+      expect([0, WORDS.length], `${width} px`).toContain(alignedLayout(width, false, WORDS).words);
+    }
+    // The other densities are barLayout's.
     expect(alignedLayout(456, false, WORDS)).toEqual(barLayout(456, false, WORDS));
     expect(alignedLayout(437, true)).toEqual(barLayout(437, true));
   });

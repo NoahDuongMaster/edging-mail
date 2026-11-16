@@ -199,17 +199,21 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ t, onForgot }) => {
         autoCorrect="off"
         spellCheck={false}
       />
-      <SecretField
-        id="signin-password"
-        label={tr('term.password')}
-        error={passwordError}
-        value={password}
-        onChange={(event) => setPassword(event.target.value)}
-        autoComplete="current-password"
-        aria-invalid={passwordError !== undefined || errorText !== null}
-        aria-describedby={errorText === null ? undefined : 'signin-error'}
-      />
-      <ErrorLine t={t} id="signin-error" text={errorText} />
+      {/* The password, the form's error under it, then Forgot password (on the label row with a mouse) and what a reset needs. */}
+      <div className="au-secret-row">
+        <SecretField
+          id="signin-password"
+          label={tr('term.password')}
+          error={passwordError}
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          autoComplete="current-password"
+          aria-invalid={passwordError !== undefined || errorText !== null}
+          aria-describedby={errorText === null ? undefined : 'signin-error'}
+        />
+        <ErrorLine t={t} id="signin-error" text={errorText} />
+        <HintedLink id="signin-forgot" label={tr('auth.forgot_password')} hint={tr('auth.forgot_hint')} onClick={onForgot} />
+      </div>
       <CheckboxRow
         t={t}
         id="signin-shared"
@@ -219,7 +223,6 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ t, onForgot }) => {
         onChange={setShared}
       />
       <AuthButton t={t} busy={action.busy} disabled={wait > 0} label={action.busy ? tr('login.signing_in') : tr('auth.sign_in')} />
-      <HintedLink id="signin-forgot" label={tr('auth.forgot_password')} hint={tr('auth.forgot_hint')} onClick={onForgot} />
       <TrustLine />
     </AuthCard>
   );

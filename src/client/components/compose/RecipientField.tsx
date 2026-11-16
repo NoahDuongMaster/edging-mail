@@ -3,6 +3,7 @@ import { CircleAlert } from 'lucide-react';
 import { announce } from '../../lib/announce';
 import { isAddress, matchRange, suggestContacts, type Contact } from '../../lib/contacts';
 import { useT } from '../../lib/i18n';
+import { avatarHue } from '../../theme';
 import { Avatar, Chip, Tooltip, VisuallyHidden } from '../../ui';
 
 // What ends an address in the recipient fields (Enter or a separator).
@@ -58,7 +59,8 @@ const RecipientChip: React.FC<{ address: string; name?: string; onRemove: (key: 
     >
       <Chip
         className="cp-chip"
-        icon={<Avatar name={named ? name : address} size="sm" className="cp-avatar" />}
+        // v3 R8: the recipient as a stamp in their own tint (the list row's and the reader's).
+        icon={<Avatar name={named ? name : address} size={28} shape="stamp" hue={avatarHue(address)} className="cp-avatar" />}
         onRemove={() => onRemove('button')}
         removeLabel={tr('compose.remove_recipient', { address })}
       >
@@ -334,7 +336,13 @@ export const RecipientField: React.FC<RecipientFieldProps> = ({
               }}
               onClick={() => pick(contact)}
             >
-              <Avatar name={contact.name === '' ? contact.address : contact.name} size="sm" className="cp-avatar" />
+              <Avatar
+                name={contact.name === '' ? contact.address : contact.name}
+                size={28}
+                shape="stamp"
+                hue={avatarHue(contact.address)}
+                className="cp-avatar"
+              />
               <span className="cp-option-text">
                 {contact.name === '' ? null : (
                   <span className="cp-option-name">

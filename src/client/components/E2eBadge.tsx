@@ -17,7 +17,7 @@ export const E2eBadge: React.FC<{ t: ThemeTokens; sheet?: boolean }> = ({ sheet 
   return (
     <TrustChip
       tone="neutral"
-      icon={<Lock size={12} strokeWidth={2} aria-hidden="true" />}
+      icon={<Lock size={14} strokeWidth={1.75} aria-hidden="true" />}
       label={tr('e2e.badge')}
       heading={tr('e2e.badge')}
       note={tr('e2e.badge_note')}

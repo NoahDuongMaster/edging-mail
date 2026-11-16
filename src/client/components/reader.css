@@ -1,6 +1,6 @@
-/* The reader (components/MessageView.tsx, MailFrame.tsx, E2eBadge.tsx, UnverifiedChip.tsx, reader/*): the Operate surface of one message. A pane of
-   `--surface` with an action toolbar over a scrolling reading column (on a phone: a slim navigation row on top and the actions in a bottom bar,
-   within reach of the thumb); hairlines, cards only for the files. Classes are `rd-*`. Colours, radii and control heights are the variables of
+/* The reader (components/MessageView.tsx, MailFrame.tsx, E2eBadge.tsx, UnverifiedChip.tsx, reader/*): the Operate surface of one message, v3
+   "the letter". A sheet of `--surface` with a 56 px action toolbar over a scrolling reading column (on a phone: a slim navigation row on top
+   and the actions in a floating pill bar within reach of the thumb). Almost no hairlines: space and tone structure it (DESIGN-v3 4.2). Classes are `rd-*`. Colours, radii and control heights are the variables of
    the theme (see ui/ui.css); the only inline styles in those files are values that are computed (the hue of a file type and of a label dot;
    ui/Chip sets the hue of a label) and the box of the mail frame (MailFrame.tsx; its height is set here).
 
@@ -11,6 +11,7 @@
 /* ---------- The pane and its states ---------- */
 
 .rd-root {
+  position: relative;
   flex: 1 1 0;
   min-width: 0;
   min-height: 0;
@@ -38,29 +39,61 @@
 
 /* ---------- Toolbar ---------- */
 
-/* Desktop: one row (ui/Toolbar: one Tab stop, the arrow keys move): Archive | the moves | Mark as unread, Snooze, Label, the counter, Newer,
-   Older. IconButtons are `--rd-btn` px wide (32 with a mouse, 40 wide and 44 high on a touch screen wider than a phone), the width
-   reader/barDensity.ts counts with. The density (set from the pane's width) picks which actions show their words (`labelled`: the most used
-   first), the side padding, the gaps and whether the counter fits; wrapping stays only as a safety net, the arithmetic keeps the bar to one row.
-   Phone (`.nm-bar`, index.css): the bottom bar, five buttons sharing one row down to 320 px, each its icon over a short word (`.rd-tab`). */
+/* Desktop: one 56 px band on the top of the sheet (ui/Toolbar: one Tab stop, the arrow keys move): Archive | the moves | Mark as unread,
+   Snooze, Label, the counter, Newer, Older. IconButtons are `--rd-btn` px wide (32 with a mouse, 40 wide and 44 high on a touch screen wider
+   than a phone), the width reader/barDensity.ts counts with. The density (set from the pane's width) says whether EVERY action shows its words
+   (`labelled`) or none does (R1), the side padding, the gaps and whether the counter fits; wrapping stays only as a safety net. The band has
+   no line under it: when the letter scrolls under it a soft shadow fades in (`data-scrolled` on the root, MessageView).
+   Phone (`.nm-bar`, index.css): a floating pill bar over the bottom of the letter, five buttons sharing it down to 320 px, each its icon over a
+   short word (`.rd-tab`). */
 .rd-bar {
   --rd-btn: 32px;
+  position: relative;
+  z-index: var(--z-raise);
+  box-sizing: border-box;
   display: flex;
   flex: none;
   flex-wrap: wrap;
   align-items: center;
-  /* The first tool's icon (10px inside a labelled button) lines up with the column of the subject below in a narrow pane. */
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
+  min-height: 56px;
+  /* The first tool's icon lines up with the column of the subject below where the bar has the room (barAlignment, inline padding). */
+  padding: 12px;
+  background: var(--surface);
+  transition: box-shadow var(--dur-base) var(--ease-standard);
+}
+.rd-root[data-scrolled='true'] > .rd-bar[data-compact='false'],
+.rd-root[data-scrolled='true'] > .rd-top {
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--border) 80%, transparent),
+    0 10px 18px -14px color-mix(in srgb, var(--text) 28%, transparent);
+}
+/* v3 X1: the open letter's par avion edge (signature.css .ui-airmail, 6 px): along the sheet's top, over the toolbar's empty 12 px of top
+   padding (later in the page than the bar, at the bar's layer, so it is drawn over it), clipped by the sheet's corners (mailbox.css). */
+.ui-airmail.rd-airmail {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: var(--z-raise);
+  pointer-events: none;
 }
 .rd-bar[data-density='phone'] {
   flex-wrap: nowrap;
   justify-content: space-around;
-  padding: 4px max(8px, env(safe-area-inset-right, 0px)) calc(4px + env(safe-area-inset-bottom, 0px))
-    max(8px, env(safe-area-inset-left, 0px));
-  border-top: 1px solid var(--border);
-  border-bottom: 0;
+  position: absolute;
+  inset: auto max(12px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px))
+    max(12px, env(safe-area-inset-left, 0px));
+  min-height: 0;
+  padding: 4px 6px;
+  border-radius: 28px;
   background: var(--surface);
+  box-shadow: var(--float-shadow);
+}
+/* Its More menu opens above the floating bar, clear of it: the popup's 4 px from the button ended on the bar's own top edge (the button
+   sits 4 px inside the bar; W6 QA measured a 0 px gap), so it reads as resting on the bar. 8 px more, the popup material unchanged. */
+.ui-popover.rd-more-menu[data-side='above'] {
+  margin-top: -8px;
+}
+:root[data-theme='dark'] .rd-bar[data-density='phone'] {
+  background: var(--raised);
 }
 .rd-bar[data-density='labelled'],
 .rd-bar[data-density='full'] {
@@ -68,11 +101,11 @@
 }
 .rd-bar[data-density='snug'] {
   gap: 0;
-  padding: 8px;
+  padding: 12px 8px;
 }
 .rd-bar[data-density='tight'] {
   gap: 0;
-  padding: 8px 4px;
+  padding: 12px 4px;
 }
 @media (pointer: coarse) {
   .rd-bar[data-compact='false'] {
@@ -91,10 +124,10 @@
   gap: 6px;
   padding: 0 10px;
 }
-/* An open popup keeps its button pressed. */
+/* An open popup keeps its button pressed (the pressed look of a ghost: accent-soft, accent-text). */
 .rd-bar .ui-btn[aria-expanded='true'] {
-  background: var(--hover);
-  color: var(--text);
+  background: var(--accent-soft);
+  color: var(--accent-text);
 }
 /* Delete forever: the one red button of the bar. */
 .rd-bar .ui-btn.rd-danger[data-variant] {
@@ -125,7 +158,7 @@
   margin: 0;
   padding: 4px 6px 3px;
   border: 0;
-  border-radius: var(--radius-control);
+  border-radius: 22px;
   background: transparent;
   color: var(--text2);
   font: inherit;
@@ -184,8 +217,11 @@
   background: var(--border);
 }
 .rd-tab[aria-expanded='true'] {
-  background: var(--hover);
-  color: var(--text);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.rd-tab[aria-expanded='true'] svg {
+  color: var(--accent-text);
 }
 .rd-tab:focus-visible {
   outline: 2px solid var(--focus);
@@ -207,13 +243,17 @@
   }
 }
 
-/* The groups never touch: 2px each side of the hairline in the dense bars (snug, tight), 6px where there is room (barDensity.ts counts both). */
+/* The groups are told apart by space, never by a line (v3 R1): the separator keeps its place and its role for a screen reader but draws
+   nothing; 2 px each side of it in the dense bars (snug, tight). Where there is room (W5 lead review 8: 15 px between groups beside 2 px
+   inside them read as uneven spacing) the buttons of a group stand 2 px apart and the groups 20 px apart: 2 + 7 + 1 + 8 + 2
+   (barDensity.ts). */
 .rd-bar .rd-sep.ui-divider {
   flex: none;
   margin: 0 2px;
+  background: transparent;
 }
 .rd-bar:is([data-density='labelled'], [data-density='full']) .rd-sep.ui-divider {
-  margin: 0 6px;
+  margin: 0 8px 0 7px;
 }
 
 /* The counter ("1 of 7") takes what the buttons leave and is cut with an ellipsis before it could wrap the row; with no counter a spacer
@@ -231,7 +271,7 @@
   white-space: nowrap;
   font-size: 13px;
   line-height: 20px;
-  color: var(--text2);
+  color: var(--text3);
   font-variant-numeric: tabular-nums;
 }
 
@@ -243,16 +283,18 @@
      inside) ends on it: 16 px from the edge, or the safe area's edge of a phone in landscape (J5-16, J3-40: the glyphs, not the buttons, on
      the column in both orientations). */
   padding: 2px calc(max(16px, env(safe-area-inset-right, 0px)) - 12px) 2px calc(max(16px, env(safe-area-inset-left, 0px)) - 11px);
-  border-bottom: 1px solid var(--border);
+  position: relative;
+  z-index: var(--z-raise);
+  background: var(--surface);
+  transition: box-shadow var(--dur-base) var(--ease-standard);
 }
-/* The place of the message (3 of 30), centred on the bar: Back (40px) on the left, Newer and Older (80px) on the right, so 40px more room on
-   its left keeps it in the middle of the screen. */
+/* The place of the message (3 of 30), beside Back (as a phone's own back button names where it goes); Newer, Older and the star on the right. */
 .rd-pos {
   flex: 1 1 0;
   min-width: 0;
   overflow: hidden;
-  padding: 0 8px 0 48px;
-  text-align: center;
+  padding: 0 8px 0 2px;
+  text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 13px;
@@ -271,7 +313,7 @@
 .ui-popover.rd-menu {
   display: flex;
   flex-direction: column;
-  width: 248px;
+  width: 264px;
   overflow: hidden;
 }
 .rd-menu-body {
@@ -309,7 +351,7 @@
   width: 18px;
   height: 18px;
   border: 1px solid var(--control);
-  border-radius: 4px;
+  border-radius: 6px;
   background: var(--surface);
   box-shadow: var(--field-shadow);
 }
@@ -326,8 +368,8 @@
   padding: 4px 10px 6px;
 }
 .rd-new[data-list='true'] {
-  margin: 4px 10px 0;
-  padding: 8px 0 6px;
+  margin: 6px 10px 0;
+  padding: 10px 0 4px;
   border-top: 1px solid var(--border);
 }
 .rd-new-row {
@@ -337,6 +379,12 @@
 }
 .rd-new-row > .ui-field {
   flex: 1 1 0;
+}
+/* Its button is as tall as the field beside it (40 px with a mouse, 44 on touch), a square: W6 QA measured 36 beside 40. */
+.rd-new-row > .ui-btn.ui-icon-btn {
+  flex: none;
+  width: var(--ui-h-field);
+  height: var(--ui-h-field);
 }
 .rd-new-hint {
   display: flex;
@@ -354,16 +402,25 @@
   flex: none;
   margin-top: 1px;
 }
-/* J3-39: the date field of Snooze: the browser's calendar button in the weight of the app's line icons (lighter, the hint colour's strength;
-   it is an image, so its strength is set, not its colour), and the picked time in the app's words under the field. */
-.rd-snooze-form input::-webkit-calendar-picker-indicator {
-  opacity: 0.55;
-  cursor: pointer;
+/* J3-39: the date and time of Snooze are picked in the ui DateTimePicker (no browser date field is left), and the picked time is said in the
+   app's words under it. The form stands on the edges of the choices above it (the popup's own 6 px), its field and its button one height. */
+.ml-snooze-form.rd-snooze-form {
+  gap: 8px;
+  padding: 4px 10px 10px;
 }
-@media (hover: hover) {
-  .rd-snooze-form input::-webkit-calendar-picker-indicator:hover {
-    opacity: 0.85;
-  }
+.rd-snooze-form .ui-btn[data-size] {
+  min-height: var(--ui-h-field);
+}
+/* "Pick date & time" while its form is open is the form's heading (the look of "Snooze until"), not a stuck hover or a fourth choice. */
+.ui-menu-item.ml-snooze-item[aria-expanded='true'] {
+  min-height: 0;
+  padding-block: 10px 2px;
+  background: transparent;
+  color: var(--text3);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  cursor: default;
 }
 .rd-snooze-when {
   margin: 0;
@@ -392,14 +449,21 @@
   /* Its height is the unit of the mail frame's height (100cqh, below). Its size comes from the pane, never from what it holds. */
   container-type: size;
 }
-/* The reading column: about 720 px of content, centred in a wide pane. */
+/* The letter (v3): 720 px of content at most, 32 px over it and 40 px each side, centred in a sheet wider than 880 px; in a narrower sheet it
+   starts on the left with 32 px margins (24 px from 480 px down), so the toolbar's glyphs reach the column too (J3-36; READING_COLUMN in
+   reader/barDensity.ts counts the same). */
 .rd-page {
-  max-width: 784px;
+  max-width: 800px;
   margin: 0 auto;
-  padding: 28px 32px 48px;
+  padding: 40px 40px 48px;
 }
-/* A narrow desktop or tablet pane (the reader beside the list at 1024): 24 px margins, so the toolbar's glyphs reach the column too (J3-36;
-   READING_COLUMN in reader/barDensity.ts counts the same). */
+@container (max-width: 880px) {
+  .rd-page:not([data-compact='true']) {
+    max-width: 784px;
+    margin-inline: 0;
+    padding-inline: 32px;
+  }
+}
 @container (max-width: 480px) {
   .rd-page:not([data-compact='true']) {
     padding-inline: 24px;
@@ -407,82 +471,173 @@
 }
 .rd-page[data-compact='true'] {
   /* --rd-side: the room the centred column leaves on each side when the pane is wider than it (a phone on its side). The text keeps clear
-     of a landscape notch and the rounded corners at the safe-area line itself, never 1px into it (J5-16): 47px insets put it at 47-797. */
+     of a landscape notch and the rounded corners at the safe-area line itself, never 1px into it (J5-16): 47px insets put it at 47-797.
+     The bottom keeps the floating action bar (56 px, 10 px over the home indicator) clear of the end of the letter. */
   --rd-side: max(0px, (100vw - 784px) / 2);
-  padding: 16px max(16px, env(safe-area-inset-right, 0px) - var(--rd-side)) 24px max(16px, env(safe-area-inset-left, 0px) - var(--rd-side));
+  padding: 20px max(16px, env(safe-area-inset-right, 0px) - var(--rd-side)) calc(96px + env(safe-area-inset-bottom, 0px))
+    max(16px, env(safe-area-inset-left, 0px) - var(--rd-side));
 }
 
 /* ---------- Head: subject, labels, sender ---------- */
 
+/* No line between the head and the letter's body (v3 R7): 28 px of space. */
 .rd-head {
-  margin-bottom: 24px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--border);
+  margin-bottom: 28px;
   container: rd-head / inline-size;
 }
-/* A narrow reader (a tablet beside the list, a narrow window): the sender block takes the whole line, the trust chip a line of its own under
-   the name and address, and the date the line under it; nothing overlaps whatever wraps (J3-01, J6-05). */
+/* v3 P1: the postmark of the letter's arrival is the letter's corner ornament, top right (where an envelope carries its postage): the ring
+   (ui/Postmark, waves none, -8 degrees), ink --text3 at 70 %, its right edge on the column's edge (where the star's glyph ends below).
+   W5 lead review 7: its middle is the middle of the subject's first line (the 40 px line: 20 - 32 = -12 px; the 32 px line of a compact
+   column: 16 - 32 = -16 px), and its date is printed at 10 px: 64 px (the drawing's own 64 units, so 10 units are 10 px), the size at
+   which "NOV 16" keeps clear of the inner ring (at 56 px a 10 px date touched it, and the Chinese one crossed it). It floats, so the sender
+   row clears it. The subject and the labels keep 80 px clear of it (64 + 16) while it shows; a column under 480 px has no room for both
+   and drops it. */
+.ui-postmark.rd-postmark {
+  float: right;
+  margin: -12px 0 20px 16px;
+  color: color-mix(in srgb, var(--text3) 70%, transparent);
+}
+.ui-postmark.rd-postmark :is(.ui-postmark-day, .ui-postmark-time) {
+  fill: color-mix(in srgb, var(--text3) 92%, transparent);
+  font-size: 10px;
+}
+.ui-postmark.rd-postmark .ui-postmark-time {
+  font-weight: 600;
+}
+/* Chinese glyphs are a whole em each: the date is set solid (no tracking), so 11月16日 stays inside the ring. */
+.ui-postmark.rd-postmark .ui-postmark-day:lang(zh) {
+  letter-spacing: 0;
+}
+.rd-head > :is(.rd-subject, .rd-tags) {
+  margin-inline-end: 80px;
+}
+.rd-head > .rd-sender {
+  clear: right;
+}
+.rd-page[data-compact='true'] .ui-postmark.rd-postmark {
+  margin-top: -16px;
+}
+@container rd-head (max-width: 479px) {
+  .ui-postmark.rd-postmark {
+    display: none;
+  }
+  .rd-head > :is(.rd-subject, .rd-tags) {
+    margin-inline-end: 0;
+  }
+}
+/* A narrow reader (a tablet beside the list, a narrow window): the name and its address take the whole line; nothing overlaps whatever
+   wraps (J3-01, J6-05). */
 @container rd-head (max-width: 560px) {
   .rd-from {
     flex-basis: 100%;
   }
-  .rd-prov {
-    flex-basis: 100%;
-  }
 }
+/* The subject reads as the letter's title, the typographic peak of the screen: 32/40 650 (24/32 on a phone). */
 .rd-subject {
   margin: 0;
-  font-size: 22px;
-  line-height: 30px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-size: 32px;
+  line-height: 40px;
+  font-weight: 650;
+  letter-spacing: -0.022em;
   color: var(--text);
   overflow-wrap: anywhere;
-  text-wrap: balance;
+  text-wrap: pretty;
 }
 .rd-page[data-compact='true'] .rd-subject {
-  font-size: 20px;
-  line-height: 28px;
-  letter-spacing: -0.01em;
+  font-size: 24px;
+  line-height: 32px;
+  letter-spacing: -0.018em;
 }
+/* The labels under the subject (v3 R4): quiet like the list's, the hue only in the dot (set inline), the name in text2, no fill; a chip
+   shows a soft fill and its X under the pointer or focus. W5 lead review 4: the first dot's ink stands on the subject's ink edge (the S of a
+   32 px subject starts 1 px in): the row takes back the chip's 1 px edge and 8 px padding with a RELATIVE shift, because a negative margin
+   is dropped beside the floated postmark (a flex row beside a float starts at the float-free edge). */
 .rd-tags {
+  position: relative;
+  left: -8px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  margin-top: 10px;
+  gap: 2px;
+  margin: 10px 0 0;
 }
-/* J4-42: a label chip with its X (ui Chip: 28 px pill, 24 px X; 44 px on touch) keeps its hue: the X takes the chip's text colour. */
 .ui-chip.rd-tag[data-removable='true'] {
+  gap: 6px;
+  min-height: 28px;
+  padding-left: 8px;
   border-color: transparent;
+  background: transparent;
   box-shadow: none;
+  font-size: 13px;
+  transition: background-color var(--dur-fast) var(--ease-standard);
+}
+.ui-chip.rd-tag .ui-chip-dot {
+  width: 8px;
+  height: 8px;
 }
 .ui-chip.rd-tag .ui-chip-x[data-size] {
-  color: inherit;
+  color: var(--text3);
+  transition: opacity var(--dur-fast) var(--ease-standard);
+}
+@media (hover: hover) and (pointer: fine) {
+  .ui-chip.rd-tag .ui-chip-x[data-size]:not(:focus-visible) {
+    opacity: 0;
+  }
+  .ui-chip.rd-tag:hover .ui-chip-x[data-size] {
+    opacity: 1;
+  }
+  .ui-chip.rd-tag:is(:hover, :focus-within)[data-removable='true'] {
+    background: var(--hover);
+  }
 }
 
-/* The sender block: a 40 px avatar beside two lines of 20 px (name, address and date; then the recipients), and Star / Reply in line with
-   the first. */
+/* The sender block: the sender's 56 px stamp (40 on a phone) beside two lines (name and address on a 22 px line, then the date, the
+   recipients and the trust chips), centred on the stamp, and the star on the row's right, centred on it. v3 X1: the stamp is set on 2
+   degrees askew; v3 P1: it stands alone (the postmark is the letter's corner ornament, above) with 28 px of air under the subject or the
+   labels (24 on a phone). */
 .rd-sender {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  margin-top: 18px;
+  gap: 22px;
+  margin-top: 28px;
+}
+.ui-avatar.rd-stamp-tile {
+  rotate: -2deg;
+  flex: none;
+}
+.rd-page[data-compact='true'] .rd-sender {
+  gap: 18px;
+  margin-top: 24px;
+}
+/* Phone: the 40 px stamp centred on the two lines (54 px there). */
+.rd-page[data-compact='true'] .ui-avatar.rd-stamp-tile {
+  margin-top: 7px;
+}
+.rd-page[data-compact='true'] .rd-who {
+  padding-top: 0;
+}
+/* A phone under 380 px has no room to spare: the stamp sits straight. */
+@media (max-width: 379px) {
+  .rd-page[data-compact='true'] .ui-avatar.rd-stamp-tile {
+    rotate: none;
+  }
 }
 .rd-who {
   flex: 1 1 0;
   min-width: 0;
+  /* Two lines (44 px) centred on the 56 px stamp; a taller block (the trust chips on a line of their own) grows downwards. */
+  padding-top: 6px;
   /* J3-21: line 2 (date and recipients) reads its own width (its popups are portals, so the containment moves none of them). */
   container: rd-who / inline-size;
 }
-/* Line 1: name, address and the trust chips (they wrap within it where the line is short). */
+/* Line 1: the name and the address (the address wraps under the name where the line is short). */
 .rd-line {
   display: flex;
   flex-wrap: wrap;
   align-content: center;
   align-items: baseline;
   column-gap: 12px;
-  min-height: 20px;
+  min-height: 22px;
 }
 .rd-from {
   display: flex;
@@ -490,11 +645,11 @@
   flex-wrap: wrap;
   align-items: baseline;
   min-width: 0;
-  gap: 4px 8px;
+  gap: 0 8px;
 }
 .rd-name {
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 15px;
+  line-height: 22px;
   font-weight: 600;
   overflow-wrap: anywhere;
 }
@@ -504,7 +659,7 @@
   min-width: 0;
   overflow: hidden;
   font-size: 13px;
-  line-height: 20px;
+  line-height: 22px;
   color: var(--text2);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -528,19 +683,31 @@
   flex: none;
   font-size: 13px;
   line-height: 20px;
-  color: var(--text2);
+  color: var(--text3);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+/* Line 2 as a whole: "date · recipients" first, the trust chips after it on the same line where there is room, else on a line of their own
+   (flex-wrap): the date keeps its one place either way. */
+.rd-when {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 12px;
+  margin-top: 2px;
+}
+.rd-when > .rd-meta {
+  flex: 0 1 auto;
+  min-width: 0;
+}
 /* Line 2 (J3-21): the date, always first and always here, then the recipients, which take what is left of the line (cut with an ellipsis; the
    disclosure shows them all). "date · to me" is ONE unit: it never breaks at its dot. Where the column is too narrow for both (a tablet's
-   reader beside the list, a phone), the recipients take the line under the date and the dot goes. One 4 px step under line 1. */
+   reader beside the list, a phone), the recipients take the line under the date and the dot goes. */
 .rd-meta {
   display: flex;
   flex-wrap: nowrap;
   align-items: baseline;
   column-gap: 8px;
-  margin-top: 4px;
 }
 .rd-meta > .rd-rcpt {
   flex: 0 1 auto;
@@ -548,6 +715,10 @@
 }
 @container rd-who (max-width: 320px) {
   .rd-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .rd-when {
     flex-direction: column;
     align-items: flex-start;
   }
@@ -598,8 +769,12 @@ button.rd-rcpt {
   }
   /* J3-21: line 2 sits 12 px under line 1 here, and the disclosure's 12 px above its text lies in that gap (pulled up by the same 12 px), so
      the date is at the same place with or without a disclosure beside it, and the 44 px box still covers nothing of line 1. */
-  .rd-meta {
+  .rd-when {
     margin-top: 12px;
+  }
+  /* Two lines of 54 px here: 1 px down centres them on the 56 px stamp. */
+  .rd-page:not([data-compact='true']) .rd-who {
+    padding-top: 1px;
   }
   .rd-meta > button.rd-rcpt {
     margin-top: -12px;
@@ -610,45 +785,28 @@ button.rd-rcpt {
       margin-top: -8px;
     }
   }
-  /* One rhythm in the stacked sender block (J3-21): the name and its address are one unit (4 px), then 12 px to the trust chip on its own line,
-     and 12 px to the date. */
-  @container rd-head (max-width: 560px) {
-    .rd-prov {
-      margin-top: 8px;
-    }
-  }
 }
-/* Star and Reply, centred on the first line. The icon, not the button, lines up with the right edge of the column. */
+/* The star on the sender row's right, centred on the row (the 56 px stamp's height; a block that grows a third line keeps it there) (R2:
+   the block's one tool; Reply is the dock at the end of the letter). Its glyph, not its button, ends on the right edge of the column, under
+   the postmark's ring. */
 .rd-tools {
   display: flex;
   flex: none;
   align-items: center;
   gap: 2px;
-  margin: calc((20px - var(--ui-h-sm)) / 2) calc((16px - var(--ui-h-sm)) / 2) 0 0;
+  min-height: 56px;
+  margin: 0 calc((16px - var(--ui-h-sm)) / 2) 0 0;
 }
-/* The chevron of Reply all / Forward hugs Reply: one control in two parts; still a whole 24x24 target with a mouse (2.5.8), the touch
-   size on a coarse pointer (below). */
-.rd-tools .ui-icon-btn.rd-reply-more[data-size] {
-  width: 24px;
-  min-width: 24px;
-  min-height: 24px;
-  margin-left: -2px;
-}
-@media (max-width: 900px), (pointer: coarse) {
-  .rd-tools .ui-icon-btn.rd-reply-more[data-size] {
-    width: var(--ui-h-sm);
-  }
-}
-/* A starred message: the star is filled and yellow, not the accent tint of a pressed button. */
-.rd-tools .ui-btn.rd-star[aria-pressed='true'] {
+/* A starred message: the star is filled and amber, not the accent tint of a pressed button (desktop head and the phone's top bar). */
+.ui-btn.rd-star[aria-pressed='true'] {
   background: transparent;
   color: var(--star);
 }
-.rd-tools .ui-btn.rd-star[aria-pressed='true'] svg {
+.ui-btn.rd-star[aria-pressed='true'] svg {
   fill: currentcolor;
 }
 @media (hover: hover) {
-  .rd-tools .ui-btn.rd-star[aria-pressed='true']:hover:not(:disabled) {
+  .ui-btn.rd-star[aria-pressed='true']:hover:not(:disabled) {
     background: var(--hover);
     color: var(--star);
   }
@@ -656,23 +814,26 @@ button.rd-rcpt {
 
 /* ---------- Trust chips: sealed end to end, sender not verified ---------- */
 
-/* On the sender's line, after the address (rd-from wraps them under it where the line is short): a 20 px chip, so the line keeps its height. */
+/* On line 2 of the sender block, after the date and the recipients (v3 R3): quiet words with their icon, no fill and no chevron at rest (the
+   recipients keep the block's one disclosure); a soft fill under the pointer and while the explanation is open. The words and the icon say
+   what it is, never the colour alone: the sealed one in text2, an unverified sender in the caution colour. Its icon stands on the column
+   when the chips take a line of their own (the pill's 8 px are taken back). */
 .rd-prov {
   display: inline-flex;
+  flex: none;
   flex-wrap: wrap;
   align-items: center;
-  align-self: center;
-  gap: 4px 6px;
+  gap: 2px 4px;
   min-width: 0;
   max-width: 100%;
+  margin-inline-start: -8px;
 }
 .rd-trust {
   display: inline-flex;
   min-width: 0;
   max-width: 100%;
 }
-/* The button (44 px high on a phone through `nm-tap-h`) is the target; the pill inside it is what is seen. Its words and icon say what it
-   is, never its colour alone. */
+/* The button (44 px high on a phone through `nm-tap-h`) is the target; the pill inside it is what is seen. */
 .rd-badge-btn {
   display: inline-flex;
   align-items: center;
@@ -686,52 +847,58 @@ button.rd-rcpt {
   font: inherit;
   cursor: pointer;
 }
-/* A neutral chip (ui Badge neutral: text2 on raised, a hairline), not a coloured one: a label chip is coloured, a trust chip is not. */
 .rd-badge.ui-badge {
-  gap: 4px;
+  gap: 5px;
   height: auto;
-  min-height: 20px;
-  padding: 1px 8px;
+  min-height: 24px;
+  padding: 2px 8px;
+  border-color: transparent;
   border-radius: var(--radius-pill);
+  background: transparent;
   box-shadow: none;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
   text-align: left;
   white-space: normal;
+  transition: background-color var(--dur-fast) var(--ease-standard);
+}
+.rd-badge.ui-badge[data-tone='neutral'] {
+  color: var(--text2);
+}
+/* A sender nobody verified is a caution, said a step louder than the reassurance of a sealed message: a soft caution fill at rest. */
+.rd-badge.ui-badge[data-tone='warning'] {
+  background: var(--warning-soft);
+  color: var(--warning);
 }
 .rd-badge svg {
   flex: none;
 }
-/* The small chevron after the words: the chip opens an explanation. */
-.rd-badge-more {
-  margin-inline: -1px -3px;
-  opacity: 0.8;
-}
 @media (hover: hover) {
-  .rd-badge-btn:hover .ui-badge[data-tone='neutral'] {
-    border-color: var(--control);
-    color: var(--text);
+  .rd-badge-btn:hover .rd-badge.ui-badge[data-tone='neutral'] {
+    background: var(--hover);
   }
-  .rd-badge-btn:hover .ui-badge[data-tone='warning'] {
-    border-color: var(--warning);
+  .rd-badge-btn:hover .rd-badge.ui-badge[data-tone='warning'] {
+    background: color-mix(in srgb, var(--warning) 14%, var(--warning-soft));
   }
 }
-.rd-badge-btn[aria-expanded='true'] .ui-badge[data-tone='neutral'] {
-  border-color: var(--control);
-  color: var(--text);
+.rd-badge-btn[aria-expanded='true'] .rd-badge.ui-badge[data-tone='neutral'] {
+  background: var(--hover);
 }
-.rd-badge-btn[aria-expanded='true'] .ui-badge[data-tone='warning'] {
-  border-color: var(--warning);
+.rd-badge-btn[aria-expanded='true'] .rd-badge.ui-badge[data-tone='warning'] {
+  background: color-mix(in srgb, var(--warning) 14%, var(--warning-soft));
 }
 .rd-badge-btn:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
-/* On touch (a phone, or a touch screen of any width) the chip's button is a 44px target laid over the 20px it shows: it is 44 px high under
-   exactly the rule that takes 12 px back on each side, so it takes no more of the sender's line than the chip and never covers the name, the
-   address or the date (a 24 px button pulled up by 12 px did, on a touch tablet: J3-01, J5-03). */
+/* On touch (a phone, or a touch screen of any width) the chip's button is a 44px target laid over the 24px it shows: it is 44 px high under
+   exactly the rule that takes 10 px back on each side, so it takes no more of the line than the chip and never covers the date or the
+   recipients (J3-01, J5-03). */
 @media (max-width: 900px), (pointer: coarse) {
   .rd-prov .rd-badge-btn {
     min-height: 44px;
-    margin-block: -12px;
+    margin-block: -10px;
   }
 }
 /* The explanation: a small non-modal dialog under the chip. */
@@ -740,7 +907,7 @@ button.rd-rcpt {
   padding: 0;
 }
 .rd-trust-body {
-  padding: 12px 14px 14px;
+  padding: 10px 10px 12px;
 }
 .rd-trust-body:focus {
   outline: none;
@@ -764,9 +931,6 @@ button.rd-rcpt {
 }
 .rd-trust-title[data-tone='warning'] svg {
   color: var(--warning);
-}
-.rd-trust-title .rd-badge-more {
-  display: none;
 }
 .rd-trust-note {
   margin: 4px 0 0;
@@ -796,16 +960,15 @@ button.rd-rcpt {
 
 /* ---------- Body ---------- */
 
-/* J6-42: a message in Spam says so under its header, quietly (the hairline card of a note, a caution icon, the text colour of a hint), with the
-   way back beside it; it wraps under the words on a narrow column. */
+/* J6-42: a message in Spam says so under its header, quietly (a soft card of the raised tone, no edge, a caution icon, the text colour of a
+   hint), with the way back beside it; it wraps under the words on a narrow column. */
 .rd-spam {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
-  margin: -8px 0 24px;
-  padding: 8px 8px 8px 12px;
-  border: 1px solid var(--border);
+  margin: -8px 0 28px;
+  padding: 8px 8px 8px 14px;
   border-radius: var(--radius-card);
   background: var(--raised);
   color: var(--text2);
@@ -829,9 +992,9 @@ button.rd-rcpt {
 .rd-view {
   margin-bottom: 12px;
 }
-/* Plain text set for reading: 16/26 in the desktop column (60ch: about 70 characters of prose a line), 15/24 on a phone. */
+/* Plain text set for reading: 16/26 in the desktop column (36em: about 75 characters of prose a line), 15/24 on a phone. */
 .rd-text {
-  max-width: 60ch;
+  max-width: 36em;
   font-size: 16px;
   line-height: 26px;
   color: var(--text);
@@ -851,10 +1014,12 @@ button.rd-rcpt {
 .rd-quote {
   margin-top: -8px;
 }
-/* A quiet outlined button with a hairline (the compose's fold too), in the radius of the other buttons: it reads as part of the message
-   that opens, not as a footer link. */
+/* A quiet pill of the raised tone (the compose's fold too): it reads as part of the message that opens, not as a footer link. Its glyph
+   stands on the text column (its padding is taken back). */
 .ui-btn.rd-quote-btn {
-  border: 1px solid var(--border);
+  margin-inline-start: -2px;
+  border-radius: var(--radius-pill);
+  background: var(--raised);
   color: var(--text2);
 }
 .rd-quoted {
@@ -889,29 +1054,30 @@ button.rd-rcpt {
    row leave of it (never under 240px): a short mail ends with its frame, its files and Reply in the first view. A mail that MailFrame guesses
    is long (data-tall, a count on the HTML text) gets a frame as tall as the column (less 24px above and under) instead, so it reads in one
    pane-high view, not in a small box. A wrong guess costs some scrolling inside the frame or some white, never hidden content.
-   The page is a flex column only then: the margins of its blocks (head 24 under, files and Reply 28 above, Download 8 above) never meet, so
-   they add up exactly as they collapsed; the view switch and the Download button keep their own width. */
+   The page is a flex column only then: the margins of its blocks (head 28 under, files 32 and the reply dock 36 above, the end row 16
+   above) never meet, so they add up exactly as they collapsed; the view switch and the reply dock keep their own width. */
 .rd-page:has(> .rd-mail) {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   min-height: 100cqh;
 }
-.rd-page:has(> .rd-mail) > .rd-view,
-.rd-page:has(> .rd-mail) > .rd-raw {
+.rd-page:has(> .rd-mail) > .rd-view {
   align-self: flex-start;
 }
 .rd-mail,
 .rd-frame {
   flex: 1 0 auto;
 }
+/* The sender's page, white in both themes: no edge on the white sheet of the light theme (v3: tone, not lines), a whisper of a ring so a
+   mail with its own white margins still has a shape. */
 .rd-frame {
   display: flex;
   flex-direction: column;
   overflow: hidden;
   background: #fff;
-  border: 1px solid var(--border);
   border-radius: var(--radius-card);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--border) 70%, transparent);
 }
 .rd-frame > iframe {
   flex: 1 0 auto;
@@ -925,7 +1091,8 @@ button.rd-rcpt {
 :root[data-theme='dark'] .rd-frame {
   padding: 4px;
   background: var(--raised);
-  border-radius: var(--radius-dialog);
+  border-radius: var(--radius-sheet);
+  box-shadow: none;
 }
 :root[data-theme='dark'] .rd-frame > iframe {
   border-radius: var(--radius-card);
@@ -934,9 +1101,9 @@ button.rd-rcpt {
 /* ---------- Attachments: cards in a wrapping grid ---------- */
 
 .rd-files {
-  margin-top: 28px;
+  margin-top: 32px;
 }
-/* The count line of the files, with Download all at its end when there are several (J6-43): a quiet text button on the same line. */
+/* From two files on (v3 R5): their count and total, with Download all at its end (J6-43): a quiet text button on the same line. */
 .rd-files-head {
   display: flex;
   flex-wrap: wrap;
@@ -957,7 +1124,6 @@ button.rd-rcpt {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 0 0 10px;
   font-size: 13px;
   line-height: 20px;
   font-weight: 500;
@@ -966,8 +1132,8 @@ button.rd-rcpt {
 }
 .rd-file-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 232px), 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 10px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -976,40 +1142,38 @@ button.rd-rcpt {
   display: flex;
   min-width: 0;
 }
-/* A card: the type tile, the name over the size, the download glyph. The whole card is the download (a link, or a button for an encrypted
-   file), so it lifts a little under the pointer (DESIGN.md: only cards that are whole controls do). */
+/* A card of the raised tone (radius 14, no edge): the 40 px type tile (radius 10), the name over the size, the download glyph. The whole card is the download (a link, or a button for an encrypted file), so it lifts 1 px and takes
+   a soft shadow under the pointer (only cards that are whole controls do). */
 .rd-file {
   display: flex;
   flex: 1 1 auto;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
-  min-height: 58px;
+  min-height: 56px;
   margin: 0;
-  padding: 8px 10px 8px 8px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  padding: 8px 14px 8px 8px;
+  background: var(--raised);
+  border: 0;
   border-radius: var(--radius-card);
-  box-shadow: var(--shadow-sm);
   color: var(--text);
   font: inherit;
   text-align: left;
   text-decoration: none;
   cursor: pointer;
   transition:
-    border-color var(--dur-fast) var(--ease-standard),
+    background-color var(--dur-fast) var(--ease-standard),
     box-shadow var(--dur-fast) var(--ease-standard),
     translate var(--dur-fast) var(--ease-standard);
 }
-:root[data-theme='dark'] .rd-file {
-  border-color: var(--border-strong);
-  background: var(--raised);
-}
 @media (hover: hover) {
   .rd-file:hover:not(:disabled) {
-    border-color: var(--border-strong);
-    box-shadow: var(--shadow-md);
+    background: var(--surface);
+    box-shadow: var(--sheet-shadow);
     translate: 0 calc(-1px * var(--motion, 1));
+  }
+  :root[data-theme='dark'] .rd-file:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--raised) 70%, var(--text) 6%);
   }
   .rd-file:hover:not(:disabled) .rd-file-dl {
     color: var(--text);
@@ -1019,6 +1183,10 @@ button.rd-rcpt {
   translate: none;
   box-shadow: var(--press-shadow);
 }
+.rd-file:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
 .rd-file:disabled {
   cursor: progress;
 }
@@ -1027,7 +1195,6 @@ button.rd-rcpt {
   flex: none;
   color: var(--text2);
 }
-/* The type of the file, in the hue of the type (set inline): a 40 px tile, its corners concentric with the card's. */
 /* The type tile is components/FileTypeTile.tsx (fileTile.css): one look with the compose's file chips (J3-15). */
 .rd-file-main {
   display: flex;
@@ -1040,8 +1207,8 @@ button.rd-rcpt {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
-  line-height: 18px;
+  font-size: 14px;
+  line-height: 20px;
   font-weight: 500;
 }
 .rd-file-size {
@@ -1051,31 +1218,86 @@ button.rd-rcpt {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Reply, Reply all, Forward ---------- */
+/* ---------- The end of the letter: the attachments, the reply dock, Download original ---------- */
 
-/* Desktop: one row in every pane; MessageView picks the button size from the row's width (reader/barDensity.ts replyDensity: md buttons, then
-   sm, then sm without icons), and wrapping stays only as a safety net. Reply is the primary button, the other two secondary. */
+/* W5 lead review 5: the attachment cards and the reply dock share ONE column, the dock's width, so their right edges meet (a wide card
+   ending 18 px short of the dock read as unrelated widths). A desktop's closing block is a one-column grid as wide as its widest
+   contributor, the dock (fit-content, never wider than the letter); the files section adds no width of its own (size containment) and
+   fills that column, its cards stacking in it. MessageView measures this block (full width: never the fit-content dock, which would feed
+   back into its own density). A phone keeps both full width. */
+.rd-close:not([data-compact='true']) {
+  display: grid;
+  grid-template-columns: fit-content(100%);
+}
+.rd-close:not([data-compact='true']) > .rd-files {
+  contain: inline-size;
+}
+
+/* Desktop: one row in every pane; MessageView picks the button size from the column's width (reader/barDensity.ts replyDensity: md buttons,
+   then sm, then sm without icons), and wrapping stays only as a safety net. Reply is the primary button, the other two secondary, in a soft
+   dock of the raised tone (radius 26, 8 px around the buttons, so the pill buttons inside are concentric: 26 - 8 = 18 = half their 36 px);
+   the first button's edge stands on the text column. W5 lead review 6: no flight trail leaves the dock any more (it read as a stray
+   connector to nothing); the letter ends with the dock and the quiet Download original. */
+.rd-reply-row {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 40px;
+}
 .rd-reply {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 28px;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  border-radius: 26px;
+  background: var(--raised);
+}
+.rd-reply > .ui-btn {
+  border-radius: var(--radius-pill);
+}
+/* Inside the dock the secondary buttons are its tone (no ring of their own: one container, not a pill in a pill); the pointer lifts one to
+   the sheet's surface with its ring. Reply keeps its accent fill. */
+.rd-reply > .ui-btn[data-variant='secondary'] {
+  background: transparent;
+  box-shadow: none;
+}
+@media (hover: hover) {
+  .rd-reply > .ui-btn[data-variant='secondary']:hover:not(:disabled, [aria-busy='true']) {
+    background: var(--surface);
+    box-shadow: var(--control-shadow);
+  }
 }
 /* Phone: the three share one row at equal widths. Each keeps its whole label as its minimum width, so where the row cannot hold all three
    (under ~360px) it wraps and the last one fills its own row instead of standing narrow. */
+.rd-reply[data-compact='true'] {
+  flex: 1 1 auto;
+  width: auto;
+}
 .rd-reply[data-compact='true'] > .ui-btn {
   flex: 1 1 0;
   padding: 0 6px;
 }
-/* Download original message: a quiet ghost button with its icon, under the reply row (44px high on touch, as every ui control). Its icon, not its
-   box, stands on the edge of the column, like the reply buttons above it and the text: the 1px border and 10px padding are taken back. */
+/* Phone: the dock takes the row, under the text or the files. */
+.rd-reply-row[data-compact='true'] {
+  margin-top: 32px;
+}
+/* The end of the page: Download original message (a quiet ghost button with its icon, 44px high on touch; its icon, not its box, on the
+   text column), right under the dock: the letter ends there. */
+.rd-end {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  margin-top: 12px;
+}
 .ui-btn.rd-raw {
   display: flex;
   width: fit-content;
-  margin-top: 20px;
-  margin-inline-start: -11px;
-  color: var(--text2);
+  margin-inline-start: -12px;
+  color: var(--text3);
   font-size: 13px;
+  font-weight: 400;
 }
 .rd-error {
   margin-top: 8px;
@@ -1084,22 +1306,22 @@ button.rd-rcpt {
 /* Reduced motion: the card's hover lift is 0 (--motion, set by the system setting or the in-app choice); under the system setting its
    colour change is instant too (a short fade is fine under the in-app choice). */
 @media (prefers-reduced-motion: reduce) {
-  .rd-file,
-  .rd-tab {
+  .rd-bar,
+  .rd-top,
+  .rd-tab,
+  .ui-chip.rd-tag[data-removable='true'],
+  .ui-chip.rd-tag .ui-chip-x[data-size],
+  .rd-badge.ui-badge,
+  .rd-file {
     transition: none;
   }
 }
 
 /* ---------- Loading: the skeleton of a message ---------- */
 
-/* The empty band of the toolbar while a message loads: the height of the real bar (its buttons' height inside the same padding). */
+/* The empty band of the toolbar while a message loads, or with nothing to open: the room of the real 56 px bar. */
 .rd-bar-skel {
-  box-sizing: content-box;
-  min-height: var(--rd-btn);
-}
-/* With nothing to open, the band only keeps the room of the pane header: no hairline under a toolbar that is not there. */
-.rd-bar-skel[data-blank='true'] {
-  border-bottom-color: transparent;
+  min-height: 56px;
 }
 
 .rd-skel {
@@ -1138,9 +1360,7 @@ button.rd-rcpt {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-top: 18px;
-  padding-top: 22px;
-  border-top: 1px solid var(--border);
+  margin-top: 40px;
 }
 
 /* ---------- Phone: Snooze and Label as bottom sheets (ui/Dialog) ---------- */
@@ -1179,12 +1399,12 @@ button.rd-rcpt {
   padding-top: 16px;
 }
 
-/* ConfirmDialog: what the question is about (the subject of a message deleted for good), on a quiet line of its own. */
+/* ConfirmDialog: what the question is about (the subject of a message deleted for good), on a quiet line of its own: a soft well of the
+   raised tone, no edge. */
 .rd-confirm-detail {
   margin: 0;
-  padding: 8px 12px;
+  padding: 10px 14px;
   overflow: hidden;
-  border: 1px solid var(--border);
   border-radius: var(--radius-control);
   background: var(--raised);
   color: var(--text);

@@ -1,6 +1,6 @@
 import React from 'react';
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, Plus, Search, X } from 'lucide-react';
-import type { ThemeTokens } from '../../theme';
+import { avatarHue, type ThemeTokens } from '../../theme';
 import { useSession } from '../../lib/auth';
 import { announce } from '../../lib/announce';
 import { fmt, useT } from '../../lib/i18n';
@@ -12,6 +12,7 @@ import {
   Avatar,
   Button,
   EmptyState,
+  FlightTrail,
   IconButton,
   SegmentedControl,
   Select,
@@ -52,19 +53,14 @@ interface Sort {
 const nameOf = personName;
 
 /**
- * When the person last signed in, on two lines: "2 hours ago", and under it in the quietest grey the short date and time (with the year
- * when it is not this one), the same shape on every row. The full date and time is in a tooltip and in the person's dialog.
+ * When the person last signed in, in words ("2 hours ago"); the full date and time is in a tooltip and in the person's dialog. A phone,
+ * where no column header names it, says the whole sentence ("Last sign-in 2 hours ago").
  */
 const LastSignIn: React.FC<{ at: number }> = ({ at }) => {
   const tr = useT();
   const tip = useTooltip();
   const ref = React.useRef<HTMLElement | null>(null);
   const when = fmt.relative(at);
-  const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' };
-  if (new Date(at).getFullYear() !== new Date().getFullYear()) {
-    options.year = 'numeric';
-  }
-  const date = fmt.dateTime(at, options);
   return (
     <>
       <time
@@ -75,10 +71,7 @@ const LastSignIn: React.FC<{ at: number }> = ({ at }) => {
         className="ad-when"
         {...tip.anchor}
       >
-        <span className="ad-wide">
-          <span className="ad-when-main">{when}</span>
-          <span className="ad-when-sub">{date}</span>
-        </span>
+        <span className="ad-wide ad-when-main">{when}</span>
         <span className="ad-narrow">{tr('users.last_sign_in', { when })}</span>
       </time>
       <Tooltip open={tip.open} text={fmt.dateTime(at)} anchorRef={ref} {...tip.bubble} />
@@ -160,7 +153,8 @@ function compare(sort: Sort): (a: AdminUser, b: AdminUser) => number {
 
 /**
  * One person. The name is the button that opens their dialog (every action on an account is asked and confirmed there): the keyboard and
- * screen reader route. A click anywhere else on the row does the same for the mouse, and the chevron at its end says the row opens.
+ * screen reader route. A click anywhere else on the row does the same for the mouse, and the quiet Manage with its chevron at the row's end
+ * says the row opens (it is a picture of that, not a second control: the name is the one).
  */
 const UserRow: React.FC<{ user: AdminUser; onOpen: () => void }> = ({ user, onOpen }) => {
   const tr = useT();
@@ -175,7 +169,8 @@ const UserRow: React.FC<{ user: AdminUser; onOpen: () => void }> = ({ user, onOp
     <tr className="ad-link-row" data-state={personState(user)} onClick={openFromRow}>
       <td className="ad-cell-person ad-wrap">
         <div className="ad-who">
-          <Avatar name={title} size="sm" />
+          {/* Each person's own tint; a disabled account keeps the quiet neutral tile. */}
+          <Avatar name={title} size="md" hue={user.status === 'disabled' ? undefined : avatarHue(user.email)} />
           <button type="button" className="ad-person" onClick={onOpen}>
             <span className="ad-cell-title">{title}</span>
             {user.display_name === '' && user.aliases.length === 0 ? null : (
@@ -218,7 +213,10 @@ const UserRow: React.FC<{ user: AdminUser; onOpen: () => void }> = ({ user, onOp
           ) : (
             <LastSignIn at={user.last_login_at} />
           )}
-          <ChevronRight size={16} aria-hidden="true" className="ad-go" />
+          <span className="ad-manage" aria-hidden="true">
+            <span className="ad-manage-word">{tr('users.manage')}</span>
+            <ChevronRight size={16} className="ad-go" />
+          </span>
         </div>
       </td>
     </tr>
@@ -313,11 +311,19 @@ export const UsersPanel: React.FC<UsersPanelProps> = ({ t, onGoToDomains }) => {
   } else if (query.data === undefined) {
     body = <TableSkeleton label={tr('users.loading')} columns={5} />;
   } else if (loaded.length === 0) {
-    body = <EmptyState title={debounced.trim() === '' ? tr('users.empty') : tr('users.no_match', { query: debounced.trim() })} />;
+    body = (
+      <EmptyState
+        art={<FlightTrail size="md" />}
+        title={debounced.trim() === '' ? tr('users.empty') : tr('users.no_match', { query: debounced.trim() })}
+        className="ad-empty"
+      />
+    );
   } else if (users.length === 0) {
     body = (
       <EmptyState
+        art={<FlightTrail size="md" />}
         title={tr('users.filter_none')}
+        className="ad-empty"
         action={
           <Button
             size="sm"
@@ -386,6 +392,7 @@ export const UsersPanel: React.FC<UsersPanelProps> = ({ t, onGoToDomains }) => {
       <div className="ad-toolbar">
         <TextField
           type="search"
+          variant="search"
           label={tr('users.search_label')}
           hideLabel
           placeholder={tr('users.search_placeholder')}
@@ -436,7 +443,7 @@ export const UsersPanel: React.FC<UsersPanelProps> = ({ t, onGoToDomains }) => {
           ]}
           value={twoFactor}
           onChange={(next) => setTwoFactor(TWO_FACTOR_FILTERS.find((value) => value === next) ?? 'any')}
-          className="ad-filter-2fa"
+          className="ad-pill-select"
         />
       </div>
       {body}

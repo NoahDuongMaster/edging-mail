@@ -6,6 +6,8 @@ import { positionNextTo } from './position';
 interface TooltipProps {
   open: boolean;
   text: string;
+  /** A key that does the same ("E", "Ctrl+Enter"): shown after the text in a small key chip of its own. */
+  shortcut?: string;
   /** The control the tooltip names. */
   anchorRef: React.RefObject<HTMLElement | null>;
   /** The pointer came onto the bubble (it stays while the pointer is on it: WCAG 1.4.13, hoverable). */
@@ -29,7 +31,15 @@ export function Tooltip({ open, ...rest }: TooltipProps): React.ReactElement | n
   return open ? <TooltipBubble {...rest} /> : null;
 }
 
-function TooltipBubble({ text, anchorRef, onPointerEnter, onPointerLeave, instant = false, replacedRef }: Omit<TooltipProps, 'open'>) {
+function TooltipBubble({
+  text,
+  shortcut,
+  anchorRef,
+  onPointerEnter,
+  onPointerLeave,
+  instant = false,
+  replacedRef
+}: Omit<TooltipProps, 'open'>) {
   const bubbleRef = React.useRef<HTMLDivElement | null>(null);
   useExitMotion(bubbleRef, 'tooltip', replacedRef);
   // A hand-off: a label that is still fading out (the last one closed a moment ago) goes now, so the two never overlap.
@@ -44,7 +54,7 @@ function TooltipBubble({ text, anchorRef, onPointerEnter, onPointerLeave, instan
     if (bubbleRef.current !== null && anchorRef.current !== null) {
       positionNextTo(bubbleRef.current, anchorRef.current, 'center', false);
     }
-  }, [anchorRef, text]);
+  }, [anchorRef, text, shortcut]);
   return createPortal(
     <div
       ref={bubbleRef}
@@ -54,7 +64,14 @@ function TooltipBubble({ text, anchorRef, onPointerEnter, onPointerLeave, instan
       onPointerEnter={onPointerEnter === undefined ? undefined : () => onPointerEnter()}
       onPointerLeave={onPointerLeave === undefined ? undefined : () => onPointerLeave()}
     >
-      {text}
+      {shortcut === undefined ? (
+        text
+      ) : (
+        <>
+          <span>{text}</span>
+          <kbd className="ui-tooltip-key">{shortcut}</kbd>
+        </>
+      )}
     </div>,
     document.body
   );

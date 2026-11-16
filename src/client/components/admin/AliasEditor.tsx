@@ -48,69 +48,72 @@ export const AliasEditor: React.FC<{ t: ThemeTokens; user: AdminUser }> = ({ use
         {tr('users.alias_heading')}
       </h3>
       <p className="ad-muted">{tr('users.alias_hint')}</p>
-      {user.aliases.length === 0 ? (
-        <p className="ad-muted">{tr('users.alias_none')}</p>
-      ) : (
-        <Table label={tr('users.alias_heading')} dense className="ad-table ad-table-aliases">
-          <thead>
-            <tr>
-              <th scope="col">{tr('term.address')}</th>
-              <th scope="col" className="ad-end">
-                <VisuallyHidden>{tr('admin.col_actions')}</VisuallyHidden>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {user.aliases.map((alias) => (
-              <tr key={alias}>
-                <td className="ad-cell-alias ad-wrap">{alias}</td>
-                <td className="ad-cell-remove ad-end ad-shrink">
-                  <IconButton
-                    label={tr('users.alias_remove', { address: alias })}
-                    size="sm"
-                    disabled={action.busy}
-                    onClick={() => {
-                      void action.run(() => remove.mutateAsync({ id: user.id, address: alias }));
-                    }}
-                  >
-                    <X size={16} aria-hidden="true" />
-                  </IconButton>
-                </td>
+      {/* One card: the addresses (or None), then the field that adds one. */}
+      <div className="ad-card ad-alias-card">
+        {user.aliases.length === 0 ? (
+          <p className="ad-muted ad-alias-none">{tr('users.alias_none')}</p>
+        ) : (
+          <Table label={tr('users.alias_heading')} dense className="ad-table ad-table-aliases">
+            <thead>
+              <tr>
+                <th scope="col">{tr('term.address')}</th>
+                <th scope="col" className="ad-end">
+                  <VisuallyHidden>{tr('admin.col_actions')}</VisuallyHidden>
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </Table>
-      )}
-      <form
-        noValidate
-        onSubmit={(event) => {
-          void submit(event);
-        }}
-        className="ad-field-group"
-      >
-        <div className="ad-inline">
-          <TextField
-            id="alias-new"
-            label={tr('users.alias_add_label')}
-            type="text"
-            inputMode="email"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            autoComplete="off"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onBlur={() => setTouched(true)}
-            aria-invalid={problem !== null}
-            aria-describedby={problem === null ? undefined : 'alias-new-error'}
-            placeholder={tr('users.alias_placeholder')}
-          />
-          <Button type="submit" disabled={action.busy} loading={action.busy}>
-            {tr('common.add')}
-          </Button>
-        </div>
-        {problem === null ? null : <ErrorText id="alias-new-error">{problem}</ErrorText>}
-      </form>
+            </thead>
+            <tbody>
+              {user.aliases.map((alias) => (
+                <tr key={alias}>
+                  <td className="ad-cell-alias ad-wrap">{alias}</td>
+                  <td className="ad-cell-remove ad-end ad-shrink">
+                    <IconButton
+                      label={tr('users.alias_remove', { address: alias })}
+                      size="sm"
+                      disabled={action.busy}
+                      onClick={() => {
+                        void action.run(() => remove.mutateAsync({ id: user.id, address: alias }));
+                      }}
+                    >
+                      <X size={16} aria-hidden="true" />
+                    </IconButton>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+        <form
+          noValidate
+          onSubmit={(event) => {
+            void submit(event);
+          }}
+          className="ad-field-group"
+        >
+          <div className="ad-inline">
+            <TextField
+              id="alias-new"
+              label={tr('users.alias_add_label')}
+              type="text"
+              inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              autoComplete="off"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onBlur={() => setTouched(true)}
+              aria-invalid={problem !== null}
+              aria-describedby={problem === null ? undefined : 'alias-new-error'}
+              placeholder={tr('users.alias_placeholder')}
+            />
+            <Button type="submit" disabled={action.busy} loading={action.busy}>
+              {tr('common.add')}
+            </Button>
+          </div>
+          {problem === null ? null : <ErrorText id="alias-new-error">{problem}</ErrorText>}
+        </form>
+      </div>
       {action.error === null ? null : <ErrorText>{action.error}</ErrorText>}
     </section>
   );

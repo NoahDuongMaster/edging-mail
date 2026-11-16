@@ -9,20 +9,22 @@ import { bareAddress, nonEmpty } from '../lib/mail';
 import { isAddress, knownContacts, type Contact } from '../lib/contacts';
 import { DraftSaver, newDraftId, sanitizeDraftHtml, type DraftSnapshot, type DraftStatus } from '../lib/drafts';
 import { trapTab } from '../lib/focusTrap';
-import { tRich, useT, type TFunction } from '../lib/i18n';
+import { useT, type TFunction } from '../lib/i18n';
 import { holdForUndo, SendUndone } from '../lib/outbox';
 import { readPrefs } from '../lib/prefs';
 import { queryKeys, useSendMessage, type MessageDetail, type MessagesPage } from '../lib/queries';
 import { SealedMailError, previewAddresses, sealedErrorText, type Fetcher, type OutgoingAttachment } from '../lib/sealedmail';
 import { restoreSignatureDelimiter, signatureBlock } from '../lib/settings';
 import { announce } from '../lib/announce';
-import { Banner, Button, Divider, IconButton, Kbd } from '../ui';
+import { avatarHue } from '../theme';
+import { Avatar, Banner, Button, Divider, IconButton, Postmark, Tooltip, useTooltip, VisuallyHidden } from '../ui';
 import { ConfirmDialog } from './ConfirmDialog';
 import { AttachmentList } from './compose/AttachmentList';
 import { useComposeMotion, type ComposeExit } from './compose/composeMotion';
 import { ComposeState } from './compose/ComposeState';
 import { FormatToolbar } from './compose/FormatToolbar';
 import { RecipientField } from './compose/RecipientField';
+import { isApplePlatform, sendModifier } from './compose/sendKeys';
 import { useComposePreview } from './compose/useComposePreview';
 import { useSendFlow } from './compose/useSendFlow';
 import { ReplyRedirectNote } from './compose/ReplyRedirectNote';
@@ -144,15 +146,16 @@ const escapeHtml = (value: string) =>
 type MissingField = 'to' | 'subject';
 
 /**
- * The header's status text of the draft autosave ('' while idle). A draft keeps no files (J4-12, J6-03): that is said ONCE, under the files
- * (AttachmentList), next to its cause; the header only says that the draft was saved.
+ * The header's status text of the draft autosave ('' while idle). A draft keeps no files (J4-12, J6-03): v3 X1 says that ONCE, here, where
+ * the save is reported ("Draft saved, attachments not included"), instead of a reassuring "Draft saved" above and a contradicting note under
+ * the files.
  */
-const draftStatusText = (status: DraftStatus, tr: TFunction): string => {
+const draftStatusText = (status: DraftStatus, tr: TFunction, withFiles: boolean): string => {
   if (status === 'saving') {
     return tr('compose.draft_saving');
   }
   if (status === 'saved') {
-    return tr('compose.draft_saved');
+    return withFiles ? tr('compose.draft_saved_no_files') : tr('compose.draft_saved');
   }
   return status === 'error' ? tr('compose.draft_not_saved') : '';
 };
@@ -371,6 +374,8 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
   const [closeAsk, setCloseAsk] = React.useState(false);
   // A reply's quote is folded away behind "Show quoted text" (it is sent all the same).
   const [quoteFolded, setQuoteFolded] = React.useState(false);
+  // v3 X1: the moment Send let the message go: the postmark that cancels the first recipient's stamp (drawn into the window that leaves).
+  const [sentAt, setSentAt] = React.useState<Date | null>(null);
 
   // An error message (a validation hint or a failed send) goes away as soon as the user changes recipients or subject (the
   // body clears it in its onInput). Adjusting state while rendering, as the form values are what it follows.
@@ -582,16 +587,21 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
   }, [from, toList, ccList, bccList, toInput, ccInput, bccInput, subject]);
 
   // The autosave line is shown in the header; screen readers hear it through the app's live region: "Draft saved" once (and again after a
-  // failure), a failure every time.
+  // failure; with files: that they are not in it), a failure every time.
+  const hasFiles = files.length > 0;
   React.useEffect(() => {
     if (draftStatus === 'error') {
       savedSaidRef.current = false;
       announce(tr('compose.draft_not_saved'));
     } else if (draftStatus === 'saved' && !savedSaidRef.current) {
       savedSaidRef.current = true;
-      announce(tr('compose.draft_saved'));
+      announce(hasFiles ? tr('compose.draft_saved_no_files') : tr('compose.draft_saved'));
     }
-  }, [draftStatus, tr]);
+  }, [draftStatus, tr, hasFiles]);
+
+  // v3 X1: Send names its key in its tooltip (Ctrl+Enter, or Cmd+Enter on an Apple keyboard: compose/sendKeys.ts).
+  const sendRef = React.useRef<HTMLButtonElement | null>(null);
+  const sendTip = useTooltip();
 
   // Phone: the window is as tall as what the on-screen keyboard leaves (the visual viewport), so the footer with Send stays above it.
   React.useEffect(() => {
@@ -686,6 +696,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
     setDraftStatus('idle');
     setDiscardAsk(false);
     setCloseAsk(false);
+    setSentAt(null);
     closingRef.current = false;
     sendingRef.current = false;
     exitRef.current = 'close';
@@ -895,7 +906,9 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
       // The draft is on the server (it was saved before the lock), so the reopened compose goes on with the same draft.
       const snapshot = snapshotOf(ready, savedOnceRef.current ? saver?.id : undefined);
       flight.reopen = snapshot;
-      // Send shows its icon again (not the spinner) in the window that leaves: that icon is the one that takes off.
+      // v3 X1: the postmark of this moment goes onto the first recipient's stamp in the window that leaves (composeMotion stamps it there).
+      flushSync(() => setSentAt(new Date()));
+      // Send shows its paper plane again (not the spinner) in the window that leaves: the copy that folds into a letter (H4) shows it.
       flushSync(() => setIsSending(false));
       exitRef.current = 'sent';
       onClose();
@@ -1059,6 +1072,11 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
     subject: tr('compose.need_subject')
   };
   const toError = badField === 'to' ? tr('compose.invalid_address') : missing === 'to' ? missingText.to : undefined;
+  // v3 X1: the envelope's stamp: the first recipient's (decoration; nothing until there is one).
+  const firstRecipient = toList.at(0) ?? ccList.at(0) ?? bccList.at(0);
+  // The send keys as this keyboard says them (Ctrl+Enter, or Cmd+Enter on an Apple one).
+  const modifier = sendModifier(isApplePlatform(), tr('compose.key_ctrl'));
+  const sendKeys = `${modifier.cap}+${tr('compose.key_enter')}`;
 
   // At the end of the line of the To field, on every width. Gone once both rows are showing.
   const ccBccToggle =
@@ -1115,15 +1133,18 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
       }}
     >
       <div ref={panelRef} className="cp-panel">
+        {/* The airmail edge (v3 H6): the stationery's top 3 px, the mark of a letter about to be sent. */}
+        <span aria-hidden="true" className="ui-airmail cp-airmail" />
         <header className="cp-head">
           <h1 id="compose-title" className="cp-title">
             {titleOf(draft, tr)}
           </h1>
           {/* Always in the header (empty when idle) so a status change never moves anything; screen readers hear it through the app's live
-              region (the effect above). With files: "Draft saved, attachments not included" (a draft keeps no files). */}
-          <span className="cp-draft" data-state={draftStatus}>
+              region (the effect above). With files: 'Draft saved, attachments not included' (a draft keeps no files), its check in text3,
+              not the green of a full save (v3 X1: no success colour on a sentence that says something is missing). */}
+          <span className="cp-draft" data-state={draftStatus} data-files={hasFiles ? 'true' : undefined}>
             {draftStatus === 'saved' ? <Check size={14} strokeWidth={2} aria-hidden="true" /> : null}
-            {draftStatusText(draftStatus, tr)}
+            {draftStatusText(draftStatus, tr, hasFiles)}
           </span>
           {/* J5-25: Send of a phone on its side while the keyboard is up (the foot is hidden then; compose.css shows this one only then). */}
           <Button
@@ -1131,13 +1152,28 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
             size="sm"
             className="cp-head-send"
             loading={isSending}
-            leadingIcon={<Send data-send-icon="" size={16} strokeWidth={1.75} aria-hidden="true" />}
+            leadingIcon={<Send size={16} strokeWidth={1.75} aria-hidden="true" />}
             onClick={() => {
               void handleSend();
             }}
           >
             {tr('action.send')}
           </Button>
+          {/* v3 X1: the envelope's stamp in the window's top-right corner: the first recipient's, set on 4 degrees askew; the postmark of the
+              moment it was sent cancels it in the window that leaves (composeMotion stamps it, then the window folds and flies). Decoration
+              only: the recipients are named in their chips. */}
+          {firstRecipient === undefined ? null : (
+            <span aria-hidden="true" className="cp-stamp">
+              <Avatar
+                name={names.get(firstRecipient.toLowerCase()) ?? firstRecipient}
+                size="lg"
+                shape="stamp"
+                hue={avatarHue(firstRecipient)}
+                className="cp-stamp-tile"
+              />
+              {sentAt === null ? null : <Postmark date={sentAt} size={52} waves="short" className="cp-postmark" />}
+            </span>
+          )}
           <IconButton
             label={tr('common.close')}
             className="cp-close"
@@ -1166,20 +1202,14 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
           >
             {/* Scroll region: fields, toolbar, editor and attachments. The footer below stays pinned. */}
             <div className="cp-scroll">
-              {/* J6-30: From is what the server sends with, the signed-in account's own address: read-only text, the name then the
-                  address in the secondary colour (as in the reader's header), never a field that promises another sender (the server
-                  refuses any other From). */}
-              <div className="cp-row">
-                <span id="compose-from-label" className="cp-label">
-                  {tr('compose.from_label')}
-                </span>
-                <p className="cp-field cp-from">
-                  <span className="cp-from-text">
-                    {fromName.trim() === '' ? null : <span className="cp-from-name">{`${fromName.trim()} `}</span>}
-                    <span className="cp-from-addr">{from}</span>
-                  </span>
-                </p>
-              </div>
+              {/* J6-30: From is what the server sends with, the signed-in account's own address: read-only text, never a field that promises
+                  another sender (the server refuses any other From). v3 X1: one quiet line on top of the letter ('From Alex Morgan
+                  <alex@...>'), as a return address, not a row of the form. */}
+              <p className="cp-field cp-from">
+                <span className="cp-from-label">{tr('compose.from_label')}</span>{' '}
+                {fromName.trim() === '' ? null : <span className="cp-from-name">{`${fromName.trim()} `}</span>}
+                <span className="cp-from-addr">{fromName.trim() === '' ? from : `<${from}>`}</span>
+              </p>
 
               <RecipientField
                 id="compose-to"
@@ -1196,7 +1226,14 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
                 onCommit={() => commitRecipients(toInput, setToList, setToInput, 'to')}
                 onPick={(address) => pickRecipient(address, setToList, setToInput)}
                 onRemove={(address) => setToList((prev) => prev.filter((a) => a !== address))}
-                trailing={ccBccToggle}
+                trailing={
+                  <>
+                    {/* EC-4, v3 X1: what this message will be, folded into a lock at the end of the To row (its sentence is its tooltip,
+                        its status text and, without a mouse, a quiet line under the row). */}
+                    <ComposeState t={t} preview={preview} />
+                    {ccBccToggle}
+                  </>
+                }
                 error={toError}
               />
 
@@ -1238,11 +1275,10 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
 
               <ReplyRedirectNote t={t} redirect={draft.replyRedirect} to={toList} />
 
-              <ComposeState t={t} preview={preview} />
-
-              <div className="cp-row">
-                <label htmlFor="compose-subject" className="cp-label">
-                  {tr('term.subject')}
+              {/* v3 X1: the subject is the letter's title (18/26) with no label beside it: its name is the hidden label and its placeholder. */}
+              <div className="cp-row cp-row-subject">
+                <label htmlFor="compose-subject">
+                  <VisuallyHidden>{tr('term.subject')}</VisuallyHidden>
                 </label>
                 <div className="cp-field">
                   <input
@@ -1251,6 +1287,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
                     className="cp-input cp-subject"
                     type="text"
                     value={subject}
+                    placeholder={tr('term.subject')}
                     aria-invalid={missing === 'subject' ? true : undefined}
                     aria-describedby={missing === 'subject' ? 'compose-subject-error' : undefined}
                     onChange={(e) => setSubject(e.target.value)}
@@ -1311,25 +1348,23 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
             </div>
 
             <div className="cp-foot">
-              {/* Never disabled: a send with something missing says what, under that field. */}
+              {/* Never disabled: a send with something missing says what, under that field. v3 X1: its key is in its tooltip (and in
+                  aria-keyshortcuts), named for this keyboard (sendKeys). */}
               <Button
                 type="submit"
+                ref={sendRef}
                 variant="primary"
                 loading={isSending}
-                leadingIcon={<Send data-send-icon="" size={16} strokeWidth={1.75} aria-hidden="true" />}
+                aria-keyshortcuts={modifier.aria}
+                leadingIcon={<Send size={16} strokeWidth={1.75} aria-hidden="true" />}
+                {...sendTip.anchor}
+                onFocus={(event) => sendTip.show(event.currentTarget.matches(':focus-visible'))}
+                onBlur={() => sendTip.show(false)}
+                onPointerDown={() => sendTip.show(false)}
               >
                 {isSending ? tr('compose.sending') : tr('action.send')}
               </Button>
-              <span className="cp-hint">
-                {tRich('compose.send_shortcut', {
-                  keys: (
-                    <span className="cp-keys">
-                      <Kbd>{tr('compose.key_ctrl')}</Kbd>
-                      <Kbd>{tr('compose.key_enter')}</Kbd>
-                    </span>
-                  )
-                })}
-              </span>
+              <Tooltip open={sendTip.open} text={tr('action.send')} shortcut={sendKeys} anchorRef={sendRef} {...sendTip.bubble} />
               <div className="cp-tools">
                 <IconButton label={tr('action.attach_files')} onClick={() => fileRef.current?.click()}>
                   <Paperclip size={18} strokeWidth={1.75} aria-hidden="true" />

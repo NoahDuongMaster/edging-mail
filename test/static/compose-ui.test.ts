@@ -70,7 +70,8 @@ describe('the compose window', () => {
     expect(modal).not.toMatch(/setTimeout\(onClose/);
     // Never disabled-until-valid: what is missing is said under its field.
     expect(/<Button\s+type="submit"[^>]*>/.exec(modal)?.[0]).not.toMatch(/disabled=/);
-    expect(modal).toContain('data-send-icon=""');
+    // Send shows its paper plane again (not the loader) in the window that leaves: the copy that folds into a letter shows it (v3 H4).
+    expect(modal).toMatch(/flushSync\(\(\) => setIsSending\(false\)\);\s*exitRef\.current = 'sent';/);
   });
 
   it('shows the formatting toolbar as one row with the text style in a ui/Select: one Tab stop, pressed states, no browser prompt', () => {
@@ -151,11 +152,14 @@ describe('round-2 fixes of the compose (R2)', () => {
     expect(css).toMatch(/\.cp-foot \{[^}]*max\(16px, env\(safe-area-inset-left, 0px\)\)/);
   });
 
-  it('flies Send on a plain ease-out of DURATION.flight, its wings on DURATION tokens, and caps the veil under reduced motion (J2-14, J2-10)', () => {
-    expect(flight).toMatch(/const duration = DURATION\.flight;/);
-    expect(flight).toMatch(/\{ duration, easing: 'ease-out', fill: 'forwards' \}/);
-    expect(flight).toMatch(/duration: DURATION\.slow, delay: index \* DURATION\.micro/);
-    expect(flight).not.toMatch(/duration = 450|duration: 320/);
+  it('folds the sent window into a letter that flies home to Sent (v3 H4, ui/homing foldAndFly), fades only under reduced motion, and caps the veil there (J2-10)', () => {
+    expect(flight).toMatch(/import \{ foldAndFly \} from '\.\.\/\.\.\/ui\/homing';/);
+    // The copy of the window folds and flies (the helper copies it into the homing overlay at once); the window there only hides.
+    expect(flight).toMatch(/void foldAndFly\(panel, 'sent'\);\s*panel\.style\.visibility = 'hidden';/);
+    // Reduced motion: the window's copy fades, nothing flies; Sent only catches it (foldAndFly is grounded there).
+    expect(flight).toMatch(/if \(panel === null \|\| reduced\) \{[\s\S]{0,480}void foldAndFly\(panel \?\? ghost, 'sent'\);/);
+    // The v2 send flight (Send's icon and its wings) is gone, its layer too.
+    expect(flight).not.toMatch(/sendFlight|cp-flight|DURATION\.flight/);
     expect(flight).toMatch(/duration: reduced \? DURATION\.quick : DURATION\.base/);
   });
 
@@ -226,5 +230,55 @@ describe('round-3 fixes of the compose (R3)', () => {
     expect(cssCode).toMatch(/\.cp-root\[data-keyboard='true'\] \.ui-btn\.cp-head-send \{\s*display: inline-flex;/);
     // J3-40: the X's glyph ends on the content edge in landscape too (the inset, less the button's own inset).
     expect(cssCode).toMatch(/calc\(max\(16px, env\(safe-area-inset-right, 0px\)\) - \(var\(--ui-h-md\) - 18px\) \/ 2\)/);
+  });
+});
+
+describe('the compose as a letter (v3 X1)', () => {
+  const modal = read(sources[0]);
+  const flight = read(motion);
+  const cssCode = css.replaceAll(/\/\*[\s\S]*?\*\//g, '');
+
+  it("stamps the envelope with the first recipient's stamp, and the postmark of Send only in the window that leaves", () => {
+    // No stamp until there is a recipient; it is decoration (the chips name the people).
+    expect(modal).toMatch(/const firstRecipient = toList\.at\(0\) \?\? ccList\.at\(0\) \?\? bccList\.at\(0\);/);
+    expect(modal).toMatch(/\{firstRecipient === undefined \? null : \(\s*<span aria-hidden="true" className="cp-stamp">/);
+    expect(modal).toMatch(/\{sentAt === null \? null : <Postmark date=\{sentAt\}/);
+    // The moment is set with the paper plane, right before the window closes; a new compose starts without one.
+    expect(modal).toMatch(/flushSync\(\(\) => setSentAt\(new Date\(\)\)\);[\s\S]{0,200}flushSync\(\(\) => setIsSending\(false\)\);/);
+    expect(modal).toContain('setSentAt(null);');
+    // The postmark lands (200 ms, the settle curve), then the window folds and flies; reduced motion keeps the fade only.
+    expect(flight).toMatch(/const stamped = stampPostmark\(panel\);[\s\S]{0,400}void stamped\.finished\.then\(fly, fly\);/);
+    expect(flight).toMatch(/duration: DURATION\.base, easing: EASING\.settle/);
+    // Never seen in the live window: only in the leaving copy and the letter it folds into.
+    expect(cssCode).toMatch(/\.ui-postmark\.cp-postmark \{[^}]*opacity: 0;/);
+    expect(cssCode).toMatch(/:is\(\.cp-root\[data-leaving\], \.ui-homing-ghost\) \.ui-postmark\.cp-postmark \{\s*opacity: 1;/);
+  });
+
+  it('keeps the fields airy: no hairline between rows, From as one quiet line, the subject named by a hidden label and its placeholder', () => {
+    expect(cssCode).toMatch(/\n\.cp-row::after \{[^}]*background: transparent;/);
+    expect(cssCode).toMatch(/\.cp-row:has\(\.cp-input\[aria-invalid='true'\]\)::after \{\s*background: var\(--danger\);/);
+    expect(modal).toMatch(/<label htmlFor="compose-subject">\s*<VisuallyHidden>\{tr\('term\.subject'\)\}<\/VisuallyHidden>\s*<\/label>/);
+    expect(modal).toContain("placeholder={tr('term.subject')}");
+    expect(modal).toMatch(/<span className="cp-from-label">\{tr\('compose\.from_label'\)\}<\/span>/);
+  });
+
+  it('folds what the message will be into a lock on the To row whose words stay reachable (status text, tooltip, a line without a mouse)', () => {
+    const state = read(path.join(COMPOSE, 'ComposeState.tsx'));
+    expect(state).toMatch(/role="status" data-compose-state=\{preview\.state\} className="cp-lock"/);
+    expect(state).toMatch(/<span className="cp-lock-text">\{text\}<\/span>/);
+    expect(state).toMatch(/<Tooltip open=\{tip\.open\} text=\{text\}/);
+    expect(modal).toMatch(/trailing=\{\s*<>[\s\S]{0,300}<ComposeState t=\{t\} preview=\{preview\} \/>\s*\{ccBccToggle\}/);
+    // Hidden only where a mouse can point at the lock; a quiet line under the To row everywhere else.
+    expect(cssCode).toMatch(/@media \(min-width: 901px\) and \(hover: hover\) \{\s*\.cp-lock-text \{\s*position: absolute;/);
+  });
+
+  it('says once that a draft keeps no files (the header), and names the send keys of this keyboard in the tooltip of Send', () => {
+    expect(modal).toContain("return withFiles ? tr('compose.draft_saved_no_files') : tr('compose.draft_saved');");
+    expect(read(path.join(COMPOSE, 'AttachmentList.tsx'))).not.toMatch(/attachments_not_saved/);
+    expect(modal).toMatch(/aria-keyshortcuts=\{modifier\.aria\}/);
+    expect(modal).toMatch(/<Tooltip open=\{sendTip\.open\} text=\{tr\('action\.send'\)\} shortcut=\{sendKeys\}/);
+    const keys = readFileSync(path.join(COMPOSE, 'sendKeys.ts'), 'utf8');
+    expect(keys).toMatch(/userAgentData\?\.platform/);
+    expect(keys).not.toMatch(/navigator\.platform/);
   });
 });

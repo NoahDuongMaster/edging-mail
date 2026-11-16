@@ -4,6 +4,7 @@ import type { AdminUser } from '../../lib/admin/types';
 import { usePatchUser } from '../../lib/admin/users';
 import { announce } from '../../lib/announce';
 import { fmt, useT } from '../../lib/i18n';
+import { avatarHue } from '../../theme';
 import { Avatar, Button, TextField } from '../../ui';
 import { PersonRole, PersonStatus, PersonTwoFactor } from './adminUi';
 
@@ -27,7 +28,7 @@ export const PersonSummary: React.FC<{ user: AdminUser; isSelf: boolean }> = ({ 
   }
   return (
     <div className="ad-summary">
-      <Avatar name={personName(user)} size="lg" />
+      <Avatar name={personName(user)} size={48} hue={user.status === 'disabled' ? undefined : avatarHue(user.email)} />
       <div className="ad-summary-text">
         <p className="ad-summary-address ad-wrap">{user.email}</p>
         <div className="ad-badges">
@@ -77,7 +78,7 @@ export const NameForm: React.FC<NameFormProps> = ({ user, busy, run }) => {
       <h3 id="user-profile" className="ad-dsec-title">
         {tr('users.profile_heading')}
       </h3>
-      <div className="ad-inline">
+      <div className="ad-card ad-inline">
         <TextField
           id="user-name"
           label={tr('term.display_name')}

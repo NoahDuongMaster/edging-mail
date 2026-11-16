@@ -6,7 +6,7 @@
  */
 
 export { accordion, accordionItem } from './accordion';
-export { avatar, type AvatarTone } from './avatar';
+export { avatar, stampAvatar, stampHue, type AvatarTone } from './avatar';
 export { badge, pill, type BadgeTone } from './badge';
 export { bento, bentoTile, type TileShape } from './bento';
 export { buttonLink, deployButton, signInButton, signInHref, type ButtonKind } from './button';
@@ -15,6 +15,7 @@ export { card, cardRow } from './card';
 export { checkGroup, checkLegend, leadClause, statement, type CheckKind } from './checklist';
 export { codeBlock, type CommandGroup } from './codeBlock';
 export { archDiagram, type DiagramPart } from './diagram';
+export { flightTrail } from './flightTrail';
 export { footer } from './footer';
 export {
   adminFragment,

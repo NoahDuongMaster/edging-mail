@@ -2,11 +2,15 @@ import type React from 'react';
 import { useT } from '../../lib/i18n';
 import { UNDO_SEND_CHOICES, setPref, usePrefs } from '../../lib/prefs';
 import { SHOW_SHORTCUTS_EVENT } from '../../lib/shortcuts';
-import { Button, Card, RadioGroup, Select, Switch } from '../../ui';
+import { Button, RadioGroup, Section, Select, Switch } from '../../ui';
 import { ShortcutList } from '../ShortcutList';
+import { SettingRow, SettingsGroup } from './SettingsPage';
 import './settings.css';
 
-/** Motion on this device: follow the system setting, or reduce it here whatever the system says (`data-motion` on <html>). */
+/**
+ * Motion on this device: follow the system setting, or reduce it here whatever the system says (`data-motion` on <html>). The choices are
+ * the rows of the group they sit in (settings.css), the group's title says what they are about.
+ */
 export function MotionPreference(): React.ReactElement {
   const tr = useT();
   const { motion } = usePrefs();
@@ -44,18 +48,16 @@ export function DensityPreference(): React.ReactElement {
 
 /**
  * How long a sent message waits in this browser, so Undo can take it back (WCAG 2.2.1: the person sets the time, or turns it off). Five
- * choices, so a list (ui/Select) rather than a row of radios.
+ * choices, so a list (ui/Select) rather than a row of radios: one row of a group, its label and hint on the left, the list on the right.
  */
 export function UndoSendPreference(): React.ReactElement {
   const tr = useT();
   const { undoSend } = usePrefs();
   return (
-    <div className="st-undo">
-      {/* The card's title says what this is; the list keeps its own name for screen readers. */}
+    <div className="st-field-row">
       <Select
         id="prefs-undo-send"
         label={tr('prefs.undo_send_label')}
-        hideLabel
         hint={tr('prefs.undo_send_hint')}
         options={UNDO_SEND_CHOICES.map((seconds) => ({
           value: String(seconds),
@@ -75,55 +77,58 @@ export function UndoSendPreference(): React.ReactElement {
 
 /**
  * The switch for single-key shortcuts (WCAG 2.1.4) and EVERY key of the mailbox (J4-29, J6-28): the same list the ? dialog shows, drawn by
- * the same component from the same source (lib/shortcuts SHORTCUT_GROUPS), so the two never disagree. It ends with how to see it anywhere
- * (the ? key) and a button that opens that dialog (the mailbox listens for SHOW_SHORTCUTS_EVENT).
+ * the same component from the same source (lib/shortcuts SHORTCUT_GROUPS), so the two never disagree. The switch and the way to that dialog
+ * anywhere (the ? key, and a button: the mailbox listens for SHOW_SHORTCUTS_EVENT) are one group; the keys follow on a card of their own.
  */
 export function ShortcutsPreference(): React.ReactElement {
   const tr = useT();
   const { shortcuts } = usePrefs();
   return (
     <>
-      <Switch
-        id="prefs-shortcuts"
-        label={tr('prefs.shortcuts')}
-        hint={tr('prefs.shortcuts_hint')}
-        checked={shortcuts}
-        onChange={(on) => setPref('shortcuts', on)}
-      />
-      <h4 id="prefs-keys" className="st-subtitle st-keys-title">
-        {tr('prefs.shortcuts_table')}
-      </h4>
-      <ShortcutList headingLevel={5} idPrefix="prefs-keys" />
-      <div className="sk-more">
-        <p className="sk-more-text">{tr('shortcuts.anywhere')}</p>
-        <Button size="sm" onClick={() => window.dispatchEvent(new Event(SHOW_SHORTCUTS_EVENT))}>
-          {tr('shortcuts.open')}
-        </Button>
-      </div>
+      <SettingsGroup>
+        <Switch
+          id="prefs-shortcuts"
+          label={tr('prefs.shortcuts')}
+          hint={tr('prefs.shortcuts_hint')}
+          checked={shortcuts}
+          onChange={(on) => setPref('shortcuts', on)}
+        />
+        <SettingRow hint={tr('shortcuts.anywhere')}>
+          <Button size="sm" onClick={() => window.dispatchEvent(new Event(SHOW_SHORTCUTS_EVENT))}>
+            {tr('shortcuts.open')}
+          </Button>
+        </SettingRow>
+      </SettingsGroup>
+      <section aria-labelledby="prefs-keys" className="st-block">
+        <h4 id="prefs-keys" className="st-subtitle">
+          {tr('prefs.shortcuts_table')}
+        </h4>
+        <ShortcutList headingLevel={5} idPrefix="prefs-keys" />
+      </section>
     </>
   );
 }
 
 /**
- * The preferences of this device (kept in its browser, not in the account): Motion, Density, Undo send and Keyboard, each a card as in
+ * The preferences of this device (kept in its browser, not in the account): Motion, Density, Undo send and Keyboard, each a group as in
  * Settings (Appearance, Mail and Keyboard place them there). Alone, for the lab; `headingLevel` follows the page it is placed in.
  */
 export function PreferencesPanel({ headingLevel = 3 }: { headingLevel?: 2 | 3 | 4 }): React.ReactElement {
   const tr = useT();
   return (
-    <div className="st-cards">
-      <Card headingLevel={headingLevel} title={tr('prefs.motion')} description={tr('prefs.device_only')}>
+    <div className="st-page">
+      <SettingsGroup headingLevel={headingLevel} title={tr('prefs.motion')} description={tr('prefs.device_only')}>
         <MotionPreference />
-      </Card>
-      <Card headingLevel={headingLevel} title={tr('prefs.density')} description={tr('prefs.device_only')}>
+      </SettingsGroup>
+      <SettingsGroup headingLevel={headingLevel} title={tr('prefs.density')} description={tr('prefs.device_only')}>
         <DensityPreference />
-      </Card>
-      <Card headingLevel={headingLevel} title={tr('prefs.undo_send')} description={tr('prefs.device_only')}>
+      </SettingsGroup>
+      <SettingsGroup headingLevel={headingLevel} title={tr('prefs.undo_send')} description={tr('prefs.device_only')}>
         <UndoSendPreference />
-      </Card>
-      <Card headingLevel={headingLevel} title={tr('prefs.keyboard_title')} description={tr('prefs.device_only')}>
+      </SettingsGroup>
+      <Section className="st-block" headingLevel={headingLevel} title={tr('prefs.keyboard_title')} description={tr('prefs.device_only')}>
         <ShortcutsPreference />
-      </Card>
+      </Section>
     </div>
   );
 }

@@ -9,6 +9,10 @@ import { isUndoShortcut } from '../lib/shortcuts';
 import { motionReduced } from '../ui/motion';
 import './toast.css';
 
+/** A desktop toast's left edge: 16px inside the list sheet (the rail is --mb-rail-w wide, mailbox.css), and the room it has to the right. */
+const DESK_LEFT = 'calc(var(--mb-rail-w, 264px) + 16px)';
+const DESK_ROOM = 'calc(100vw - var(--mb-rail-w, 264px) - 48px)';
+
 export interface ToastState {
   text: string;
   /** Takes the action back. It may return a promise: focus moves on (`returnFocus`) once that has settled. */
@@ -384,14 +388,15 @@ export const Toast: React.FC<ToastProps> = ({ toast, onDismiss, raised = false, 
       data-error={toast.error === true ? 'true' : undefined}
       data-held={held ? 'true' : undefined}
       style={{
-        // 256 = 240px sidebar + 16px gap. A phone centres with auto margins, not a transform: the entrance animates `transform`, which
-        // would drop a translateX(-50%) while it runs and make the toast jump sideways.
-        ...(desktop ? { left: 256 } : { left: 0, right: 0, marginInline: 'auto' }),
-        bottom: raised ? 'calc(104px + env(safe-area-inset-bottom, 0px))' : desktop ? 24 : 28,
-        maxWidth: desktop ? 'calc(100vw - 288px)' : 'calc(100vw - 32px)', // 288 = 256 left offset + 32px right margin
+        // A desktop: 16px inside the list sheet's bottom-left corner (the rail's width, mailbox.css --mb-rail-w, and 16px). A phone centres
+        // with auto margins, not a transform: the entrance animates `transform`, which would drop a translateX(-50%) while it runs and make
+        // the toast jump sideways.
+        ...(desktop ? { left: DESK_LEFT } : { left: 0, right: 0, marginInline: 'auto' }),
+        bottom: raised ? 'calc(104px + env(safe-area-inset-bottom, 0px))' : 28,
+        maxWidth: desktop ? DESK_ROOM : 'calc(100vw - 32px)',
         // J2-16: one width for the common words ("Archived", "Moved to Trash", "Sending…", "Message sent." and their vi/zh-CN forms), so
         // a replaced toast keeps its Undo and X where they were; only a longer text widens it. Never wider than the space it has.
-        minWidth: desktop ? 'min(20rem, calc(100vw - 288px))' : 'min(20rem, calc(100vw - 32px))'
+        minWidth: desktop ? `min(20rem, ${DESK_ROOM})` : 'min(20rem, calc(100vw - 32px))'
       }}
     >
       <Icon size={18} strokeWidth={1.75} aria-hidden="true" className="tst-icon" />
@@ -412,7 +417,10 @@ export const Toast: React.FC<ToastProps> = ({ toast, onDismiss, raised = false, 
       <button type="button" className="tst-dismiss nm-tap" aria-label={tr('toast.dismiss')} onClick={(e) => close(true, e.detail === 0)}>
         <X size={16} strokeWidth={1.75} aria-hidden="true" />
       </button>
-      {toast.error === true ? null : <span ref={barRef} aria-hidden="true" className="tst-bar" />}
+      {/* While a send is held, the countdown is the airmail edge whose stripes slide (DESIGN-v3 H6); else the indicator bar. */}
+      {toast.error === true ? null : (
+        <span ref={barRef} aria-hidden="true" className={held ? 'tst-bar ui-airmail' : 'tst-bar'} data-moving={held ? '' : undefined} />
+      )}
     </div>
   );
 };

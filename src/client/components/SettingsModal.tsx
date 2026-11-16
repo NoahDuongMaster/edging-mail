@@ -27,12 +27,12 @@ import { useSaveLanguage } from '../lib/language';
 import { useSecretHeld } from '../lib/secretHold';
 import { pushForSignOut, usePushNotifications } from '../lib/push';
 import { useSaveSettings, useSettings, type Settings, type SettingsPatch } from '../lib/settings';
-import { Avatar, Button, Card, Dialog, RadioGroup, Spinner, Switch, TabPanel, Tabs, TextArea, TextField } from '../ui';
+import { Avatar, Button, Dialog, RadioGroup, Section, Spinner, Switch, TabPanel, Tabs, TextArea, TextField, useGlide } from '../ui';
 import { LanguagePicker } from './LanguagePicker';
 import { ErrorLine } from './auth/authUi';
 import { DeveloperDocs, DOCS_TABS, type DocsTab } from './settings/DeveloperDocs';
 import { DensityPreference, MotionPreference, ShortcutsPreference, UndoSendPreference } from './settings/PreferencesPanel';
-import { SettingsPage } from './settings/SettingsPage';
+import { SettingRow, SettingsGroup, SettingsPage } from './settings/SettingsPage';
 import { SecuritySection } from './security/SecuritySection';
 import './settings/settings.css';
 
@@ -107,6 +107,52 @@ const shown = (element: Element | null | undefined): element is HTMLElement =>
 /** The row of the section that is open, in the nav: where the focus goes when Settings opens (2.4.7: its ring shows on a keyboard open). */
 const selectedNavItem = (panel: HTMLElement | null): HTMLElement | null =>
   panel?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]') ?? panel;
+
+/** The row the glide capsule sits under (ui/glide.ts): the open section's tab in the nav. */
+const OPEN_ROW = '.st-tabs > [role="tab"][aria-selected="true"]';
+
+/**
+ * One section on the page (keyed by the section, so it fades in as a new element each time). The panel keeps one height for every section,
+ * so nothing jumps while switching; a short section simply ends under its last group (FP2: the end mark, a small flight trail, read as a
+ * stray doodle and is gone).
+ */
+function SectionBody({ children }: { children: React.ReactNode }): React.ReactElement {
+  return <div className="st-section">{children}</div>;
+}
+
+/**
+ * The nav's own box, with the capsule of the open section that glides from row to row (v3 signature H3). It mounts with the dialog, so the
+ * hook finds its box at once and follows its resizes; a phone hides the capsule (a list that opens what is tapped shows no selection), and
+ * reduced motion places it without a glide.
+ */
+function NavFrame({ pane, openKey, children }: { pane: Pane; openKey: string; children: React.ReactNode }): React.ReactElement {
+  const navRef = React.useRef<HTMLDivElement | null>(null);
+  // The dialog scales in from 96 % as it opens (ui.css), and the capsule is measured on screen: once the entrance has ended it is placed
+  // again at the row's real size (a key that changes with the same row places it without a glide).
+  const [settled, setSettled] = React.useState(0);
+  React.useEffect(() => {
+    const panel = navRef.current?.closest('.ui-dialog');
+    if (!panel) {
+      return;
+    }
+    const again = (event: Event) => {
+      if (event.target === panel) {
+        setSettled((count) => count + 1);
+      }
+    };
+    panel.addEventListener('transitionend', again);
+    return () => {
+      panel.removeEventListener('transitionend', again);
+    };
+  }, []);
+  const capsule = useGlide(navRef, OPEN_ROW, { key: `${openKey} ${settled}` });
+  return (
+    <div ref={navRef} className="st-nav ui-glide-host" data-pane={pane}>
+      <div ref={capsule} className="ui-glide st-glide" aria-hidden="true" />
+      {children}
+    </div>
+  );
+}
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
@@ -257,10 +303,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           ? tr('settings.push_off')
           : tr('settings.push_ask');
 
-  const profile = (
-    <Card>
-      {values === undefined ? (
-        settingsQuery.isError ? (
+  // The profile: one group of rows (the name, the address, the signature: label and hint on the left, the field on the right), Save as its
+  // last row with what it did at its left.
+  const profile =
+    values === undefined ? (
+      <SettingsGroup>
+        {settingsQuery.isError ? (
           <div className="st-inline">
             <ErrorLine t={t} id="settings-load-error" text={tr('settings.load_failed')} />
             <Button
@@ -276,41 +324,46 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <p role="status" className="st-status">
             <Spinner decorative /> {tr('common.loading')}
           </p>
-        )
-      ) : (
-        <form onSubmit={submit} className="st-form">
-          <TextField
-            id="settings-name"
-            label={tr('term.display_name')}
-            type="text"
-            autoComplete="name"
-            value={values.display_name}
-            onChange={(e) => edit('display_name', e.target.value)}
-            maxLength={100}
-            placeholder={tr('settings.display_name_placeholder')}
-          />
-          <TextField
-            id="settings-from"
-            label={tr('settings.your_address')}
-            type="email"
-            readOnly
-            value={values.email}
-            hint={tr('settings.address_hint')}
-            trailing={<Lock size={14} aria-hidden="true" className="st-lock" />}
-          />
-          <TextArea
-            id="settings-signature"
-            label={tr('term.signature')}
-            rows={4}
-            value={values.signature}
-            onChange={(e) => edit('signature', e.target.value)}
-            maxLength={2000}
-            placeholder={tr('settings.signature_placeholder')}
-          />
-          <div className="st-actions">
-            <Button type="submit" variant="primary" loading={isSaving}>
-              {isSaving ? tr('settings.saving') : tr('common.save')}
-            </Button>
+        )}
+      </SettingsGroup>
+    ) : (
+      <form onSubmit={submit} className="st-form">
+        <SettingsGroup>
+          <div className="st-field-row">
+            <TextField
+              id="settings-name"
+              label={tr('term.display_name')}
+              type="text"
+              autoComplete="name"
+              value={values.display_name}
+              onChange={(e) => edit('display_name', e.target.value)}
+              maxLength={100}
+              placeholder={tr('settings.display_name_placeholder')}
+            />
+          </div>
+          <div className="st-field-row">
+            <TextField
+              id="settings-from"
+              label={tr('settings.your_address')}
+              type="email"
+              readOnly
+              value={values.email}
+              hint={tr('settings.address_hint')}
+              trailing={<Lock size={14} aria-hidden="true" className="st-lock" />}
+            />
+          </div>
+          <div className="st-field-row">
+            <TextArea
+              id="settings-signature"
+              label={tr('term.signature')}
+              rows={4}
+              value={values.signature}
+              onChange={(e) => edit('signature', e.target.value)}
+              maxLength={2000}
+              placeholder={tr('settings.signature_placeholder')}
+            />
+          </div>
+          <div className="st-form-foot">
             {feedback === null && dirty ? (
               <p className="st-feedback" data-tone="pending">
                 <CircleDot size={16} aria-hidden="true" />
@@ -335,18 +388,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 {feedback.type === 'offline' ? tr('settings.save_offline') : feedback.text}
               </p>
             ) : null}
+            <Button type="submit" variant="primary" loading={isSaving}>
+              {isSaving ? tr('settings.saving') : tr('common.save')}
+            </Button>
           </div>
-        </form>
-      )}
-    </Card>
-  );
+        </SettingsGroup>
+      </form>
+    );
 
   const appearance = (
     <>
-      <Card headingLevel={4} title={tr('settings.theme')}>
-        {/* Each choice is a card with a small picture of the app in that theme (settings.css draws it in the browser's own light or dark
-            colours, not in this theme's; Match system shows both halves). With the stored choice (themeChoice) there are three; without it,
-            onToggleDark flips the theme and runs only for the choice that is not the theme on screen. */}
+      <Section headingLevel={4} title={tr('settings.theme')} className="st-block">
+        {/* Each choice is a card with a small picture of the app in that theme (settings.css draws the window, the rail with its Compose
+            pill and the two sheets in the browser's own light or dark colours, not in this theme's; Match system shows both halves). With the
+            stored choice (themeChoice) there are three; without it, onToggleDark flips the theme and runs only for the choice that is not
+            the theme on screen. */}
         {themeChoice !== undefined && onThemeChoice !== undefined ? (
           <RadioGroup
             className="st-theme st-theme-3"
@@ -375,34 +431,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             }}
           />
         )}
-      </Card>
-      <Card headingLevel={4} title={tr('prefs.motion')}>
+      </Section>
+      <SettingsGroup title={tr('prefs.motion')}>
         <MotionPreference />
-      </Card>
+      </SettingsGroup>
     </>
   );
 
   // The message list and sending, on this device (lib/prefs.ts): the row density, and how long a sent message can be taken back.
   const mail = (
     <>
-      {/* The page's line already says these stay in this browser: the cards do not repeat it. */}
-      <Card headingLevel={4} title={tr('prefs.density')}>
+      {/* The page's line already says these stay in this browser: the groups do not repeat it. */}
+      <SettingsGroup title={tr('prefs.density')}>
         <DensityPreference />
-      </Card>
-      <Card headingLevel={4} title={tr('prefs.undo_send')}>
+      </SettingsGroup>
+      <SettingsGroup title={tr('prefs.undo_send')}>
         <UndoSendPreference />
-      </Card>
+      </SettingsGroup>
     </>
   );
 
   const language = (
-    <Card>
-      <LanguagePicker t={t} id="settings-language-select" onChosen={saveLanguage} />
-    </Card>
+    <SettingsGroup>
+      <div className="st-field-row">
+        <LanguagePicker t={t} id="settings-language-select" onChosen={saveLanguage} showLabel />
+      </div>
+    </SettingsGroup>
   );
 
   const notifications = (
-    <Card>
+    <SettingsGroup>
       {push.supported ? (
         <>
           {/* The status line under the label is read out when it changes (working, blocked, on, off): the region is polite and reads only what
@@ -420,7 +478,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             />
           </div>
           <ErrorLine t={t} id="settings-push-error" text={push.error} />
-          <div className="st-actions st-card-foot">
+          {/* Why the test is not available yet, next to it (a greyed button alone says nothing). */}
+          <SettingRow hint={push.subscribed ? undefined : tr('settings.push_test_hint')} hintId="settings-push-test-hint">
             <Button
               size="sm"
               disabled={!push.subscribed || push.busy}
@@ -431,25 +490,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             >
               {tr('settings.push_test')}
             </Button>
-            {/* Why the test is not available yet, next to it (a greyed button alone says nothing). */}
-            {push.subscribed ? null : (
-              <p id="settings-push-test-hint" className="st-muted">
-                {tr('settings.push_test_hint')}
-              </p>
-            )}
-          </div>
+          </SettingRow>
         </>
       ) : (
         <p className="st-muted">{tr('settings.push_unsupported', { brand: BRAND_NAME })}</p>
       )}
-    </Card>
+    </SettingsGroup>
   );
 
-  const keyboard = (
-    <Card>
-      <ShortcutsPreference />
-    </Card>
-  );
+  const keyboard = <ShortcutsPreference />;
 
   const page = (entry: SectionEntry, body: React.ReactNode) => (
     <SettingsPage title={tr(entry.labelKey)} description={tr(entry.descriptionKey)}>
@@ -489,7 +538,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
-  // An admin's nav has a second group, the technical sections: a small label above its first row (the account's own sections need none).
+  // An admin's nav has two groups, the account and the technical sections, each with a small label above its first row; a member's has one
+  // group and no label.
   const navTabs = sections.map((item, index) => {
     const Icon = item.icon;
     return {
@@ -497,7 +547,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       label: tr(item.labelKey),
       // While a secret is held the nav does not move either: the screen that shows it stays where it is.
       disabled: secretHeld,
-      group: index === ACCOUNT_SECTIONS.length ? tr('settings.technical') : undefined,
+      group: index === ACCOUNT_SECTIONS.length ? tr('settings.technical') : index === 0 && isAdmin ? tr('term.account') : undefined,
       leading: <Icon size={16} strokeWidth={1.75} aria-hidden="true" />
     };
   });
@@ -522,10 +572,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       toolbar={
         // The nav down the left side (desktop), or the list a phone opens a section from: who is signed in, the sections, then the two ways
         // out of Settings that are not sections (the admin console, signing out), at its foot.
-        <div className="st-nav" data-pane={pane}>
+        <NavFrame pane={pane} openKey={current.id}>
           {user === undefined ? null : (
             <div className="st-identity">
-              <Avatar name={user.display_name === '' ? user.email : user.display_name} size="md" />
+              <Avatar name={user.display_name === '' ? user.email : user.display_name} size="md" selected />
               <div className="st-identity-text">
                 <span className="st-identity-name">{user.display_name === '' ? user.email : user.display_name}</span>
                 <span className="st-identity-address">{user.email}</span>
@@ -592,7 +642,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </p>
             )}
           </div>
-        </div>
+        </NavFrame>
       }
     >
       <TabPanel tabsId={TABS_ID} value={current.id} selected={current.id}>
@@ -609,9 +659,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </Button>
         </div>
         {/* A new section fades in (keyed, so it is a new element each time). */}
-        <div key={current.id} className="st-section">
-          {contentOf(current)}
-        </div>
+        <SectionBody key={current.id}>{contentOf(current)}</SectionBody>
       </TabPanel>
     </Dialog>
   );

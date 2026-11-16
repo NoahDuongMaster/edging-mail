@@ -6,7 +6,7 @@ import type { RecoveryKeyDraft } from '../../lib/crypto/recoveryDraft';
 import { credentialErrorText } from '../../lib/crypto/errors';
 import { firstInvalid, useFieldFocus } from '../../lib/fieldFocus';
 import { useT } from '../../lib/i18n';
-import { Banner, CopyButton, Divider, SecretBox, TextField } from '../../ui';
+import { Banner, CopyButton, SecretBox, TextField } from '../../ui';
 import { AuthButton, ErrorLine, TextButton } from './authUi';
 
 interface RecoveryKeyPanelProps {
@@ -111,13 +111,16 @@ export const RecoveryKeyPanel: React.FC<RecoveryKeyPanelProps> = ({ t, draft, ad
         {replaces ? <p className="au-banner-line">{tr('recovery.old_stops')}</p> : null}
       </Banner>
 
-      <SecretBox
-        label={tr('term.recovery_key')}
-        value={draft.groups}
-        columns={3}
-        partLabel={(index) => tr('recovery.group_label', { number: index + 1 })}
-        className="au-key"
-      />
+      <div className="au-secret-frame">
+        <span className="ui-airmail au-secret-edge" aria-hidden="true" />
+        <SecretBox
+          label={tr('term.recovery_key')}
+          value={draft.groups}
+          columns={3}
+          partLabel={(index) => tr('recovery.group_label', { number: index + 1 })}
+          className="au-key"
+        />
+      </div>
 
       <div className="au-actions">
         <CopyButton text={draft.text} size="lg" className="au-btn" onResult={(result) => setCopyFailed(result === 'failed')} />
@@ -131,10 +134,9 @@ export const RecoveryKeyPanel: React.FC<RecoveryKeyPanelProps> = ({ t, draft, ad
         />
       </div>
       {copyFailed ? <ErrorLine t={t} id="recovery-copy-error" text={tr('recovery.copy_failed')} /> : null}
-      <p className="au-note">{tr('recovery.download_warning')}</p>
+      <p className="au-muted">{tr('recovery.download_warning')}</p>
 
-      <Divider />
-      <p className="au-strong">{tr('recovery.confirm_lead', { first, second, third })}</p>
+      <p className="au-strong au-part">{tr('recovery.confirm_lead', { first, second, third })}</p>
       <ErrorLine t={t} id="recovery-mismatch" text={mismatch ? tr('recovery.confirm_mismatch') : null} />
       <div className="au-groups">
         {[first, second, third].map((number, position) => (

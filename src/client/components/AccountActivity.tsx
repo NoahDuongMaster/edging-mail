@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useLayoutEffect, useRef, useState } from 'react';
-import { CircleAlert } from 'lucide-react';
+import { CircleAlert, CircleCheck } from 'lucide-react';
 import type { ThemeTokens } from '../theme';
 import { fmt, useT } from '../lib/i18n';
 import { describeDevice, describeKind, describeNotice, formatWhen, useAccountActivity } from '../lib/activity';
@@ -16,7 +16,10 @@ interface AccountActivityProps {
 const PREVIEW = 3;
 const SIGNINS_LIST = 'account-signins-list';
 
-/** Settings > Account: what happened to this account that its owner should know (notices), then the recent sign-ins, as hairline lists. */
+/**
+ * Settings > Security > Account activity: what happened to this account that its owner should know (notices), then the recent sign-ins as
+ * a quiet timeline (a dot per sign-in on one line, a failed one in the danger colour and in words).
+ */
 export const AccountActivity: React.FC<AccountActivityProps> = ({ t }) => {
   const tr = useT();
   const query = useAccountActivity();
@@ -59,14 +62,17 @@ export const AccountActivity: React.FC<AccountActivityProps> = ({ t }) => {
     const shown = more && !showAll ? activity.slice(0, PREVIEW) : activity;
     body = (
       <>
-        <Card className="st-sub">
-          <h5 id="account-notices" className="st-subtitle">
-            {tr('account.notices_title')}
-          </h5>
-          {notices.length === 0 ? (
-            // A paragraph cannot be named (aria-labelledby on a <p> is ignored, J1-13): the heading above says what it is about.
-            <p className="st-muted">{tr('account.notices_empty')}</p>
-          ) : (
+        {notices.length === 0 ? (
+          // Nothing to know: one calm line with a check, not a card of its own (the sign-ins below are what the person came for).
+          <p className="st-calm">
+            <CircleCheck size={16} aria-hidden="true" />
+            <span>{tr('account.notices_empty')}</span>
+          </p>
+        ) : (
+          <Card className="st-sub">
+            <h5 id="account-notices" className="st-subtitle">
+              {tr('account.notices_title')}
+            </h5>
             <ul aria-labelledby="account-notices" className="st-list">
               {notices.map((notice) => (
                 <li key={notice.id} className="st-notice">
@@ -75,8 +81,8 @@ export const AccountActivity: React.FC<AccountActivityProps> = ({ t }) => {
                 </li>
               ))}
             </ul>
-          )}
-        </Card>
+          </Card>
+        )}
         <Card className="st-sub">
           <h5 id="account-signins" className="st-subtitle">
             {tr('account.signins_title')}
@@ -123,5 +129,5 @@ export const AccountActivity: React.FC<AccountActivityProps> = ({ t }) => {
   }
 
   // Shown inside the Account activity view of Security, whose title (an h4) names it: the two groups are h5.
-  return <div className="st-cards">{body}</div>;
+  return <div className="st-activity">{body}</div>;
 };

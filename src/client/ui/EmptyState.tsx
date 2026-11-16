@@ -17,6 +17,11 @@ interface EmptyStateProps {
   idle?: boolean;
   /** The level of the title: h2 inside a page (default), h1 when the empty state IS the page (the crash screen). */
   titleAs?: 'h1' | 'h2';
+  /**
+   * A drawing above the title (a FlightTrail): the v3 empty state's art, decorative (give it aria-hidden). Use `illustration` instead for
+   * Edgar on the status screens; with both, Edgar comes first.
+   */
+  art?: React.ReactNode;
   className?: string;
 }
 
@@ -49,6 +54,7 @@ export function EmptyState({
   illustration = false,
   idle = false,
   titleAs: Title = 'h2',
+  art,
   className
 }: EmptyStateProps): React.ReactElement {
   const artRef = React.useRef<HTMLImageElement | null>(null);
@@ -56,6 +62,11 @@ export function EmptyState({
   return (
     <div className={cx('ui-empty', className)}>
       {illustration ? <img ref={artRef} src="/edgar.svg" alt="" width={112} height={109} className="ui-empty-art" /> : null}
+      {art === undefined || art === null ? null : (
+        <div className="ui-empty-slot" aria-hidden="true">
+          {art}
+        </div>
+      )}
       <Title className="ui-empty-title">{title}</Title>
       {has(description) ? <p className="ui-empty-description">{description}</p> : null}
       {action === undefined ? null : <div className="ui-empty-action">{action}</div>}

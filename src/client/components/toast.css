@@ -1,46 +1,63 @@
-/* The toast (components/Toast.tsx): the landing's notification card (src/worker/site/landing.css.ts `.notif`): the surface, a hairline, the
-   layered pop shadow, an icon in the accent (a check) or the danger colour (a failure), then the words, the Undo and the X. The box's place
-   and its z-index are ui.css `.ui-toast`. One blue: the Undo, the icon and the countdown bar all use --indicator (5.5:1 light, 5.1:1 dark on
-   the surface, so the Undo's words pass 4.5:1). The entrance, the exit, the cross-fade of a replaced toast and the countdown are played by
-   the component (Web Animations), so they stop exactly when the timer stops. */
+/* The toast (components/Toast.tsx), v3 (DESIGN-v3 4.1): an inverse card (the text colour as its fill, the page colour as its words, the
+   floating shadow, radius 14) at the
+   bottom of the list sheet, an icon (a check, the send glyph while a send is held, a failure), the words, the Undo and the X. The box's place
+   and its z-index are ui.css `.ui-toast` plus Toast.tsx's inline offsets. The countdown along its bottom edge is the indicator bar, or
+   while an undo-send holds the AIRMAIL edge (DESIGN-v3 H6: `.ui-airmail[data-moving]`, signature.css) whose stripes slide while the send
+   waits. On the inverse fill every colour is a mix toward the page colour, measured on both themes: the Undo 8.1:1 light / 10.0:1 dark,
+   the failure icon 6.4 / 6.1, the X 9.2 / 7.4, the bar 5.7 / 5.4. The entrance, the exit, the cross-fade of a replaced toast and the countdown are played by the
+   component (Web Animations), so they stop exactly when the timer stops. */
 
 .ui-toast.tst-root {
   overflow: hidden;
   gap: 10px;
-  padding: 6px 6px 6px 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow:
-    var(--pop-shadow),
-    inset 0 1px 0 var(--inset-highlight);
-  color: var(--text);
-}
-/* In the dark theme the card stands on surfaces of the same grey: a firmer hairline lifts it. */
-:root[data-theme='dark'] .ui-toast.tst-root {
-  background: var(--raised);
-  border-color: var(--border-strong);
+  min-height: 52px;
+  padding: 8px 8px 8px 16px;
+  background: var(--text);
+  border: 0;
+  border-radius: var(--radius-card);
+  box-shadow: var(--float-shadow);
+  color: var(--bg);
 }
 
 .tst-icon {
   flex: none;
-  color: var(--indicator);
+  color: color-mix(in srgb, var(--accent) 50%, var(--bg));
 }
 .tst-root[data-error='true'] .tst-icon {
-  color: var(--danger);
+  color: color-mix(in srgb, var(--danger) 55%, var(--bg));
 }
-/* J6-35: "Sending..." is not done yet: its Send glyph is neutral (text2, 4.5:1+ on the card in both themes); the blue check is for done. */
+/* J6-35: "Sending..." is not done yet: its Send glyph is neutral (the X's tone, 7.3:1+ on the fill); the blue check is for done. */
 .tst-root[data-held='true'] .tst-icon {
-  color: var(--text2);
+  color: color-mix(in srgb, var(--bg) 72%, var(--text));
 }
 
 /* J2-16: the words take the free width (the card has a min-width, Toast.tsx), so the Undo and the X sit at the right edge and stay put
    when a replacing toast's words are shorter or a little longer. */
 .tst-root .ui-toast-text {
   flex: 1 1 auto;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
 }
 
 .ui-toast-action.tst-undo {
-  color: var(--indicator);
+  padding-inline: 10px;
+  border-radius: var(--radius-control);
+  color: color-mix(in srgb, var(--accent) 50%, var(--bg));
+  font-weight: 600;
+}
+.ui-toast-action.tst-undo:active {
+  background: color-mix(in srgb, var(--bg) 18%, transparent);
+}
+@media (hover: hover) {
+  .ui-toast-action.tst-undo:hover {
+    background: color-mix(in srgb, var(--bg) 10%, transparent);
+  }
+}
+/* The ring of the focus token would sit on the inverse fill at under 3:1 in the light theme: the page colour draws it there. */
+.tst-root :is(.tst-undo, .tst-dismiss):focus-visible {
+  outline: 2px solid var(--bg);
+  outline-offset: -2px;
 }
 
 /* The X: as quiet as the Undo beside it, 32 px on a desktop (24 px is the minimum), 44 px on touch (`nm-tap`). */
@@ -54,28 +71,31 @@
   border: 0;
   border-radius: var(--radius-control);
   background: transparent;
-  color: var(--text2);
+  color: color-mix(in srgb, var(--bg) 72%, var(--text));
   cursor: pointer;
 }
 .tst-dismiss:active {
-  background: color-mix(in srgb, currentcolor 16%, transparent);
+  background: color-mix(in srgb, var(--bg) 18%, transparent);
 }
 @media (hover: hover) {
   .tst-dismiss:hover {
-    background: var(--hover);
-    color: var(--text);
+    background: color-mix(in srgb, var(--bg) 10%, transparent);
+    color: var(--bg);
   }
 }
 
-/* 2 px of the indicator colour along the bottom edge, from full width to nothing while the time runs (it pauses with the timer). It says
-   nothing the text does not: it is decoration for sighted users and hidden from screen readers. */
+/* 3 px along the bottom edge, from full width to nothing while the time runs (it pauses with the timer): the indicator mixed toward the
+   page colour (so it shows on the inverse fill), or the airmail stripes while a send is held. It says nothing the text does not: decoration for sighted
+   users, hidden from screen readers. */
 .tst-bar {
   position: absolute;
   inset: auto 0 0;
-  height: 2px;
-  background: var(--indicator, var(--accent));
+  height: 3px;
   transform-origin: left center;
   pointer-events: none;
+}
+.tst-bar:not(.ui-airmail) {
+  background: color-mix(in srgb, var(--indicator) 70%, var(--bg));
 }
 
 /* Reduced motion: no moving bar at all (the timer still pauses on hover and focus). */

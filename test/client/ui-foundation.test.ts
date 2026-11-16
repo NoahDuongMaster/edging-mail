@@ -1,7 +1,20 @@
 import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { Avatar, Card, Checkbox, DisclosurePanel, EmptyState, IconButton, Spinner, Tabs, Toolbar } from '../../src/client/ui';
+import {
+  Avatar,
+  Button,
+  Card,
+  Checkbox,
+  DisclosurePanel,
+  EmptyState,
+  IconButton,
+  Section,
+  Spinner,
+  Tabs,
+  TextField,
+  Toolbar
+} from '../../src/client/ui';
 import { durationFor, exitDuration, motionReduced } from '../../src/client/ui/motion';
 import { tabTarget } from '../../src/client/ui/Tabs';
 import { toolbarTarget } from '../../src/client/ui/Toolbar';
@@ -135,5 +148,48 @@ describe('the restyled primitives (markup the stylesheet relies on)', () => {
     expect(html).toMatch(/<img[^>]*alt=""/);
     expect(html).not.toContain('data-idle');
     expect(render(h(EmptyState, { title: 'Nothing here' }))).not.toContain('<img');
+  });
+});
+
+describe('the v3 additions (props only: every existing call renders as before)', () => {
+  it('Avatar: a person hue is a tint set inline (data-hue + --ui-hue), any px size goes through --ui-avatar-size, the neutral tile is unchanged', () => {
+    const tinted = render(h(Avatar, { name: 'Ana Lima', hue: '#0E7490' }));
+    expect(tinted).toContain('data-hue="true"');
+    expect(tinted).toMatch(/style="--ui-hue:#0E7490"/);
+    const sized = render(h(Avatar, { name: 'Ana Lima', size: 36 }));
+    expect(sized).toContain('data-size="custom"');
+    expect(sized).toMatch(/style="--ui-avatar-size:36px;font-size:14px"/);
+    expect(render(h(Avatar, { name: 'Ana Lima', size: 'xl' }))).toBe('<span class="ui-avatar" data-size="xl" aria-hidden="true">AL</span>');
+    expect(render(h(Avatar, { name: 'Ana Lima', hue: '' }))).not.toContain('data-hue');
+  });
+
+  it('Button: shape="pill" is a data attribute (no shape: no attribute), the label and the variant stay', () => {
+    expect(render(h(Button, { variant: 'primary', shape: 'pill' }, 'Compose'))).toMatch(
+      /^<button type="button" class="ui-btn" data-variant="primary" data-size="md" data-shape="pill">Compose<\/button>$/
+    );
+    expect(render(h(Button, null, 'Save'))).not.toContain('data-shape');
+  });
+
+  it('TextField variant="search": the filled pill with a magnifier inside its left edge unless a leading adornment replaces it', () => {
+    const html = render(h(TextField, { label: 'Search mail', hideLabel: true, variant: 'search', type: 'search' }));
+    expect(html).toMatch(/<div class="ui-input" data-variant="search"><span class="ui-adorn"><svg[^>]*lucide-search/);
+    expect(html).toMatch(/<input[^>]*type="search"/);
+    const own = render(h(TextField, { label: 'Search', variant: 'search', leading: h('i', null, 'q') }));
+    expect(own).toContain('<span class="ui-adorn"><i>q</i></span>');
+    expect(render(h(TextField, { label: 'Name' }))).toMatch(/<div class="ui-input"><input/);
+  });
+
+  it('EmptyState art: a decorative slot above the title; without it the title comes first', () => {
+    const html = render(h(EmptyState, { title: 'No messages', art: h('svg', { 'aria-hidden': 'true' }) }));
+    expect(html).toMatch(
+      /^<div class="ui-empty"><div class="ui-empty-slot" aria-hidden="true"><svg[^>]*><\/svg><\/div><h2 class="ui-empty-title">/
+    );
+    expect(render(h(EmptyState, { title: 'No messages' }))).toMatch(/^<div class="ui-empty"><h2 class="ui-empty-title">/);
+  });
+
+  it('Section grouped: the rows sit in one .ui-group card under the heading; a plain Section has no wrapper', () => {
+    const grouped = render(h(Section, { title: 'Notifications', grouped: true }, h('div', null, 'a'), h('div', null, 'b')));
+    expect(grouped).toMatch(/<\/div><div class="ui-group"><div>a<\/div><div>b<\/div><\/div><\/section>$/);
+    expect(render(h(Section, { title: 'Plain' }, h('p', null, 'x')))).not.toContain('ui-group');
   });
 });

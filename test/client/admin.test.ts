@@ -52,13 +52,24 @@ describe('the DNS answer of a domain', () => {
     expect(html).toContain(tr('domains.mx_priority', { priority: 10 }));
   });
 
-  it('shows found and missing records of Email Sending as different badges with words: success, danger, warning when not required', () => {
+  it('shows found and missing records of Email Sending as different status words: success, danger, warning when not required', () => {
     const html = renderDns(dnsAnswer([]));
-    const badges = [...html.matchAll(/<span class="ui-badge" data-tone="(\w+)">[\s\S]*?<\/span>/g)].map((match) => match[1]);
+    // v3: the card's one badge is its summary (DomainCard); the steps and the records say their state in words after an icon, never a pill.
+    expect(html).not.toContain('ui-badge');
+    const words = [...html.matchAll(/<span class="ad-plain" data-tone="(\w+)">/g)].map((match) => match[1]);
     // Receiving and sending not ready (danger), then the three records, what is missing first: required (danger), optional (warning), found.
-    expect(badges).toEqual(['danger', 'danger', 'danger', 'warning', 'success']);
+    expect(words).toEqual(['danger', 'danger', 'danger', 'warning', 'success']);
     expect(html).toContain(tr('domains.record_ok'));
     expect(html.match(new RegExp(tr('domains.record_absent'), 'g'))).toHaveLength(2);
+  });
+
+  it('numbers the steps of the checklist (ui Steps) and gives every host a Copy that names it', () => {
+    const html = renderDns(dnsAnswer([{ priority: 10, host: 'mx.other.example' }]));
+    expect(html).toMatch(/^<ol role="list" class="ui-steps ad-checklist"><li class="ui-step">/);
+    expect(html.match(/<li class="ui-step">/g)).toHaveLength(2);
+    for (const host of ['mx.other.example', 'cf-bounce.example.com', 'cf-bounce._domainkey.example.com', '_dmarc.example.com']) {
+      expect(html, host).toContain(`aria-label="${tr('domains.copy_record', { name: host })}"`);
+    }
   });
 
   it('puts the step that does not work first and open, with a dashboard link, and folds a step that works to one line', () => {

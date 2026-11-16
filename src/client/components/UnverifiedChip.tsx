@@ -26,7 +26,7 @@ export const UnverifiedChip: React.FC<UnverifiedChipProps> = ({ onSpam, sheet = 
   return (
     <TrustChip
       tone="warning"
-      icon={<TriangleAlert size={12} strokeWidth={2} aria-hidden="true" />}
+      icon={<TriangleAlert size={14} strokeWidth={1.75} aria-hidden="true" />}
       label={tr('reader.unverified_sender')}
       heading={tr('reader.arrived_by_email')}
       note={tr('reader.unverified_note')}

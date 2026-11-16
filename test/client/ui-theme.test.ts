@@ -158,6 +158,14 @@ describe('the tokens as CSS', () => {
     for (const name of ['press-shadow', 'control-shadow', 'field-shadow', 'pop-shadow', 'sheet-shadow']) {
       expect(css, name).toContain(`--${name}:`);
     }
+    // v3 "Airmail": the shadow of what floats and moves, the sheets' radius, and the brand panel of the sign-in screens.
+    for (const name of ['float-shadow', 'brand-panel', 'on-brand-panel', 'brand-panel-text2', 'brand-panel-line']) {
+      expect(css, name).toContain(`--${name}:`);
+    }
+    expect(css).toContain(`--radius-sheet:${RADIUS.sheet}px`);
+    expect(css).toContain(`--float-shadow:${LIGHT.floatShadow}`);
+    expect(css).toContain(`--float-shadow:${DARK.floatShadow}`);
+    expect(css.indexOf(`--float-shadow:${DARK.floatShadow}`)).toBeGreaterThan(css.indexOf("[data-theme='dark']"));
     expect(css).toContain(`--radius-popup:${RADIUS.popup}px`);
     for (const [name, ms] of Object.entries(DURATION)) {
       expect(css).toContain(`--dur-${name}:${ms}ms`);

@@ -202,21 +202,94 @@ describe('the screens before the mailbox', () => {
     expect(focus.match(/scrollIntoView\(\{ block: 'nearest' \}\)/g)).toHaveLength(2);
   });
 
-  it('centre the glow on the card (its stage), whatever the card height, and keep the column glow for the phone only', () => {
+  it('split the page from 1024 px: the form on the left half, the brand panel (trail, statement, proofs, airmail edge) on the right; no glow', () => {
     const card = read(path.join(AUTH, 'authUi.tsx'));
-    expect(card.indexOf('className="au-stage"')).toBeGreaterThan(card.indexOf('className="au-column"'));
-    expect(card.indexOf('className="au-stage"')).toBeLessThan(card.indexOf('className="au-card"'));
-    // The glow is the card's box grown evenly (top = bottom, left = right) with an ellipse that fills it: its centre is the card's.
-    expect(css).toMatch(
-      /\.au-stage::before \{[^}]*inset: -(\d+)px -(\d+)px;[^}]*background: radial-gradient\(closest-side, var\(--au-glow\), transparent\);/
+    // The panel comes after the form side (a screen reader meets the form first), is not drawn for a status page (Edgar's screens) and is
+    // decoration plus words: the flight trail on the panel tone and the airmail edge are aria-hidden, the statement and the proofs are text.
+    expect(card.indexOf('<BrandPanel />')).toBeGreaterThan(card.indexOf('className="au-column"'));
+    expect(card).toMatch(/\{illustration \? null : <BrandPanel \/>\}/);
+    expect(card).toMatch(/<aside ref=\{panel\} className="au-panel"/);
+    // The hero of the sky: the one flight trail (an SVG measured to leave at the form's main button and land on the letter, brandSky.ts) and
+    // the airmail letter (stamp, postmark, par-avion edge), both decoration inside one aria-hidden layer.
+    expect(card).toMatch(
+      /<div className="au-panel-flight" aria-hidden="true">\s*<svg\s+aria-hidden="true"\s+focusable="false"\s+className="au-panel-trail"/
     );
-    const phone = css.slice(css.indexOf('@media (max-width: 480px)'));
-    expect(css.slice(0, css.indexOf('@media (max-width: 480px)'))).not.toMatch(/\.au-column::after \{/);
-    expect(phone).toMatch(/\.au-stage::before \{\s*display: none;\s*\}/);
-    // The sign-in and unlock cards name the server and end on the trust line.
+    expect(card).toMatch(/<span ref=\{letter\} className="au-panel-letter">\s*<AirmailLetter id=\{id\} \/>/);
+    expect(card).toMatch(/const trail = heroTrail\(sky\);/);
+    expect(card).toMatch(/<span className="ui-airmail au-panel-edge" data-tone="panel" aria-hidden="true" \/>/);
+    for (const key of ['auth.panel_statement', 'auth.panel_proof_no_admin', 'auth.panel_proof_host', 'auth.panel_proof_two_factor']) {
+      expect(card, key).toContain(`tr('${key}')`);
+    }
+    // Hidden under 1024 px; from there a two-column grid with the panel inset 16 px, radius 24, on the brand-panel colour of both themes,
+    // sticky so it stays in view while a long form scrolls the window (no inner scroller).
+    expect(css).toMatch(/\.au-panel \{\s*display: none;\s*\}/);
+    const wide = css.slice(css.indexOf('@media (min-width: 1024px) {\n  /* Two halves'));
+    expect(wide).toMatch(
+      /\.au-page\[data-layout='split'\] \{\s*display: grid;\s*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\);/
+    );
+    expect(wide).toMatch(
+      /\.au-panel \{[^}]*position: sticky;[^}]*margin: 16px 16px 16px 0;[^}]*border-radius: 24px;[^}]*var\(--brand-panel\);/
+    );
+    expect(css).not.toMatch(/overflow-y: (auto|scroll);[^}]*\}\s*\.au-panel/);
+    // The landing's grid and the smudgy accent glow of v2 are gone.
+    expect(css).not.toMatch(/au-glow|au-grid|au-stage/);
+    expect(card).not.toContain('au-stage');
+    // The panel's trail draws in the first time only; reduced motion keeps everything still (the trail drawn, the letter landed, postmarked).
+    expect(card).toMatch(/const still = React\.useMemo\(\(\) => panelShown, \[\]\);/);
+    expect(css).toMatch(/:root\[data-motion='reduce'\] \.au-panel-letter \{\s*animation: none;\s*\}/);
+    expect(css).toMatch(/:root\[data-motion='reduce'\] :is\(\.au-panel-reveal, \.au-letter-postmark\) \{\s*animation: none;\s*\}/);
+    expect(css).toMatch(
+      /\.au-panel\[data-still='true'\] :is\(\.au-panel-letter, \.au-panel-reveal, \.au-letter-postmark\) \{\s*animation: none;\s*\}/
+    );
+    // The sign-in and unlock forms name the server and end on the trust line.
     for (const name of ['SignInScreen.tsx', 'UnlockScreen.tsx']) {
       expect(code(path.join(AUTH, name)), name).toMatch(/server="(sign-in|unlock)"/);
       expect(code(path.join(AUTH, name)), name).toMatch(/<TrustLine \/>\s*<\/AuthCard>/);
+      // Forgot password lives in the password's row (on its label row with a mouse, auth.css), after the field and its error.
+      expect(code(path.join(AUTH, name)), name).toMatch(
+        /<div className="au-secret-row">\s*<SecretField[\s\S]*?<ErrorLine[\s\S]*?<HintedLink/
+      );
     }
+    expect(css).toMatch(
+      /@media \(min-width: 641px\) and \(pointer: fine\) \{\s*\/\*[^*]*\*\/\s*\.au-secret-row \.ui-btn\.au-link-btn\[data-variant='ghost'\] \{\s*position: absolute;/
+    );
+  });
+
+  it('keep the identity without the panel and the reset consequence discoverable without reading like an error (v3 P1)', () => {
+    const card = code(path.join(AUTH, 'authUi.tsx'));
+    // Under 1024 px the page wears the airmail edge along its very top (decoration), the split page drops it (the panel has its own).
+    expect(card).toMatch(
+      /\{illustration \? null : <span className="ui-airmail au-page-edge" aria-hidden="true" \/>\}\s*<div className="au-side">/
+    );
+    expect(css).toMatch(/@media \(min-width: 1024px\) \{\s*\.au-page\[data-layout='split'\] > \.au-page-edge \{\s*display: none;/);
+    // One brand row on every width (tile 32, name 18); on the split page it stands over the form with the language list on its line.
+    expect(card.match(/className="au-brand"/g)).toHaveLength(1);
+    expect(card).toContain('<img src="/logo.svg" alt="" width={32} height={32} className="au-brand-mark" />');
+    expect(css).toMatch(/\.au-brand \{[^}]*font-size: 18px;/);
+    expect(css).toMatch(/\.au-brand-mark \{[^}]*width: 32px;\s*height: 32px;/);
+    expect(css).toMatch(/\.au-page\[data-layout='split'\] \.au-top \{[^}]*max-width: 448px;[^}]*margin: auto auto 0;/);
+    // The trust line stays the promise of a narrow window and a phone; the split page hides it (the panel says it).
+    expect(css).toMatch(/\.au-page\[data-layout='split'\] \.au-trust \{\s*display: none;/);
+    // Forgot password: the consequence is the link's tooltip with a mouse (hover and keyboard focus) and a visible line without hover; it
+    // always describes the link (aria-describedby), so a screen reader hears it on every device.
+    expect(card).toMatch(/aria-describedby=\{`\$\{id\}-hint`\}\s*\{\.\.\.tip\.anchor\}/);
+    expect(card).toMatch(/onFocus=\{\(event\) => tip\.show\(event\.currentTarget\.matches\(':focus-visible'\)\)\}/);
+    expect(card).toMatch(/<Tooltip open=\{tip\.open\} text=\{hint\} anchorRef=\{ref\} \{\.\.\.tip\.bubble\} \/>/);
+    expect(css).toMatch(/@media \(hover: hover\) \{\s*\.au-link-hint \{\s*position: absolute;[^}]*clip-path: inset\(50%\);/);
+  });
+
+  it('keep one measured rhythm on the phone sign-in form, centred while it fits, the language chevron on the fields edge (FP2)', () => {
+    const phone = /@media \(max-width: 640px\) \{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
+    // The chevron's ink (3.3px inside its 16px box) ends on the fields' right edge.
+    expect(phone).toMatch(/\.au-bar \.au-lang \.ui-select \{\s*padding-inline-end: 6px;/);
+    // The column stands in the middle of the room when it fits; the window scrolls when it does not (the page rules above).
+    expect(phone).toMatch(/\.au-page:has\(#signin-email\) \.au-column \{\s*margin: auto;/);
+    // 24px between the groups on the ink, 32px above Sign in, 24px under it: each block takes back the room of its own line boxes.
+    expect(phone).toMatch(/\.au-card:has\(#signin-email\) > \.au-head \{\s*margin-bottom: -9px;/);
+    expect(phone).toMatch(/\.au-card:has\(#signin-email\) > \.au-secret-row \{\s*margin-top: -5px;/);
+    expect(phone).toMatch(/\.au-card:has\(#signin-email\) > \.ui-check \{\s*margin-block: -15px -14px;/);
+    expect(phone).toMatch(/\.au-card:has\(#signin-email\) > \.au-trust \{\s*margin-top: -4px;/);
+    expect(css).toMatch(/body:has\(\.au-page\) \{\s*overflow-y: auto;/);
+    expect(code(path.join(AUTH, 'SignInScreen.tsx'))).toMatch(/<TextField\s+id="signin-email"/);
   });
 });

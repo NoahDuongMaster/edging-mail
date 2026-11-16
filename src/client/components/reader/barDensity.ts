@@ -2,8 +2,8 @@ import React from 'react';
 
 /**
  * How the reader toolbar fits its pane: `phone` is the phone's bottom action bar (index.css `.nm-bar`), the rest are the desktop one.
- * `labelled`: some actions show their words beside their icons, the most used first (`barLayout` says how many); `full`, `snug` and
- * `tight` are icons with tooltips, tighter and tighter. Newer and Older are always icons.
+ * `labelled`: EVERY action shows its words beside its icon (v3 lead review R1: never a mix of labelled and bare actions); `full`, `snug`
+ * and `tight` are icons with tooltips, tighter and tighter. Newer and Older are always icons.
  */
 export type BarDensity = 'phone' | 'labelled' | 'full' | 'snug' | 'tight';
 
@@ -35,28 +35,30 @@ export const LABELLED_CHROME = 10 + 16 + 6 + 10 + 2;
 // How the desktop toolbar fits its pane, from the pane's inner width. The buttons have a fixed width; the counter ("100 of 100") takes what
 // is left and gives way (it is cut with an ellipsis, it never wraps the row). The row is: Archive | the moves | Mark as unread, Snooze, Label
 // (Trash and Spam: Move to Inbox, Archive, the other move | Mark as unread, Label | Delete forever), the counter, Newer, Older: 8 buttons,
-// 2 or 3 dividers and the counter. All in px, for w = BAR_BUTTON_WIDTH and d dividers:
-//   labelled: as full, the counter at 72, the first k actions their words + LABELLED_CHROME each (measured), the other 8 - k buttons w each
-//   full:  side padding 12, gaps 2, divider margins 6  -> 24 + 20 + 13d, + 8w, and 88 for the counter
-//   snug:  side padding 8, no gaps, divider margins 2  -> 16 + 5d, + 8w, and 72 for the counter
-//   tight: side padding 4, no gaps, divider margins 2  -> 8 + 5d, + 8w, no counter
-// The dividers keep a margin in every density, so the groups never touch (Archive is never flush with Move to Trash on a tablet).
+// 2 or 3 group breaks and the counter. A group break is a 1 px separator drawn in no colour (v3 R1: groups are told apart by space, never by
+// a line), so in the roomy densities two groups stand 2 + 7 + 1 + 8 + 2 = 20 px apart and the buttons of a group 2 px (W5 lead review 8).
+// All in px, for w = BAR_BUTTON_WIDTH and d breaks:
+//   labelled: as full, the counter at 72, EVERY action its words + LABELLED_CHROME (measured), Newer and Older w each
+//   full:  side padding 12, gaps 2, break margins 7 + 8  -> 24 + 2 (8 + d) + 16d, + 8w, and 88 for the counter
+//   snug:  side padding 8, no gaps, break margins 2  -> 16 + 5d, + 8w, and 72 for the counter
+//   tight: side padding 4, no gaps, break margins 2  -> 8 + 5d, + 8w, no counter
+// The breaks keep a margin in every density, so the groups never touch (Archive is never flush with Move to Trash on a tablet).
 // With a mouse (w = 32) the narrowest desktop window (901 px wide, a reader pane of about 359) is `snug` and shows the counter; a landscape
 // tablet (w = 40, a pane of about 440) is `snug` too.
-// Words, measured in Geist 500 13 px (+ LABELLED_CHROME), Inbox in en, most used first: Archive 90, Move to Trash 130, Snooze 90, Add label 102,
-// Mark as unread 139, Move to Spam 132. A 1440 px window (a pane of about 790) labels all but Move to Spam: 72 + 70 + 3 x 32 + 551 = 789.
+// Words, measured in Geist 500 13 px (+ LABELLED_CHROME), Inbox in en: Archive 90, Move to Trash 130, Snooze 90, Mark unread 119, Labels 88,
+// Move to Spam 132 (649): the bar has words from a pane of 76 + 72 + 2 x 32 + 649 = 861 px (a wide window); below that it is icons.
 const LABELLED_COUNTER = 72;
 const FULL_COUNTER = 88;
 const SNUG_COUNTER = 72;
-const fullFixed = (dividers: number) => 24 + 20 + 13 * dividers;
+const fullFixed = (dividers: number) => 24 + 2 * (8 + dividers) + 16 * dividers;
 const snugFixed = (dividers: number) => 16 + 5 * dividers;
 const tightFixed = (dividers: number) => 8 + 5 * dividers;
 
 /**
  * The layout of the desktop toolbar for a pane `paneWidth` px wide (null: not measured yet), for a mouse or a touch screen. `widths` are the
- * widths of the labelled actions (their words + LABELLED_CHROME, `wordWidths`) in the order they get words, the most used first; null when
- * they are not known (the server, a first render): then the bar has no words. `dividers`: 2, or 3 in Trash and Spam (Delete forever stands
- * apart). As many actions show their words as fit, in that order; the rest are icons with tooltips.
+ * widths of the labelled actions (their words + LABELLED_CHROME, `wordWidths`), one per action of the bar; null when they are not known (the
+ * server, a first render): then the bar has no words. `dividers`: 2, or 3 in Trash and Spam (Delete forever stands apart). Every action shows
+ * its words when all of them fit, else none does (R1: one rule for the whole bar, never a mix); icons carry their names in tooltips.
  */
 export function barLayout(paneWidth: number | null, coarse: boolean, widths: readonly number[] | null = null, dividers = 2): BarLayout {
   if (paneWidth === null) {
@@ -64,19 +66,10 @@ export function barLayout(paneWidth: number | null, coarse: boolean, widths: rea
   }
   const width = coarse ? BAR_BUTTON_WIDTH.coarse : BAR_BUTTON_WIDTH.fine;
   const gaps = moveGaps(coarse);
-  if (widths !== null) {
-    let words = 0;
-    let sum = 0;
-    for (const [index, each] of widths.entries()) {
-      sum += each;
-      if (paneWidth >= fullFixed(dividers) + gaps + LABELLED_COUNTER + (BUTTONS - index - 1) * width + sum) {
-        words = index + 1;
-      } else {
-        break;
-      }
-    }
-    if (words > 0) {
-      return { density: 'labelled', words };
+  if (widths !== null && widths.length > 0) {
+    const sum = widths.reduce((total, each) => total + each, 0);
+    if (paneWidth >= fullFixed(dividers) + gaps + LABELLED_COUNTER + (BUTTONS - widths.length) * width + sum) {
+      return { density: 'labelled', words: widths.length };
     }
   }
   const buttons = BUTTONS * width + gaps;
@@ -110,15 +103,18 @@ export function barNeeds(layout: BarLayout, coarse: boolean, widths: readonly nu
 let context: CanvasRenderingContext2D | null | undefined;
 
 /**
- * The reading column under the toolbar (reader.css `.rd-page`): at most `max` px wide, centred in the pane, its content `side` px in from its
- * edges. The toolbar's first and last glyphs stand on that content edge when the bar has the room (J3-36).
+ * The reading column under the toolbar (reader.css `.rd-page`, v3 "the letter"): in a pane wider than `wide` px a column `max` px wide (720
+ * px of content and `side` px of margin each side) centred in the pane; in a narrower one it starts on the left with `midSide` px margins (24
+ * px in a pane of `narrow` px or less). The toolbar's first and last glyphs stand on that content edge when the bar has the room (J3-36).
  */
-export const READING_COLUMN = { max: 784, side: 32, narrow: 480, narrowSide: 24 } as const;
+export const READING_COLUMN = { max: 800, side: 40, wide: 880, midSide: 32, narrow: 480, narrowSide: 24 } as const;
 
-/** How far in from the pane's edge the reading column's content starts (reader.css: 24 px margins in a pane of `narrow` px or less). */
+/** How far in from the pane's edge the reading column's content starts (reader.css `.rd-page` and its container queries). */
 function columnInset(paneWidth: number): number {
-  const side = paneWidth <= READING_COLUMN.narrow ? READING_COLUMN.narrowSide : READING_COLUMN.side;
-  return Math.max(0, (paneWidth - READING_COLUMN.max) / 2) + side;
+  if (paneWidth > READING_COLUMN.wide) {
+    return (paneWidth - READING_COLUMN.max) / 2 + READING_COLUMN.side;
+  }
+  return paneWidth <= READING_COLUMN.narrow ? READING_COLUMN.narrowSide : READING_COLUMN.midSide;
 }
 
 /** The side padding of the desktop bar in each density (reader.css), what `barLayout` counts with. */
@@ -153,9 +149,9 @@ export function barAlignment(
 }
 
 /**
- * The layout of a desktop bar whose words leave room for its glyphs to stand on the reading column (J3-36): `barLayout`, but where a labelled
- * bar would need all of the pane for its last word, that word goes back to an icon (with its tooltip) so the first and last glyphs line up
- * with the column. Never fewer than one word: a bar that only had room for its glyphs keeps `barLayout`'s answer.
+ * The layout of a desktop bar whose words leave room for its glyphs to stand on the reading column (J3-36): `barLayout` counted with the
+ * room the alignment wants taken off. A labelled bar keeps its words either way (R1: all or none; never a word given back to make room):
+ * when the aligned room is too small it stays labelled and `barAlignment` moves its glyphs only as far as the room left over allows.
  */
 export function alignedLayout(paneWidth: number | null, coarse: boolean, widths: readonly number[] | null = null, dividers = 2): BarLayout {
   const layout = barLayout(paneWidth, coarse, widths, dividers);

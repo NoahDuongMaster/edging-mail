@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import './ui/ui.css';
+@import './ui/signature.css';
 
 /* The colours, the fonts and the sizes are CSS variables (--bg, --surface, --accent, --focus, --font-sans, --dur-base, ...). `applyTheme`
    in theme.ts writes them from src/shared/design/tokens.ts before the first render and flips them with `data-theme` on <html>: this file
@@ -16,11 +17,12 @@ html {
   text-size-adjust: 100%;
 }
 
+/* Body copy is 14/22 (v3 type scale, tokens.ts TYPE.md): airy lines, the ink colour, on the page. */
 body {
   margin: 0;
   font-family: var(--font-sans);
   font-size: 14px;
-  line-height: 20px;
+  line-height: 22px;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
@@ -41,8 +43,29 @@ textarea {
   font-family: inherit;
 }
 
+/* Selected text: the accent at 22 %, so the ink stays readable over it in both themes. The caret is the accent too. */
 ::selection {
-  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+input,
+textarea,
+[contenteditable='true'] {
+  caret-color: var(--accent);
+}
+
+/* A time, a count, a size or a date lines up in its column wherever it is written as <time>. */
+time {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The browser's autofill paints a yellow (or blue) well of its own: any field it fills keeps the surface and the ink of the theme. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill {
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--accent);
+  box-shadow: 0 0 0 100px var(--surface) inset;
 }
 
 /* The focus ring (DESIGN.md section 4): 2px of --focus, 2px away from the control. --focus is 3:1 or more on every surface of both themes
@@ -53,23 +76,23 @@ textarea {
   outline-offset: 2px;
 }
 
-/* Type classes (src/shared/design/tokens.ts, TYPE). Size and line height go together; from 16px up the letters sit a little closer
-   (-0.01em), from 22px up closer still (-0.02em), as on the public site. */
+/* Type classes (src/shared/design/tokens.ts, TYPE: the v3 scale). Size and line height go together; from 16px up the letters sit a little
+   closer (-0.01em), from 22px up closer still (-0.02em), and the display size closest (-0.025em). */
 .nm-display {
-  font-size: 32px;
-  line-height: 40px;
+  font-size: 40px;
+  line-height: 48px;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
 }
 .nm-h1 {
-  font-size: 28px;
-  line-height: 36px;
+  font-size: 30px;
+  line-height: 38px;
   font-weight: 600;
   letter-spacing: -0.02em;
 }
 .nm-h2 {
-  font-size: 22px;
-  line-height: 30px;
+  font-size: 24px;
+  line-height: 32px;
   font-weight: 600;
   letter-spacing: -0.02em;
 }
@@ -81,12 +104,12 @@ textarea {
 }
 .nm-lead {
   font-size: 16px;
-  line-height: 24px;
+  line-height: 26px;
   letter-spacing: -0.01em;
 }
 .nm-body {
   font-size: 14px;
-  line-height: 20px;
+  line-height: 22px;
 }
 .nm-sm {
   font-size: 13px;
@@ -111,13 +134,14 @@ textarea {
   font-family: var(--font-mono);
 }
 
-/* Thin, quiet scrollbars that follow the active theme. Firefox draws the standard ones (thin, in the border colour). Chrome, Edge and Safari
-   draw the 8px rounded thumb below (no track, no arrow buttons) everywhere with a mouse: they ignore ::-webkit-scrollbar wherever the standard
-   scrollbar-width or scrollbar-color is set, so those are set back to auto there. A touch screen keeps its overlay scrollbar. A class that
-   hides a scrollbar (scrollbar-width: none) still wins over these. */
+/* Thin, quiet scrollbars that follow the active theme. Firefox draws the standard ones (thin, in the strong hairline colour). Chrome, Edge and
+   Safari draw the 8px pill thumb below (no track, no arrow buttons) everywhere with a mouse, and only while the pointer is over the area that
+   scrolls (a still page shows no bars): they ignore ::-webkit-scrollbar wherever the standard scrollbar-width or scrollbar-color is set, so
+   those are set back to auto there. A touch screen keeps its native overlay scrollbar (the pill rules apply to a fine pointer only). A class
+   that hides a scrollbar (scrollbar-width: none) still wins over these. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
+  scrollbar-color: var(--border-strong) transparent;
 }
 @media (pointer: fine) {
   @supports selector(::-webkit-scrollbar) {
@@ -126,20 +150,24 @@ textarea {
       scrollbar-color: auto;
     }
   }
-}
-*::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-*::-webkit-scrollbar-track {
-  background: transparent;
-}
-*::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 999px;
-}
-*::-webkit-scrollbar-thumb:hover {
-  background: var(--border-strong);
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-track,
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 999px;
+  }
+  *:hover::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--border-strong) 55%, var(--text3));
+  }
 }
 
 .nm-hide-scrollbar {
@@ -178,6 +206,8 @@ textarea {
 :root {
   --motion: 1;
 }
+/* The v3 signature durations go too: a homing flight is not flown (0ms, as the send flight), a count and the selection capsule change in a
+   short fade at most. */
 @media (prefers-reduced-motion: reduce) {
   html:root {
     --motion: 0;
@@ -186,6 +216,9 @@ textarea {
     --dur-slow: 150ms;
     --dur-slower: 150ms;
     --dur-flight: 0ms;
+    --dur-homing: 0ms;
+    --dur-roll: 150ms;
+    --dur-glide: 150ms;
   }
 }
 html:root[data-motion='reduce'] {
@@ -195,6 +228,9 @@ html:root[data-motion='reduce'] {
   --dur-slow: 150ms;
   --dur-slower: 150ms;
   --dur-flight: 0ms;
+  --dur-homing: 0ms;
+  --dur-roll: 150ms;
+  --dur-glide: 150ms;
 }
 
 /* Motion utilities for the screens (keyframes and classes the area stylesheets and components use; the rest of the motion is in ui.css and
@@ -247,7 +283,7 @@ html:root[data-motion='reduce'] {
   animation: none;
 }
 
-/* Skip link (2.4.1): the first stop of the Tab order, out of sight until it has focus, then a tactile pill over the page's corner. */
+/* Skip link (2.4.1): the first stop of the Tab order, out of sight until it has focus, then a floating pill over the page's corner. */
 .nm-skip-link {
   position: fixed;
   top: 8px;
@@ -256,13 +292,10 @@ html:root[data-motion='reduce'] {
   display: inline-flex;
   align-items: center;
   min-height: var(--ui-h-md);
-  padding: 0 14px;
-  border: 1px solid var(--btn-edge);
-  border-radius: var(--radius-control);
-  background: linear-gradient(180deg, var(--btn-top), var(--btn-bottom));
-  box-shadow:
-    var(--shadow-md),
-    inset 0 1px 0 var(--inset-highlight);
+  padding: 0 16px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  box-shadow: var(--float-shadow);
   color: var(--text);
   font-weight: 600;
   text-decoration: none;

@@ -1,6 +1,6 @@
 import type { LandingUi, SampleSender } from '../copy.types';
 import { esc } from '../html';
-import { avatar } from './avatar';
+import { avatar, stampAvatar } from './avatar';
 import { badge } from './badge';
 import { icon, type IconName } from './icons';
 
@@ -53,13 +53,13 @@ const STAFF = {
 const address = (ui: LandingUi, local: string): string => `${local}@${ui.sampleDomain}`;
 
 /**
- * A message row of a list: avatar, sender, time and the sample subject. `unread` adds the accent dot and the bold subject, `picked`
- * marks the open message (a tinted row and an accent avatar).
+ * A message row of a list: the sender's stamp, sender, time and the sample subject. `unread` adds the accent dot and the bold subject,
+ * `picked` marks the open message (a tinted row; the stamp keeps the sender's tint, as in the app).
  */
 function messageRow(ui: LandingUi, sender: SampleSender, options: { readonly unread?: boolean; readonly picked?: boolean } = {}): string {
   const who = PEOPLE[sender];
   const state = `${options.unread === true ? ' is-unread' : ''}${options.picked === true ? ' is-picked' : ''}`;
-  return `<div class="fx-row${state}">${avatar(who.initials, options.picked === true)}<div class="fx-row-text"><span class="fx-row-top"><b>${esc(who.name)}</b><time>${who.time}</time></span><span class="fx-subject">${esc(ui.sampleSubjects[sender])}</span></div></div>`;
+  return `<div class="fx-row${state}">${stampAvatar(who.initials, who.name)}<div class="fx-row-text"><span class="fx-row-top"><b>${esc(who.name)}</b><time>${who.time}</time></span><span class="fx-subject">${esc(ui.sampleSubjects[sender])}</span></div></div>`;
 }
 
 /** The mailbox: the eight folders of the glossary (Inbox selected, with counts), the message list and Lena's open message to Sam. */
@@ -82,7 +82,7 @@ export function mailboxFragment(ui: LandingUi): string {
     )
     .join('');
   const lena = PEOPLE.lena;
-  const reader = `<div class="fx-reader"><b class="fx-reader-subject">${esc(ui.sampleSubjects.lena)}</b><span class="fx-reader-from">${avatar(lena.initials, true)}<span class="fx-reader-who"><b>${esc(lena.name)}</b><span class="addr">${esc(address(ui, lena.local))}</span></span><time>${lena.time}</time></span><span class="fx-reader-body">${esc(ui.sampleBody)}</span><span class="fx-file">${icon('paperclip')}<span class="addr">planning-day.pdf</span></span><span class="fx-reader-actions"><span class="fx-ghost">${icon('reply')}${esc(words.reply)}</span><span class="fx-ghost">${icon('send')}${esc(words.forward)}</span></span></div>`;
+  const reader = `<div class="fx-reader"><b class="fx-reader-subject">${esc(ui.sampleSubjects.lena)}</b><span class="fx-reader-from">${stampAvatar(lena.initials, lena.name)}<span class="fx-reader-who"><b>${esc(lena.name)}</b><span class="addr">${esc(address(ui, lena.local))}</span></span><time>${lena.time}</time></span><span class="fx-reader-body">${esc(ui.sampleBody)}</span><span class="fx-file">${icon('paperclip')}<span class="addr">planning-day.pdf</span></span><span class="fx-reader-actions"><span class="fx-ghost">${icon('reply')}${esc(words.reply)}</span><span class="fx-ghost">${icon('send')}${esc(words.forward)}</span></span></div>`;
   return `<div class="fx fx-mailbox"><div class="fx-side"><span class="fx-compose">${icon('pencil')}${esc(words.compose)}</span><ul class="fx-folders">${list}</ul></div><div class="fx-list"><span class="fx-search">${icon('search')}<span>${esc(words.search)}</span><kbd>/</kbd></span>${messageRow(ui, 'daniel', { unread: true })}${messageRow(ui, 'lena', { picked: true })}${messageRow(ui, 'hana')}${messageRow(ui, 'marco')}</div>${reader}</div>`;
 }
 
@@ -90,7 +90,7 @@ export function mailboxFragment(ui: LandingUi): string {
 export function composeFragment(ui: LandingUi): string {
   const { words } = ui;
   const to = PEOPLE.aisha;
-  return `<div class="fx fx-compose-win"><div class="fx-bar"><span class="fx-bar-title">${icon('reply')}${esc(words.reply)}</span></div><div class="fx-field"><span class="fx-label">${esc(words.to)}</span><span class="chip">${avatar(to.initials)}<span class="addr">${esc(address(ui, to.local))}</span></span></div><div class="fx-field"><span class="fx-label">${esc(words.subject)}</span><span class="fx-subject">Re: ${esc(ui.sampleSubjects.aisha)}</span></div><div class="fx-body"><span class="fx-typing">${esc(ui.sampleReply)}</span></div><div class="fx-file">${icon('paperclip')}<span class="addr">interview-plan.pdf</span></div><div class="fx-foot"><span class="fx-send">${esc(words.send)}${icon('send')}</span></div></div>`;
+  return `<div class="fx fx-compose-win"><div class="fx-bar"><span class="fx-bar-title">${icon('reply')}${esc(words.reply)}</span></div><div class="fx-field"><span class="fx-label">${esc(words.to)}</span><span class="chip">${stampAvatar(to.initials, to.name)}<span class="addr">${esc(address(ui, to.local))}</span></span></div><div class="fx-field"><span class="fx-label">${esc(words.subject)}</span><span class="fx-subject">Re: ${esc(ui.sampleSubjects.aisha)}</span></div><div class="fx-body"><span class="fx-typing">${esc(ui.sampleReply)}</span></div><div class="fx-file">${icon('paperclip')}<span class="addr">interview-plan.pdf</span></div><div class="fx-foot"><span class="fx-send">${esc(words.send)}${icon('send')}</span></div></div>`;
 }
 
 /** A notification arriving above the message list (drawn still: nothing on the page moves). */

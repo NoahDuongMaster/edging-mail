@@ -8,7 +8,7 @@ import { qrMatrix } from '../../lib/crypto/qr';
 import type { QrMatrix } from '../../lib/crypto/qr';
 import { useT } from '../../lib/i18n';
 import { useAction } from '../../lib/useAction';
-import { CopyButton, Divider, SecretBox, Spinner, TextField, useMediaMatch } from '../../ui';
+import { CopyButton, SecretBox, Spinner, TextField, useMediaMatch } from '../../ui';
 import { AuthButton, ErrorLine, TextButton } from './authUi';
 import { RecoveryCodesPanel } from './RecoveryCodesPanel';
 
@@ -238,13 +238,12 @@ export const TwoFactorEnrolment: React.FC<TwoFactorEnrolmentProps> = ({ t, crede
               </div>
             </>
           )}
-          <Divider />
           <form
             onSubmit={(event) => {
               void verify(event);
             }}
             noValidate
-            className="au-stack"
+            className="au-stack au-part"
           >
             <TextField
               id="twofa-code"

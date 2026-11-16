@@ -1,42 +1,99 @@
-/* The component library (src/client/ui). Every colour, radius, height, duration and easing is a variable that `applyTheme` (theme.ts)
-   writes from src/shared/design/tokens.ts, so a component never names a colour. The material is the public site's (landing.css.ts `.btn`,
-   `.btn-primary`, `.pill`, `.card`, `.pop`): tactile controls with a soft vertical gradient and an inset top highlight, layered soft
-   shadows, one restrained accent glow, pills, hairlines. States: hover (only where the pointer can hover), active (pressed: it sinks),
-   disabled, and the focus ring (index.css: 2px --focus, 2px away; never removed). Motion uses --dur-* / --ease-* and multiplies every
-   distance by --motion (0 under reduced motion, index.css). Classes are `ui-*`; a variant or a size is a data attribute. */
+/* The component library (src/client/ui), v3 "Airmail" material (DESIGN-v3 section 2). Every colour, radius, height, duration and easing is
+   a variable that `applyTheme` (theme.ts) writes from src/shared/design/tokens.ts, so a component never names a colour. The material: white
+   sheets on a soft sky-grey ground, ink type, ONE airmail blue, almost no hairlines. Space, tone and soft elevation structure the page:
+   --sheet-shadow for resting sheets and cards, --pop-shadow for menus and popovers, --float-shadow for what floats and moves. An edge is a
+   ring drawn with box-shadow, not a border, except the 3:1 edge a field is found by (WCAG 1.4.11). States: hover (only where the pointer
+   can hover), active (pressed: it sinks), disabled, and the focus ring (index.css: 2px --focus, 2px away; never removed). Motion uses
+   --dur-* / --ease-* and multiplies every distance by --motion (0 under reduced motion, index.css). Classes are `ui-*`; a variant, a size
+   or a shape is a data attribute. Theme-specific looks change VARIABLES under :root[data-theme='dark'], never a state selector. */
 
 :root {
   /* Control heights: 32, 36, 44 on a desktop; 44 for everything on a phone or a touch screen. */
   --ui-h-sm: var(--control-sm);
   --ui-h-md: var(--control-md);
   --ui-h-lg: var(--control-touch);
+  /* A field (TextField, TextArea, Select, the search pill, a date-time trigger) is a step taller than a button: 40px, 44px on touch. */
+  --ui-h-field: calc(var(--control-md) + 4px);
   /* Text inside a field is 16px on a phone, so iOS does not zoom in when it gets focus. */
   --ui-field-size: 14px;
-  /* The chosen segment of a raised track (SegmentedControl, the tabs in `grid`): lifted onto a fill one step lighter than the track. */
+  /* The chosen segment of a track (SegmentedControl, the tabs in `grid`): the surface, lifted by a small shadow. */
   --ui-lifted: var(--surface);
-  /* The soft halo round a focused field (DESIGN.md section 2): 3px of --focus at 22%, outside a 2px --focus edge. */
+  /* The soft halo round a focused field: 3px of --focus at 22%, outside a 2px --focus edge. */
   --ui-halo: color-mix(in srgb, var(--focus) 22%, transparent);
-  /* The dark end that a hovered or pressed accent button is mixed toward (the page's darkest ink in either theme): it darkens the fill and
-     raises the white text's contrast (7.4:1 and more), never lowers it. */
+  /* The dark end that a pressed accent button is mixed toward (the page's darkest ink in either theme): it darkens the fill and raises the
+     white text's contrast, never lowers it. */
   --ui-shade: var(--text);
-  /* A pressed secondary button: one step beyond its hover fill (light: darker again; dark: lighter again, as the landing's dark .btn), under
-     an inset shadow, so a press is never confused with a hover. */
-  --ui-sunk: var(--border);
-  /* A hovered secondary button is lifted onto the raised step (lighter than its rest fill in dark), and a hovered or pressed danger button
-     takes a tint of its colour (lighter on hover, deeper when pressed); the danger words stay 4.8:1 or more on both. */
+  /* Secondary button: the surface with a 1px ring (box-shadow, not a border) and the small control shadow; the ring a step stronger on
+     hover; a hovered button lifts onto the raised step, a pressed one sinks one step further under an inset shadow. */
+  --ui-btn-fill: var(--surface);
+  --ui-btn-ring: color-mix(in srgb, var(--btn-edge) 65%, transparent);
+  --ui-btn-ring-hover: color-mix(in srgb, var(--control) 40%, var(--btn-edge));
   --ui-lift-top: var(--raised);
-  --ui-lift-bottom: color-mix(in srgb, var(--raised) 60%, var(--border));
-  --ui-danger-hover: color-mix(in srgb, var(--danger) 9%, var(--surface));
-  --ui-danger-press: color-mix(in srgb, var(--danger) 16%, var(--surface));
-  /* A field's edge under the pointer: a clear step from its --control edge at rest (2.1:1 between the two edges in light, 2.3:1 in dark). */
+  --ui-sunk: color-mix(in srgb, var(--border) 60%, var(--border-strong));
+  /* The glow under a primary button (one restrained light of the accent; softer on the night ground, where it reads as a smudge). */
+  --ui-glow: var(--accent-glow);
+  /* Danger button: the secondary material with the danger colour in its words and a tinted ring; inside a confirmation (an alertdialog)
+     the same variables make it the one solid danger button (`.ui-dialog[role='alertdialog']`). The words keep 4.5:1 in every state. */
+  /* The secondary's neutral ring with a whisper of the danger in the fill: a red edge round red words would read as an invalid field. The
+     ring takes some of the danger only under the pointer. */
+  --ui-danger-fill: color-mix(in srgb, var(--danger) 4%, var(--surface));
+  --ui-danger-ink: var(--danger);
+  --ui-danger-ring: var(--ui-btn-ring);
+  --ui-danger-ring-hover: color-mix(in srgb, var(--danger) 35%, var(--btn-edge));
+  --ui-danger-hover: color-mix(in srgb, var(--danger) 8%, var(--surface));
+  --ui-danger-press: color-mix(in srgb, var(--danger) 15%, var(--surface));
+  /* The solid danger of a confirmation: white words on it in both themes (light 6.6:1; dark, a deeper red, 5.0:1), deeper on hover and
+     pressed so the words only gain contrast. */
+  --ui-on-danger: var(--on-accent);
+  --ui-danger-solid: var(--danger);
+  --ui-danger-solid-hover: color-mix(in srgb, var(--danger) 86%, var(--text));
+  --ui-danger-solid-press: color-mix(in srgb, var(--danger) 76%, var(--text));
+  /* A field's edge under the pointer: a clear step from its --control edge at rest (2.1:1 between the two edges in light). */
   --ui-field-hover: var(--text2);
-  /* Placeholder text: clearly lighter than a typed value and still 4.5:1 or more on the field (light 5.4:1 on surface; dark 4.9:1). */
+  /* Placeholder text: clearly lighter than a typed value and still 4.5:1 or more on the field (light 6.1:1 on surface; dark 4.9:1). */
   --ui-placeholder: var(--text3);
+  /* Popups (menus, popovers, the list of a Select): their fill and the ring that replaces a border. */
+  --ui-pop-bg: var(--surface);
+  --ui-pop-ring: color-mix(in srgb, var(--text) 7%, transparent);
+  /* A soft neutral fill that works on any ground (badges, plain chips, recipient tokens): ink at a few percent. */
+  --ui-fill: color-mix(in srgb, var(--text) 6%, transparent);
+  /* A track (SegmentedControl, the grid tabs), its lifted thumb and the thumb's ring. */
+  --ui-track: color-mix(in srgb, var(--text) 5%, transparent);
+  --ui-seg-lift: var(--ui-lifted);
+  --ui-thumb-ring: color-mix(in srgb, var(--text) 6%, transparent);
+  /* A well (a secret, a command): recessed into the surface, with a whisper of a ring. */
+  --ui-well: var(--raised);
+  --ui-well-ring: color-mix(in srgb, var(--text) 5%, transparent);
+  /* An item of a list under the pointer, and the one the arrows are on. */
+  --ui-item-hover: var(--hover);
+  --ui-item-active: color-mix(in srgb, var(--text) 7%, transparent);
+  /* A placeholder bar while content loads. */
+  --ui-skel: color-mix(in srgb, var(--text) 8%, transparent);
+  /* A person's avatar tint (Avatar `hue`): the hue mixed into the surface for the tile, toward the ink for the initials (5.8:1 or more for
+     every LABEL_HUES slot, light; 6.4:1 dark; v3/f1/contrast_f1.py). */
+  --ui-hue-bg: 18%;
+  --ui-hue-fg: 72%;
+  --ui-avatar-ring: var(--border);
+  /* The stamp avatar (shape="stamp"): its paper, the hairline that draws its perforated edge, and the small shade under it. */
+  --ui-stamp-paper: color-mix(in srgb, var(--star) 5%, var(--surface));
+  --ui-stamp-paper-hue: 0%;
+  /* The perforated edge on white: ink at 36 % (W5 lead review 9: at 24 % and a 0.75 px blur the teeth were faint and read as a glitch at
+     36 px; the blur is 0.5 px, crisper). */
+  --ui-stamp-edge: color-mix(in srgb, var(--text) 36%, transparent);
+  --ui-stamp-shade: color-mix(in srgb, var(--text) 9%, transparent);
+  --ui-dialog-bg: var(--surface);
+  /* A switch: the off track is a soft neutral fill inside the 3:1 --control edge; the thumb is one white disc in both states. */
+  --ui-switch-off: color-mix(in srgb, var(--text) 12%, var(--surface));
+  --ui-switch-thumb: var(--surface);
+  /* The off thumb is white on a light track: a 1px --control ring gives it its 3:1 edge (3.1:1 on the track). Dark needs none (9.7:1). */
+  --ui-switch-thumb-ring: var(--control);
+  /* A disabled switch that is on: a quiet grey track, a step below a live off track (never the accent). */
+  --ui-switch-dis-on: color-mix(in srgb, var(--text3) 22%, var(--raised));
 
   /* The stacking order of the whole app, from the bottom up, named here and used by every stylesheet (no other z-index number). A toast is
      over every dialog, so its Undo can be pressed while a confirmation is open, and under the lists and tooltips that open from a control. */
   --z-raise: 1; /* a part over its neighbours inside one component: a sticky table head, a focus ring, the drawer over its scrim */
-  --z-float: 5; /* a control that floats over its pane: the Compose button of a phone, the send flight */
+  --z-float: 5; /* a control that floats over its pane: the Compose button of a phone, the homing flight */
   --z-console: 55; /* the admin console, a page over the mailbox */
   --z-window: 60; /* Settings and the compose window */
   --z-drawer: 70; /* the folders drawer of a phone */
@@ -45,24 +102,58 @@
   --z-popover: 100; /* Popover, Menu, the list of a Select */
   --z-tooltip: 110;
 }
-/* In the dark theme the surface is darker than a raised fill, so the lifted segment takes the border step instead. A dark accent button is
-   mixed toward the page (--bg), a hovered and then pressed secondary goes lighter step by step, a hovered field edge is a step lighter, and
-   the placeholder a step dimmer (4.9:1 on surface, 4.5:1 on raised). */
+/* Night flight: the surface is darker than a raised fill, so a lifted control takes the dark button's own step (btn-top); a pressed accent
+   is mixed toward the page; hovered and pressed secondaries go lighter step by step; popups and dialogs stand on the raised step with a
+   ring of the strong hairline; the placeholder is a step dimmer (4.9:1 on surface); the avatar tint is deeper and its initials lighter. */
 :root[data-theme='dark'] {
-  --ui-lifted: var(--border);
-  --ui-shade: var(--bg);
-  --ui-sunk: color-mix(in srgb, var(--btn-top) 78%, var(--text));
-  --ui-lift-top: color-mix(in srgb, var(--btn-top) 84%, var(--text));
-  --ui-lift-bottom: color-mix(in srgb, var(--btn-bottom) 88%, var(--text));
-  --ui-danger-hover: color-mix(in srgb, var(--danger) 18%, var(--surface));
-  --ui-danger-press: color-mix(in srgb, var(--danger) 25%, var(--bg));
-  --ui-field-hover: color-mix(in srgb, var(--text2) 70%, var(--text));
+  --ui-lifted: color-mix(in srgb, var(--btn-top) 90%, var(--text));
+  --ui-shade: color-mix(in srgb, var(--bg) 60%, var(--accent-hover));
+  --ui-glow: color-mix(in srgb, var(--accent-glow) 55%, transparent);
+  --ui-btn-fill: var(--btn-top);
+  --ui-btn-ring: color-mix(in srgb, var(--btn-edge) 50%, var(--btn-top));
+  --ui-btn-ring-hover: color-mix(in srgb, var(--btn-edge) 85%, var(--btn-top));
+  --ui-lift-top: color-mix(in srgb, var(--btn-top) 86%, var(--text));
+  /* Pressed sinks toward the night ground (a lighter press read as a disabled chip). */
+  --ui-sunk: color-mix(in srgb, var(--btn-top) 70%, var(--bg));
+  --ui-danger-fill: color-mix(in srgb, var(--danger) 5%, var(--btn-top));
+  --ui-danger-ring: var(--ui-btn-ring);
+  --ui-danger-ring-hover: color-mix(in srgb, var(--danger) 65%, var(--btn-top));
+  --ui-danger-hover: color-mix(in srgb, var(--danger) 14%, var(--surface));
+  --ui-danger-press: color-mix(in srgb, var(--danger) 20%, var(--bg));
+  --ui-danger-solid: color-mix(in srgb, var(--danger) 70%, var(--bg));
+  --ui-danger-solid-hover: color-mix(in srgb, var(--danger) 63%, var(--bg));
+  --ui-danger-solid-press: color-mix(in srgb, var(--danger) 56%, var(--bg));
+  --ui-field-hover: color-mix(in srgb, var(--control) 20%, var(--text2));
   --ui-placeholder: color-mix(in srgb, var(--text3) 90%, var(--surface));
+  /* A popup stands one step above the raised sheets it opens over (a list over a card, a menu over a dialog). */
+  --ui-pop-bg: color-mix(in srgb, var(--raised) 94%, var(--text));
+  --ui-pop-ring: var(--border-strong);
+  --ui-fill: color-mix(in srgb, var(--text) 9%, transparent);
+  --ui-track: color-mix(in srgb, var(--text) 6%, transparent);
+  --ui-seg-lift: color-mix(in srgb, var(--btn-top) 82%, var(--text));
+  --ui-thumb-ring: color-mix(in srgb, var(--text) 10%, transparent);
+  --ui-well: color-mix(in srgb, var(--bg) 60%, var(--surface));
+  --ui-well-ring: var(--border);
+  --ui-item-active: color-mix(in srgb, var(--text) 9%, transparent);
+  --ui-skel: color-mix(in srgb, var(--text) 11%, transparent);
+  --ui-hue-bg: 28%;
+  --ui-hue-fg: 42%;
+  --ui-avatar-ring: var(--border-strong);
+  --ui-stamp-paper: color-mix(in srgb, var(--text) 16%, var(--surface));
+  --ui-stamp-paper-hue: 24%;
+  --ui-stamp-edge: color-mix(in srgb, var(--chrome) 90%, transparent);
+  --ui-stamp-shade: color-mix(in srgb, var(--chrome) 70%, transparent);
+  --ui-dialog-bg: var(--raised);
+  --ui-switch-off: color-mix(in srgb, var(--text) 10%, var(--surface));
+  --ui-switch-thumb: color-mix(in srgb, var(--text) 88%, var(--surface));
+  --ui-switch-thumb-ring: transparent;
+  --ui-switch-dis-on: color-mix(in srgb, var(--text3) 10%, var(--raised));
 }
 @media (max-width: 900px), (pointer: coarse) {
   :root {
     --ui-h-sm: var(--control-touch);
     --ui-h-md: var(--control-touch);
+    --ui-h-field: var(--control-touch);
   }
 }
 @media (max-width: 900px) {
@@ -85,6 +176,7 @@
 
 /* ---------- Button, IconButton ---------- */
 
+/* No border: every edge is a ring drawn with box-shadow, so all variants are exactly as big as their height says. */
 .ui-btn {
   position: relative;
   display: inline-flex;
@@ -93,8 +185,9 @@
   gap: 8px;
   height: var(--ui-h-md);
   padding: 0 14px;
-  border: 1px solid transparent;
+  border: 0;
   border-radius: var(--radius-control);
+  background: transparent;
   font-size: 14px;
   line-height: 20px;
   font-weight: 500;
@@ -106,19 +199,30 @@
   -webkit-tap-highlight-color: transparent;
   transition:
     background-color var(--dur-fast) var(--ease-standard),
-    border-color var(--dur-fast) var(--ease-standard),
     color var(--dur-fast) var(--ease-standard),
     box-shadow var(--dur-fast) var(--ease-standard),
     translate var(--dur-micro) var(--ease-standard);
 }
 .ui-btn[data-size='sm'] {
   height: var(--ui-h-sm);
-  padding: 0 10px;
+  gap: 6px;
+  padding: 0 12px;
   font-size: 13px;
 }
 .ui-btn[data-size='lg'] {
   height: var(--ui-h-lg);
   padding: 0 18px;
+}
+/* The pill shape (Button `shape="pill"`): the Compose button and the phone's floating Compose. */
+.ui-btn[data-shape='pill'] {
+  padding-inline: 18px;
+  border-radius: var(--radius-pill);
+}
+.ui-btn[data-shape='pill'][data-size='sm'] {
+  padding-inline: 14px;
+}
+.ui-btn[data-shape='pill'][data-size='lg'] {
+  padding-inline: 22px;
 }
 .ui-btn-full {
   width: 100%;
@@ -127,51 +231,53 @@
   flex: none;
 }
 
-/* Primary: the accent, from the accent at the top to its hover tone at the bottom, a white highlight along the top edge and one soft glow
-   of its own colour under it. One per view (Compose, Send, Reply, Sign in, Save). White on it: 5.52:1 at the top, 7.36:1 at the bottom. */
+/* Primary: the airmail blue, a thin white highlight along the top inside edge, and one soft glow of its own colour under it, which grows a
+   step on hover. One per view (Compose, Send, Reply, Sign in, Save). White on it: 5.52:1 at rest, 7.36:1 on hover, 8.9:1 pressed. */
 .ui-btn[data-variant='primary'] {
-  background: linear-gradient(180deg, var(--accent), var(--accent-hover));
-  border-color: var(--accent-hover);
+  background: var(--accent);
   color: var(--on-accent);
   box-shadow:
-    0 1px 2px var(--accent-glow),
-    0 4px 12px -4px var(--accent-glow),
-    inset 0 1px 0 color-mix(in srgb, var(--on-accent) 28%, transparent);
+    inset 0 1px 0 color-mix(in srgb, var(--on-accent) 22%, transparent),
+    0 1px 2px var(--ui-glow),
+    0 6px 14px -6px var(--ui-glow);
 }
-/* Secondary: the tactile neutral of the site (surface to raised in light, a lifted step in dark), a hairline edge and an inset highlight. */
+/* Secondary: the surface (dark: the button's own lifted step) with a soft ring and the control shadow: no line drawn round it. */
 .ui-btn[data-variant='secondary'] {
-  background: linear-gradient(180deg, var(--btn-top), var(--btn-bottom));
-  border-color: var(--btn-edge);
+  background: var(--ui-btn-fill);
   color: var(--text);
   box-shadow:
-    var(--control-shadow),
-    inset 0 1px 0 var(--inset-highlight);
+    inset 0 0 0 1px var(--ui-btn-ring),
+    inset 0 1px 0 var(--inset-highlight),
+    var(--control-shadow);
 }
-/* Ghost: no edge at rest (toolbars, quiet actions): a fill on hover, the border step while pressed. */
+/* Ghost: nothing at rest (toolbars, quiet actions); the hover tint, a step darker while pressed. */
 .ui-btn[data-variant='ghost'] {
   background: transparent;
   color: var(--text2);
 }
-/* Danger: the secondary material with the danger colour in the words and the edge (deleting is never the shiny button). */
+/* Danger: the secondary material with the danger colour in the words and a tint of it in the ring (deleting is never the shiny button,
+   except as the one confirm of a ConfirmDialog, see the Dialog section). */
 .ui-btn[data-variant='danger'] {
-  background: linear-gradient(180deg, var(--btn-top), var(--btn-bottom));
-  border-color: color-mix(in srgb, var(--danger) 55%, var(--btn-edge));
-  color: var(--danger);
+  background: var(--ui-danger-fill);
+  color: var(--ui-danger-ink);
   box-shadow:
-    var(--control-shadow),
-    inset 0 1px 0 var(--inset-highlight);
+    inset 0 0 0 1px var(--ui-danger-ring),
+    inset 0 1px 0 var(--inset-highlight),
+    var(--control-shadow);
 }
 
 /* A trigger whose menu or popover is open stays held while it is (it is where the popup comes from). */
 .ui-btn[data-variant='secondary'][aria-expanded='true'] {
-  background: var(--raised);
-  border-color: color-mix(in srgb, var(--control) 55%, var(--btn-edge));
+  background: var(--ui-lift-top);
+  box-shadow:
+    inset 0 0 0 1px var(--ui-btn-ring-hover),
+    var(--control-shadow);
 }
 .ui-btn[data-variant='ghost'][aria-expanded='true'] {
   background: var(--hover);
   color: var(--text);
 }
-/* A toggle that is on (a filter, a star). */
+/* A toggle that is on (a filter, a star, Bold): the accent-soft fill and the accent text. */
 .ui-btn[aria-pressed='true'] {
   background: var(--accent-soft);
   color: var(--accent-text);
@@ -182,32 +288,31 @@
 .ui-btn[aria-disabled='true'] {
   cursor: not-allowed;
 }
-/* Busy: it keeps its place, its look and its text, and says it is working (the spinner, aria-busy, the progress cursor). */
+/* Busy: it keeps its place, its look and its text, and says it is working (the loader, aria-busy, the progress cursor). */
 .ui-btn[aria-busy='true'] {
   cursor: progress;
 }
 
-/* Hover is one clear step from rest on every variant (measured, both themes): primary goes darker with a stronger glow; secondary lifts onto
-   the raised step (lighter in dark) with a --control edge and a deeper shadow; danger takes a tint of its colour and its full edge; ghost
-   takes the hover fill. The words keep 4.5:1 or more in every state (white on primary 5.5-10.1:1, danger words 4.8-6.6:1). */
+/* Hover is one clear step from rest on every variant: primary takes its hover tone and its glow grows a step; secondary lifts onto the
+   raised step with a stronger ring and a soft drop shadow; danger takes a tint of its colour and a stronger ring; ghost takes the hover fill.
+   The words keep 4.5:1 or more in every state (v3/f1/contrast_f1.py). */
 @media (hover: hover) {
   .ui-btn[data-variant='primary']:hover:not(:disabled, [aria-busy='true']) {
-    background: linear-gradient(180deg, var(--accent-hover), color-mix(in srgb, var(--accent-hover) 78%, var(--ui-shade)));
-    border-color: color-mix(in srgb, var(--accent-hover) 78%, var(--ui-shade));
+    background: var(--accent-hover);
     box-shadow:
-      0 2px 6px var(--accent-glow),
-      0 10px 24px -6px var(--accent-glow),
-      inset 0 1px 0 color-mix(in srgb, var(--on-accent) 30%, transparent);
+      inset 0 1px 0 color-mix(in srgb, var(--on-accent) 24%, transparent),
+      0 2px 4px var(--ui-glow),
+      0 9px 20px -6px var(--ui-glow);
   }
   .ui-btn[data-variant='secondary']:hover:not(:disabled, [aria-busy='true']) {
-    background: linear-gradient(180deg, var(--ui-lift-top), var(--ui-lift-bottom));
-    border-color: var(--control);
+    background: var(--ui-lift-top);
     box-shadow:
-      var(--shadow-md),
-      inset 0 1px 0 var(--inset-highlight);
+      inset 0 0 0 1px var(--ui-btn-ring-hover),
+      inset 0 1px 0 var(--inset-highlight),
+      var(--shadow-md);
   }
   .ui-btn[data-variant='ghost']:hover:not(:disabled, [aria-busy='true']) {
-    background: color-mix(in srgb, var(--text) 8%, transparent);
+    background: var(--hover);
     color: var(--text);
   }
   .ui-btn[aria-pressed='true']:hover:not(:disabled, [aria-busy='true']) {
@@ -216,54 +321,54 @@
   }
   .ui-btn[data-variant='danger']:hover:not(:disabled, [aria-busy='true']) {
     background: var(--ui-danger-hover);
-    border-color: var(--danger);
     box-shadow:
-      var(--shadow-md),
-      inset 0 1px 0 var(--inset-highlight);
+      inset 0 0 0 1px var(--ui-danger-ring-hover),
+      inset 0 1px 0 var(--inset-highlight),
+      var(--shadow-md);
   }
 }
 
-/* Pressed (a touch screen too): the button sinks 1px into an inset shadow (M21, 70ms) and loses any lift or glow, so a press never looks
-   like a hover. After the hovers, as specific, so a press under the pointer shows. */
+/* Pressed (a touch screen too): the button sinks half a pixel into an inset shadow (70ms) and loses any lift or glow, so a press never
+   looks like a hover. After the hovers, as specific, so a press under the pointer shows. */
 .ui-btn:active:not(:disabled, [aria-disabled='true']) {
-  translate: 0 calc(1px * var(--motion, 1));
+  translate: 0 calc(0.5px * var(--motion, 1));
   transition-duration: var(--dur-micro);
 }
 .ui-btn[data-variant='primary']:active:not(:disabled, [aria-disabled='true']) {
-  background: color-mix(in srgb, var(--accent-hover) 66%, var(--ui-shade));
-  border-color: color-mix(in srgb, var(--accent-hover) 66%, var(--ui-shade));
-  box-shadow: inset 0 1px 3px color-mix(in srgb, var(--ui-shade) 50%, transparent);
+  background: color-mix(in srgb, var(--accent-hover) 82%, var(--ui-shade));
+  box-shadow: inset 0 1px 3px color-mix(in srgb, var(--ui-shade) 45%, transparent);
 }
 .ui-btn[data-variant='secondary']:active:not(:disabled, [aria-disabled='true']) {
   background: var(--ui-sunk);
-  border-color: var(--control);
-  box-shadow: var(--press-shadow);
+  box-shadow:
+    inset 0 0 0 1px var(--ui-btn-ring-hover),
+    var(--press-shadow);
 }
 .ui-btn[data-variant='ghost']:active:not(:disabled, [aria-disabled='true']) {
-  background: color-mix(in srgb, var(--text) 15%, transparent);
+  background: color-mix(in srgb, var(--text) 11%, transparent);
   box-shadow: var(--press-shadow);
   color: var(--text);
 }
 .ui-btn[data-variant='danger']:active:not(:disabled, [aria-disabled='true']) {
   background: var(--ui-danger-press);
-  border-color: var(--danger);
-  box-shadow: var(--press-shadow);
+  box-shadow:
+    inset 0 0 0 1px var(--ui-danger-ring-hover),
+    var(--press-shadow);
 }
 
-/* Disabled, in every variant: a neutral raised box with a hairline edge and the quiet text colour, so it reads as unavailable and its label
+/* Disabled, in every variant: a neutral raised box with a hairline ring and the quiet text colour, so it reads as unavailable and its label
    stays readable (no opacity, which washed a primary button out to about 2:1). The ghost look has no box to grey out: only its text quiets.
    A busy button (`loading`: aria-busy, which also says aria-disabled) is not disabled-looking: it keeps its look and says it is working. These
    rules are as specific as the hover and pressed rules above and come after them, so a disabled button does not react to the pointer. */
 .ui-btn[data-variant]:is(:disabled, [aria-disabled='true']):not([aria-busy='true']) {
   background: var(--raised);
-  border-color: var(--border);
+  box-shadow: inset 0 0 0 1px var(--border);
   color: var(--text3);
-  box-shadow: none;
   translate: none;
 }
 .ui-btn[data-variant='ghost']:is(:disabled, [aria-disabled='true']):not([aria-busy='true']) {
   background: transparent;
-  border-color: transparent;
+  box-shadow: none;
   color: color-mix(in srgb, var(--text3) 70%, transparent);
 }
 
@@ -278,7 +383,8 @@
   width: var(--ui-h-lg);
 }
 
-/* A spinner turns; under reduced motion it stands still and says what is happening in words beside it. */
+/* The loader of a busy control (Spinner.tsx, the wingbeat of signature.css) stands where the icon was; under reduced motion it stands still
+   and says what is happening in words beside it. */
 .ui-spinner {
   display: inline-flex;
   flex: none;
@@ -295,16 +401,19 @@
   white-space: nowrap;
 }
 
-/* The tooltip: the inverse of the theme in a small pill-cornered bubble with the popup shadow. It fades in (no move) and the pointer can
-   go onto it without losing it (1.4.13). */
+/* The tooltip: the inverse of the theme (ink fill, page-coloured words) in a small 8px-cornered bubble with the popup shadow, the key of a
+   shortcut in a chip of its own inside. It fades in (no move) and the pointer can go onto it without losing it (1.4.13). */
 .ui-tooltip {
   position: fixed;
   top: 0;
   left: 0;
   z-index: var(--z-tooltip);
+  display: flex;
+  align-items: center;
+  gap: 8px;
   max-width: 240px;
-  padding: 5px 8px;
-  border-radius: var(--radius-control);
+  padding: 6px 8px;
+  border-radius: 8px;
   background: var(--text);
   color: var(--bg);
   font-size: 12px;
@@ -324,6 +433,24 @@
 /* A warm hand-off (Tooltip.tsx `instant`): the label that replaces another is there at once. */
 .ui-tooltip[data-instant='true'] {
   transition: none;
+}
+/* The shortcut key (Tooltip `shortcut`): a small key cap in the bubble's own inverse tones (7.5:1). */
+.ui-tooltip-key {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  padding: 1px 4px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--bg) 16%, transparent);
+  color: color-mix(in srgb, var(--bg) 82%, var(--text));
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 /* ---------- Toolbar ---------- */
@@ -361,7 +488,7 @@
 .ui-hint {
   font-size: 13px;
   line-height: 20px;
-  color: var(--text2);
+  color: var(--text3);
 }
 .ui-error {
   margin: 0;
@@ -384,15 +511,16 @@ p.ui-hint {
   margin: 0;
 }
 
-/* A field is a recessed well: the surface with a 1px --control edge (3:1 on bg, surface and raised in both themes) and an inset shade. */
+/* A field: the surface with a 1px --control edge (3:1 on bg, surface and raised in both themes, WCAG 1.4.11 keeps it) and a faint inset shade,
+   40px high on a desktop, 44px on touch. */
 .ui-input,
 .ui-select {
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
-  min-height: var(--ui-h-md);
-  padding: 0 10px;
+  min-height: var(--ui-h-field);
+  padding: 0 12px;
   background: var(--surface);
   border: 1px solid var(--control);
   border-radius: var(--radius-control);
@@ -405,7 +533,7 @@ p.ui-hint {
 }
 .ui-input[data-multiline] {
   align-items: flex-start;
-  padding-block: 8px;
+  padding-block: 9px;
 }
 .ui-input[data-invalid='true'],
 .ui-select[data-invalid='true'] {
@@ -414,10 +542,14 @@ p.ui-hint {
 .ui-input[data-disabled='true'],
 .ui-select[aria-disabled='true'] {
   background: var(--raised);
-  border-color: var(--border);
+  border-color: var(--border-strong);
   box-shadow: none;
-  color: var(--text3);
+  color: var(--text2);
   cursor: not-allowed;
+}
+/* A disabled list does not open: its chevron fades with it. */
+.ui-select[aria-disabled='true'] svg {
+  color: color-mix(in srgb, var(--text3) 55%, transparent);
 }
 @media (hover: hover) {
   .ui-input:hover:not([data-disabled='true'], [data-invalid='true']),
@@ -426,9 +558,30 @@ p.ui-hint {
   }
 }
 
+/* The search look (TextField `variant="search"`, the list's and the header's search): a filled pill with no edge at rest, which WCAG 1.4.11
+   allows because its magnifier (3:1 and more) and its placeholder (4.5:1 on the fill) say what it is. With focus it turns into the surface
+   with the focus edge and halo of every field. */
+.ui-input[data-variant='search'] {
+  --ui-placeholder: var(--text3);
+  padding-inline: 14px 8px;
+  background: var(--raised);
+  border-color: transparent;
+  border-radius: var(--radius-pill);
+  box-shadow: none;
+}
+.ui-input[data-variant='search'] > .ui-adorn:first-child {
+  color: var(--text3);
+}
+@media (hover: hover) {
+  .ui-input[data-variant='search']:hover:not([data-disabled='true'], [data-invalid='true']) {
+    background: color-mix(in srgb, var(--text) 4%, var(--raised));
+    border-color: transparent;
+  }
+}
+
 .ui-input-el {
   flex: 1;
-  /* The field fills the height of its box, so the whole box takes the pointer (a 36px target, 44px on touch), not the 20px line. */
+  /* The field fills the height of its box, so the whole box takes the pointer (a 40px target, 44px on touch), not the 20px line. */
   align-self: stretch;
   min-width: 0;
   width: 100%;
@@ -440,6 +593,7 @@ p.ui-hint {
   font: inherit;
   font-size: var(--ui-field-size);
   line-height: 20px;
+  caret-color: var(--accent);
 }
 .ui-input-el::placeholder {
   color: var(--ui-placeholder);
@@ -449,6 +603,20 @@ textarea.ui-input-el {
   display: block;
   min-height: 64px;
   resize: vertical;
+}
+/* The corner a text area is dragged by: two short diagonal strokes in the strong hairline colour instead of the browser's hatch (Chrome,
+   Edge and Safari with a mouse, where index.css styles the scrollbars). */
+@media (pointer: fine) {
+  textarea.ui-input-el::-webkit-resizer {
+    background: linear-gradient(
+      135deg,
+      transparent 0 48%,
+      var(--control) 48% 55%,
+      transparent 55% 70%,
+      var(--control) 70% 77%,
+      transparent 77%
+    );
+  }
 }
 .ui-input-el:disabled {
   cursor: not-allowed;
@@ -491,9 +659,12 @@ input[type='search']::-webkit-search-decoration {
       0 0 0 1px var(--focus),
       0 0 0 4px var(--ui-halo);
   }
+  .ui-input[data-variant='search']:has(> .ui-input-el:focus-visible) {
+    background: var(--surface);
+  }
   /* An invalid field that has the keyboard keeps its red edge (what is wrong) and takes the --focus ring of every other control (where you
-     are, DESIGN 4.2: 2px of --focus, 2px away), not the blue edge: a clear gap between the red and the blue, so the two signals never
-     blend into one purple line. In every area. */
+     are: 2px of --focus, 2px away), not the blue edge: a clear gap between the red and the blue, so the two signals never blend into one
+     purple line. In every area. */
   .ui-input:is([data-invalid='true'], :has(> .ui-input-el[aria-invalid='true'])):has(> .ui-input-el:focus-visible) {
     border-color: var(--danger);
     box-shadow: var(--field-shadow);
@@ -546,9 +717,10 @@ input[type='search']::-webkit-search-decoration {
 
 /* ---------- Popover, Select list, Menu ---------- */
 
-/* A popup (the landing's `.pop`): radius 10, a hairline, a layered soft shadow. It opens from its @starting-style: 4px toward the
-   trigger and 97% of its size, in 200ms (enter easing); position.ts sets data-side (below / above) before the first paint, and the start
-   reads the distance from it. Only opacity, translate and scale move (top and left are set at once). It leaves in 140ms (motion.ts). */
+/* A popup: radius 14, the surface (dark: the raised step), no border (a ring drawn in the shadow) and the layered popup shadow, 6px of room
+   round its items. It opens from its @starting-style: 4px toward the trigger and 96% of its size, in 200ms (emphasized enter); position.ts
+   sets data-side (below / above) before the first paint, and the start reads the distance from it. Only opacity, translate and scale move
+   (top and left are set at once). It leaves in 140ms (motion.ts). */
 .ui-popover {
   --ui-pop-from: -4px;
   position: fixed;
@@ -556,44 +728,44 @@ input[type='search']::-webkit-search-decoration {
   left: 0;
   z-index: var(--z-popover);
   max-width: calc(100vw - 16px);
-  padding: 4px;
+  padding: 6px;
   overflow: auto;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--ui-pop-bg);
+  border: 0;
   border-radius: var(--radius-popup);
   box-shadow:
-    var(--pop-shadow),
-    inset 0 1px 0 var(--inset-highlight);
+    0 0 0 1px var(--ui-pop-ring),
+    var(--pop-shadow);
   transform-origin: top center;
   transition:
-    opacity var(--dur-base) var(--ease-enter),
-    translate var(--dur-base) var(--ease-enter),
-    scale var(--dur-base) var(--ease-enter);
+    opacity var(--dur-base) var(--ease-emph-enter),
+    translate var(--dur-base) var(--ease-emph-enter),
+    scale var(--dur-base) var(--ease-emph-enter);
 }
 @starting-style {
   .ui-popover {
     opacity: 0;
     translate: 0 calc(var(--ui-pop-from, -4px) * var(--motion, 1));
-    scale: calc(1 - 0.03 * var(--motion, 1));
+    scale: calc(1 - 0.04 * var(--motion, 1));
   }
 }
 .ui-popover[data-side='above'] {
   --ui-pop-from: 4px;
   transform-origin: bottom center;
 }
-:root[data-theme='dark'] .ui-popover {
-  background: var(--raised);
-  border-color: var(--border-strong);
-}
 
+/* An option of a Select list: 36px (44px on touch), 8px corners inside the popup's 6px of room (14 - 6). The chosen one has a check at
+   its end; the one the arrows (or the pointer) are on, which has the focus in the sense of aria-activedescendant, takes the active tint AND
+   a 3px --indicator pill at its left inside edge (3:1 or more on the tint), never a fill alone. */
 .ui-option {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   min-height: var(--ui-h-md);
-  padding: 6px 10px;
-  border-radius: var(--radius-control);
+  padding: 6px 10px 6px 12px;
+  border-radius: 8px;
   font-size: 14px;
   line-height: 20px;
   color: var(--text);
@@ -606,11 +778,19 @@ input[type='search']::-webkit-search-decoration {
   flex: none;
   color: var(--accent-text);
 }
-/* The row the arrows are on (or the pointer): it has the focus, in the sense of aria-activedescendant, so it is tinted AND marked with a
-   2px --indicator bar (4.9:1 on the tint), not by a fill alone. */
 .ui-option[data-active='true'] {
-  background: var(--accent-soft);
-  box-shadow: inset 2px 0 0 var(--indicator);
+  background: var(--ui-item-active);
+}
+.ui-option[data-active='true']::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 3px;
+  height: 16px;
+  margin-top: -8px;
+  border-radius: var(--radius-pill);
+  background: var(--indicator);
 }
 .ui-option[aria-disabled='true'] {
   color: color-mix(in srgb, var(--text3) 70%, transparent);
@@ -618,7 +798,7 @@ input[type='search']::-webkit-search-decoration {
 }
 
 .ui-menu {
-  min-width: 200px;
+  min-width: 208px;
 }
 .ui-menu-item {
   display: flex;
@@ -628,7 +808,7 @@ input[type='search']::-webkit-search-decoration {
   min-height: var(--ui-h-md);
   padding: 6px 10px;
   border: 0;
-  border-radius: var(--radius-control);
+  border-radius: 8px;
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -640,7 +820,7 @@ input[type='search']::-webkit-search-decoration {
 }
 .ui-menu-item svg {
   flex: none;
-  color: var(--text3);
+  color: var(--text2);
 }
 /* The words take the room, so a hint (a snooze time) and the chevron of an item that opens its own list sit at the end. */
 .ui-menu-label {
@@ -653,16 +833,19 @@ input[type='search']::-webkit-search-decoration {
   font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
+.ui-menu-chevron {
+  margin-right: -2px;
+}
 .ui-menu-item:hover,
 .ui-menu-item:focus {
-  background: var(--hover);
+  background: var(--ui-item-hover);
 }
 .ui-menu-item:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: -2px;
 }
 .ui-menu-item:active {
-  background: var(--border);
+  background: var(--ui-item-active);
 }
 .ui-menu-item[data-danger='true'],
 .ui-menu-item[data-danger='true'] svg {
@@ -676,19 +859,18 @@ input[type='search']::-webkit-search-decoration {
   color: color-mix(in srgb, var(--text3) 70%, transparent);
   cursor: default;
 }
+/* A separator is a hairline inset from the popup's edges, with room on both sides. */
 .ui-menu-sep {
   height: 1px;
-  margin: 4px -4px;
+  margin: 6px 4px;
   background: var(--border);
 }
-/* The header of a list opened from an item (Menu `backLabel`, J3-37): a square Back, then the item's name in the quiet 12px of the reader's
-   Snooze popup, over a hairline. */
+/* The header of a list opened from an item (Menu `backLabel`): a square Back, then the item's name in the quiet 12px of a group title. Space
+   sets it apart from the items, no line. */
 .ui-menu-head {
   display: flex;
   align-items: center;
-  margin: 0 -4px 4px;
-  padding: 0 4px 4px;
-  border-bottom: 1px solid var(--border);
+  margin: 0 0 4px;
 }
 /* Back is as wide as an item's padding, icon and gap (10 + 16 + 10): the name starts on the column of the items' words. */
 .ui-menu-head > .ui-menu-back {
@@ -744,7 +926,7 @@ input[type='search']::-webkit-search-decoration {
   color: var(--text3);
 }
 
-/* The box of a checkbox holds the real input and the tick drawn over it (an SVG path whose stroke draws in 150ms). */
+/* The box of a checkbox holds the real input and the tick drawn over it (an SVG path whose stroke draws in 150ms when it is ticked). */
 .ui-check-box {
   position: relative;
   display: inline-grid;
@@ -771,6 +953,8 @@ input[type='search']::-webkit-search-decoration {
   stroke-dashoffset: 0;
 }
 
+/* 18px boxes: a 6px-cornered square (checkbox) or a circle (radio), the surface with the 3:1 --control edge. Checked: the accent fill with a
+   thin top highlight and a whisper of its glow. */
 .ui-check-input,
 .ui-radio-input {
   appearance: none;
@@ -785,49 +969,59 @@ input[type='search']::-webkit-search-decoration {
   transition:
     background-color var(--dur-micro) var(--ease-standard),
     border-color var(--dur-micro) var(--ease-standard),
-    border-width calc(var(--dur-quick) * var(--motion, 1)) var(--ease-standard);
+    box-shadow var(--dur-fast) var(--ease-standard),
+    border-width calc(var(--dur-quick) * var(--motion, 1)) var(--ease-settle);
 }
 .ui-check-input {
-  border-radius: 4px;
+  border-radius: 6px;
   background-repeat: no-repeat;
   background-position: center;
   background-size: 14px;
 }
 .ui-radio-input {
-  border-radius: 50%;
+  border-radius: var(--radius-pill);
 }
 @media (hover: hover) {
   .ui-check:hover .ui-check-input:not(:checked, :indeterminate, :disabled),
   .ui-check:hover .ui-radio-input:not(:checked, :disabled) {
-    border-color: var(--text3);
+    border-color: var(--ui-field-hover);
   }
 }
 .ui-check-input:checked,
 .ui-check-input:indeterminate {
   background-color: var(--accent);
-  border-color: var(--accent-hover);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--on-accent) 22%, transparent);
+  border-color: var(--accent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--on-accent) 22%, transparent),
+    0 1px 2px var(--accent-glow);
 }
 /* Indeterminate: a dash in the on-accent colour (a gradient of one colour, so no colour is written here). */
 .ui-check-input:indeterminate {
   background-image: linear-gradient(var(--on-accent), var(--on-accent));
   background-size: 8px 2px;
 }
+/* Disabled: a recessed box with a quiet edge; chosen, a neutral grey (never the accent, which would read as live in the dark theme). */
 .ui-check-input:disabled,
 .ui-radio-input:disabled {
   background-color: var(--raised);
-  border-color: color-mix(in srgb, var(--control) 45%, var(--border-strong));
+  border-color: color-mix(in srgb, var(--control) 50%, var(--border-strong));
   box-shadow: none;
 }
 .ui-check-input:checked:disabled,
 .ui-check-input:indeterminate:disabled {
-  background-color: color-mix(in srgb, var(--accent) 40%, var(--raised));
+  background-color: color-mix(in srgb, var(--text3) 55%, var(--raised));
   border-color: transparent;
 }
-/* A ring of accent round a centre in the on-accent colour; the dot grows from the edge in 150ms. */
+.ui-radio-input:checked:disabled {
+  background-color: var(--raised);
+  border-color: color-mix(in srgb, var(--text3) 55%, var(--raised));
+  box-shadow: none;
+}
+/* A ring of accent round a centre in the on-accent colour; the dot grows from the edge in 150ms with a small settle. */
 .ui-radio-input:checked {
   background-color: var(--on-accent);
   border: 5px solid var(--accent);
+  box-shadow: 0 1px 2px var(--accent-glow);
 }
 .ui-radio-group {
   display: flex;
@@ -874,9 +1068,10 @@ input[type='search']::-webkit-search-decoration {
   font-size: 14px;
   font-weight: 400;
 }
-/* A recessed track with a raised thumb; on: the accent gradient. The thumb travels in 150ms (M17), the track colour in 70ms. The button is
-   24px high (2.5.8: a 24px target even where the label is far away) and the 36x20 track is drawn inside it (::before); on touch the hit
-   area grows further (::after). */
+/* A 36x20 track: off, a soft neutral fill inside the 3:1 --control edge; on, the accent. One 16px light thumb with the control shadow in
+   both states, which slides in 150ms with a small settle (--ease-settle); the track colour changes in 110ms. The button is 24px high
+   (2.5.8: a 24px target even where the label is far away) and the track is drawn inside it (::before); on touch the hit area grows further
+   (::after). */
 .ui-switch {
   position: relative;
   flex: none;
@@ -885,20 +1080,20 @@ input[type='search']::-webkit-search-decoration {
   padding: 0;
   background: transparent;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   cursor: pointer;
 }
 .ui-switch::before {
   content: '';
   position: absolute;
   inset: 2px 0;
-  background: var(--raised);
+  background: var(--ui-switch-off);
   border: 1px solid var(--control);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   box-shadow: var(--field-shadow);
   transition:
-    background-color var(--dur-micro) var(--ease-standard),
-    border-color var(--dur-micro) var(--ease-standard);
+    background-color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard);
 }
 /* The switch is small; its touch target is not. */
 .ui-switch::after {
@@ -911,24 +1106,27 @@ input[type='search']::-webkit-search-decoration {
 }
 .ui-switch-thumb {
   position: absolute;
-  top: 5px;
-  left: 3px;
-  width: 14px;
-  height: 14px;
-  background: var(--text3);
-  border-radius: 50%;
-  box-shadow: var(--control-shadow);
+  top: 4px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: var(--ui-switch-thumb);
+  border-radius: var(--radius-pill);
+  box-shadow:
+    inset 0 0 0 1px var(--ui-switch-thumb-ring),
+    var(--control-shadow);
   transition:
-    translate calc(var(--dur-quick) * var(--motion, 1)) var(--ease-standard),
-    background-color var(--dur-micro) var(--ease-standard);
+    translate calc(var(--dur-quick) * var(--motion, 1)) var(--ease-settle),
+    background-color var(--dur-fast) var(--ease-standard);
 }
 .ui-switch[aria-checked='true']::before {
-  background: linear-gradient(180deg, var(--accent), var(--accent-hover));
-  border-color: var(--accent-hover);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--on-accent) 20%, transparent);
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--on-accent) 18%, transparent);
 }
 .ui-switch[aria-checked='true'] .ui-switch-thumb {
   background: var(--on-accent);
+  box-shadow: var(--control-shadow);
   translate: 16px 0;
 }
 .ui-switch:disabled {
@@ -936,22 +1134,24 @@ input[type='search']::-webkit-search-decoration {
 }
 .ui-switch:disabled::before {
   background: var(--raised);
-  border-color: color-mix(in srgb, var(--control) 45%, var(--border-strong));
+  border-color: color-mix(in srgb, var(--control) 35%, var(--border-strong));
   box-shadow: none;
 }
 .ui-switch:disabled .ui-switch-thumb {
-  background: color-mix(in srgb, var(--text3) 55%, var(--border-strong));
+  background: color-mix(in srgb, var(--text3) 45%, var(--border-strong));
+  box-shadow: none;
 }
 .ui-switch[aria-checked='true']:disabled::before {
-  background: color-mix(in srgb, var(--accent) 40%, var(--raised));
+  background: var(--ui-switch-dis-on);
   border-color: transparent;
 }
 .ui-switch[aria-checked='true']:disabled .ui-switch-thumb {
-  background: var(--on-accent);
+  background: color-mix(in srgb, var(--ui-switch-thumb) 72%, var(--raised));
+  box-shadow: none;
 }
 @media (hover: hover) {
   .ui-switch[aria-checked='false']:hover:not(:disabled)::before {
-    border-color: var(--text3);
+    border-color: var(--ui-field-hover);
   }
   .ui-switch[aria-checked='true']:hover:not(:disabled)::before {
     background: var(--accent-hover);
@@ -972,15 +1172,15 @@ input[type='search']::-webkit-search-decoration {
     content: none;
   }
   .ui-switch-thumb {
-    top: 15px;
-    left: 9px;
+    top: 14px;
+    left: 8px;
   }
 }
 
 /* ---------- Tabs ---------- */
 
-/* Horizontal: a row of tabs on a hairline; the selected one has a 2px --indicator line under it that slides to the next tab in 200ms
-   (M16: .ui-ink, placed by Tabs.tsx after the first paint; before that the tab draws its own line). */
+/* Horizontal: text tabs on one hairline; the selected one has a 2px --indicator line under it that slides to the next tab in 200ms
+   (.ui-ink, placed by Tabs.tsx after the first paint; before that the tab draws its own line). */
 .ui-tabs {
   position: relative;
   display: flex;
@@ -1061,11 +1261,11 @@ input[type='search']::-webkit-search-decoration {
 }
 .ui-ink[data-moving='true'] {
   transition:
-    translate var(--dur-base) var(--ease-standard),
-    scale var(--dur-base) var(--ease-standard);
+    translate var(--dur-glide) var(--ease-standard),
+    scale var(--dur-glide) var(--ease-standard);
 }
-/* Vertical (a left nav of sections: Settings): a list of rows; the selected one is tinted and has a 3px --indicator bar at its left edge,
-   and the tint with its bar slides to the next row (the ink is the whole row there). Up and Down move. */
+/* Vertical (a left nav of sections: Settings): rows of 36px with 10px corners; the selected one is a capsule of --accent-soft with its label
+   and icon in --accent-text, semibold, and the capsule glides to the next row (the ink is the whole row there). Up and Down move. */
 .ui-tabs[aria-orientation='vertical'] {
   flex-direction: column;
   gap: 2px;
@@ -1074,7 +1274,8 @@ input[type='search']::-webkit-search-decoration {
 }
 .ui-tabs[aria-orientation='vertical'] > .ui-tab {
   justify-content: flex-start;
-  padding: 6px 12px;
+  gap: 10px;
+  padding: 7px 12px;
   border-radius: var(--radius-control);
   white-space: normal;
   text-align: left;
@@ -1083,16 +1284,8 @@ input[type='search']::-webkit-search-decoration {
   color: var(--accent-text);
   font-weight: 600;
 }
-/* The bar of the selected row is a pill of its own, inset from the row's rounded corners (never a border on the rounded box, which would
-   bend into a crescent): 3px wide, 8px from the top and the bottom, at the left edge. The sidebar folders and the list rows use the same. */
 .ui-tabs[aria-orientation='vertical'] > .ui-tab::after {
-  top: 8px;
-  right: auto;
-  bottom: 8px;
-  left: 0;
-  width: 3px;
-  height: auto;
-  border-radius: 999px;
+  content: none;
 }
 .ui-tabs[aria-orientation='vertical']:not([data-ink]) > .ui-tab[aria-selected='true'] {
   background: var(--accent-soft);
@@ -1104,16 +1297,6 @@ input[type='search']::-webkit-search-decoration {
   border-radius: var(--radius-control);
   background: var(--accent-soft);
 }
-.ui-tabs[aria-orientation='vertical'] > .ui-ink::before {
-  content: '';
-  position: absolute;
-  top: 8px;
-  bottom: 8px;
-  left: 0;
-  width: 3px;
-  border-radius: 999px;
-  background: var(--indicator);
-}
 .ui-tabs[aria-orientation='vertical'] > .ui-tab:focus-visible {
   outline-offset: 0;
 }
@@ -1124,7 +1307,7 @@ input[type='search']::-webkit-search-decoration {
 /* The visual heading of a group of rows in a vertical list (Tab `group`): the quiet small label of a sidebar group, with room above it
    so the groups read apart. Not a control and not read out (aria-hidden): the rows' names stand on their own. */
 .ui-tab-group {
-  padding: 16px 12px 4px;
+  padding: 20px 12px 6px;
   color: var(--text3);
   font-size: 12px;
   line-height: 16px;
@@ -1140,7 +1323,7 @@ input[type='search']::-webkit-search-decoration {
   }
 }
 /* Tabs with `grid` (Settings, the admin console): on a phone the row does not scroll sideways and hide a tab, it is a grid of two columns of
-   44px segments in a raised track (four tabs: 2x2), and a label too long for its cell wraps onto a second line instead of being cut. At
+   44px segments in a soft track (four tabs: 2x2), and a label too long for its cell wraps onto a second line instead of being cut. At
    320px a cell has 122px for its label: en 'Email routing & MX' is 116px at 13px (Geist 500), vi 'Nhật ký hoạt động' 114px; under 350px the
    side padding is 4px, which leaves 130px (vi 'Định tuyến thư & MX' is 125px). The area sets the track's margin and padding. */
 @media (max-width: 640px) {
@@ -1150,16 +1333,14 @@ input[type='search']::-webkit-search-decoration {
     gap: 4px;
     padding: 4px;
     overflow: visible;
-    background: var(--raised);
-    border-radius: var(--radius-card);
-    box-shadow:
-      inset 0 0 0 1px var(--border),
-      var(--field-shadow);
+    background: var(--ui-track);
+    border-radius: 12px;
+    box-shadow: none;
   }
   .ui-tabs[data-grid='true'] .ui-tab {
     justify-content: center;
     padding: 4px 8px;
-    border-radius: var(--radius-control);
+    border-radius: 9px;
     font-size: 13px;
     line-height: 18px;
     text-align: center;
@@ -1169,13 +1350,12 @@ input[type='search']::-webkit-search-decoration {
   .ui-tabs[data-grid='true'] > .ui-ink {
     display: none;
   }
-  /* The chosen tab is the lifted segment, lighter than the track in both themes (as in SegmentedControl). */
+  /* The chosen tab is the lifted segment, the surface on the track (as in SegmentedControl). */
   .ui-tabs[data-grid='true'] .ui-tab[aria-selected='true'] {
     background: var(--ui-lifted);
     box-shadow:
-      var(--control-shadow),
-      inset 0 0 0 1px var(--border-strong),
-      inset 0 1px 0 var(--inset-highlight);
+      0 0 0 1px var(--ui-thumb-ring),
+      var(--control-shadow);
   }
 }
 @media (max-width: 350px) {
@@ -1197,17 +1377,17 @@ input[type='search']::-webkit-search-decoration {
 
 /* ---------- Badge, Avatar, Kbd, Divider ---------- */
 
-/* A pill (the landing's `.badge`): a hairline, a raised fill, a whisper of shadow; a tone tints it and its words. */
+/* A pill of 12px words on a soft fill, no visible edge: neutral on the ink fill, a tone on its soft token (its words in the tone, 4.5:1 or
+   more). The 1px edge is transparent: it keeps the box, and an area can still colour it for a state of its own (a hovered trust chip). */
 .ui-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   height: 20px;
-  padding: 0 8px;
-  background: var(--raised);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  box-shadow: var(--control-shadow);
+  padding: 0 7px;
+  background: var(--ui-fill);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
   color: var(--text2);
   font-size: 12px;
   line-height: 16px;
@@ -1220,36 +1400,35 @@ input[type='search']::-webkit-search-decoration {
 }
 .ui-badge[data-tone='accent'] {
   background: var(--accent-soft);
-  border-color: color-mix(in srgb, var(--accent-text) 18%, transparent);
   color: var(--accent-text);
 }
 .ui-badge[data-tone='success'] {
   background: var(--success-soft);
-  border-color: color-mix(in srgb, var(--success) 22%, transparent);
   color: var(--success);
 }
 .ui-badge[data-tone='warning'] {
   background: var(--warning-soft);
-  border-color: color-mix(in srgb, var(--warning) 26%, transparent);
   color: var(--warning);
 }
 .ui-badge[data-tone='danger'] {
   background: var(--danger-soft);
-  border-color: color-mix(in srgb, var(--danger) 22%, transparent);
   color: var(--danger);
 }
 
-/* Initials on one neutral raised fill for everybody (the accent is for actions); `selected` (the open row's sender) takes the accent tint. */
+/* Initials in a circle. Without a hue: one neutral raised tile with a hairline ring. With a person's hue (Avatar `hue`, a LABEL_HUES slot
+   from the address): a soft tint of it, the initials in a deep (light) or pale (dark) shade of it, 6.4:1 or more. `selected` (the signed-in
+   person, the open row's sender) takes the accent tint. Sizes 24, 28, 32, 40, 56, or any px through --ui-avatar-size. */
 .ui-avatar {
+  --ui-avatar-size: 32px;
   display: inline-flex;
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: var(--ui-avatar-size);
+  height: var(--ui-avatar-size);
   background: var(--raised);
-  border-radius: 999px;
-  box-shadow: inset 0 0 0 1px var(--border);
+  border-radius: var(--radius-pill);
+  box-shadow: inset 0 0 0 1px var(--ui-avatar-ring);
   color: var(--text2);
   font-size: 13px;
   line-height: 1.25;
@@ -1260,21 +1439,32 @@ input[type='search']::-webkit-search-decoration {
     background-color var(--dur-fast) var(--ease-standard),
     color var(--dur-fast) var(--ease-standard);
 }
+.ui-avatar[data-size='xs'] {
+  --ui-avatar-size: 24px;
+  font-size: 10px;
+  letter-spacing: 0;
+}
 .ui-avatar[data-size='sm'] {
-  width: 28px;
-  height: 28px;
+  --ui-avatar-size: 28px;
   font-size: 12px;
 }
 .ui-avatar[data-size='lg'] {
-  width: 40px;
-  height: 40px;
+  --ui-avatar-size: 40px;
   font-size: 15px;
 }
+.ui-avatar[data-size='xl'] {
+  --ui-avatar-size: 56px;
+  font-size: 20px;
+  letter-spacing: 0;
+}
 /* One CJK character (ui/initials.ts) is drawn a size larger than two Latin letters, so its strokes stay clear in the circle. Any avatar
-   tile (the header's account button too) can say so with data-script="cjk". */
+   tile (the account button too) can say so with data-script="cjk". */
 .ui-avatar[data-script='cjk'] {
   font-size: 15px;
   letter-spacing: 0;
+}
+.ui-avatar[data-size='xs'][data-script='cjk'] {
+  font-size: 12px;
 }
 .ui-avatar[data-size='sm'][data-script='cjk'] {
   font-size: 14px;
@@ -1282,20 +1472,88 @@ input[type='search']::-webkit-search-decoration {
 .ui-avatar[data-size='lg'][data-script='cjk'] {
   font-size: 18px;
 }
+.ui-avatar[data-size='xl'][data-script='cjk'] {
+  font-size: 24px;
+}
+.ui-avatar[data-hue] {
+  background: color-mix(in srgb, var(--ui-hue) var(--ui-hue-bg), var(--surface));
+  box-shadow: none;
+  color: color-mix(in srgb, var(--ui-hue) var(--ui-hue-fg), var(--text));
+}
 .ui-avatar[data-selected='true'] {
   background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-text) 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-text) 16%, transparent);
   color: var(--accent-text);
 }
-/* Dark: the hover tint of a row is lighter than raised, so the neutral tiles keep a stronger edge to stay visible on a hovered row. */
-:root[data-theme='dark'] .ui-avatar:not([data-selected='true']) {
-  box-shadow: inset 0 0 0 1px var(--border-strong);
+
+/* v3 signature: the people who WRITE to you are postage stamps (Avatar shape="stamp"): a sheet of stamp paper with perforated edges (an
+   integer number of round holes per side, quarter holes at the corners, so every side matches at every size), a 1 px printed frame inside
+   it, and the person's tint as the printed field. The paper is drawn by ::before under a perforation mask; the span itself carries a
+   hairline drop shadow, so the edge holds on white, on the selected capsule and in dark (a mask clips an element's own shadow, a parent
+   filter does not). The signed-in person stays a circle. */
+.ui-avatar[data-shape='stamp'] {
+  /* Hole radius and pitch: five teeth per side at any size; holes 2.4 px (28-40 px tiles), 3 px (56 px), 1.6 px (24 px, four teeth). */
+  --ui-stamp-hole: 2.4px;
+  --ui-stamp-pitch: calc(var(--ui-avatar-size) / 5);
+  position: relative;
+  isolation: isolate;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  filter: drop-shadow(0 0.5px 0.5px var(--ui-stamp-edge)) drop-shadow(0 1px 2px var(--ui-stamp-shade));
 }
-:root[data-theme='dark'] .ui-badge[data-tone='neutral'] {
-  border-color: var(--border-strong);
+.ui-avatar[data-shape='stamp']::before,
+.ui-avatar[data-shape='stamp']::after {
+  content: '';
+  position: absolute;
+  /* Under the initials, inside the tile's own stacking context (isolation): one layer below --z-raise's 1. */
+  z-index: calc(var(--z-raise) * -1);
+  pointer-events: none;
+}
+.ui-avatar[data-shape='stamp']::before {
+  inset: 0;
+  background: var(--ui-stamp-paper);
+  -webkit-mask:
+    linear-gradient(currentColor 0 0) content-box,
+    radial-gradient(var(--ui-stamp-hole) at var(--ui-stamp-hole) var(--ui-stamp-hole), transparent 96%, currentColor)
+      calc(var(--ui-stamp-hole) * -1) calc(var(--ui-stamp-hole) * -1) / var(--ui-stamp-pitch) var(--ui-stamp-pitch) round;
+  mask:
+    linear-gradient(currentColor 0 0) content-box,
+    radial-gradient(var(--ui-stamp-hole) at var(--ui-stamp-hole) var(--ui-stamp-hole), transparent 96%, currentColor)
+      calc(var(--ui-stamp-hole) * -1) calc(var(--ui-stamp-hole) * -1) / var(--ui-stamp-pitch) var(--ui-stamp-pitch) round;
+  padding: var(--ui-stamp-hole);
+  box-sizing: border-box;
+}
+/* The printed field: inset from the teeth, a hair of radius, the person's tint (or the neutral raised fill), and its frame line. */
+.ui-avatar[data-shape='stamp']::after {
+  inset: calc(var(--ui-stamp-hole) * 2 + 1px);
+  border-radius: 2px;
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text3) 22%, transparent);
+}
+.ui-avatar[data-shape='stamp'][data-hue]::before {
+  background: color-mix(in srgb, var(--ui-hue) var(--ui-stamp-paper-hue), var(--ui-stamp-paper));
+}
+.ui-avatar[data-shape='stamp'][data-hue]::after {
+  background: color-mix(in srgb, var(--ui-hue) var(--ui-hue-bg), var(--surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-hue) 16%, transparent);
+}
+.ui-avatar[data-shape='stamp'][data-size='xl'] {
+  --ui-stamp-hole: 3px;
+}
+.ui-avatar[data-shape='stamp'][data-size='xs'] {
+  --ui-stamp-hole: 1.6px;
+  --ui-stamp-pitch: calc(var(--ui-avatar-size) / 4);
+}
+/* Smaller letters than a circle: the printed field is the tile minus the teeth. */
+.ui-avatar[data-shape='stamp'] {
+  font-size: calc(var(--ui-avatar-size) * 0.36);
+}
+.ui-avatar[data-shape='stamp'][data-script='cjk'] {
+  font-size: calc(var(--ui-avatar-size) * 0.42);
 }
 
-/* A key cap: the tactile neutral with a deeper bottom edge. */
+/* A key cap: the button's fill with its soft ring and a deeper bottom edge. */
 .ui-kbd {
   display: inline-flex;
   align-items: center;
@@ -1303,11 +1561,12 @@ input[type='search']::-webkit-search-decoration {
   min-width: 20px;
   height: 20px;
   padding: 0 5px;
-  background: linear-gradient(180deg, var(--btn-top), var(--btn-bottom));
-  border: 1px solid var(--btn-edge);
-  border-bottom-width: 2px;
-  border-radius: 4px;
-  box-shadow: inset 0 1px 0 var(--inset-highlight);
+  background: var(--ui-btn-fill);
+  border: 0;
+  border-radius: 6px;
+  box-shadow:
+    inset 0 0 0 1px var(--ui-btn-ring),
+    inset 0 -1px 0 var(--ui-btn-ring);
   color: var(--text2);
   font-family: inherit;
   font-size: 12px;
@@ -1334,37 +1593,40 @@ hr.ui-divider {
 
 /* ---------- Banner ---------- */
 
+/* A notice: a soft fill of its tone (no rail, no line: a whisper of the tone as its ring), its icon in the tone, the words in ink, 14/22. */
 .ui-banner {
   --tone: var(--accent-text);
   --tone-bg: var(--accent-soft);
+  --tone-mix: 0%;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 8px 12px;
-  padding: 12px 14px;
-  background: var(--tone-bg);
-  border: 1px solid color-mix(in srgb, var(--tone) 24%, var(--border));
+  padding: 14px 16px;
+  background: color-mix(in srgb, var(--tone) var(--tone-mix), var(--tone-bg));
+  border: 0;
   border-radius: var(--radius-card);
-  box-shadow:
-    var(--control-shadow),
-    inset 0 1px 0 var(--inset-highlight);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 10%, transparent);
   color: var(--text);
 }
 .ui-banner[data-tone='success'] {
   --tone: var(--success);
   --tone-bg: var(--success-soft);
+  --tone-mix: 3%;
 }
 .ui-banner[data-tone='warning'] {
   --tone: var(--warning);
   --tone-bg: var(--warning-soft);
+  --tone-mix: 4%;
 }
 .ui-banner[data-tone='danger'] {
   --tone: var(--danger);
   --tone-bg: var(--danger-soft);
+  --tone-mix: 3%;
 }
 .ui-banner-icon {
   flex: none;
-  margin-top: 1px;
+  margin-top: 2px;
   color: var(--tone);
 }
 .ui-banner-body {
@@ -1374,12 +1636,12 @@ hr.ui-divider {
 .ui-banner-title {
   margin: 0;
   font-size: 14px;
-  line-height: 20px;
+  line-height: 22px;
   font-weight: 600;
 }
 .ui-banner-text {
   font-size: 14px;
-  line-height: 20px;
+  line-height: 22px;
 }
 .ui-banner-action {
   flex: none;
@@ -1388,7 +1650,11 @@ hr.ui-divider {
 /* A button is taller than a line of text: it grows into the banner's padding instead of pushing the text off its centre. */
 .ui-banner-action,
 .ui-banner > .ui-icon-btn {
-  margin-block: calc((20px - var(--ui-h-sm)) / 2);
+  margin-block: calc((22px - var(--ui-h-sm)) / 2);
+}
+/* The dismiss X ends on the banner's content edge (its 16px glyph, not its 32/44px box): the box grows into the right padding. */
+.ui-banner > .ui-icon-btn:last-child {
+  margin-right: calc((16px - var(--ui-h-sm)) / 2);
 }
 /* With an action the layout is one of two, chosen by the width inside the banner, never by the length of a text: from 480px the action
    stands beside the text on one row (the text takes what is left), under 480px it has a row of its own under the text. Only on one row does
@@ -1400,33 +1666,29 @@ hr.ui-divider {
 }
 .ui-banner:has(> .ui-banner-action) > .ui-banner-action,
 .ui-banner:has(> .ui-banner-action) > .ui-icon-btn {
-  margin-block: clamp(calc((20px - var(--ui-h-sm)) / 2), (480px - 100%) * 999, 0px);
+  margin-block: clamp(calc((22px - var(--ui-h-sm)) / 2), (480px - 100%) * 999, 0px);
 }
-/* Dark: a secondary button on a tinted banner is lifted off it with a tint of the banner's own tone; the page's surface there is darker than
-   the banner and reads as a hole in it. Pressed and disabled keep their own look. */
-:root[data-theme='dark'] .ui-banner .ui-btn[data-variant='secondary']:not(:active, :disabled, [aria-disabled='true']) {
-  background: color-mix(in srgb, var(--tone) 16%, var(--tone-bg));
-  border-color: color-mix(in srgb, var(--tone) 45%, var(--border));
-}
-@media (hover: hover) {
-  :root[data-theme='dark'] .ui-banner .ui-btn[data-variant='secondary']:hover:not(:active, :disabled, [aria-disabled='true']) {
-    background: color-mix(in srgb, var(--tone) 24%, var(--tone-bg));
-  }
+/* Dark: a secondary button on a tinted banner is lifted off it with a tint of the banner's own tone (the page's button step there reads as a
+   hole in it). Variables, so hover, pressed and disabled keep their own rules. */
+:root[data-theme='dark'] .ui-banner {
+  --ui-btn-fill: color-mix(in srgb, var(--tone) 16%, var(--tone-bg));
+  --ui-btn-ring: color-mix(in srgb, var(--tone) 40%, var(--tone-bg));
+  --ui-btn-ring-hover: color-mix(in srgb, var(--tone) 60%, var(--tone-bg));
+  --ui-lift-top: color-mix(in srgb, var(--tone) 24%, var(--tone-bg));
 }
 
 /* ---------- Section, Card ---------- */
 
+/* Sections are set apart by space, not by lines. */
 .ui-section + .ui-section {
-  margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid var(--border);
+  margin-top: 32px;
 }
 .ui-section-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 .ui-section-heading {
   min-width: 0;
@@ -1434,7 +1696,7 @@ hr.ui-divider {
 .ui-section-title {
   margin: 0;
   font-size: 16px;
-  line-height: 24px;
+  line-height: 26px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -1450,51 +1712,67 @@ hr.ui-divider {
   align-items: center;
   gap: 8px;
 }
+/* A grouped Section (Section `grouped`, the iOS-like settings card): its rows sit in ONE card (the surface, 14px corners, the sheet shadow)
+   and are separated by hairlines that start at the text, 16px in, never at the card's edge. Each direct child is a row. */
+.ui-group {
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--sheet-shadow);
+}
+.ui-group > * {
+  position: relative;
+  padding: 12px 16px;
+}
+.ui-group > * + *::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 16px;
+  height: 1px;
+  background: var(--border);
+  pointer-events: none;
+}
+.ui-group > :first-child {
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+}
+.ui-group > :last-child {
+  border-bottom-right-radius: inherit;
+  border-bottom-left-radius: inherit;
+}
 
-/* A card (the landing's `.card`): surface, a hairline, a small shadow and the inset highlight. Only a card that is a whole link or button
-   (`interactive`) lifts on hover; never a message row. */
+/* A card: the surface, 14px corners and the sheet shadow (its ring is inside the shadow token, so light has no hairline and dark keeps one).
+   Only a card that is a whole link or button (`interactive`) lifts on hover; never a message row. */
 .ui-card {
   position: relative;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 0;
   border-radius: var(--radius-card);
-  box-shadow:
-    var(--shadow-sm),
-    inset 0 1px 0 var(--inset-highlight);
-}
-:root[data-theme='dark'] .ui-card {
-  border-color: var(--border-strong);
-  box-shadow:
-    var(--control-shadow),
-    inset 0 1px 0 var(--inset-highlight);
+  box-shadow: var(--sheet-shadow);
 }
 .ui-card[data-padding='md'] {
   padding: 20px;
 }
 .ui-card[data-padding='none'] > .ui-section-head {
   margin: 0;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
+  padding: 16px 20px 12px;
 }
 .ui-card[data-interactive='true'] {
   cursor: pointer;
   transition:
     translate var(--dur-base) var(--ease-standard),
-    box-shadow var(--dur-base) var(--ease-standard),
-    border-color var(--dur-base) var(--ease-standard);
+    box-shadow var(--dur-base) var(--ease-standard);
 }
 @media (hover: hover) {
   .ui-card[data-interactive='true']:hover {
-    translate: 0 calc(-2px * var(--motion, 1));
-    border-color: color-mix(in srgb, var(--accent) 35%, var(--border-strong));
-    box-shadow:
-      var(--shadow-md),
-      inset 0 1px 0 var(--inset-highlight);
+    translate: 0 calc(-1px * var(--motion, 1));
+    box-shadow: var(--sheet-shadow), var(--shadow-md);
   }
 }
 .ui-card[data-interactive='true']:active {
   translate: none;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--sheet-shadow);
 }
 @media (max-width: 640px) {
   .ui-card[data-padding='md'] {
@@ -1504,12 +1782,15 @@ hr.ui-divider {
 
 /* ---------- Table ---------- */
 
+/* A table on a card (the sheet shadow, no border). Rows have no lines between them: air (12px 16px) and a hover capsule (10px corners,
+   6px in from the card's sides) do the separating. The head is quiet: 12px semibold --text3 over one hairline, sticky on the surface. */
 .ui-table-wrap {
   overflow: auto;
+  padding: 0 6px 6px;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 0;
   border-radius: var(--radius-card);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--sheet-shadow);
 }
 .ui-table-wrap:focus-visible {
   outline-offset: 2px;
@@ -1523,10 +1804,10 @@ hr.ui-divider {
   font-variant-numeric: tabular-nums;
 }
 .ui-table th {
-  padding: 8px 12px;
-  background: linear-gradient(180deg, var(--raised), color-mix(in srgb, var(--raised) 70%, var(--surface)));
-  border-bottom: 1px solid var(--border);
-  color: var(--text2);
+  padding: 12px 10px 10px;
+  background: var(--surface);
+  box-shadow: inset 0 -1px 0 var(--border);
+  color: var(--text3);
   font-size: 12px;
   line-height: 16px;
   font-weight: 600;
@@ -1539,19 +1820,32 @@ hr.ui-divider {
   z-index: var(--z-raise);
 }
 .ui-table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
+  padding: 12px 10px;
   vertical-align: middle;
   transition: background-color var(--dur-fast) var(--ease-standard);
 }
-.ui-table tbody tr:last-child td {
-  border-bottom: 0;
+.ui-table th:first-child,
+.ui-table td:first-child {
+  padding-left: 16px;
+}
+.ui-table td:first-child {
+  position: relative;
+  border-radius: 10px 0 0 10px;
+}
+.ui-table td:last-child {
+  border-radius: 0 10px 10px 0;
+}
+/* 6px of air between the head's hairline and the first row's capsule. */
+.ui-table tbody::before {
+  content: '';
+  display: block;
+  height: 6px;
 }
 .ui-table[data-dense='true'] th {
-  padding-block: 6px;
+  padding-block: 10px 8px;
 }
 .ui-table[data-dense='true'] td {
-  padding-block: 6px;
+  padding-block: 8px;
 }
 .ui-table .ui-num {
   text-align: right;
@@ -1561,12 +1855,21 @@ hr.ui-divider {
     background: var(--hover);
   }
 }
-/* A selected row: the tint AND a 3px --indicator bar at its left edge (never the tint alone). */
+/* A selected row: the accent-soft capsule AND a 3px --indicator pill at its left inside edge (never the tint alone, never a straight bar on
+   the rounded box). */
 .ui-table tbody tr[aria-selected='true'] td {
   background: var(--accent-soft);
 }
-.ui-table tbody tr[aria-selected='true'] td:first-child {
-  box-shadow: inset 3px 0 0 var(--indicator);
+.ui-table tbody tr[aria-selected='true'] td:first-child::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 5px;
+  width: 3px;
+  height: 16px;
+  margin-top: -8px;
+  border-radius: var(--radius-pill);
+  background: var(--indicator);
 }
 /* Rows are 44px high on touch. */
 @media (max-width: 900px), (pointer: coarse) {
@@ -1578,6 +1881,7 @@ hr.ui-divider {
 
 /* ---------- EmptyState, Skeleton ---------- */
 
+/* Nothing here: room for a drawing (EmptyState `art`, a FlightTrail) or Edgar, a headline (18/26), one line in --text2, at most one action. */
 .ui-empty {
   display: flex;
   flex-direction: column;
@@ -1585,6 +1889,12 @@ hr.ui-divider {
   gap: 8px;
   padding: 48px 24px;
   text-align: center;
+}
+.ui-empty-slot {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+  color: var(--text3);
 }
 /* Edgar fades in; with `idle` he gives one small settle (a tilt and a bob) after 600ms and one more 2.6s later, then stays still: all of
    it ends before 5s (2.2.2), and never under reduced motion (M20). */
@@ -1600,32 +1910,34 @@ hr.ui-divider {
 }
 .ui-empty-title {
   margin: 0;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 18px;
+  line-height: 26px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 .ui-empty-description {
-  max-width: 36ch;
+  max-width: 40ch;
   margin: 0;
   color: var(--text2);
+  font-size: 14px;
+  line-height: 22px;
 }
 .ui-empty-action {
-  margin-top: 8px;
+  margin-top: 12px;
 }
 
-/* A placeholder bar: the border step with a soft highlight that sweeps across at most three times (3.6s), then rests (M13, 2.2.2). */
+/* A placeholder bar: a soft ink fill with 6px corners and a highlight that sweeps across at most three times (3.6s), then rests (2.2.2). */
 .ui-skeleton {
   display: block;
   width: 100%;
   height: 14px;
-  background-color: var(--border);
+  background-color: var(--ui-skel);
   background-image: linear-gradient(100deg, transparent 30%, var(--inset-highlight) 50%, transparent 70%);
   background-size: 200% 100%;
   background-repeat: no-repeat;
   /* At rest (before, after and without the sweeps) the highlight sits outside the bar, so a still bar is one flat tone. */
   background-position: -50% 0;
-  border-radius: 4px;
+  border-radius: 6px;
   animation: ui-shimmer 1.2s linear 3;
 }
 .ui-skeleton[data-circle='true'] {
@@ -1634,10 +1946,10 @@ hr.ui-divider {
 
 /* ---------- Dialog ---------- */
 
-/* The scrim fades in 200ms on a layer of its own (the root's ::before), so only the scrim fades: the panel scales from 96% and fades in
-   250ms (emphasized enter) from its @starting-style, and a phone sheet slides up opaque (the list never shows through it). It leaves on
-   an inert copy (motion.ts useExitMotion): 180ms, or 210ms for a phone sheet, the scrim fading on its own layer again. A press on the
-   scrim still lands on the root (a pseudo-element is part of its element), which is what Dialog.tsx tests. */
+/* The scrim fades in 200ms on a layer of its own (the root's ::before; no blur, no glass), so only the scrim fades: the panel scales from
+   96% and fades in 250ms (emphasized enter) from its @starting-style, and a phone sheet slides up opaque (the list never shows through it).
+   It leaves on an inert copy (motion.ts useExitMotion): 180ms, or 210ms for a phone sheet, the scrim fading on its own layer again. A press
+   on the scrim still lands on the root (a pseudo-element is part of its element), which is what Dialog.tsx tests. */
 .ui-dialog-root {
   position: fixed;
   inset: 0;
@@ -1645,7 +1957,7 @@ hr.ui-divider {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* J5-23: a phone on its side (wider than a sheet) keeps the dialog out of the bands of the notch, the rounded corners and the home bar. */
+  /* A phone on its side (wider than a sheet) keeps the dialog out of the bands of the notch, the rounded corners and the home bar. */
   padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom))
     max(16px, env(safe-area-inset-left));
 }
@@ -1667,29 +1979,25 @@ hr.ui-divider {
 .ui-dialog-root[data-leaving='true']::before {
   animation: none;
 }
+/* The panel: 20px corners, no border, the float shadow (its ring holds the edge against the scrim in both themes); dark stands on the raised
+   step, so its fields (surface) read as wells. 24px of room inside, 28px in a wide dialog; no band and no line above the buttons. */
 .ui-dialog {
+  --ui-dialog-pad: 24px;
   position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
   max-width: 520px;
   max-height: 100%;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--ui-dialog-bg);
+  border: 0;
   border-radius: var(--radius-dialog);
-  box-shadow:
-    var(--shadow-lg),
-    inset 0 1px 0 var(--inset-highlight);
+  box-shadow: var(--float-shadow);
   color: var(--text);
   transition:
     opacity var(--dur-gentle) var(--ease-emph-enter),
     scale var(--dur-gentle) var(--ease-emph-enter),
     translate var(--dur-slow) var(--ease-emph-enter);
-}
-/* Dark: the panel stands a step above the page (raised), so its fields (surface) read as wells and its edge holds against the scrim. */
-:root[data-theme='dark'] .ui-dialog {
-  background: var(--raised);
-  border-color: var(--border-strong);
 }
 @starting-style {
   .ui-dialog {
@@ -1701,7 +2009,18 @@ hr.ui-divider {
   max-width: 400px;
 }
 .ui-dialog[data-size='lg'] {
+  --ui-dialog-pad: 28px;
   max-width: 720px;
+}
+/* A confirmation (ConfirmDialog, an alertdialog): its danger button is the one solid danger button of the app (white words on it in both
+   themes; hover and pressed go deeper, so the words only gain contrast). */
+.ui-dialog[role='alertdialog'] {
+  --ui-danger-fill: var(--ui-danger-solid);
+  --ui-danger-ink: var(--ui-on-danger);
+  --ui-danger-ring: transparent;
+  --ui-danger-ring-hover: transparent;
+  --ui-danger-hover: var(--ui-danger-solid-hover);
+  --ui-danger-press: var(--ui-danger-solid-press);
 }
 /* The dialog itself takes focus when it has no control to give it to; it is not a control, so it needs no ring. */
 .ui-dialog:focus {
@@ -1711,8 +2030,8 @@ hr.ui-divider {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  padding: 20px 20px 0;
+  gap: 16px;
+  padding: var(--ui-dialog-pad) var(--ui-dialog-pad) 0;
 }
 .ui-dialog-title {
   min-width: 0;
@@ -1732,8 +2051,10 @@ hr.ui-divider {
 }
 .ui-dialog-description {
   margin: 4px 0 0;
-  padding: 0 20px;
+  padding: 0 var(--ui-dialog-pad);
   color: var(--text2);
+  font-size: 14px;
+  line-height: 22px;
   white-space: pre-line;
 }
 /* The row under the heading (the tabs of Settings) does not scroll with the content; what is in it sets its own spacing. */
@@ -1741,22 +2062,22 @@ hr.ui-divider {
   flex: none;
 }
 /* The content scrolls in a lane of its own at the right edge (scrollbar-gutter), kept whether it scrolls or not, so nothing shifts when it
-   starts to; the padding beside the lane is 20px less the lane (--ui-dialog-end), so the content, the footer buttons and the icon of the close
-   button end at one line. An area that sets the body's padding uses --ui-dialog-end for its right side. */
+   starts to; the padding beside the lane is the dialog's room less the lane (--ui-dialog-end), so the content, the footer buttons and the
+   icon of the close button end at one line. An area that sets the body's padding uses --ui-dialog-end for its right side. */
 .ui-dialog-body {
-  --ui-dialog-end: 20px;
+  --ui-dialog-end: var(--ui-dialog-pad);
   flex: 1 1 auto;
   min-height: 0;
-  padding: 16px var(--ui-dialog-end) 16px 20px;
+  padding: 20px var(--ui-dialog-end) 20px var(--ui-dialog-pad);
   overflow: auto;
   scrollbar-gutter: stable;
 }
-/* With a mouse in Chrome, Edge and Safari the lane is the 8px scrollbar of index.css (a rounded thumb, no track, no arrow buttons), and the
-   padding beside it is 12px. A touch screen keeps its overlay scrollbar, which has no lane. */
+/* With a mouse in Chrome, Edge and Safari the lane is the 8px scrollbar of index.css (a pill thumb, no track, no arrow buttons), and the
+   padding beside it is 8px less. A touch screen keeps its overlay scrollbar, which has no lane. */
 @media (pointer: fine) {
   @supports selector(::-webkit-scrollbar) {
     .ui-dialog-body {
-      --ui-dialog-end: 12px;
+      --ui-dialog-end: calc(var(--ui-dialog-pad) - 8px);
     }
   }
 }
@@ -1769,25 +2090,24 @@ hr.ui-divider {
   outline-offset: -2px;
 }
 .ui-dialog-body:last-child:focus-visible {
-  border-radius: 0 0 calc(var(--radius-dialog) - 1px) calc(var(--radius-dialog) - 1px);
+  border-radius: 0 0 var(--radius-dialog) var(--radius-dialog);
 }
+/* The actions, right-aligned, on the panel itself: space above them, no band and no line. */
 .ui-dialog-foot {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
-  padding: 12px 20px 20px;
-  border-radius: 0 0 calc(var(--radius-dialog) - 1px) calc(var(--radius-dialog) - 1px);
+  padding: 4px var(--ui-dialog-pad) var(--ui-dialog-pad);
+  border-radius: 0 0 var(--radius-dialog) var(--radius-dialog);
 }
-/* A hairline between the content and its buttons, which stand on a quiet band, unless there is no content (a confirmation). */
-.ui-dialog-body:not(:empty) + .ui-dialog-foot {
-  padding-top: 16px;
-  padding-bottom: 16px;
-  border-top: 1px solid var(--border);
-  background: color-mix(in srgb, var(--text) 2.5%, transparent);
+/* A confirmation has no content: its buttons stand under the question, 24px away. */
+.ui-dialog-body:empty + .ui-dialog-foot {
+  padding-top: var(--ui-dialog-pad);
 }
 
-/* On a phone every dialog is a sheet from the bottom edge: it slides up in 300ms (emphasized enter), with a grab handle at its top. */
+/* On a phone every dialog is a sheet from the bottom edge: 20px top corners, a 36x4 grab handle, 20px of room; it slides up in 300ms
+   (emphasized enter). */
 @media (max-width: 640px) {
   /* The sheet stands on the on-screen keyboard, not under it (Dialog.tsx measures the visual viewport): the bottom padding is what the
      keyboard covers and the sheet is never taller than what is left (J5-22). Without a keyboard both are no change. */
@@ -1797,28 +2117,28 @@ hr.ui-divider {
   }
   .ui-dialog,
   .ui-dialog[data-size] {
+    --ui-dialog-pad: 20px;
     max-width: none;
     max-height: 92vh;
     max-height: min(92dvh, calc(var(--ui-vv-height, 100dvh) - 8px));
-    border-inline: 0;
-    border-bottom: 0;
     border-radius: var(--radius-dialog) var(--radius-dialog) 0 0;
   }
   .ui-dialog::before {
     content: '';
     position: absolute;
-    top: 6px;
+    top: 8px;
     left: 50%;
     width: 36px;
     height: 4px;
     margin-left: -18px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--text) 28%, transparent);
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, var(--text) 26%, transparent);
     pointer-events: none;
   }
   /* The handle and the heading are where a drag down closes the sheet (Dialog.tsx, useSwipeToDismiss): the browser must not take that
      touch for a scroll. */
   .ui-dialog-head {
+    padding-top: 28px;
     touch-action: none;
   }
   @starting-style {
@@ -1830,8 +2150,8 @@ hr.ui-divider {
     }
   }
   .ui-dialog-foot,
-  .ui-dialog-body:not(:empty) + .ui-dialog-foot {
-    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  .ui-dialog-body:empty + .ui-dialog-foot {
+    padding-bottom: calc(var(--ui-dialog-pad) + env(safe-area-inset-bottom));
     border-radius: 0;
   }
   .ui-dialog-foot > .ui-btn {
@@ -1841,7 +2161,7 @@ hr.ui-divider {
 
 /* ---------- Toast ---------- */
 
-/* The colours are the inverse of the theme and come from the component (ThemeTokens); the place is set there too. */
+/* The colours are the inverse of the theme and come from the component (ThemeTokens); the place is set there too. It floats (--float-shadow). */
 .ui-toast {
   position: fixed;
   z-index: var(--z-toast);
@@ -1849,9 +2169,9 @@ hr.ui-divider {
   align-items: center;
   gap: 12px;
   width: max-content;
-  padding: 6px 6px 6px 14px;
+  padding: 6px 6px 6px 16px;
   border-radius: var(--radius-card);
-  box-shadow: var(--pop-shadow);
+  box-shadow: var(--float-shadow);
   font-size: 14px;
   line-height: 20px;
 }
@@ -1861,7 +2181,7 @@ hr.ui-divider {
 }
 .ui-toast-action {
   height: 32px;
-  padding: 0 10px;
+  padding: 0 12px;
   border: 0;
   border-radius: var(--radius-control);
   background: transparent;
@@ -1880,21 +2200,20 @@ hr.ui-divider {
 
 /* ---------- SegmentedControl ---------- */
 
-/* Two to four choices in one recessed track; the chosen one is lifted onto a lighter fill (--ui-lifted), a thumb that slides to the next
-   choice in 200ms (SegmentedControl.tsx places it after the first paint; until then the chosen segment is lifted itself). A segment is
-   28px (sm) or 32px (md) high on a desktop and 44px on touch (the track grows with it to 50px), where its hit area also covers the padding
-   and the border of the track. */
+/* Two to four choices in one soft track (ink at 5%, 12px corners, 3px of room, no edge); the chosen one is lifted onto the surface (dark: the
+   button step), a thumb with 9px corners (12 - 3) and the control shadow that slides to the next choice in 240ms (SegmentedControl.tsx places
+   it after the first paint; until then the chosen segment is lifted itself). A segment is 26px (sm) or 30px (md) high on a desktop and 44px
+   on touch (the track grows with it to 50px), where its hit area also covers the room of the track. */
 .ui-seg {
   position: relative;
   display: inline-flex;
   flex-wrap: nowrap;
   gap: 2px;
   max-width: 100%;
-  padding: 2px;
-  background: var(--raised);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  box-shadow: var(--field-shadow);
+  padding: 3px;
+  background: var(--ui-track);
+  border: 0;
+  border-radius: 12px;
 }
 .ui-seg[data-wrap='true'] {
   flex-wrap: wrap;
@@ -1912,33 +2231,46 @@ hr.ui-divider {
 .ui-seg-pair > .ui-seg-item {
   flex: 1 1 0;
 }
+/* `stretch` (W5 lead review 10): the track spans its container and the segments share it EQUALLY, their labels centred (segments sized by
+   their labels read as uneven: centre gaps of 81/98/114px). SegmentedControl measures the widest segment's own content (its label with the
+   room of its bold form, and its 6px sides) into --ui-seg-cell, the floor of every segment: where one row holds four of that width they are
+   four equal shares; where it cannot, a `wrap` track breaks between its pairs (each pair's basis is two cells) and each pair is a row of two
+   equal halves. Before that measure (the server, the first frame) the segments share the room from equal bases with their labels as floors. */
+.ui-seg[data-stretch='true'] {
+  display: flex;
+  width: 100%;
+}
+.ui-seg[data-stretch='true'] .ui-seg-item {
+  flex: 1 1 0;
+  padding-inline: 6px;
+}
+.ui-seg[data-stretch='true'][data-cell] .ui-seg-item {
+  min-width: var(--ui-seg-cell);
+}
+.ui-seg[data-stretch='true'] > .ui-seg-pair {
+  flex: 1 1 0;
+  flex-wrap: nowrap;
+  min-width: max-content;
+}
+.ui-seg[data-stretch='true'][data-cell] > .ui-seg-pair {
+  flex-basis: calc(var(--ui-seg-cell) * 2 + 2px);
+}
 .ui-seg-thumb {
   position: absolute;
   top: 0;
   left: 0;
-  border-radius: var(--radius-control);
-  background: var(--ui-lifted);
+  border-radius: 9px;
+  background: var(--ui-seg-lift);
   box-shadow:
-    var(--control-shadow),
-    inset 0 0 0 1px var(--border-strong),
-    inset 0 1px 0 var(--inset-highlight);
+    0 0 0 1px var(--ui-thumb-ring),
+    var(--control-shadow);
   pointer-events: none;
   transform-origin: 0 0;
 }
-/* Dark: the thumb is a raised control one step above the track (the dark button's own gradient, a hairline edge and the inset top
-   highlight, as the landing's dark .pill), never an outline: an edge of --control would read as a focused field. */
-:root[data-theme='dark'] .ui-seg-thumb,
-:root[data-theme='dark'] .ui-seg:not([data-thumb]) .ui-seg-item:is([aria-checked='true'], [aria-pressed='true']) {
-  background: linear-gradient(180deg, var(--btn-top), var(--btn-bottom));
-  box-shadow:
-    var(--control-shadow),
-    inset 0 0 0 1px var(--border),
-    inset 0 1px 0 var(--inset-highlight);
-}
 .ui-seg-thumb[data-moving='true'] {
   transition:
-    translate var(--dur-base) var(--ease-standard),
-    scale var(--dur-base) var(--ease-standard);
+    translate var(--dur-glide) var(--ease-standard),
+    scale var(--dur-glide) var(--ease-standard);
 }
 .ui-seg-item {
   position: relative;
@@ -1946,10 +2278,10 @@ hr.ui-divider {
   flex: none;
   align-items: center;
   justify-content: center;
-  height: calc(var(--ui-h-sm) - 4px);
-  padding: 0 10px;
+  height: calc(var(--ui-h-sm) - 6px);
+  padding: 0 12px;
   border: 0;
-  border-radius: var(--radius-control);
+  border-radius: 9px;
   background: transparent;
   color: var(--text2);
   font: inherit;
@@ -1971,11 +2303,11 @@ hr.ui-divider {
   inset: -3px 0;
 }
 .ui-seg[data-size='md'] .ui-seg-item {
-  height: calc(var(--ui-h-md) - 4px);
-  padding: 0 12px;
+  height: calc(var(--ui-h-md) - 6px);
+  padding: 0 14px;
   font-size: 14px;
 }
-/* On touch (where --ui-h-* are 44px) a segment is the whole 44px target, not 4px less, and at least 44px wide: its label is never under 28px
+/* On touch (where --ui-h-* are 44px) a segment is the whole 44px target, not 6px less, and at least 44px wide: its label is never under 28px
    (28 + 8 + 8 = 44 for the small size; a short label such as "All" sits in the middle). The label sets that width, not a min-width of the
    segment, so a segment is still never narrower than its label (a min-width would replace that floor). The side padding is 8px there, so four
    English filters still make one row at 320px. */
@@ -1998,7 +2330,7 @@ hr.ui-divider {
   outline-offset: 0;
 }
 .ui-seg-item:active {
-  background: color-mix(in srgb, var(--text) 8%, transparent);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
   color: var(--text);
 }
 /* The label of a segment takes the width of its bold form (an invisible bold copy under it), so the chosen one turns semibold without
@@ -2018,12 +2350,11 @@ hr.ui-divider {
 .ui-seg-item[aria-checked='true'],
 .ui-seg-item[aria-pressed='true'] {
   font-weight: 600;
-  background: var(--ui-lifted);
+  background: var(--ui-seg-lift);
   color: var(--text);
   box-shadow:
-    var(--control-shadow),
-    inset 0 0 0 1px var(--border-strong),
-    inset 0 1px 0 var(--inset-highlight);
+    0 0 0 1px var(--ui-thumb-ring),
+    var(--control-shadow);
 }
 /* With the thumb in place, the thumb is the lifted fill and the chosen segment is only its words. */
 .ui-seg[data-thumb] .ui-seg-item[aria-checked='true'],
@@ -2094,33 +2425,36 @@ hr.ui-divider {
 
 /* ---------- Chip ---------- */
 
-/* A static chip is 20px: a label (its colours are data, set inline, with a dot of its hue) or a quiet outline (a snooze time). */
+/* A static chip is a 20px pill: a label (its colours are data, set inline: a soft tint and a small dot of its hue, then its name) or a quiet
+   neutral token (a snooze time). No visible edge (a transparent 1px one an area may colour for a state, as on a badge). */
 .ui-chip {
   display: inline-flex;
   flex: 0 1 auto;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   min-width: 0;
   max-width: 100%;
   height: 20px;
-  padding: 0 6px;
-  border-radius: var(--radius-control);
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
   font-size: 12px;
   line-height: 16px;
   font-weight: 500;
   white-space: nowrap;
 }
+.ui-chip[data-kind='label'] {
+  padding-left: 6px;
+}
 .ui-chip[data-kind='plain'] {
-  border: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--ui-fill);
   color: var(--text2);
-  font-weight: 400;
 }
 .ui-chip-dot {
   flex: none;
   width: 6px;
   height: 6px;
-  border-radius: 2px;
+  border-radius: var(--radius-pill);
 }
 .ui-chip-icon {
   display: inline-flex;
@@ -2132,17 +2466,15 @@ hr.ui-divider {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* A token the person can take back (a recipient): a 28px pill (the landing's `.chip`), the X inside it, and the whole text shown: it wraps
+/* A token the person can take back (a recipient): a 28px pill on the soft ink fill, the X inside it, and the whole text shown: it wraps
    instead of being cut, because a recipient the person cannot read in full is a recipient they cannot check. */
 .ui-chip[data-removable='true'] {
   gap: 2px;
   height: auto;
   min-height: 28px;
-  padding: 0 2px 0 10px;
-  border-color: var(--border);
+  padding: 0 1px 0 9px;
   border-radius: 14px;
-  background: var(--raised);
-  box-shadow: var(--control-shadow);
+  background: var(--ui-fill);
   color: var(--text);
   font-size: 13px;
   line-height: 20px;
@@ -2160,7 +2492,7 @@ hr.ui-divider {
   width: 24px;
   height: 24px;
   min-height: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 /* On touch the X is a 44px target and only 24px high in the chip: its margin takes the rest back, so the chip keeps its size. */
 @media (max-width: 900px), (pointer: coarse) {
@@ -2173,22 +2505,25 @@ hr.ui-divider {
 
 /* ---------- SecretBox, CodeBlock ---------- */
 
-/* A secret shown once: mono in a recessed well (raised fill, hairline, inset shade); a click selects a whole part. */
+/* A secret shown once: mono groups in a recessed well (no border, a whisper of a ring), airy; a click selects a whole part. The airmail edge
+   of a recovery key is the area's (signature.css .ui-airmail): the box clips it to its corners. */
 .ui-secret {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   min-width: 0;
-  padding: 16px;
-  background: var(--raised);
-  border: 1px solid var(--border);
+  padding: 20px;
+  overflow: hidden;
+  background: var(--ui-well);
+  border: 0;
   border-radius: var(--radius-card);
-  box-shadow: var(--field-shadow);
+  box-shadow: inset 0 0 0 1px var(--ui-well-ring);
 }
 .ui-secret-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 12px 16px;
+  gap: 14px 20px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -2209,7 +2544,7 @@ hr.ui-divider {
   font-family: var(--font-mono);
   font-size: 16px;
   line-height: 24px;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   overflow-wrap: anywhere;
   user-select: all;
 }
@@ -2238,33 +2573,37 @@ hr.ui-divider {
 }
 .ui-copy-tick {
   color: var(--success);
-  animation: ui-tick-pop var(--dur-gentle) var(--ease-standard);
+  animation: ui-tick-pop var(--dur-gentle) var(--ease-settle);
 }
 
-/* Commands: never wrapped, a long line scrolls inside the block. */
+/* Commands: in the same well as a secret, never wrapped, a long line scrolls inside the block. */
 .ui-code {
   margin: 0;
-  padding: 12px;
+  padding: 12px 14px;
   overflow-x: auto;
-  background: var(--raised);
-  border: 1px solid var(--border);
+  background: var(--ui-well);
+  border: 0;
   border-radius: var(--radius-control);
-  box-shadow: var(--field-shadow);
+  box-shadow: inset 0 0 0 1px var(--ui-well-ring);
   color: var(--text);
   font-family: var(--font-mono);
   font-size: 12px;
-  line-height: 18px;
+  line-height: 20px;
   white-space: pre;
+}
+/* A block that scrolls sideways is a tab stop (CodeBlock): its ring is drawn inside, where the block's own clip does not cut it. */
+.ui-code:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
 }
 
 /* ---------- Steps ---------- */
 
-/* An ordered list whose numbers stand in small rings level with the first line of each step (the landing's `.step-num`). The text takes
-   the size and colour of where it sits. */
+/* An ordered list on a numbered rail: each number in a 24px accent-soft circle (accent-text, 6.5:1), level with the first line of its step,
+   joined to the next one by a 2px rail of the hairline colour. The text takes the size and colour of where it sits. */
 .ui-steps {
   display: flex;
   flex-direction: column;
-  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -2273,10 +2612,13 @@ hr.ui-divider {
 .ui-step {
   position: relative;
   min-width: 0;
-  padding-left: 32px;
+  padding: 2px 0 24px 40px;
   line-height: 20px;
   overflow-wrap: anywhere;
   counter-increment: ui-step;
+}
+.ui-step:last-child {
+  padding-bottom: 0;
 }
 .ui-step::before {
   content: counter(ui-step);
@@ -2286,21 +2628,25 @@ hr.ui-divider {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  background: var(--surface);
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border-strong));
+  width: 24px;
+  height: 24px;
+  background: var(--accent-soft);
   border-radius: 50%;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 10%, transparent);
-  color: var(--text);
+  color: var(--accent-text);
   font-size: 12px;
   line-height: 1.25;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
-/* A step with a title and blocks under it (a command, a note) stands further from the next one. */
-.ui-step:has(> .ui-step-body) + .ui-step {
-  margin-top: 8px;
+.ui-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 28px;
+  bottom: 4px;
+  left: 11px;
+  width: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--border);
 }
 .ui-step-title {
   margin: 0;
@@ -2318,27 +2664,25 @@ hr.ui-divider {
 
 /* ---------- ListSkeleton, TableSkeleton ---------- */
 
+/* Placeholder rows: no lines between them, space as the real rows have. */
 .ui-skel-row {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 14px 16px;
-  border-bottom: 1px solid var(--border);
 }
 .ui-skel-table {
+  padding: 6px;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 0;
   border-radius: var(--radius-card);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--sheet-shadow);
 }
 .ui-skel-table .ui-skel-row {
   flex-direction: row;
   align-items: center;
   gap: 24px;
-  padding-inline: 12px;
-}
-.ui-skel-table .ui-skel-row:last-child {
-  border-bottom: 0;
+  padding-inline: 10px;
 }
 
 /* ---------- Motion ---------- */
@@ -2380,12 +2724,14 @@ hr.ui-divider {
 
 /* Reduced motion, the system setting (the in-app choice is the next block). --motion is 0 and the durations are capped at 150ms there
    (index.css), so a move or a scale is already nothing; this block also takes away what would still move or loop: every animated class of
-   the library is listed, and keeps at most a short fade (popups, dialogs, Edgar), or nothing (shimmer, tick, turns). */
+   the library is listed, and keeps at most a short fade (popups, dialogs, Edgar), or nothing (shimmer, tick, turns, slides). */
 @media (prefers-reduced-motion: reduce) {
   .ui-btn,
   .ui-select svg,
   .ui-switch-thumb,
   .ui-check-mark path,
+  .ui-check-input,
+  .ui-radio-input,
   .ui-ink,
   .ui-seg-thumb,
   .ui-disclosure-chevron,
@@ -2418,10 +2764,10 @@ hr.ui-divider {
     font-size: 13px;
   }
 }
-:root[data-motion='reduce'] :is(.ui-btn, .ui-select svg, .ui-switch-thumb, .ui-check-mark path, .ui-ink, .ui-seg-thumb) {
+:root[data-motion='reduce'] :is(.ui-btn, .ui-select svg, .ui-switch-thumb, .ui-check-mark path, .ui-check-input, .ui-radio-input) {
   transition: none;
 }
-:root[data-motion='reduce'] :is(.ui-disclosure-chevron, .ui-collapse, .ui-card) {
+:root[data-motion='reduce'] :is(.ui-ink, .ui-seg-thumb, .ui-disclosure-chevron, .ui-collapse, .ui-card) {
   transition: none;
 }
 :root[data-motion='reduce'] :is(.ui-skeleton, .ui-copy-tick) {

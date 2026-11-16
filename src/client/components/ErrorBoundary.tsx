@@ -4,7 +4,7 @@ import { signOutRequest } from '../lib/auth';
 import { useDocumentTitle } from '../lib/documentTitle';
 import { tr } from '../lib/i18n';
 import { pushForSignOut } from '../lib/push';
-import { Button, EmptyState } from '../ui';
+import { Button, EmptyState, FlightTrail } from '../ui';
 import './auth/auth.css';
 
 interface ErrorBoundaryProps {
@@ -54,10 +54,11 @@ const SignOutAgain: React.FC = () => {
 };
 
 /**
- * The crash screen: a status page like the ones before the mailbox (the landing's grid and glow round one centred card), with Edgar (112 px,
- * still: a moving mascot next to a failure reads as flippant), what happened, what to do, and Reload. App holds the theme state and just
- * crashed, so the stored choice is read directly, and the page's own colours are real values, not variables: this screen must not depend on
- * anything that may be what failed. Under Reload, a quiet second way out: sign out and in again.
+ * The crash screen: a status page like Setup not ready and the offline screen (card-less on the page ground): Edgar (112 px, still: a
+ * moving mascot next to a failure reads as flippant) with his flight trail behind him, what happened, what to do, and Reload. App holds the
+ * theme state and just crashed, so the stored choice is read directly, and the page's own colours are real values, not variables: this
+ * screen must not depend on anything that may be what failed (the trail is decoration and simply does not draw without the variables).
+ * Under Reload, a quiet second way out: sign out and in again.
  */
 const CrashScreen: React.FC = () => {
   const title = tr('common.something_wrong');
@@ -65,10 +66,11 @@ const CrashScreen: React.FC = () => {
   // No storage outside a browser (the server-side render of the tests): the light theme.
   const t = getTokens(typeof localStorage !== 'undefined' && localStorage.getItem('edging-mail-theme') === 'dark');
   return (
-    <div className="au-page" style={{ background: t.bg, color: t.text }}>
+    <div className="au-page" data-layout="status" style={{ background: t.bg, color: t.text }}>
       <main className="au-column">
-        <div className="au-stage">
-          <div className="au-card au-crash">
+        <div className="au-card au-crash" data-status="true">
+          <div className="au-scene">
+            <FlightTrail size="md" className="au-art-trail" />
             <EmptyState
               illustration
               titleAs="h1"
@@ -80,8 +82,8 @@ const CrashScreen: React.FC = () => {
                 </Button>
               }
             />
-            <SignOutAgain />
           </div>
+          <SignOutAgain />
         </div>
       </main>
     </div>

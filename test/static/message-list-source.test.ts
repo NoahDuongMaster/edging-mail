@@ -122,8 +122,9 @@ describe('SnoozeMenu: behaviour that the restyle keeps', () => {
     }
   });
 
-  it('the date-time field is the library field (a native picker inside ui/TextField), the buttons are library buttons', () => {
-    expect(menu).toMatch(/<TextField[\s\S]*?type="datetime-local"/);
+  it('the date-time field is the library picker (ui/DateTimePicker, no browser datetime field), the buttons are library buttons', () => {
+    expect(menu).toMatch(/<DateTimePicker[\s\S]*?label=\{tr\('snooze\.date_time_label'\)\}/);
+    expect(menu).not.toMatch(/datetime-local/);
     expect(menu).not.toMatch(/<input\b|<select\b/);
     expect(menu).toMatch(/<ToolButton|<IconButton/);
     expect(menu).toMatch(/<Button type="submit" variant="primary"/);
@@ -134,6 +135,7 @@ describe('SnoozeMenu: behaviour that the restyle keeps', () => {
 const inline = (name: string): number => (code(name).match(/\bstyle=\{/g) ?? []).length;
 
 describe('the look of the two files', () => {
+  const list = code('MessageList.tsx');
   it('names no colour in the code (the theme variables and the computed chip colours do), no native tooltip, no browser dialog', () => {
     for (const name of ['MessageList.tsx', 'SnoozeMenu.tsx']) {
       const source = code(name);
@@ -143,8 +145,9 @@ describe('the look of the two files', () => {
     }
   });
 
-  it('inline styles are only computed values: the distance of a swipe, the width of the archive label (the colours of a label chip are set by ui/Chip); and the toolbar button the reader styles', () => {
-    expect(inline('MessageList.tsx')).toBe(2);
+  it('inline styles are only computed values: the distance of a swipe, the width of the archive label, the hue of a quiet label dot (data: theme.ts getLabelChip); and the toolbar button the reader styles', () => {
+    expect(inline('MessageList.tsx')).toBe(3);
+    expect(code('MessageList.tsx')).toContain('style={{ background: getLabelChip(label, t).dot }}');
     expect(inline('SnoozeMenu.tsx')).toBe(1);
   });
 
@@ -166,8 +169,8 @@ describe('the look of the two files', () => {
     const css = read('messagelist.css');
     expect(css).toMatch(/\.ml-star \{[^}]*top: calc\(var\(--ml-pad-y\) \+ 24px\);[^}]*height: 24px;/);
     expect(css).toMatch(/@media \(max-width: 900px\), \(pointer: coarse\) \{\s*\.ml-star \{\s*bottom: 0;\s*height: auto;/);
-    // The quick actions (28 px) end where the star's box starts: top at pad - 4, so their bottom is pad + 24.
-    expect(css).toMatch(/\.ml-quick \{[^}]*top: calc\(var\(--ml-pad-y\) - 4px\);/);
+    // The quick actions (28 px in a pill with 2 px of padding) end where the star's box starts: top at pad - 8, so their bottom is pad + 24.
+    expect(css).toMatch(/\.ml-quick \{[^}]*top: calc\(var\(--ml-pad-y\) - 8px\);[^}]*padding: 2px;/);
     expect(css).toMatch(
       /\.ml-quick \.ui-btn\[data-size\],\s*\.ml-quick \.ml-snooze \.ui-btn\[data-size\] \{\s*width: 28px;\s*min-width: 28px;\s*height: 28px;/
     );
@@ -180,32 +183,38 @@ describe('the look of the two files', () => {
     const css = read('messagelist.css');
     expect(css).toMatch(/\.ml-filters \{[^}]*padding: 8px var\(--ml-edge\);/);
     expect(css).toMatch(/\.ml-root\[data-compact='true'\] \.ml-filters \{[^}]*padding: 8px var\(--ml-edge\) 4px;/);
-    expect(css).toMatch(/\.ml-head \{[^}]*padding: 8px 12px 8px var\(--ml-edge\);/);
+    expect(css).toMatch(/\.ml-head \{[^}]*padding: 12px 12px 12px var\(--ml-edge\);/);
+    expect(css).toMatch(/\.ml-search \{[^}]*padding: 0 var\(--ml-edge\) 4px;/);
     // A row stands --ml-inset in and keeps the rest of the edge as the dot's column, so its avatar starts on the edge too.
     expect(css).toMatch(/--ml-gutter: calc\(var\(--ml-edge\) - var\(--ml-inset\)\);/);
     expect(css).toMatch(/\.ml-row \{[^}]*padding: var\(--ml-pad-y\) var\(--ml-end\) var\(--ml-pad-y\) var\(--ml-gutter\);/);
   });
 
-  it("closes the head with a hairline in every folder, on the line of the reader toolbar's hairline beside it (both 8 + a small button + 8)", () => {
+  it('v3: the head is a 56 px band with no hairline (12 + the 32 px title + 12), so the title stands on the middle line of the reader toolbar beside it', () => {
     const css = read('messagelist.css');
-    expect(css).toMatch(/\.ml-head \{[^}]*padding: 8px 12px 8px var\(--ml-edge\);[^}]*border-bottom: 1px solid var\(--border\);/);
+    expect(css).toMatch(/\.ml-head \{[^}]*min-height: 56px;[^}]*padding: 12px 12px 12px var\(--ml-edge\);/);
+    expect(css.slice(css.indexOf('.ml-head {'), css.indexOf('}', css.indexOf('.ml-head {')))).not.toMatch(/border/);
+    expect(css).toMatch(/\.ml-title \{[^}]*font-size: 24px;[^}]*line-height: 32px;[^}]*letter-spacing: -0\.02em;/);
     expect(css).not.toContain("data-last='true'");
-    expect(read('reader.css')).toMatch(/\.rd-bar \{[^}]*padding: 8px 12px;[^}]*border-bottom: 1px solid var\(--border\);/);
   });
 
   it('draws the loading rows as high as the rows that replace them, under the room of the first day heading', () => {
     const css = read('messagelist.css');
-    // 32 px of heading (with its hairline) and the list's own 4 px.
-    expect(css).toMatch(/\.ml-skel \{\s*padding-top: 36px;/);
-    expect(css).toMatch(/\.ml-group-title \{[^}]*padding: 10px var\(--ml-edge\) 6px;[^}]*line-height: 16px;/);
-    expect(css).toMatch(
-      /\.ml-group-title::after \{[^}]*right: var\(--ml-edge\);[^}]*left: var\(--ml-edge\);[^}]*height: 1px;[^}]*background: var\(--border\);/
-    );
+    // 36 px of heading (12 + its 20 px line + 4; no hairline: the rows fade in under it while it sticks) and the list's own 4 px.
+    expect(css).toMatch(/\.ml-skel \{\s*padding-top: 40px;/);
+    expect(css).toMatch(/--ml-head-h: 36px;/);
+    expect(css).toMatch(/\.ml-group-title \{[^}]*padding: 12px var\(--ml-edge\) 4px;[^}]*font-size: 13px;\s*line-height: 20px;/);
+    expect(css).not.toMatch(/\.ml-group-title[^{]*\{[^}]*(border-bottom|background: var\(--border\))/);
+    // The air between two days is outside the heading, so a stuck heading keeps --ml-head-h.
+    expect(css).not.toMatch(/\.ml-group \+ \.ml-group \.ml-group-title \{/);
     expect(css).toMatch(
       /\.ml-skel \.ui-skel-row \{\s*gap: 6px;\s*padding: calc\(var\(--ml-pad-y\) \+ 3px\) 20px calc\(var\(--ml-pad-y\) \+ 5px\) var\(--ml-text\);/
     );
-    // The avatar of a loading row is a circle on the content edge; they appear only after 300 ms of waiting (M13).
-    expect(css).toMatch(/\.ml-skel \.ui-skel-row::before \{[^}]*left: var\(--ml-edge\);[^}]*width: 32px;[^}]*height: 32px;/);
+    // The avatar of a loading row is a square block (the stamp it stands for, W6 QA) on the content edge; they appear only after 300 ms
+    // of waiting (M13).
+    expect(css).toMatch(
+      /\.ml-skel \.ui-skel-row::before \{[^}]*left: var\(--ml-edge\);[^}]*width: var\(--ml-avatar\);[^}]*height: var\(--ml-avatar\);[^}]*border-radius: 6px;/
+    );
     expect(css).toMatch(/\.ml-skel \{[^}]*animation: nm-fade var\(--dur-quick\) var\(--ease-enter\) 300ms both;/);
   });
 
@@ -215,6 +224,93 @@ describe('the look of the two files', () => {
     // The bar is a pill of its own inset from the rounded corners (J3-03), never an inset shadow or a border that bends with them.
     expect(css).toMatch(/\.ml-row\[aria-current='true'\]::before \{[^}]*width: 3px;[^}]*background: var\(--indicator\);/);
     expect(css).toMatch(/\.ml-row\[data-unread='true'\] \.ml-dot \{\s*opacity: 1;/);
-    expect(css).toMatch(/\.ml-row\[data-unread='true'\] \.ml-sender \{\s*font-weight: 600;/);
+    expect(css).toMatch(/\.ml-row\[data-unread='true'\] \.ml-sender \{\s*font-weight: 650;/);
+    // v3 H3: one capsule glides from the open row to the next (a desktop, not while rows are ticked); it carries the tint and the bar then.
+    expect(list).toContain(`useGlide(bodyRef, ".ml-cell[data-selected='true']", { key: selectedId, enabled: !compact && !selecting })`);
+    expect(list).toMatch(/className="ui-glide-host ml-body"/);
+    expect(css).toMatch(/\.ml-glide \{[^}]*border-radius: 12px;[^}]*background: var\(--accent-soft\);/);
+    expect(css).toMatch(/\.ml-glide::before \{[^}]*width: 3px;[^}]*background: var\(--indicator\);/);
+  });
+
+  it('W5 lead review 2: the unread dot stands in the right column, under the time on the subject line; the gutter keeps only the pill', () => {
+    const css = read('messagelist.css');
+    // Right-aligned on the time's edge (--ml-end), on the middle of line 2 (the row's padding + the sender's 20px line + 10 - 4).
+    expect(css).toMatch(/\.ml-dot \{[^}]*position: absolute;\s*top: calc\(var\(--ml-pad-y\) \+ 26px\);\s*right: var\(--ml-end\);/);
+    expect(css).not.toMatch(/\.ml-dot \{[^}]*left: calc\(var\(--ml-gutter\)/);
+    // Its room: the subject (and the star of an unread row) stop before it; it hides while the quick actions take the time's place.
+    expect(css).toMatch(/\.ml-row\[data-unread='true'\] \.ml-line2 \{\s*padding-right: var\(--ml-dot-room\);/);
+    expect(css).toMatch(
+      /:root:not\(\[data-density='compact'\]\) :is\(\.ml-cell, \.ml-swipe-pane\):has\(> \.ml-row\[data-unread='true'\]\) > \.ml-star \{\s*right: calc\(var\(--ml-end\) - \(var\(--ml-star\) - 16px\) \/ 2 \+ var\(--ml-dot-room\)\);/
+    );
+    expect(css).toMatch(/\.ml-root:not\(\[data-selecting='true'\]\) \.ml-cell:hover \.ml-row \.ml-dot \{\s*opacity: 0;/);
+    expect(css).not.toContain(".ml-row[aria-current='true'] .ml-dot");
+    // Compact density: in the line, right of the time.
+    expect(css).toMatch(/:root\[data-density='compact'\] \.ml-dot \{\s*position: relative;[^}]*order: 1;\s*margin-left: 8px;/);
+    // Unread is still two cues and words: the dot, the weight, and the row's spoken state.
+    expect(list).toMatch(/<span aria-hidden="true" className="ml-dot" \/>/);
+    expect(list).toContain("tr('list.unread_sr')");
+  });
+
+  it('W5 lead review 1: the open row pill is as tall as the text block, 4px in from the capsule', () => {
+    const css = read('messagelist.css');
+    expect(css).toMatch(/--ml-pill-trim: 32px;/);
+    expect(css).toMatch(/:root\[data-density='compact'\] \.ml-root \{[^}]*--ml-pill-trim: 16px;/);
+    for (const rule of [/\.ml-glide::before \{([^}]*)\}/, /\.ml-row\[aria-current='true'\]::before \{([^}]*)\}/]) {
+      expect(rule.exec(css)?.[1]).toMatch(
+        /top: calc\(var\(--ml-pill-trim\) \/ 2\);\s*bottom: calc\(var\(--ml-pill-trim\) \/ 2\);\s*left: 4px;\s*width: 3px;/
+      );
+    }
+    expect(css).not.toMatch(/height: 16px;\s*margin-top: -8px;/);
+  });
+
+  it('W5 lead review 10: the desktop filters are equal segments (SegmentedControl stretch), wrapping by pairs into two equal rows', () => {
+    expect(list).toMatch(/<SegmentedControl label=\{tr\('list\.filter_label'\)\} wrap stretch /);
+    const ui = read(path.join('..', 'ui', 'ui.css'));
+    expect(ui).toMatch(/\.ui-seg\[data-stretch='true'\] \.ui-seg-item \{\s*flex: 1 1 0;/);
+    expect(ui).toMatch(/\.ui-seg\[data-stretch='true'\]\[data-cell\] \.ui-seg-item \{\s*min-width: var\(--ui-seg-cell\);/);
+    expect(ui).toMatch(
+      /\.ui-seg\[data-stretch='true'\]\[data-cell\] > \.ui-seg-pair \{\s*flex-basis: calc\(var\(--ui-seg-cell\) \* 2 \+ 2px\);/
+    );
+    // The floor is measured in the browser from the widest label (its bold copy included) and the segment's padding.
+    const seg = read(path.join('..', 'ui', 'SegmentedControl.tsx'));
+    expect(seg).toMatch(/function widestSegment\(track: HTMLElement\): number \| null/);
+    expect(seg).toMatch(/style: cell === null \? undefined : \(\{ '--ui-seg-cell': `\$\{cell\}px` \} as React\.CSSProperties\)/);
+  });
+
+  it('v3 lead review 6/10: the list fades at its foot and under a stuck day heading (alpha masks), and sets no scrollbar for touch', () => {
+    const css = read('messagelist.css');
+    expect(css).toMatch(/\.ml-scroll \{[^}]*mask-image: linear-gradient\(to bottom, var\(--ml-fade-foot\)\);/);
+    expect(css).toMatch(
+      /--ml-fade-foot:\s*var\(--text\) calc\(100% - var\(--ml-fade-end\)\),[^;]*transparent calc\(100% - var\(--ml-fade-gone, 0px\)\);/
+    );
+    // W5 lead review 3: 48px (it was 24), clear for its last 8px; the body keeps that much room under its last row.
+    expect(css).toMatch(/--ml-fade-end: 48px;/);
+    expect(css).toMatch(/--ml-fade-gone: 8px;/);
+    expect(css).toMatch(/\.ml-root:not\(\[data-compact='true'\]\) \.ml-body \{\s*padding-bottom: var\(--ml-fade-end\);/);
+    // The phone fades only the band behind the floating Compose button, never to clear (W5 lead review 12).
+    expect(css).toMatch(
+      /\.ml-root\[data-compact='true'\] \.ml-scroll \{\s*--ml-fade-foot:[^;]*var\(--ml-fab-mid, 40%\)[^;]*var\(--ml-fab-floor, 0%\), transparent\) 100%;/
+    );
+    expect(css).toMatch(
+      /\.ml-scroll\[data-stuck\] \{\s*mask-image: linear-gradient\(\s*to bottom,\s*var\(--text\) var\(--ml-head-h\),\s*transparent var\(--ml-head-h\),/
+    );
+    expect(list).toMatch(/scroller\.toggleAttribute\(\s*'data-stuck',/);
+    // The phone fades over the floating Compose button's zone (mailbox.css), never shows a forced scrollbar or keeps a lane for one.
+    expect(css).toMatch(/--ml-fade-end: var\(--ml-fab-fade, 24px\);/);
+    expect(css).not.toMatch(/@media \(pointer: coarse\) \{\s*\.ml-scroll \{[^}]*scrollbar/);
+    expect(css).toMatch(/@media \(hover: hover\) and \(pointer: fine\) \{\s*\.ml-scroll \{\s*scrollbar-gutter: stable;/);
+  });
+
+  it('v3 4.1 (lead review 4): no lines between rows, the star only when starred or pointed at, one quiet label (dot + name, no fill) and a quiet +N', () => {
+    const css = read('messagelist.css');
+    expect(css.replaceAll(/\/\*[\s\S]*?\*\//g, '')).not.toMatch(/\.ml-(item|row|cell|list)[^{]*\{[^}]*border-(top|bottom): 1px/);
+    expect(css).toMatch(/@media \(hover: hover\) \{\s*\.ml-cell \.ml-star\[aria-pressed='false'\] \{\s*opacity: 0;/);
+    expect(css).toMatch(/\.ml-label \{[^}]*color: var\(--text2\);[^}]*font-size: 12px;\s*line-height: 16px;\s*font-weight: 500;/);
+    expect(css.slice(css.indexOf('.ml-label {'), css.indexOf('}', css.indexOf('.ml-label {')))).not.toMatch(/background/);
+    expect(css).toMatch(/\.ml-label-dot \{[^}]*width: 6px;\s*height: 6px;/);
+    expect(list).not.toMatch(/<Chip key=\{label\} colors=/);
+    expect(list).toContain('const ROW_LABELS_MAX = 1;');
+    expect(list).toMatch(/labels\.slice\(0, ROW_LABELS_MAX\)/);
+    expect(list).toMatch(/<VisuallyHidden>\{labels\.slice\(ROW_LABELS_MAX\)\.join\(', '\)\}<\/VisuallyHidden>/);
   });
 });

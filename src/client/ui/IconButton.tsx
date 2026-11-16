@@ -13,8 +13,9 @@ export interface IconButtonProps extends Omit<React.ComponentProps<'button'>, 't
   pressed?: boolean;
   type?: 'button' | 'submit';
   /**
-   * A single-key shortcut that does the same ("E"): the tooltip says "Archive (E)" and the button carries `aria-keyshortcuts`; the
-   * accessible name stays the label. Pass it only while single-key shortcuts are on (the `shortcuts` device preference).
+   * A single-key shortcut that does the same ("E"): the tooltip shows it in a key chip after the label ("Archive [E]") and the button
+   * carries `aria-keyshortcuts`; the accessible name stays the label. Pass it only while single-key shortcuts are on (the `shortcuts`
+   * device preference).
    */
   shortcut?: string;
 }
@@ -103,12 +104,7 @@ export function IconButton({
       >
         {children}
       </button>
-      <Tooltip
-        open={tip.open ? !expanded : false}
-        text={shortcut === undefined ? label : `${label} (${shortcut})`}
-        anchorRef={buttonRef}
-        {...tip.bubble}
-      />
+      <Tooltip open={tip.open ? !expanded : false} text={label} shortcut={shortcut} anchorRef={buttonRef} {...tip.bubble} />
     </>
   );
 }

@@ -12,7 +12,7 @@
   border-radius: var(--radius-control);
   background: var(--type-bg);
   color: var(--type-fg);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 16px;
   font-weight: 600;
   letter-spacing: 0;
@@ -24,7 +24,7 @@
 }
 /* Four letters (XLSX, DOCX) are set a step smaller so they keep the margin three have. */
 .ft-tile[data-long] {
-  font-size: 9px;
+  font-size: 10px;
 }
 :root[data-theme='dark'] .ft-tile {
   background: color-mix(in oklab, var(--type-fg) 24%, var(--raised));
