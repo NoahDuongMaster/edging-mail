@@ -1,5 +1,4 @@
 import React from 'react';
-import { CircleCheck } from 'lucide-react';
 import type { ThemeTokens } from '../../theme';
 import { deriveAccountAuth } from '../../lib/credentials';
 import { TEMP_PASSWORD_HOURS, type AdminUser, type Role } from '../../lib/admin/types';
@@ -8,9 +7,10 @@ import { usePatchUser, useReissueTempPassword, useResetTwoFactor, type TwoFactor
 import { formatWhen } from '../../lib/activity';
 import { useT } from '../../lib/i18n';
 import { generateTempPassword } from '../../lib/password/random';
-import { Badge, Button, TextField } from '../../ui';
+import { Button } from '../../ui';
 import { AliasEditor } from './AliasEditor';
-import { ErrorText, ModalFrame } from './adminUi';
+import { NameForm, PersonSummary, personName } from './PersonHeader';
+import { ErrorText, ModalFrame, MoreText } from './adminUi';
 import { useAdminAction } from './useAdminAction';
 
 interface UserDialogProps {
@@ -35,15 +35,22 @@ type Confirming = 'disable' | 'reset2fa' | 'promote' | 'demote' | 'reissue' | nu
  */
 const BUTTON_PLACE: Record<Exclude<Confirming, null>, number> = { promote: 0, demote: 0, disable: 1, reset2fa: 2, reissue: 3 };
 
+/** One action of the account: the line that says what follows from it (`id`, which describes the button), then the button. */
+const ActionLine: React.FC<{ id: string; text: string; children: React.ReactNode }> = ({ id, text, children }) => (
+  <div className="ad-action">
+    <p id={id} className="ad-muted">
+      {text}
+    </p>
+    {children}
+  </div>
+);
+
 export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose, onDelete, onReissued, focusDelete = false }) => {
   const tr = useT();
   const patch = usePatchUser();
   const reset = useResetTwoFactor();
   const reissue = useReissueTempPassword();
   const action = useAdminAction();
-  const [name, setName] = React.useState(user.display_name);
-  // "Saved" under the name once the new one is stored, as in Settings; typing again takes it away.
-  const [nameSaved, setNameSaved] = React.useState(false);
   const [confirming, setConfirming] = React.useState<Confirming>(null);
   const actionsRef = React.useRef<HTMLElement | null>(null);
   const deleteRef = React.useRef<HTMLButtonElement | null>(null);
@@ -78,7 +85,6 @@ export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose
   // When an admin's two-factor reset was scheduled for (it is not done yet): said under the buttons, not as a success.
   const [scheduledDue, setScheduledDue] = React.useState<number | null>(null);
   const isSelf = user.id === selfId;
-  const nameChanged = name.trim() !== user.display_name;
   // A new temporary password is possible only while the person has never signed in with their own password and has no keys.
   const notSignedInYet = user.never_signed_in;
 
@@ -86,16 +92,6 @@ export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose
     const done = await action.run(change);
     if (done) {
       setConfirming(null);
-    }
-  };
-
-  const saveName = (event: React.SyntheticEvent) => {
-    event.preventDefault();
-    if (nameChanged && !action.busy) {
-      void apply(async () => {
-        await patch.mutateAsync({ id: user.id, patch: { display_name: name.trim() } });
-        setNameSaved(true);
-      });
     }
   };
 
@@ -114,10 +110,10 @@ export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose
     }
   };
 
-  /** `paragraphs`: each one is shown as its own paragraph; the admin claim is the word-for-word text of crypto-design.md section 15.1. */
+  /** `paragraphs`: each one is shown as its own paragraph, under `title` when there is one; `details`: a long text behind a disclosure. */
   const confirmCopy: Record<
     Exclude<Confirming, null>,
-    { paragraphs: string[]; action: string; run: () => Promise<void>; danger: boolean }
+    { title?: string; paragraphs: string[]; details?: string; action: string; run: () => Promise<void>; danger: boolean }
   > = {
     disable: {
       paragraphs: [tr('users.confirm_disable')],
@@ -143,7 +139,10 @@ export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose
       danger: true
     },
     promote: {
-      paragraphs: [adminClaim().join(' '), tr('users.confirm_promote_note')],
+      // J4-36: the two things that follow for this person first; the admin claim (crypto-design.md 15.1, word for word) on request.
+      title: tr('users.confirm_promote_title', { name: personName(user) }),
+      paragraphs: [tr('users.make_admin_desc'), tr('users.confirm_promote_note')],
+      details: adminClaim().join(' '),
       action: tr('users.make_admin'),
       run: () => setRole('admin'),
       danger: false
@@ -175,40 +174,9 @@ export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose
   const pending = confirming === null ? null : confirmCopy[confirming];
 
   return (
-    <ModalFrame t={t} title={user.email} onClose={onClose} locked={action.busy} maxWidth={560}>
-      <div className="ad-badges">
-        <Badge tone={user.role === 'admin' ? 'accent' : 'neutral'}>{user.role === 'admin' ? tr('term.admin') : tr('term.member')}</Badge>
-        <Badge tone={user.status === 'active' ? 'success' : 'warning'}>
-          {user.status === 'active' ? tr('users.status_active') : tr('users.status_disabled')}
-        </Badge>
-        {isSelf ? <span className="ad-muted">{tr('users.this_is_you')}</span> : null}
-        {notSignedInYet ? <Badge tone="warning">{tr('users.not_signed_in_yet')}</Badge> : null}
-      </div>
-
-      <form onSubmit={saveName} className="ad-dsec">
-        <div className="ad-inline">
-          <TextField
-            id="user-name"
-            label={tr('term.display_name')}
-            maxLength={100}
-            autoComplete="off"
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              setNameSaved(false);
-            }}
-          />
-          <Button type="submit" disabled={!nameChanged || action.busy}>
-            {tr('users.save_name')}
-          </Button>
-        </div>
-        {nameSaved ? (
-          <p role="status" className="ad-feedback">
-            <CircleCheck size={16} aria-hidden="true" />
-            {tr('settings.saved')}
-          </p>
-        ) : null}
-      </form>
+    <ModalFrame t={t} title={personName(user)} onClose={onClose} locked={action.busy} maxWidth={600}>
+      <PersonSummary user={user} isSelf={isSelf} />
+      <NameForm user={user} busy={action.busy} run={apply} />
 
       <AliasEditor t={t} user={user} />
 
@@ -217,55 +185,78 @@ export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose
           {tr('term.account')}
         </h3>
         {pending === null ? (
-          <div className="ad-row">
-            {user.role === 'member' ? (
-              <Button disabled={action.busy} onClick={() => setConfirming('promote')}>
-                {tr('users.make_admin')}
-              </Button>
-            ) : (
-              <Button disabled={action.busy} onClick={() => setConfirming('demote')}>
-                {tr('users.make_member')}
-              </Button>
-            )}
+          <div className="ad-actions-row">
+            {/* Each action with one line on what follows from it (the button is described by it); Delete account last, apart. */}
+            <ActionLine id="user-role-desc" text={tr(user.role === 'member' ? 'users.make_admin_desc' : 'users.make_member_desc')}>
+              {user.role === 'member' ? (
+                <Button aria-describedby="user-role-desc" disabled={action.busy} onClick={() => setConfirming('promote')}>
+                  {tr('users.make_admin')}
+                </Button>
+              ) : (
+                <Button aria-describedby="user-role-desc" disabled={action.busy} onClick={() => setConfirming('demote')}>
+                  {tr('users.make_member')}
+                </Button>
+              )}
+            </ActionLine>
             {isSelf ? null : (
               <>
-                {user.status === 'active' ? (
-                  <Button disabled={action.busy} onClick={() => setConfirming('disable')}>
-                    {tr('admin.disable')}
-                  </Button>
-                ) : (
+                <ActionLine id="user-status-desc" text={tr(user.status === 'active' ? 'users.disable_desc' : 'users.enable_desc')}>
+                  {user.status === 'active' ? (
+                    <Button aria-describedby="user-status-desc" disabled={action.busy} onClick={() => setConfirming('disable')}>
+                      {tr('admin.disable')}
+                    </Button>
+                  ) : (
+                    <Button
+                      aria-describedby="user-status-desc"
+                      disabled={action.busy}
+                      loading={action.busy}
+                      onClick={() => {
+                        void apply(() => patch.mutateAsync({ id: user.id, patch: { status: 'active' } }));
+                      }}
+                    >
+                      {tr('admin.enable')}
+                    </Button>
+                  )}
+                </ActionLine>
+                {/* Kept in place (and in BUTTON_PLACE) but off when there is no two-factor sign-in to reset. */}
+                <ActionLine id="user-2fa-desc" text={tr(user.two_factor ? 'users.reset_two_factor_desc' : 'users.reset_two_factor_none')}>
                   <Button
-                    disabled={action.busy}
-                    loading={action.busy}
-                    onClick={() => {
-                      void apply(() => patch.mutateAsync({ id: user.id, patch: { status: 'active' } }));
-                    }}
+                    aria-describedby="user-2fa-desc"
+                    disabled={action.busy || !user.two_factor}
+                    onClick={() => setConfirming('reset2fa')}
                   >
-                    {tr('admin.enable')}
+                    {tr('users.reset_two_factor')}
                   </Button>
-                )}
-                <Button disabled={action.busy} onClick={() => setConfirming('reset2fa')}>
-                  {tr('users.reset_two_factor')}
-                </Button>
+                </ActionLine>
                 {notSignedInYet ? (
-                  <Button disabled={action.busy} onClick={() => setConfirming('reissue')}>
-                    {tr('users.reissue_temp_password')}
-                  </Button>
+                  <ActionLine id="user-reissue-desc" text={tr('users.reissue_desc')}>
+                    <Button aria-describedby="user-reissue-desc" disabled={action.busy} onClick={() => setConfirming('reissue')}>
+                      {tr('users.reissue_temp_password')}
+                    </Button>
+                  </ActionLine>
                 ) : null}
+              </>
+            )}
+            {/* Delete account stands apart, under a hairline, with what it does: it cannot be undone. */}
+            {isSelf ? null : (
+              <div className="ad-action ad-danger">
+                <p className="ad-muted">{tr('users.delete_hint')}</p>
                 <Button ref={deleteRef} variant="danger" disabled={action.busy} onClick={onDelete}>
                   {tr('admin.delete_account')}
                 </Button>
-              </>
+              </div>
             )}
           </div>
         ) : (
           // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Escape is a shortcut for the Cancel button inside this group; the buttons are the controls
           <div role="group" aria-label={tr('common.confirm')} onKeyDown={confirmKey} className="ad-confirm">
+            {pending.title === undefined ? null : <p className="ad-confirm-title">{pending.title}</p>}
             {pending.paragraphs.map((paragraph) => (
               <p key={paragraph} className="ad-text">
                 {paragraph}
               </p>
             ))}
+            {pending.details === undefined ? null : <MoreText label={tr('users.admin_claim_more')} text={pending.details} />}
             {/* Cancel, then the action, right-aligned, as in every other confirmation; Cancel is the one that takes the focus. */}
             <div className="ad-confirm-foot">
               <Button data-autofocus disabled={action.busy} onClick={() => setConfirming(null)}>
@@ -284,7 +275,8 @@ export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose
             </div>
           </div>
         )}
-        {scheduledDue === null ? null : (
+        {/* Said once: when the list already carries the scheduled reset, the summary at the top says it. */}
+        {scheduledDue === null || user.two_factor_reset_due_at !== null ? null : (
           <p role="status" className="ad-muted">
             {tr('users.reset_scheduled', { due: formatWhen(scheduledDue) })}
           </p>

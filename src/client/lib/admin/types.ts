@@ -1,5 +1,6 @@
+import { isLocale } from '../../../shared/i18n';
 import { ApiError, UnauthorizedError } from '../api';
-import { fmt, tr } from '../i18n';
+import { fmt, LANGUAGE_NAMES, tr } from '../i18n';
 
 // Shapes of the admin API (design.md section 5, with the v4 changes of crypto-design.md section 15). Times are epoch milliseconds.
 
@@ -14,6 +15,10 @@ export interface AdminUser {
   status: UserStatus;
   last_login_at: number | null;
   has_keys: boolean;
+  /** Two-factor sign-in (an authenticator app) is set up on the account. */
+  two_factor: boolean;
+  /** When a scheduled reset of an admin's two-factor sign-in takes effect (null when none is pending). */
+  two_factor_reset_due_at: number | null;
   /** The person has not chosen their own password yet and has no keys: the account is still on the temporary password an admin made. */
   never_signed_in: boolean;
   /** When the temporary password stops working (null once the person chose their own). */
@@ -116,16 +121,52 @@ function detailLabel(key: string): string {
     case 'second_factor': {
       return tr('audit.detail_second_factor');
     }
+    case 'key_id': {
+      return tr('audit.detail_key');
+    }
+    case 'deleted': {
+      return tr('audit.detail_deleted');
+    }
     default: {
       return key.replaceAll('_', ' ');
     }
   }
 }
 
-/** The value of a detail field in the UI language: the words the server writes for a role, a second factor or a reason, and a time. */
+/** Why a sign-in failed or a reset was cancelled, in words (the server writes a code). */
+function reasonText(value: string): string | undefined {
+  switch (value) {
+    case 'wrong_credentials': {
+      return tr('audit.reason_wrong_password');
+    }
+    case 'second_factor': {
+      return tr('audit.reason_second_factor');
+    }
+    case 'disabled': {
+      return tr('audit.reason_disabled');
+    }
+    case 'requester_not_active_admin': {
+      return tr('audit.reason_not_admin');
+    }
+    default: {
+      return undefined;
+    }
+  }
+}
+
+/**
+ * The value of a detail field in the UI language: a role, a language (its own name, as the language list writes it), a second factor, a
+ * reason, on or off (a rule that was turned on or off is written as true/false), and a time. Anything else is shown as it is.
+ */
 function detailValue(key: string, value: string): string {
   if (key === 'due' && /^\d{10,}$/.test(value)) {
     return fmt.dateTime(Number(value));
+  }
+  if (key === 'reason') {
+    return reasonText(value) ?? value;
+  }
+  if (isLocale(value)) {
+    return LANGUAGE_NAMES[value];
   }
   switch (value) {
     case 'member': {
@@ -146,15 +187,34 @@ function detailValue(key: string, value: string): string {
     case 'second_factor': {
       return tr('term.two_factor');
     }
+    case 'true':
+    case 'on': {
+      return tr('audit.value_on');
+    }
+    case 'false':
+    case 'off': {
+      return tr('audit.value_off');
+    }
     default: {
       return value;
     }
   }
 }
 
-/** The one line an audit row shows for its detail: `name: value` pairs side by side (empty when the entry has no detail). */
+/**
+ * The one line an audit row shows for its detail (empty when the entry has no detail): a change as "Member → Admin", then the other fields
+ * as `name: value` pairs side by side, every value in words.
+ */
 export function detailLine(detail: unknown): string {
-  return detailPairs(detail)
-    .map(([key, value]) => (key === '' ? value : tr('audit.detail_pair', { label: detailLabel(key), value: detailValue(key, value) })))
-    .join(' · ');
+  const pairs = detailPairs(detail);
+  const from = pairs.find(([key]) => key === 'from');
+  const to = pairs.find(([key]) => key === 'to');
+  const change =
+    from === undefined || to === undefined
+      ? []
+      : [tr('audit.detail_change', { from: detailValue('from', from[1]), to: detailValue('to', to[1]) })];
+  const rest = pairs
+    .filter(([key]) => change.length === 0 || (key !== 'from' && key !== 'to'))
+    .map(([key, value]) => (key === '' ? value : tr('audit.detail_pair', { label: detailLabel(key), value: detailValue(key, value) })));
+  return [...change, ...rest].join(' · ');
 }

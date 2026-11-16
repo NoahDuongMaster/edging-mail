@@ -4,8 +4,9 @@ import type { ThemeTokens } from '../../theme';
 import { drawChallenge } from '../../lib/crypto/recoveryDraft';
 import type { RecoveryKeyDraft } from '../../lib/crypto/recoveryDraft';
 import { credentialErrorText } from '../../lib/crypto/errors';
+import { firstInvalid, useFieldFocus } from '../../lib/fieldFocus';
 import { useT } from '../../lib/i18n';
-import { CopyButton, Divider, SecretBox, TextField } from '../../ui';
+import { Banner, CopyButton, Divider, SecretBox, TextField } from '../../ui';
 import { AuthButton, ErrorLine, TextButton } from './authUi';
 
 interface RecoveryKeyPanelProps {
@@ -22,21 +23,25 @@ interface RecoveryKeyPanelProps {
 }
 
 const NO_TYPING: readonly string[] = ['', '', ''];
+const groupId = (position: number): string => `recovery-group-${position}`;
 
 /**
- * Shows a NEW recovery key once and checks that it was saved: Copy first, Download second (with its warning), then the typed confirmation of
- * three groups that are drawn again after every wrong attempt. There is no way past it without the right groups. The key text is on screen only
- * while this panel is mounted; the parent discards the draft when it unmounts it (the bytes are zeroed there).
+ * Shows a NEW recovery key once and checks that it was saved: a warning that it is shown once, the nine groups in mono, Copy first, Download
+ * second (with its warning), then the typed confirmation of three groups that are drawn again after every wrong attempt. There is no way past
+ * it without the right groups. The confirm button can always be pressed: a group left empty is said under its own field. The key text is on
+ * screen only while this panel is mounted; the parent discards the draft when it unmounts it (the bytes are zeroed there).
  */
 export const RecoveryKeyPanel: React.FC<RecoveryKeyPanelProps> = ({ t, draft, address, replaces, onConfirmed, onCancel, cancelLabel }) => {
   const tr = useT();
   const [challenge, setChallenge] = React.useState(() => drawChallenge(draft.text));
   const [typed, setTyped] = React.useState<readonly string[]>(NO_TYPING);
+  const [submitted, setSubmitted] = React.useState(false);
   const [copyFailed, setCopyFailed] = React.useState(false);
   const [mismatch, setMismatch] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [failure, setFailure] = React.useState<string | null>(null);
   const alive = React.useRef(true);
+  const focusLater = useFieldFocus();
   React.useEffect(() => {
     alive.current = true;
     return () => {
@@ -59,11 +64,19 @@ export const RecoveryKeyPanel: React.FC<RecoveryKeyPanelProps> = ({ t, draft, ad
     if (busy) {
       return;
     }
+    setSubmitted(true);
+    const toFix = firstInvalid(typed.map((group, position) => [groupId(position), group.trim() === ''] as const));
+    if (toFix !== undefined) {
+      focusLater(toFix);
+      return;
+    }
     if (!challenge.matches(typed)) {
       // A wrong attempt gets a new draw, so the answer cannot be found by trying the same three groups with small changes.
       setMismatch(true);
+      setSubmitted(false);
       setTyped(NO_TYPING);
       setChallenge(drawChallenge(draft.text));
+      focusLater(groupId(0));
       return;
     }
     setMismatch(false);
@@ -83,7 +96,6 @@ export const RecoveryKeyPanel: React.FC<RecoveryKeyPanelProps> = ({ t, draft, ad
   };
 
   const [first, second, third] = challenge.numbers;
-  const complete = typed.every((group) => group.trim() !== '');
 
   return (
     <form
@@ -93,15 +105,18 @@ export const RecoveryKeyPanel: React.FC<RecoveryKeyPanelProps> = ({ t, draft, ad
       noValidate
       className="au-stack"
     >
-      <p className="au-strong">{tr('recovery.claim')}</p>
-      <p className="au-muted">{tr('recovery.shown_once')}</p>
-      {replaces ? <p className="au-muted">{tr('recovery.old_stops')}</p> : null}
+      <p className="au-text">{tr('recovery.claim')}</p>
+      <Banner tone="warning">
+        <p className="au-banner-line">{tr('recovery.shown_once')}</p>
+        {replaces ? <p className="au-banner-line">{tr('recovery.old_stops')}</p> : null}
+      </Banner>
 
       <SecretBox
         label={tr('term.recovery_key')}
         value={draft.groups}
         columns={3}
         partLabel={(index) => tr('recovery.group_label', { number: index + 1 })}
+        className="au-key"
       />
 
       <div className="au-actions">
@@ -116,16 +131,18 @@ export const RecoveryKeyPanel: React.FC<RecoveryKeyPanelProps> = ({ t, draft, ad
         />
       </div>
       {copyFailed ? <ErrorLine t={t} id="recovery-copy-error" text={tr('recovery.copy_failed')} /> : null}
-      <p className="au-muted">{tr('recovery.download_warning')}</p>
+      <p className="au-note">{tr('recovery.download_warning')}</p>
 
       <Divider />
       <p className="au-strong">{tr('recovery.confirm_lead', { first, second, third })}</p>
+      <ErrorLine t={t} id="recovery-mismatch" text={mismatch ? tr('recovery.confirm_mismatch') : null} />
       <div className="au-groups">
         {[first, second, third].map((number, position) => (
           <TextField
             key={number}
-            id={`recovery-group-${position}`}
+            id={groupId(position)}
             label={tr('recovery.group_label', { number })}
+            error={submitted && typed[position].trim() === '' ? tr('recovery.group_required', { number }) : undefined}
             mono
             className="au-key-input"
             value={typed[position]}
@@ -138,9 +155,8 @@ export const RecoveryKeyPanel: React.FC<RecoveryKeyPanelProps> = ({ t, draft, ad
           />
         ))}
       </div>
-      <ErrorLine t={t} id="recovery-mismatch" text={mismatch ? tr('recovery.confirm_mismatch') : null} />
       <ErrorLine t={t} id="recovery-failure" text={failure} />
-      <AuthButton t={t} busy={busy} disabled={!complete} label={tr('recovery.confirm_button')} />
+      <AuthButton t={t} busy={busy} label={tr('recovery.confirm_button')} />
       {onCancel === undefined ? null : (
         // A way back is a quiet text button under the main one, as on the other screens before the mailbox.
         <div className="au-alt">

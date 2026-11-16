@@ -1,6 +1,7 @@
-/* Settings: the dialog (SettingsModal), its tabs, the Account sections, the Security views (security/), the account activity and the
-   technical tabs (settings/DeveloperDocs). The dialog is ui/Dialog (inline, lg, the tabs in its toolbar row); everything is ui/ primitives
-   and this file only lays them out. Classes are `st-*`. */
+/* Settings: the dialog (SettingsModal) with its nav of sections on the left, the pages of cards on the right (settings/SettingsPage), the
+   Security overview and its views (security/), the account activity, the device preferences (settings/PreferencesPanel) and the
+   technical sections (settings/DeveloperDocs). The dialog is ui/Dialog (inline, lg, the nav in its toolbar slot); everything is ui/
+   primitives and this file only lays them out. Classes are `st-*`. */
 
 /* ---------- The dialog ---------- */
 
@@ -8,36 +9,29 @@
 .ui-dialog-root.st-root {
   z-index: var(--z-window);
 }
-/* One height for every tab, so the tabs and the footer do not move when the content under them changes. */
+/* Three grounds, one step apart: the nav column (chrome), the page (bg in light, surface in dark) and the cards on it (surface in light,
+   raised in dark, settings cards below), so a card reads as a card in both themes. */
 .ui-dialog.st-dialog {
-  height: min(800px, 100%);
+  --st-nav-w: 232px;
+  --st-nav-bg: var(--chrome);
+  --st-page-bg: var(--bg);
+  --st-edge: var(--border);
+  height: min(760px, 100%);
 }
-/* Without tabs (a member has only Account) the content follows the title at once: a hairline stands where the row of tabs would be. */
-.st-dialog > .ui-dialog-head + .ui-dialog-body {
-  margin-top: 16px;
-  border-top: 1px solid var(--border);
+:root[data-theme='dark'] .ui-dialog.st-dialog {
+  --st-page-bg: var(--surface);
+  --st-edge: var(--border-strong);
 }
-/* The row of tabs sits between the title and the content (the dialog's toolbar row, which does not scroll); the first label lines up with
-   the title. */
-.ui-tabs.st-tabs {
-  margin-top: 12px;
-  padding-inline: 8px;
-}
-.st-dialog > .ui-dialog-body {
-  padding: 20px var(--ui-dialog-end) 24px 20px;
-}
-.st-dialog > .ui-dialog-foot {
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px 12px;
+:root[data-theme='dark'] .st-dialog .ui-card {
+  background: var(--raised);
 }
 .st-foot-msg {
   display: flex;
-  flex: 1 1 0;
   align-items: flex-start;
   gap: 6px;
   min-width: 0;
-  margin: 0;
+  margin: 4px 0 0;
+  padding-inline: 12px;
   color: var(--danger);
   font-size: 13px;
   line-height: 20px;
@@ -48,53 +42,213 @@
   flex: none;
   margin-top: 2px;
 }
+/* Why the ways out are off (J1-27): a quiet line with a lock, under them, in the nav's own inset. */
+.st-held-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  margin: 4px 0 0;
+  padding-inline: 12px;
+  color: var(--text2);
+  font-size: 13px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+.st-held-note svg {
+  flex: none;
+  margin-top: 2px;
+}
+.st-held-note span {
+  text-wrap: balance;
+}
 
-/* A phone: the dialog is a sheet from the bottom edge (ui.css), always as high as it can be. */
-@media (max-width: 640px) {
+/* A desktop: the title over the nav, the X at the top right, the nav down the left and the page on the right, each scrolling on its own;
+   the footer (Sign out, Close) under both. The nav stays in view however long the page is. */
+@media (min-width: 641px) {
   .ui-dialog.st-dialog {
-    height: 92vh;
-    height: 92dvh;
+    display: grid;
+    grid-template-columns: var(--st-nav-w) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    max-width: 880px;
+    background: linear-gradient(
+      to right,
+      var(--st-nav-bg) var(--st-nav-w),
+      var(--st-edge) var(--st-nav-w) calc(var(--st-nav-w) + 1px),
+      var(--st-page-bg) calc(var(--st-nav-w) + 1px)
+    );
   }
-  /* The four tabs are a 2x2 grid of segments (ui/Tabs `grid`, ui.css) that never scrolls sideways: here it gets its place under the title. */
-  .ui-tabs.st-tabs {
-    margin: 12px 16px 0;
-    padding: 4px;
+  /* The title over the nav and the page's own title start on one line; the X floats at the top right of the page (on the page's ground,
+     so text scrolled under it never shows through). */
+  .st-dialog > .ui-dialog-head {
+    grid-column: 1;
+    grid-row: 1;
+    padding: 20px 12px 4px 24px;
   }
-  /* The grid is a box of its own: a hairline where the content starts. */
-  .st-dialog > .ui-dialog-toolbar + .ui-dialog-body {
-    margin-top: 12px;
-    border-top: 1px solid var(--border);
+  .st-dialog > .ui-dialog-head > .ui-dialog-title {
+    font-size: 16px;
+    line-height: 28px;
   }
-  /* A sign-out message gets its own full-width row under Sign out and Close, so neither button is ever squeezed. */
-  .st-foot-msg {
-    order: 1;
-    flex-basis: 100%;
+  .st-dialog > .ui-dialog-head > .ui-btn {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: var(--z-raise);
+    margin: 0;
+  }
+  .st-dialog > .ui-dialog-head > .ui-btn:not(:hover, :active) {
+    background: var(--st-page-bg);
+  }
+  .st-dialog > .ui-dialog-toolbar {
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 12px 12px 16px;
+  }
+  .st-dialog > .ui-dialog-body {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    padding: 20px var(--ui-dialog-end) 32px 32px;
+    scroll-padding-block: 16px;
+  }
+  .st-page-head {
+    padding-right: 40px;
+  }
+  /* No footer: the X next to the title, Escape, the scrim and a phone's Back button close Settings (each through the guarded `leave`). */
+}
+
+/* ---------- The nav of sections ---------- */
+
+.st-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 100%;
+}
+/* Who is signed in, at the top of the nav: the initials, the name and the address (both cut with an ellipsis, never wrapped). */
+.st-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0 4px 0 8px;
+}
+.st-identity-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.st-identity-name,
+.st-identity-address {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.st-identity-name {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.st-identity-address {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text2);
+}
+.ui-tabs.st-tabs > .ui-tab {
+  gap: 10px;
+  min-height: var(--ui-h-md);
+}
+/* The ways out of Settings that are not sections (the admin console, Sign out): rows at the foot of the nav, after a hairline; the admin
+   console has an arrow that says it goes elsewhere. */
+.st-nav-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.ui-btn.st-nav-link {
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding-inline: 11px;
+  color: var(--text2);
+  font-weight: 500;
+}
+.ui-btn.st-nav-link > svg:last-child:not(:first-child) {
+  margin-left: auto;
+  color: var(--text3);
+}
+/* A phone's way back from a section to the list; a desktop shows both at once and has none. */
+.st-back {
+  display: none;
+}
+
+/* ---------- A page: title, one line, cards ---------- */
+
+/* A new section fades in (keyed in SettingsModal); a view of Security slides in 12px from the side it comes from, and back. Under reduced
+   motion --motion is 0, so only the fade is left (index.css caps the durations at 150ms). */
+@keyframes st-fade-in {
+  from {
+    opacity: 0;
   }
 }
-/* A short phone screen (320x568, a phone on its side): the sheet takes the whole height and its title, tabs and buttons sit closer, so the
-   content keeps about 350 of 568px (274 before). The 2x2 grid of tabs stays. */
-@media (max-width: 640px) and (max-height: 700px) {
-  .ui-dialog.st-dialog {
-    height: 100vh;
-    height: 100dvh;
-    max-height: none;
-    border: 0;
-    border-radius: 0;
+@keyframes st-push-forward {
+  from {
+    opacity: 0;
+    translate: calc(12px * var(--motion, 1)) 0;
   }
-  .st-dialog > .ui-dialog-head {
-    padding-top: 14px;
+}
+@keyframes st-push-back {
+  from {
+    opacity: 0;
+    translate: calc(-12px * var(--motion, 1)) 0;
   }
-  .ui-tabs.st-tabs {
-    margin-top: 8px;
-  }
-  .st-dialog > .ui-dialog-toolbar + .ui-dialog-body {
-    margin-top: 8px;
-    padding-top: 16px;
-  }
-  .st-dialog > .ui-dialog-body + .ui-dialog-foot {
-    padding-top: 8px;
-    padding-bottom: calc(8px + env(safe-area-inset-bottom));
-  }
+}
+.st-section {
+  animation: st-fade-in var(--dur-quick) var(--ease-standard);
+}
+.st-push[data-direction='forward'] {
+  animation: st-push-forward var(--dur-base) var(--ease-enter);
+}
+.st-push[data-direction='back'] {
+  animation: st-push-back var(--dur-base) var(--ease-enter);
+}
+
+.st-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 640px;
+}
+.st-page-head {
+  padding-top: 0;
+}
+.st-page-title {
+  margin: 0;
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.st-page-desc {
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text2);
+}
+.st-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  container: st-cards / inline-size;
+}
+/* A card's title ranks under the page's (20px): 15px. */
+.st-dialog .ui-card .ui-section-title {
+  font-size: 15px;
+  line-height: 22px;
 }
 
 /* ---------- Text ---------- */
@@ -140,6 +294,18 @@
 .st-feedback[data-tone='danger'] {
   color: var(--danger);
 }
+/* Unsaved changes, and "No changes to save": quiet words, not a result. */
+.st-feedback:not([data-tone]),
+.st-feedback[data-tone='pending'] {
+  color: var(--text2);
+}
+/* The undo-send time: a list as wide as its longest choice, its hint under it at a reading width. */
+.st-undo .ui-select {
+  max-width: 220px;
+}
+.st-undo .ui-hint {
+  max-width: 62ch;
+}
 /* A line with a message and its button (Could not load ... Retry). */
 .st-inline {
   display: flex;
@@ -148,11 +314,23 @@
   gap: 8px 12px;
 }
 /* Hints and quiet explanations break before a lone last word. */
-.st-dialog :is(.ui-hint, .st-muted, .st-lead) {
+.st-dialog :is(.ui-hint, .st-muted, .st-lead, .st-page-desc, .ui-section-description) {
   text-wrap: pretty;
 }
+/* A heading that takes the focus from script when the content under it changes (C-9b): it is not a control. */
+.st-focus-title:focus {
+  outline: none;
+}
+/* A group's heading inside a card (Notices, Recent sign-ins, the shortcut keys): the weight and colour of a field label. */
+.st-subtitle {
+  margin: 0 0 4px;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--text);
+}
 
-/* ---------- Account: the profile form ---------- */
+/* ---------- Profile ---------- */
 
 .st-form {
   display: flex;
@@ -165,75 +343,19 @@
   align-items: center;
   gap: 8px 12px;
 }
-/* The address is shown, not edited. */
+/* The address is shown, not edited: a quieter fill and a small lock at its end. */
 .st-form .ui-input:has(> .ui-input-el[readonly]) {
   background: var(--raised);
   color: var(--text2);
 }
+.st-lock {
+  color: var(--text3);
+}
 
-/* ---------- Setting rows: what it is on the left, the control on the right (under it when the line is too narrow) ---------- */
+/* ---------- Appearance: the theme as two cards with a picture, the motion as two choices ---------- */
 
-/* The action lines up with the row's label, not with the middle of a two- or three-line description (a centred button floated between the
-   lines of the two-factor row): top-aligned, and pulled up so a small button's centre sits on the label's line (at most 6px, so on touch,
-   where it is 44px high, it never meets the hairline above). When the actions wrap under the text, the 14px row gap less those 6px leaves
-   the usual 8px. */
-.st-setting {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px 16px;
-  padding-block: 12px;
-}
-.st-setting:first-child {
-  padding-top: 0;
-}
-.st-setting:last-child {
-  padding-bottom: 0;
-}
-.st-setting + .st-setting {
-  border-top: 1px solid var(--border);
-}
-.st-setting-text {
-  display: flex;
-  flex: 1 1 240px;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.st-setting-label {
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 500;
-}
-.st-setting-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: max(-6px, calc((20px - var(--ui-h-sm)) / 2));
-}
-/* The language list holds three names: as wide as a short field, not the whole dialog. */
-.st-dialog .au-lang {
-  max-width: 320px;
-}
-/* The notifications switch: its status line is the hint, red when the browser blocks notifications (the words say so too). */
-.st-push[data-denied='true'] .ui-hint {
-  color: var(--danger);
-}
-.st-push + .ui-error,
-.st-push + .st-actions {
-  margin-top: 12px;
-}
-.ui-error + .st-actions {
-  margin-top: 12px;
-}
-/* Light and dark side by side. The section title already says what they are: the legend is for screen readers only. */
-.ui-radio-group.st-theme {
-  flex-direction: row;
-  flex-wrap: wrap;
-  column-gap: 24px;
-}
-.ui-radio-group.st-theme > legend {
+/* The card's title already says what the choices are: the legends are for screen readers only. */
+:is(.ui-radio-group.st-theme, .ui-radio-group.st-choices) > legend {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -244,23 +366,305 @@
   white-space: nowrap;
   border: 0;
 }
-/* A heading that takes the focus from script when the content under it changes (C-9b): it is not a control. */
-.st-focus-title:focus {
-  outline: none;
+.ui-radio-group.st-theme {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+/* Each choice is a card: the picture over the radio and its name; the chosen one has an accent edge (3:1 and more on its ground). */
+.st-theme .ui-check {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 0;
+  padding: 10px 12px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-card);
+  box-shadow: var(--control-shadow);
+  transition:
+    border-color var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard);
+}
+.st-theme .ui-check:has(> .ui-radio-input:checked) {
+  border-color: var(--accent);
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    var(--control-shadow);
+}
+@media (hover: hover) {
+  .st-theme .ui-check:hover:not(:has(> .ui-radio-input:checked)) {
+    border-color: var(--control);
+  }
+}
+/* The picture: a tiny mailbox (a sidebar with an accent Compose pill, three rows of lines) in the browser's own colours of that scheme
+   (Canvas and CanvasText under color-scheme light or dark), so the Dark card shows dark on a light page and the other way round. The layers
+   are one variable, resolved on each pseudo-element in its own scheme: Match system draws the light picture with the dark one over its right
+   half (::after). */
+.st-theme .ui-check {
+  /* The sidebar's width and where the list starts: a narrow card (three on a phone) draws a narrower sidebar, so its rows stay inside. */
+  --st-art-side: 40px;
+  --st-art-x: 48px;
+  --st-theme-art:
+    linear-gradient(var(--accent), var(--accent)) calc(var(--st-art-side) * 0.2) 9px / calc(var(--st-art-side) * 0.6) 7px no-repeat,
+    linear-gradient(color-mix(in srgb, CanvasText 22%, Canvas), color-mix(in srgb, CanvasText 22%, Canvas)) calc(var(--st-art-side) * 0.2)
+      24px / calc(var(--st-art-side) * 0.55) 3px no-repeat,
+    linear-gradient(color-mix(in srgb, CanvasText 22%, Canvas), color-mix(in srgb, CanvasText 22%, Canvas)) calc(var(--st-art-side) * 0.2)
+      32px / calc(var(--st-art-side) * 0.45) 3px no-repeat,
+    linear-gradient(color-mix(in srgb, CanvasText 70%, Canvas), color-mix(in srgb, CanvasText 70%, Canvas)) var(--st-art-x) 11px /
+      calc((100% - var(--st-art-x) - 8px) * 0.55) 4px no-repeat,
+    linear-gradient(color-mix(in srgb, CanvasText 28%, Canvas), color-mix(in srgb, CanvasText 28%, Canvas)) var(--st-art-x) 19px /
+      calc((100% - var(--st-art-x) - 8px) * 0.85) 3px no-repeat,
+    linear-gradient(color-mix(in srgb, CanvasText 70%, Canvas), color-mix(in srgb, CanvasText 70%, Canvas)) var(--st-art-x) 32px /
+      calc((100% - var(--st-art-x) - 8px) * 0.45) 4px no-repeat,
+    linear-gradient(color-mix(in srgb, CanvasText 28%, Canvas), color-mix(in srgb, CanvasText 28%, Canvas)) var(--st-art-x) 40px /
+      calc((100% - var(--st-art-x) - 8px) * 0.75) 3px no-repeat,
+    linear-gradient(color-mix(in srgb, CanvasText 70%, Canvas), color-mix(in srgb, CanvasText 70%, Canvas)) var(--st-art-x) 53px /
+      calc((100% - var(--st-art-x) - 8px) * 0.5) 4px no-repeat,
+    linear-gradient(color-mix(in srgb, CanvasText 28%, Canvas), color-mix(in srgb, CanvasText 28%, Canvas)) var(--st-art-x) 61px /
+      calc((100% - var(--st-art-x) - 8px) * 0.65) 3px no-repeat,
+    linear-gradient(
+      to right,
+      color-mix(in srgb, CanvasText 5%, Canvas) var(--st-art-side),
+      color-mix(in srgb, CanvasText 12%, Canvas) var(--st-art-side) calc(var(--st-art-side) + 1px),
+      Canvas calc(var(--st-art-side) + 1px)
+    );
+  position: relative;
+}
+.st-theme .ui-check::before {
+  content: '';
+  grid-column: 1 / -1;
+  height: 72px;
+  color-scheme: light;
+  border-radius: var(--radius-control);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, CanvasText 10%, Canvas);
+  background: var(--st-theme-art);
+}
+.st-theme .ui-check:has(> .ui-radio-input[value='dark'])::before {
+  color-scheme: dark;
+}
+/* Match system: the dark picture over the light one from a diagonal, so each half still shows a piece of the list. */
+.st-theme .ui-check:has(> .ui-radio-input[value='system'])::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  left: 12px;
+  height: 72px;
+  color-scheme: dark;
+  border-radius: var(--radius-control);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, CanvasText 20%, Canvas);
+  background: var(--st-theme-art);
+  clip-path: polygon(62% 0, 100% 0, 100% 100%, 38% 100%);
+  pointer-events: none;
+}
+/* Three choices (Light, Dark, Match system) side by side on a desktop. */
+.ui-radio-group.st-theme-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+:root[data-theme='dark'] .st-theme .ui-check::before {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, CanvasText 20%, Canvas);
+}
+/* The two motion choices: their own 8px of padding above and below is taken back, so the card's padding is the space round them. */
+.ui-radio-group.st-choices {
+  margin-block: -8px;
 }
 
-/* ---------- Account activity: hairline lists ---------- */
+/* ---------- Notifications, Keyboard ---------- */
 
-.st-sub + .st-sub {
+/* The language list holds three names: as wide as a short field, not the whole card. */
+.st-dialog .au-lang {
+  max-width: 320px;
+}
+/* The notifications switch: its status line is the hint, red when the browser blocks notifications (the words say so too). */
+.st-push[data-denied='true'] .ui-hint {
+  color: var(--danger);
+}
+.st-push + .ui-error {
+  margin-top: 12px;
+}
+/* The card's own action under a hairline: Send test notification. */
+.st-card-foot {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.st-keys-title {
   margin-top: 20px;
 }
-/* A group's heading inside a section (Notices, Recent sign-ins): the weight and colour of a field label, darker than the quiet text under it. */
-.st-subtitle {
-  margin: 0 0 4px;
-  font-size: 13px;
+
+/* ---------- Security: the overview, one card of status rows ---------- */
+
+/* One card (J3-09: not a card per thing, no icon tiles): rows divided by hairlines. A row holds a small bare icon, the name with its
+   state, the lines under it, and the action at the right, centred on the text; a narrow card puts the action under the text. */
+.st-status-list {
+  overflow: hidden;
+}
+.st-status-row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'icon top actions'
+    '. lines actions';
+  align-items: center;
+  gap: 2px 12px;
+  padding: 14px 16px;
+}
+.st-status-row + .st-status-row {
+  border-top: 1px solid var(--border);
+}
+.st-status-icon {
+  grid-area: icon;
+  color: var(--text3);
+}
+.st-status-top {
+  display: flex;
+  grid-area: top;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+}
+.st-status-title {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+/* One reading measure for every row, whatever the width of its actions, so the right edge of the text does not zig-zag. */
+.st-status-lines {
+  display: flex;
+  grid-area: lines;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  max-width: 400px;
+}
+/* A fact about the state (a date, a device): quieter than the explanation, figures in columns. */
+.st-status-fact {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text2);
+  font-variant-numeric: tabular-nums;
+}
+.st-status-actions {
+  display: flex;
+  grid-area: actions;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.st-status-error {
+  padding: 0 16px 14px 44px;
+}
+@container st-cards (max-width: 520px) {
+  .st-status-row {
+    grid-template-columns: 16px minmax(0, 1fr);
+    grid-template-areas:
+      'icon top'
+      '. lines'
+      '. actions';
+  }
+  .st-status-actions {
+    justify-content: flex-start;
+    margin-top: 10px;
+  }
+}
+
+/* ---------- Security: one view at a time in place of the cards ---------- */
+
+.st-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 560px;
+}
+/* Back is a small ghost button above the view's title; its chevron, not its box, starts at the content edge. */
+.st-view-back {
+  margin: 0 0 -8px -10px;
+}
+.st-view-title {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+}
+.st-view-form {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+/* The views reuse the steps of the screens before the mailbox (the recovery key, the codes, the enrolment), whose buttons are 44px there
+   (AuthButton, TextButton and the CopyButton of size lg, auth.css C-12). Inside Settings they have the dialog's own height instead,
+   --ui-h-md: 36px with a mouse, like the other buttons of the dialog, and 44px on a phone or a touch screen, where --ui-h-md is 44px. The
+   fields of a view keep the ui height (--ui-h-md too), so a view has one height of control from top to bottom. A long label wraps. */
+.st-view .ui-btn.au-btn[data-size],
+.st-view .ui-btn.au-text-btn[data-size] {
+  height: auto;
+  min-height: var(--ui-h-md);
+  padding: 7px 14px;
+}
+/* The views set aria-invalid themselves (their error lines are alerts of their own): the box turns red with it. */
+.st-view .ui-input:has(> .ui-input-el[aria-invalid='true']),
+.st-dialog-form .ui-input:has(> .ui-input-el[aria-invalid='true']) {
+  border-color: var(--danger);
+}
+.ui-input-el.st-code {
+  letter-spacing: 0.2em;
+}
+.ui-input-el.st-key {
+  letter-spacing: 0.04em;
+}
+/* The submit button of a destructive step (turn two-factor sign-in off): as high as the others (--ui-h-md, above), a long label wraps. */
+.ui-btn.st-btn[data-size] {
+  height: auto;
+  min-height: var(--ui-h-md);
+  padding: 7px 14px;
+  white-space: normal;
+  text-align: center;
+}
+/* The answer of the key test: words with an icon, green when the key is right, red when it is not. */
+.st-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
   line-height: 20px;
   font-weight: 500;
-  color: var(--text);
+}
+.st-result svg {
+  flex: none;
+  margin-top: 2px;
+}
+.st-result[data-tone='success'] {
+  color: var(--success);
+}
+.st-result[data-tone='danger'] {
+  color: var(--danger);
+}
+/* The fresh code asked before a new recovery key replaces the old one (step-up): a box of its own above the key. */
+.ui-card.st-stepup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* A copy of the address for the password manager: there, not seen, not reachable. */
+.st-username {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---------- Account activity (a view of Security): hairline lists in cards ---------- */
+
+.ui-card.st-sub {
+  padding-bottom: 12px;
 }
 .st-list {
   margin: 0;
@@ -320,82 +724,6 @@
   margin-inline-start: -11px;
 }
 
-/* ---------- Security: one action at a time in place of the rows ---------- */
-
-.st-view {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.st-view-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
-}
-/* Back is a ghost button as high as the view's other buttons (md: 36px with a mouse, 44px on touch); its chevron, not its box, starts at the
-   content edge. */
-.st-view-head .ui-btn {
-  margin-left: -14px;
-}
-.st-view-title {
-  margin: 0;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 600;
-}
-.st-view-form {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-/* The views reuse the steps of the screens before the mailbox (the recovery key, the codes, the enrolment), whose buttons are 44px there
-   (AuthButton, TextButton and the CopyButton of size lg, auth.css C-12). Inside Settings they have the dialog's own height instead,
-   --ui-h-md: 36px with a mouse, like the other buttons of the dialog, and 44px on a phone or a touch screen, where --ui-h-md is 44px. The
-   fields of a view keep the ui height (--ui-h-md too), so a view has one height of control from top to bottom. A long label wraps. */
-.st-view .ui-btn.au-btn[data-size],
-.st-view .ui-btn.au-text-btn[data-size] {
-  height: auto;
-  min-height: var(--ui-h-md);
-  padding: 7px 14px;
-}
-/* The views set aria-invalid themselves (their error lines are alerts of their own): the box turns red with it. */
-.st-view .ui-input:has(> .ui-input-el[aria-invalid='true']),
-.st-dialog-form .ui-input:has(> .ui-input-el[aria-invalid='true']) {
-  border-color: var(--danger);
-}
-.ui-input-el.st-code {
-  letter-spacing: 0.2em;
-}
-.ui-input-el.st-key {
-  letter-spacing: 0.04em;
-}
-/* The submit button of a destructive step (turn two-factor sign-in off): as high as the others (--ui-h-md, above), a long label wraps. */
-.ui-btn.st-btn[data-size] {
-  height: auto;
-  min-height: var(--ui-h-md);
-  padding: 7px 14px;
-  white-space: normal;
-  text-align: center;
-}
-.st-result {
-  margin: 0;
-  font-size: 14px;
-  line-height: 20px;
-}
-.st-result[data-tone='success'] {
-  color: var(--success);
-}
-/* A copy of the address for the password manager: there, not seen, not reachable. */
-.st-username {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
-
 /* ---------- The locked-mail dialog ---------- */
 
 .st-dialog-form {
@@ -404,12 +732,44 @@
   gap: 16px;
 }
 
-/* ---------- The technical tabs (admins) ---------- */
+/* ---------- The technical sections (admins) ---------- */
 
 .st-docs {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
+}
+.st-docs-lead {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--text2);
+}
+/* A note after the steps: a quiet box, so it reads as an aside and not as one more step. */
+.st-docs-note {
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  color: var(--text2);
+  font-size: 13px;
+  line-height: 20px;
+}
+.st-docs-part {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* Sentences that hold names in chips get room between their lines, so the chips of two lines never touch. */
+.st-docs :is(.st-muted, .ui-step-body) {
+  line-height: 22px;
+}
+.st-docs-title {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
 }
 /* A name in the text (a file, a secret, a record): a quiet mono chip; a chip that wraps is drawn on each of its lines. */
 .st-docs code,
@@ -430,14 +790,35 @@
   color: var(--text);
   font-weight: 500;
 }
+/* Commands with their Copy button in the top right corner, over the block's own padding. */
+.st-command {
+  position: relative;
+}
+.st-command > .ui-code {
+  padding-right: 88px;
+}
+.ui-btn.st-command-copy {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+/* The parts of a deployment: one card, a row per part (an icon tile, the name, one or two sentences) split by hairlines. */
 .st-defs {
   margin: 0;
+  padding: 4px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow:
+    var(--shadow-sm),
+    inset 0 1px 0 var(--inset-highlight);
+}
+:root[data-theme='dark'] .st-defs {
+  background: var(--raised);
+  border-color: var(--border-strong);
 }
 .st-def {
-  padding-block: 12px;
-}
-.st-def:first-child {
-  padding-top: 0;
+  padding-block: 14px;
 }
 .st-def + .st-def {
   border-top: 1px solid var(--border);
@@ -445,24 +826,230 @@
 .st-def dt {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   font-size: 14px;
   line-height: 20px;
   font-weight: 600;
 }
-.st-def dt svg {
+.st-def-icon {
+  display: grid;
   flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-control);
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--border);
   color: var(--text2);
 }
+:root[data-theme='dark'] .st-def-icon {
+  background: var(--surface);
+}
 .st-def dd {
-  margin: 2px 0 0 24px;
+  margin: 2px 0 0 40px;
   font-size: 13px;
   line-height: 20px;
   color: var(--text2);
 }
-.st-docs-title {
-  margin: 8px 0 0;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 600;
+
+/* ---------- A phone: list, then section ---------- */
+
+/* The dialog is a sheet from the bottom edge (ui.css), always as high as it can be. It shows the list of sections, or one section with a
+   way back to the list (SettingsModal's pane): a tap on a row opens it, Back returns, each sliding 12px from the side it comes from. */
+@media (max-width: 640px) {
+  .ui-dialog.st-dialog {
+    height: 92vh;
+    height: 92dvh;
+    background: var(--st-page-bg);
+  }
+  .st-dialog > .ui-dialog-head {
+    align-items: center;
+    padding: 18px 6px 10px 16px;
+  }
+  /* The X mirrors Back (6px from the left edge): its 44px box ends 6px inside the screen, never past it (ui.css pulls a dialog's X 13px
+     into the head's padding, which is only 6px here). */
+  .st-dialog > .ui-dialog-head > .ui-btn {
+    margin-right: 0;
+  }
+  /* In a section the head is a nav bar: Back to the list where the title was (the title stays for screen readers: it names the dialog),
+     the X on the right. Back sits in the page but is placed over the head, so it never scrolls away. */
+  .st-dialog:has(.st-nav[data-pane='section']) > .ui-dialog-head > .ui-dialog-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .st-dialog:has(.st-nav[data-pane='section']) > .ui-dialog-head {
+    justify-content: flex-end;
+  }
+  .st-back {
+    position: absolute;
+    top: 9px;
+    left: 6px;
+    z-index: var(--z-raise);
+    display: block;
+  }
+  .st-dialog:has(.st-nav[data-pane='nav']) > .ui-dialog-body,
+  .st-dialog:has(.st-nav[data-pane='section']) > .ui-dialog-toolbar {
+    display: none;
+  }
+  .st-dialog > .ui-dialog-toolbar {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+  }
+  .st-identity {
+    padding: 0 0 4px 2px;
+  }
+  .st-dialog > .ui-dialog-body {
+    padding: 16px 16px calc(24px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+  }
+  .st-nav {
+    animation: st-push-back var(--dur-slow) var(--ease-emph-enter);
+  }
+  .st-section {
+    animation: st-push-forward var(--dur-slow) var(--ease-emph-enter);
+  }
+  /* The rows: full width, 48px, hairlines between, a chevron at the end; no selection on a list that opens what is tapped. */
+  .ui-tabs.st-tabs {
+    gap: 0;
+  }
+  .ui-tabs.st-tabs > .ui-ink {
+    display: none;
+  }
+  .ui-tabs.st-tabs > .ui-tab,
+  .ui-tabs.st-tabs > .ui-tab[aria-selected='true'] {
+    min-height: 48px;
+    padding: 12px 36px 12px 4px;
+    border-radius: 0;
+    background: transparent;
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 400;
+  }
+  .ui-tabs.st-tabs > .ui-tab > svg {
+    color: var(--text2);
+  }
+  /* A hairline between rows, from the start of the label (the icon stands in the margin, as in a phone's own settings). */
+  .ui-tabs.st-tabs > .ui-tab + .ui-tab {
+    background: linear-gradient(var(--border), var(--border)) 30px 0 / calc(100% - 30px) 1px no-repeat;
+  }
+  .ui-tabs.st-tabs > .ui-tab::after,
+  .ui-tabs.st-tabs:not([data-ink]) > .ui-tab[aria-selected='true']::after {
+    top: 50%;
+    right: 14px;
+    bottom: auto;
+    left: auto;
+    width: 8px;
+    height: 8px;
+    margin-top: -4px;
+    background: transparent;
+    border-top: 1.5px solid var(--text3);
+    border-right: 1.5px solid var(--text3);
+    border-radius: 0;
+    rotate: 45deg;
+  }
+  .ui-tabs.st-tabs > .ui-tab-group {
+    padding: 20px 4px 6px;
+  }
+  .st-nav {
+    gap: 8px;
+  }
+  .st-nav-foot {
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+  .ui-btn.st-nav-link {
+    min-height: 48px;
+    padding: 0 10px 0 3px;
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 400;
+  }
+  .ui-btn.st-nav-link + .ui-btn.st-nav-link {
+    background: linear-gradient(var(--border), var(--border)) 30px 0 / calc(100% - 30px) 1px no-repeat;
+  }
+  .st-page {
+    gap: 14px;
+  }
+  .st-foot-msg {
+    padding-inline: 4px;
+  }
+  /* The two theme cards side by side even at 320px: a smaller picture. */
+  .ui-radio-group.st-theme {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .st-theme .ui-check {
+    padding: 8px 10px 10px;
+  }
+  .st-theme .ui-check::before {
+    height: 60px;
+  }
+  .st-theme .ui-check:has(> .ui-radio-input[value='system'])::after {
+    top: 8px;
+    right: 10px;
+    left: 10px;
+    height: 60px;
+  }
+  /* Three choices: three narrow cards in one row (a 2 + 1 grid stretched the third picture); a smaller picture, the name may wrap. */
+  .ui-radio-group.st-theme-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .st-theme-3 .ui-check {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr auto;
+    align-items: start;
+    justify-items: center;
+    gap: 6px;
+    padding: 6px 6px 8px;
+    text-align: center;
+  }
+  /* Picture, name, then the radio under it (as a phone's own appearance picker): the name has the whole width of the card. */
+  .st-theme-3 .ui-check > .ui-radio-input {
+    order: 2;
+  }
+  .st-theme-3 .ui-check {
+    --st-art-side: 18px;
+    --st-art-x: 24px;
+  }
+  .st-theme-3 .ui-check::before {
+    justify-self: stretch;
+    height: 52px;
+  }
+  .st-theme-3 .ui-check:has(> .ui-radio-input[value='system'])::after {
+    top: 6px;
+    right: 6px;
+    left: 6px;
+    height: 52px;
+  }
+  .st-theme-3 .ui-check-text {
+    font-size: 13px;
+    line-height: 18px;
+  }
+}
+/* A short phone screen (320x568, a phone on its side): the sheet takes the whole height and its title sits closer, so the list or the
+   section keeps most of it. */
+@media (max-width: 640px) and (max-height: 700px) {
+  .ui-dialog.st-dialog {
+    height: 100vh;
+    /* As high as what the on-screen keyboard leaves while it is up (ui/Dialog sets --ui-vv-height), the whole height otherwise. */
+    height: min(100dvh, var(--ui-vv-height, 100dvh));
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+  }
+  .st-dialog > .ui-dialog-head {
+    padding-top: 14px;
+    padding-bottom: 8px;
+  }
+  .st-back {
+    top: 5px;
+  }
 }

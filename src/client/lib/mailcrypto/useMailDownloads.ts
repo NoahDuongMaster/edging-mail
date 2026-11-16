@@ -12,17 +12,19 @@ type Failure = 'fail.mailcrypto_attachment' | 'fail.mailcrypto_raw';
 
 interface State {
   messageId: string;
-  /** An attachment id, or 'raw' while the original message is being fetched. */
+  /** An attachment id, 'all' (every attachment, J6-43), or 'raw' while the original message is being fetched. */
   busy: string | null;
   error: string | null;
 }
 
 export interface MailDownloads {
-  /** Which download is running: an attachment id or 'raw'. */
+  /** Which download is running: an attachment id, 'all' or 'raw'. */
   busy: string | null;
   /** Localized text of the last failure of the open message, when `onNotice` did not take it. */
   error: string | null;
   saveAttachment: (attachment: Attachment) => void;
+  /** Every one of these attachments, opened and saved one after the other (the reader's Download all, J6-43). */
+  saveAll: (attachments: readonly Attachment[]) => void;
   saveRaw: () => void;
 }
 
@@ -70,6 +72,22 @@ export function useMailDownloads(message: Message | null, onNotice?: (text: stri
     [run]
   );
 
+  const saveAll = React.useCallback(
+    (attachments: readonly Attachment[]) => {
+      void run('all', 'fail.mailcrypto_attachment', async (opened) => {
+        for (const attachment of attachments) {
+          const bytes = await openAttachmentBytes(opened, attachment, getUnlockedKey());
+          saveBytes(bytes, safeFileName(attachment.filename, 'attachment'));
+          // A browser takes one download at a time from a page: a moment between two.
+          await new Promise((resolve) => {
+            setTimeout(resolve, 400);
+          });
+        }
+      });
+    },
+    [run]
+  );
+
   const saveRaw = React.useCallback(() => {
     void run('raw', 'fail.mailcrypto_raw', async (opened) => {
       const bytes = await openRawBytes(opened, getUnlockedKey());
@@ -77,5 +95,5 @@ export function useMailDownloads(message: Message | null, onNotice?: (text: stri
     });
   }, [run]);
 
-  return { busy: current?.busy ?? null, error: current?.error ?? null, saveAttachment, saveRaw };
+  return { busy: current?.busy ?? null, error: current?.error ?? null, saveAttachment, saveAll, saveRaw };
 }

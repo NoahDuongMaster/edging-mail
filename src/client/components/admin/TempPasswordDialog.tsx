@@ -16,15 +16,20 @@ interface TempPasswordDialogProps {
 
 /**
  * The temporary password of a new account, shown once. It is not stored anywhere in the app and cannot be shown again, so Escape, the
- * scrim and the close button do nothing: only "I have saved it" closes the dialog.
+ * scrim and the close button do nothing until the password was copied: "I have saved it" is the way out, and the X only appears once
+ * Copy put the password on the clipboard (J4-35: a disabled X drawn like a live one said nothing).
  */
 export const TempPasswordDialog: React.FC<TempPasswordDialogProps> = ({ t, address, password, reissued = false, onDone }) => {
   const tr = useT();
   const [copyFailed, setCopyFailed] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
   const codeRef = React.useRef<HTMLElement | null>(null);
 
   const onCopied = (result: CopyResult) => {
     setCopyFailed(result === 'failed');
+    if (result === 'copied') {
+      setCopied(true);
+    }
     if (result === 'failed') {
       // No clipboard permission (or an insecure page): select the text so Ctrl+C / long-press works.
       const range = document.createRange();
@@ -38,7 +43,14 @@ export const TempPasswordDialog: React.FC<TempPasswordDialogProps> = ({ t, addre
   };
 
   return (
-    <ModalFrame t={t} title={tr(reissued ? 'users.reissued_title' : 'users.created_title')} onClose={onDone} locked maxWidth={460}>
+    <ModalFrame
+      t={t}
+      title={tr(reissued ? 'users.reissued_title' : 'users.created_title')}
+      closeButton={copied}
+      onClose={onDone}
+      locked={!copied}
+      maxWidth={460}
+    >
       <p className="ad-text">{tRich('users.created_give', { address: <strong className="ad-strong ad-wrap">{address}</strong> })}</p>
       <SecretBox label={tr('term.temporary_password')} value={password} valueRef={codeRef}>
         <CopyButton data-autofocus text={password} onResult={onCopied} />

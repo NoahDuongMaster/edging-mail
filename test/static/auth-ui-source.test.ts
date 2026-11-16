@@ -4,9 +4,10 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ROOT } from './helpers/scan';
 
-// The screens before the mailbox (components/auth/*, PasswordField, LanguagePicker) are built from the ui/ primitives and the `au-*` classes of
-// auth.css. A class name spelled differently in the markup and in the stylesheet draws nothing and raises no error, so the two lists are held
-// equal here; the browser controls the redesign replaced do not come back; and Edgar stays off the sign-in screens (the owner's decision).
+// The screens before the mailbox (components/auth/*, PasswordField, LanguagePicker) and the crash screen (ErrorBoundary) are built from the
+// ui/ primitives and the `au-*` classes of auth.css. A class name spelled differently in the markup and in the stylesheet draws nothing and
+// raises no error, so the two lists are held equal here; the browser controls the redesign replaced do not come back; and Edgar stays off
+// the sign-in screens (the owner's decision).
 
 const COMPONENTS = path.join(ROOT, 'src', 'client', 'components');
 const AUTH = path.join(COMPONENTS, 'auth');
@@ -17,6 +18,8 @@ const sources = [
   path.join(COMPONENTS, 'PasswordField.tsx'),
   path.join(COMPONENTS, 'LanguagePicker.tsx')
 ];
+/** The crash screen uses the page and card of these screens (its colours are inline real values on purpose, so it is only in the class scan). */
+const crash = path.join(COMPONENTS, 'ErrorBoundary.tsx');
 const read = (file: string): string => readFileSync(file, 'utf8');
 const code = (file: string): string =>
   read(file)
@@ -27,7 +30,7 @@ const words = (source: string, pattern: RegExp): Set<string> => new Set([...sour
 
 describe('the screens before the mailbox', () => {
   it('use the au-* classes that auth.css defines, and auth.css defines none that no component uses', () => {
-    const used = words(sources.map(read).join('\n'), /\b(au-[a-z][a-z0-9-]*)/g);
+    const used = words([...sources, crash].map(read).join('\n'), /\b(au-[a-z][a-z0-9-]*)/g);
     const defined = words(css.replaceAll(/\/\*[\s\S]*?\*\//g, ''), /\.(au-[a-z][a-z0-9-]*)/g);
     expect([...used].filter((name) => !defined.has(name))).toEqual([]);
     expect([...defined].filter((name) => !used.has(name))).toEqual([]);
@@ -39,18 +42,21 @@ describe('the screens before the mailbox', () => {
     }
   });
 
-  it('show Edgar only on a screen that reports a blocked state: the small figure beside the title of Setup not ready, never on a form', () => {
+  it('show Edgar only on a screen that reports a blocked state: the small figure over the title of Setup not ready, never on a form', () => {
     const withMascot = sources.filter((file) => read(file).includes('/edgar.svg')).map((file) => path.basename(file));
     expect(withMascot).toEqual(['authUi.tsx']);
     const card = read(path.join(AUTH, 'authUi.tsx'));
-    expect(card).toMatch(/\{illustration \? <img src="\/edgar\.svg" alt="" width=\{96\} height=\{93\} className="au-art" \/> : null\}/);
-    // The width stays within the 120 px the owner allows: 96 px on every screen; on a phone Edgar stands above the title, so the title and the
-    // lead keep the whole column instead of a narrow one with an orphan word.
-    expect(css).toMatch(/\.au-art \{[^}]*width: 96px;/);
-    expect([...css.matchAll(/\.au-art \{[^}]*?width: (\d+)px/g)].map((match) => match[1])).toEqual(['96']);
-    const phone = /@media \(max-width: 480px\) \{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
-    expect(phone).toMatch(/\.au-head \{\s*flex-direction: column;\s*\}/);
-    expect(phone).toMatch(/\.au-art \{\s*order: -1;\s*\}/);
+    // The figure of the status screens (ui EmptyState's 112 px, its fade and its idle beats through `ui-empty-art` and useIdleBeat).
+    expect(card).toMatch(
+      /\{illustration \? <img ref=\{art\} src="\/edgar\.svg" alt="" width=\{112\} height=\{109\} className="au-art ui-empty-art" \/> : null\}/
+    );
+    expect(card).toMatch(/useIdleBeat\(art, illustration, title\)/);
+    // The width stays within the 120 px the owner allows: 112 px on every screen, over a centred title (on a phone too), so the title and
+    // the lead keep the whole column instead of a narrow one with an orphan word.
+    expect(css).toMatch(/\.au-art \{[^}]*width: 112px;/);
+    expect([...css.matchAll(/\.au-art \{[^}]*?width: (\d+)px/g)].map((match) => match[1])).toEqual(['112']);
+    expect(css).toMatch(/\.au-head \{\s*display: flex;\s*flex-direction: column;/);
+    expect(css).toMatch(/\.au-card\[data-status='true'\] \.au-head \{\s*align-items: center;\s*text-align: center;\s*\}/);
     const users = sources
       .filter((file) => path.basename(file) !== 'authUi.tsx' && /\billustration\b/.test(code(file)))
       .map((file) => path.basename(file));
@@ -61,16 +67,18 @@ describe('the screens before the mailbox', () => {
     );
   });
 
-  it('put the language list on the row over the card (as wide as the card), outside the card, as the ui Select', () => {
+  it('put the language list in the bar of page actions top right, outside the card and before it, as the ui Select', () => {
     const card = read(path.join(AUTH, 'authUi.tsx'));
+    const bar = card.indexOf('className="au-bar"');
     const column = card.indexOf('className="au-column"');
-    const top = card.indexOf('className="au-top"');
     const form = card.indexOf('className="au-card');
-    // Inside the column (so its right edge is the card's), before the card; in the page's corner it overshot the card by the page margin.
-    expect(column).toBeGreaterThan(-1);
-    expect(top).toBeGreaterThan(column);
-    expect(card.indexOf('<LanguagePicker')).toBeGreaterThan(top);
-    expect(card.indexOf('<LanguagePicker')).toBeLessThan(form);
+    // The bar comes first on the page (Sign out of the unlock screen, then the list: first in the tab order), the brand and the card after.
+    expect(bar).toBeGreaterThan(-1);
+    expect(card.indexOf('{topAction}')).toBeGreaterThan(bar);
+    expect(card.indexOf('<LanguagePicker')).toBeGreaterThan(card.indexOf('{topAction}'));
+    expect(card.indexOf('<LanguagePicker')).toBeLessThan(column);
+    expect(column).toBeLessThan(form);
+    expect(css).toMatch(/\.au-bar \{[^}]*justify-content: flex-end;/);
     expect(card).not.toContain('au-corner');
     expect(read(path.join(COMPONENTS, 'LanguagePicker.tsx'))).toContain('<Select');
     expect(read(path.join(AUTH, 'SetupScreen.tsx'))).toContain('<Select');
@@ -117,6 +125,37 @@ describe('the screens before the mailbox', () => {
     }
   });
 
+  it('let every password and key be shown before it is sent (WCAG 3.3.8): no bare password field, one Show button that says its state', () => {
+    // Every secret field of these screens is a SecretField (PasswordField builds on it): masked, with a Show button in its right edge.
+    for (const file of sources) {
+      expect(code(file), path.basename(file)).not.toMatch(/type="password"/);
+    }
+    const field = code(path.join(COMPONENTS, 'PasswordField.tsx'));
+    expect(field).toMatch(/type=\{shown \? 'text' : 'password'\}/);
+    // One name ("Show password", or "Show key" for a setup key) and the state in aria-pressed: a name that flips says the state twice.
+    expect(field).toMatch(/<IconButton label=\{showLabel \?\? tr\('password\.show'\)\} size="sm" pressed=\{shown\}/);
+    expect(field).not.toContain('password.hide');
+    for (const name of [
+      'SignInScreen.tsx',
+      'UnlockScreen.tsx',
+      'GateScreens.tsx',
+      'BreakGlassScreen.tsx',
+      'SetupScreen.tsx',
+      'ForgotScreen.tsx'
+    ]) {
+      expect(code(path.join(AUTH, name)), name).toMatch(/<SecretField\b/);
+    }
+    // The one-time code: the browser and the phone offer the code from a message or an app, and a phone opens the number pad.
+    for (const name of ['SignInScreen.tsx', 'TwoFactorEnrolment.tsx']) {
+      expect(code(path.join(AUTH, name)), name).toMatch(/autoComplete=\{?[^\n]*'one-time-code'|autoComplete="one-time-code"/);
+      expect(code(path.join(AUTH, name)), name).toMatch(/inputMode=\{?[^\n]*'numeric'|inputMode="numeric"/);
+    }
+    // Nothing on these screens blocks paste.
+    for (const file of sources) {
+      expect(code(file), path.basename(file)).not.toMatch(/onPaste/);
+    }
+  });
+
   it('never disable a form button until every field is filled in: a press shows what is missing (only a running request and a wait disable it)', () => {
     const security = path.join(COMPONENTS, 'security');
     const forms = [
@@ -124,6 +163,9 @@ describe('the screens before the mailbox', () => {
       path.join(AUTH, 'BreakGlassScreen.tsx'),
       path.join(AUTH, 'ForgotScreen.tsx'),
       path.join(AUTH, 'GateScreens.tsx'),
+      path.join(AUTH, 'SignInScreen.tsx'),
+      path.join(AUTH, 'UnlockScreen.tsx'),
+      path.join(AUTH, 'TwoFactorEnrolment.tsx'),
       path.join(security, 'ChangePasswordView.tsx'),
       path.join(security, 'CredentialForm.tsx')
     ];
@@ -134,6 +176,17 @@ describe('the screens before the mailbox', () => {
       // The press reaches the handler, which shows every error (submitted / all touched) and moves the keyboard to the first field to fix.
       expect(source, name).toMatch(/const toFix = firstInvalid\(\[/);
       expect(source, name).toMatch(/focusLater\(toFix\);\s*return;/);
+    }
+    // The recovery key check names the empty group under its own box; the codes panel says to tick the box under it.
+    const key = code(path.join(AUTH, 'RecoveryKeyPanel.tsx'));
+    expect(key).toMatch(/const toFix = firstInvalid\(typed\.map\(/);
+    expect(key).toMatch(/focusLater\(toFix\);\s*return;/);
+    expect(code(path.join(AUTH, 'RecoveryCodesPanel.tsx'))).toMatch(/focusLater\(SAVED_ID\);\s*return;/);
+    // On every screen before the mailbox a form's button is disabled only by a wait the server asked for (and busy, inside AuthButton).
+    for (const file of sources) {
+      for (const match of code(file).matchAll(/<AuthButton\b[^>]*?\bdisabled=\{([^}]*)\}/g)) {
+        expect(match[1], path.basename(file)).toBe('wait > 0');
+      }
     }
     expect(code(path.join(AUTH, 'SetupScreen.tsx'))).toMatch(/<AuthButton t=\{t\} busy=\{starting\} label=\{tr\('gate\.continue'\)\} \/>/);
     expect(code(path.join(security, 'ChangePasswordView.tsx'))).toMatch(
@@ -147,5 +200,23 @@ describe('the screens before the mailbox', () => {
     const focus = read(path.join(ROOT, 'src', 'client', 'lib', 'fieldFocus.ts'));
     expect(focus).toMatch(/input\.focus\(\{ preventScroll: true \}\);/);
     expect(focus.match(/scrollIntoView\(\{ block: 'nearest' \}\)/g)).toHaveLength(2);
+  });
+
+  it('centre the glow on the card (its stage), whatever the card height, and keep the column glow for the phone only', () => {
+    const card = read(path.join(AUTH, 'authUi.tsx'));
+    expect(card.indexOf('className="au-stage"')).toBeGreaterThan(card.indexOf('className="au-column"'));
+    expect(card.indexOf('className="au-stage"')).toBeLessThan(card.indexOf('className="au-card"'));
+    // The glow is the card's box grown evenly (top = bottom, left = right) with an ellipse that fills it: its centre is the card's.
+    expect(css).toMatch(
+      /\.au-stage::before \{[^}]*inset: -(\d+)px -(\d+)px;[^}]*background: radial-gradient\(closest-side, var\(--au-glow\), transparent\);/
+    );
+    const phone = css.slice(css.indexOf('@media (max-width: 480px)'));
+    expect(css.slice(0, css.indexOf('@media (max-width: 480px)'))).not.toMatch(/\.au-column::after \{/);
+    expect(phone).toMatch(/\.au-stage::before \{\s*display: none;\s*\}/);
+    // The sign-in and unlock cards name the server and end on the trust line.
+    for (const name of ['SignInScreen.tsx', 'UnlockScreen.tsx']) {
+      expect(code(path.join(AUTH, name)), name).toMatch(/server="(sign-in|unlock)"/);
+      expect(code(path.join(AUTH, name)), name).toMatch(/<TrustLine \/>\s*<\/AuthCard>/);
+    }
   });
 });

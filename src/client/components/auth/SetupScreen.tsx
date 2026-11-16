@@ -18,7 +18,7 @@ import { LANGUAGE_NAMES, LOCALES, tRich, useLocale, useT } from '../../lib/i18n'
 import type { Locale, MessageKey } from '../../lib/i18n';
 import { contextWords } from '../../lib/password/policy';
 import { usePasswordCheck } from '../../lib/password/usePasswordCheck';
-import { PasswordField } from '../PasswordField';
+import { PasswordField, SecretField } from '../PasswordField';
 import { Badge, Banner, Select, Step, Steps, TextField } from '../../ui';
 import { RecoveryKeyPanel } from './RecoveryKeyPanel';
 import { AuthButton, AuthCard, ErrorLine } from './authUi';
@@ -48,11 +48,8 @@ interface Touched {
 const UNTOUCHED: Touched = { setupKey: false, email: false, displayName: false, password: false, confirm: false };
 const ALL_TOUCHED: Touched = { setupKey: true, email: true, displayName: true, password: true, confirm: true };
 
-/** An input is described by its error text while there is one (TextField adds the id of its hint itself). */
-const errorId = (id: string, error: string | null): string | undefined => (error === null ? undefined : `${id}-error`);
-
-// The organisation's language, each by its own name in its own script.
-const LANGUAGE_OPTIONS = LOCALES.map((tag) => ({ value: tag, label: LANGUAGE_NAMES[tag] }));
+// The organisation's language, each by its own name in its own script, marked with its own language (3.1.2).
+const LANGUAGE_OPTIONS = LOCALES.map((tag) => ({ value: tag, label: LANGUAGE_NAMES[tag], lang: tag }));
 
 /** The secret that is the setup key (a name, never translated). */
 const SETUP_KEY_SECRET = 'APP_PASSWORD';
@@ -271,14 +268,7 @@ const SetupFlow: React.FC<{ t: ThemeTokens; session: Session }> = ({ t, session 
 
   if (step === 'recovery' && draft !== null) {
     return (
-      <AuthCard
-        t={t}
-        eyebrow={tr('setup.step', { current: 2, total: STEPS })}
-        title={tr('recovery.title_first')}
-        lead={adminClaimLimits().join(' ')}
-        picker
-        wide
-      >
+      <AuthCard t={t} step={{ current: 2, total: STEPS }} title={tr('recovery.title_first')} picker wide>
         <RecoveryKeyPanel
           t={t}
           draft={draft}
@@ -294,19 +284,18 @@ const SetupFlow: React.FC<{ t: ThemeTokens; session: Session }> = ({ t, session 
           </p>
         ) : null}
         {keyWrong ? (
-          <TextField
+          <SecretField
             id="setup-key-retry"
             label={tr('setup.key_label')}
             hint={tr('setup.wrong_key_retry')}
-            type="password"
+            showLabel={tr('auth.show_key')}
             autoComplete="off"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
             value={retryKey}
             onChange={(event) => setRetryKey(event.target.value)}
           />
         ) : null}
+        {/* What the first admin can and cannot do for the people they add: a note after the key, which comes first on this step. */}
+        <p className="au-note">{adminClaimLimits().join(' ')}</p>
       </AuthCard>
     );
   }
@@ -319,7 +308,7 @@ const SetupFlow: React.FC<{ t: ThemeTokens; session: Session }> = ({ t, session 
   return (
     <AuthCard
       t={t}
-      eyebrow={tr('setup.step', { current: 1, total: STEPS })}
+      step={{ current: 1, total: STEPS }}
       title={tr('setup.title')}
       lead={tr('setup.lead')}
       picker
@@ -329,64 +318,48 @@ const SetupFlow: React.FC<{ t: ThemeTokens; session: Session }> = ({ t, session 
         void begin();
       }}
     >
-      <div className="au-row">
-        <TextField
-          id="setup-key"
-          label={tr('setup.key_label')}
-          hint={tr('setup.key_hint')}
-          type="password"
-          autoComplete="off"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          value={setupKey}
-          onChange={(event) => setSetupKey(event.target.value)}
-          onBlur={touch('setupKey')}
-          aria-invalid={keyError !== null}
-          aria-describedby={errorId('setup-key', keyError)}
-        />
-        <ErrorLine t={t} id="setup-key-error" text={keyError} />
-      </div>
+      <SecretField
+        id="setup-key"
+        label={tr('setup.key_label')}
+        hint={tr('setup.key_hint')}
+        error={keyError ?? undefined}
+        showLabel={tr('auth.show_key')}
+        autoComplete="off"
+        value={setupKey}
+        onChange={(event) => setSetupKey(event.target.value)}
+        onBlur={touch('setupKey')}
+      />
 
       {/* The address and the name side by side from 641px (one row instead of two; both labels are one line in every language), stacked on a
           phone. Their hints differ in length, so the pair is aligned at the top: labels and boxes share one line. */}
       <div className="au-pair">
-        <div className="au-row">
-          <TextField
-            id="setup-email"
-            label={tr('auth.email_label')}
-            hint={tr('setup.address_hint')}
-            type="text"
-            inputMode="email"
-            autoComplete="username"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            onBlur={touch('email')}
-            aria-invalid={emailError !== null}
-            aria-describedby={errorId('setup-email', emailError)}
-          />
-          <ErrorLine t={t} id="setup-email-error" text={emailError} />
-        </div>
-
-        <div className="au-row">
-          <TextField
-            id="setup-name"
-            label={tr('term.display_name')}
-            hint={tr('setup.name_hint')}
-            type="text"
-            autoComplete="name"
-            maxLength={DISPLAY_NAME_MAX}
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
-            onBlur={touch('displayName')}
-            aria-invalid={nameError !== null}
-            aria-describedby={errorId('setup-name', nameError)}
-          />
-          <ErrorLine t={t} id="setup-name-error" text={nameError} />
-        </div>
+        <TextField
+          id="setup-email"
+          label={tr('auth.email_label')}
+          hint={tr('setup.address_hint')}
+          error={emailError ?? undefined}
+          type="text"
+          inputMode="email"
+          autoComplete="username"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          onBlur={touch('email')}
+        />
+        <TextField
+          id="setup-name"
+          label={tr('term.display_name')}
+          hint={tr('setup.name_hint')}
+          error={nameError ?? undefined}
+          type="text"
+          autoComplete="name"
+          maxLength={DISPLAY_NAME_MAX}
+          value={displayName}
+          onChange={(event) => setDisplayName(event.target.value)}
+          onBlur={touch('displayName')}
+        />
       </div>
 
       <Select
@@ -416,23 +389,16 @@ const SetupFlow: React.FC<{ t: ThemeTokens; session: Session }> = ({ t, session 
         submitted={touched.password}
       />
 
-      <div className="au-row">
-        <TextField
-          id="setup-confirm"
-          label={tr('gate.repeat_password')}
-          type="password"
-          autoComplete="new-password"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          value={confirm}
-          onChange={(event) => setConfirm(event.target.value)}
-          onBlur={touch('confirm')}
-          aria-invalid={confirmError !== null}
-          aria-describedby={errorId('setup-confirm', confirmError)}
-        />
-        <ErrorLine t={t} id="setup-confirm-error" text={confirmError} />
-      </div>
+      <SecretField
+        id="setup-confirm"
+        label={tr('gate.repeat_password')}
+        showLabel={tr('password.show_repeat')}
+        error={confirmError ?? undefined}
+        autoComplete="new-password"
+        value={confirm}
+        onChange={(event) => setConfirm(event.target.value)}
+        onBlur={touch('confirm')}
+      />
 
       {/* The longest form of these screens: from 641px its last row (an error about the whole form, and Continue) stays docked at the bottom
           edge of the window while the fields scroll under it, so the next step is always in sight (at a 670px-high laptop window Continue was

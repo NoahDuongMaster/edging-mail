@@ -41,7 +41,7 @@ export function CopyButton({ text, onResult, variant = 'secondary', ...rest }: C
     <>
       <Button
         variant={variant}
-        leadingIcon={copied ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
+        leadingIcon={copied ? <Check size={16} aria-hidden="true" className="ui-copy-tick" /> : <Copy size={16} aria-hidden="true" />}
         onClick={() => {
           void press();
         }}

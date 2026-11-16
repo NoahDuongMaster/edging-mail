@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type UseMutationResult, type UseQueryResult } from '@tanstack/react-query';
 import { apiGet, apiPost } from './api';
-import { initialsOf } from './mail';
+import { initialsOf } from '../ui/initials';
 
 export interface Settings {
   display_name: string;
@@ -36,12 +36,16 @@ export function useSaveSettings(): UseMutationResult<Settings, Error, SettingsPa
   });
 }
 
-/** Avatar initials of the owner: display name, else the local part of the sender address, else '?'. Empty while the settings load. */
-export function ownerInitials(settings: Settings | undefined): string {
+/**
+ * Avatar initials of the owner, by the one rule of every avatar (ui/initials.ts: two Latin initials, one CJK character): the display name,
+ * else the sender address, else '?'. Empty while the settings load.
+ */
+export function ownerInitials(settings?: Settings): string {
   if (settings === undefined) {
     return '';
   }
-  return initialsOf(settings.display_name.trim(), settings.email.split('@', 1)[0].trim());
+  const name = settings.display_name.trim();
+  return initialsOf(name === '' ? settings.email.trim() : name);
 }
 
 /** Plain-text signature block for the editor: a blank line, the '-- ' separator, the signature. '' when none is saved. */

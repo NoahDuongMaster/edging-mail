@@ -3,6 +3,15 @@
     "context": "Settings > Account: heading of the card that lists account notices and recent sign-ins.",
     "security": true
   },
+  "account.latest": {
+    "context": "Settings > Security, card 'Account activity': the latest event of the account. {event} = what happened (e.g. 'Signed in', 'Failed sign-in'), {when} = its date and time.",
+    "security": true
+  },
+  "account.notices_count": {
+    "context": "Settings > Security, card 'Account activity': badge with the number of notices that need the person's attention.",
+    "security": true,
+    "max": 16
+  },
   "account.notices_empty": {
     "context": "Settings > Account > Account activity: shown under the Notices sub-heading when there is nothing to report.",
     "security": true
@@ -10,6 +19,11 @@
   "account.notices_title": {
     "context": "Settings > Account > Account activity: sub-heading of the list of security notices about this account (recovery key used, two-factor sign-in reset...).",
     "security": true
+  },
+  "account.review": {
+    "context": "Button on the Security card 'Account activity': opens the notices and the recent sign-ins.",
+    "security": true,
+    "max": 16
   },
   "account.signins_empty": {
     "context": "Settings > Account > Account activity: shown under Recent sign-ins when the history is empty.",
@@ -32,6 +46,18 @@
   "account.signins_title": {
     "context": "Settings > Account > Account activity: sub-heading of the history of recent sign-ins (newest first).",
     "security": true
+  },
+  "action.deselect": {
+    "context": "Button in the row menu of a message that is ticked (selected): takes it out of the selection.",
+    "security": false
+  },
+  "action.move_to_folder": {
+    "context": "Button that opens a list of folders (in the row menu of a message and in the bar of a selection): moves the message or messages to the folder chosen.",
+    "security": false
+  },
+  "action.select": {
+    "context": "Button in the row menu of a message: ticks it and starts a selection, so several messages can be archived, moved or labelled at once.",
+    "security": false
   },
   "activity.agent_on": {
     "context": "Sign-in history row, second line: the browser and the operating system of the device, e.g. \"Firefox on Windows\". {browser} = browser name (Firefox, Chrome...), {system} = operating system name (Windows, macOS...); both are product names and stay as they are.",
@@ -165,7 +191,7 @@
     "security": true
   },
   "activity.notice_second_factor_locked": {
-    "context": "Notice (banner and account activity card) for the OWNER of an account: after the password was right, wrong authenticator or recovery codes were entered too often, so sign-in with a code is paused for a while. {date} is a date and time. Tells the person what to do if it was not them. Same facts as the push text push.second_factor_locked.body.",
+    "context": "Notice (banner and account activity card) for the OWNER of an account: after the password was right, wrong authenticator or recovery codes were entered too often, so sign-in with a code is paused: 15 minutes for the first two pauses, 24 hours from the third (the Worker's SECOND_FACTOR_POLICY). {date} is a date and time. Tells the person what to do if it was not them. Same facts as the push text push.second_factor_locked.body.",
     "security": true,
     "max": 220
   },
@@ -191,8 +217,56 @@
     "security": false,
     "max": 16
   },
+  "admin.domains_desc": {
+    "context": "Admin console, Domains page: the one line under the page title.",
+    "security": false
+  },
+  "admin.people_desc": {
+    "context": "Admin console, People page: the one line under the page title.",
+    "security": false
+  },
+  "admin.policy_confirm_label": {
+    "context": "Admin Settings, two-factor rule: label of the field where the admin types their own address before the rule is relaxed. {address} is that address.",
+    "security": true
+  },
+  "admin.policy_confirm_mismatch": {
+    "context": "Admin Settings, two-factor rule: error under the confirmation field when the typed text is not the admin's address. {address} is that address.",
+    "security": false
+  },
+  "admin.policy_desc": {
+    "context": "Admin Settings, two-factor rule: the one line under the card title.",
+    "security": true
+  },
+  "admin.policy_off_body": {
+    "context": "Admin Settings, two-factor rule: the question shown before the requirement is turned off for members.",
+    "security": true
+  },
+  "admin.policy_off_effect": {
+    "context": "Admin Settings, two-factor rule: hint under the switch while the requirement is off (who it affects).",
+    "security": true
+  },
+  "admin.policy_on_effect": {
+    "context": "Admin Settings, two-factor rule: hint under the switch while the requirement is on (who it affects).",
+    "security": true
+  },
+  "admin.policy_switch": {
+    "context": "Admin Settings, two-factor rule: label of the switch.",
+    "security": true
+  },
+  "admin.policy_title": {
+    "context": "Admin Settings: title of the card with the two-factor rule of the organisation.",
+    "security": true
+  },
+  "admin.policy_turn_off": {
+    "context": "Admin Settings, two-factor rule: the button that confirms turning the requirement off (destructive).",
+    "security": true
+  },
   "admin.sections_label": {
     "context": "aria-label of the tab list of the admin console (People, Domains, Audit log). Screen reader only.",
+    "security": false
+  },
+  "admin.settings_desc": {
+    "context": "Admin console, Settings page: the one line under the page title.",
     "security": false
   },
   "admin.step_up_body": {
@@ -217,6 +291,10 @@
     "context": "Admin console tab: the list of accounts.",
     "security": false,
     "max": 12
+  },
+  "app.account_named": {
+    "context": "Accessible name of the round avatar button in the header (the only way into Settings). {initials} = the letters shown in the circle (e.g. 'AM' or '李'), so a voice-control user can say what they see. Same words as app.account_settings after them.",
+    "security": false
   },
   "app.account_settings": {
     "context": "Tooltip and screen-reader label of the round avatar button in the header (opens Settings)",
@@ -271,6 +349,10 @@
     "context": "Toast when the selected message cannot be loaded (deleted meanwhile, old notification link)",
     "security": false
   },
+  "app.new_messages": {
+    "context": "Read out by screen readers (not shown) when new mail arrives in the open folder",
+    "security": false
+  },
   "app.no_connection": {
     "context": "Toast when a request fails because the device is offline (also the prefix of every failed action)",
     "security": false
@@ -293,17 +375,44 @@
     "security": false
   },
   "app.reply_quote_header": {
-    "context": "First line of the quoted original inside the OUTGOING reply body: 'On <date>, <name> wrote:' ({date} is a numeric date and time)",
+    "context": "First line of the quoted original inside the OUTGOING reply body: 'On <date>, <name> wrote:' ({date} is a numeric date and time; {name} is the sender's name and address, 'Priya Nair <priya@example.com>')",
     "security": false
+  },
+  "app.retry_in": {
+    "context": "Status line on the 'Could not reach the server' screen, under the explanation: the app checks again on its own; {seconds} counts down (5, 4, 3...). Short.",
+    "security": false,
+    "max": 32
+  },
+  "app.retrying": {
+    "context": "Status line on the 'Could not reach the server' screen while the app is checking the connection again. Short.",
+    "security": false,
+    "max": 32
   },
   "app.search_mail": {
     "context": "Placeholder of the search box and its hidden label",
     "security": false,
     "max": 30
   },
+  "app.search_results": {
+    "context": "Shown under the heading of a search (and read out by screen readers when it finishes): how many messages it found and where. {more} is '+' when more pages exist, else empty; {scope} = the folder's name (Inbox, Archive...) or 'All mail'.",
+    "security": false
+  },
   "app.server_unreachable": {
     "context": "Full-screen text when the first session check cannot reach the server (above a 'Try again' button); also the Settings > Notifications error when the server cannot be reached",
     "security": false
+  },
+  "app.server_unreachable_hint": {
+    "context": "Line under 'Could not reach the server.' on the full-screen status page (above the 'Try again' button): what to check, and that the app keeps trying by itself",
+    "security": false
+  },
+  "app.skip_to_message": {
+    "context": "Second skip link at the very top of the desktop mailbox (shown only when it has keyboard focus): jumps past the list to the message open on the right, where Reply and the other actions are.",
+    "security": false
+  },
+  "app.skip_to_messages": {
+    "context": "Skip link: the first thing the Tab key reaches in the mailbox, shown only while it has keyboard focus; moves focus straight to the message list",
+    "security": false,
+    "max": 36
   },
   "app.snooze_failed": {
     "context": "Toast fallback when snoozing a message fails and the server gave no reason",
@@ -341,6 +450,11 @@
   "app.theme_to_light": {
     "context": "Name and tooltip of the header theme button while the dark theme is on (the button switches to light)",
     "security": false
+  },
+  "app.title_unread": {
+    "context": "Browser tab title part: the open folder and its number of unread messages, e.g. 'Inbox (2)'; the app adds ' - Edging Mail'",
+    "security": false,
+    "max": 30
   },
   "audit.action.2fa_disabled": {
     "context": "Audit log row: the person turned two-factor sign-in off.",
@@ -489,27 +603,24 @@
     "context": "Audit log row title for an action this app has no text for yet. {action} is the raw action code, shown as it is.",
     "security": false
   },
+  "audit.actor_scheduled": {
+    "context": "Audit log: who did it, when the server did it on its own schedule (no person).",
+    "security": false
+  },
   "audit.actor_to_target": {
     "context": "Audit log row: who did it and to whom. {actor} and {target} are email addresses (or a domain name).",
     "security": false
   },
-  "audit.col_action": {
-    "context": "Audit log table: header of the column that says what was done (Account created, Sign-in failed, ...).",
-    "security": false,
-    "max": 16
-  },
-  "audit.col_when": {
-    "context": "Audit log table: header of the column with the date and time of each entry.",
-    "security": false,
-    "max": 16
-  },
-  "audit.col_who": {
-    "context": "Audit log table: header of the column with the admin who did it and, after an arrow, the account or domain it was done to.",
-    "security": false,
-    "max": 20
-  },
   "audit.detail_aliases": {
     "context": "Audit log row detail name: how many extra addresses the first admin set up (lower case, before a colon).",
+    "security": false
+  },
+  "audit.detail_change": {
+    "context": "Audit log detail of a change: from the old value to the new one (Member to Admin, Off to On, one language to another).",
+    "security": false
+  },
+  "audit.detail_deleted": {
+    "context": "Audit log row detail name: how many locked messages were deleted (lower case, before a colon).",
     "security": false
   },
   "audit.detail_due": {
@@ -519,6 +630,10 @@
   "audit.detail_from": {
     "context": "Audit log row detail name: the old value of a change (lower case, before a colon).",
     "security": false
+  },
+  "audit.detail_key": {
+    "context": "Audit log row detail name: the id of an encryption key (lower case, before a colon).",
+    "security": true
   },
   "audit.detail_pair": {
     "context": "Audit log row: one detail of the entry. {label} is the name of the detail, {value} its value. Several are shown side by side, separated by a dot.",
@@ -556,12 +671,97 @@
     "context": "Admin Audit log tab: shown under the list when there are no more entries.",
     "security": false
   },
+  "audit.end_range": {
+    "context": "Audit log: under the list when every event of the chosen date range is shown (older ones exist).",
+    "security": false
+  },
+  "audit.filter_clear": {
+    "context": "Audit log: button that resets both filters when nothing matches.",
+    "security": false
+  },
+  "audit.filter_date": {
+    "context": "Audit log: label of the filter by date range (Last 7 days, Last 30 days, All time).",
+    "security": false,
+    "max": 20
+  },
+  "audit.filter_kind": {
+    "context": "Audit log: label of the filter by kind of event.",
+    "security": false
+  },
+  "audit.filter_none": {
+    "context": "Audit log: shown when the filters leave no event.",
+    "security": false
+  },
+  "audit.filter_person": {
+    "context": "Audit log: label of the filter by the person who did the action.",
+    "security": false
+  },
   "audit.intro": {
     "context": "Admin Audit log tab: line above the list.",
     "security": true
   },
+  "audit.kind_accounts": {
+    "context": "Audit log, Event filter: account and alias changes.",
+    "security": false
+  },
+  "audit.kind_all": {
+    "context": "Audit log, Event filter: no filter.",
+    "security": false
+  },
+  "audit.kind_security": {
+    "context": "Audit log, Event filter: sign-ins, passwords, keys, two-factor.",
+    "security": false
+  },
+  "audit.kind_settings": {
+    "context": "Audit log, Event filter: changes of the organisation settings.",
+    "security": false
+  },
   "audit.loading": {
     "context": "Admin Audit log tab while the log loads (spinner and text).",
+    "security": false
+  },
+  "audit.person_all": {
+    "context": "Audit log, Done by filter: no filter.",
+    "security": false
+  },
+  "audit.range_30": {
+    "context": "Audit log, date filter: events of the last 30 days.",
+    "security": false
+  },
+  "audit.range_7": {
+    "context": "Audit log, date filter: events of the last 7 days (the default).",
+    "security": false
+  },
+  "audit.range_all": {
+    "context": "Audit log, date filter: every event.",
+    "security": false
+  },
+  "audit.reason_disabled": {
+    "context": "Audit log detail, reason of a failed sign-in: the account is disabled.",
+    "security": false
+  },
+  "audit.reason_not_admin": {
+    "context": "Audit log detail, reason a scheduled reset was cancelled: the admin who requested it was disabled, deleted or made a member.",
+    "security": false
+  },
+  "audit.reason_second_factor": {
+    "context": "Audit log detail, reason of a failed sign-in: the two-factor code was wrong.",
+    "security": true
+  },
+  "audit.reason_wrong_password": {
+    "context": "Audit log detail, reason of a failed sign-in: the password was wrong.",
+    "security": true
+  },
+  "audit.show_older": {
+    "context": "Audit log: button under the list that widens the date filter to All time.",
+    "security": false
+  },
+  "audit.value_off": {
+    "context": "Audit log detail value: a rule was off.",
+    "security": false
+  },
+  "audit.value_on": {
+    "context": "Audit log detail value: a rule was on (e.g. the two-factor requirement).",
     "security": false
   },
   "auth.address_invalid": {
@@ -576,10 +776,18 @@
     "context": "Label of the email address field on the sign-in screen.",
     "security": true
   },
+  "auth.forgot_hint": {
+    "context": "Sign-in screen: one line under the 'Forgot password' link (auth.forgot_password). Resetting the password needs the recovery key the person saved when the account was set up. Screen readers also read it as the link's description.",
+    "security": true
+  },
   "auth.forgot_password": {
     "context": "Button: link under the sign-in form that opens the forgotten-password flow (no question mark: it is a button).",
     "security": true,
     "max": 26
+  },
+  "auth.password_required": {
+    "context": "Sign-in, unlock, and the password asked once more after a reload in the middle of a first sign-in: red line under the password field after the person pressed the button with the field empty.",
+    "security": true
   },
   "auth.recovery_code_hint": {
     "context": "Hint under the recovery-code field: such a code only signs the person in; it cannot open mail.",
@@ -591,6 +799,10 @@
   },
   "auth.recovery_code_lead": {
     "context": "Second sign-in step when the person chose a two-factor recovery code instead of the app code.",
+    "security": true
+  },
+  "auth.recovery_code_required": {
+    "context": "Second step of sign-in, recovery-code mode: red line under the recovery code field after Verify was pressed with it empty.",
     "security": true
   },
   "auth.second_step_lead": {
@@ -607,6 +819,24 @@
   },
   "auth.shared_device_hint": {
     "context": "Hint under the shared-device checkbox on the sign-in screen: the encryption key stays in this browser tab only, but closing the tab does not end the sign-in. \"Sign out\" is the catalogue label of the sign-out button. cyber CAT-15.",
+    "security": true
+  },
+  "auth.shared_device_short": {
+    "context": "Sign-in, unlock and first-sign-in screens: short line under the shared-device checkbox, always shown, saying what ticking it changes for the person (subject: the choice): the encryption key is kept in this tab's memory only, so the password is asked again once the tab is closed or reloaded (the session itself stays signed in). Once the box is ticked the longer auth.shared_device_hint replaces it.",
+    "security": true
+  },
+  "auth.show_key": {
+    "context": "Button (icon only): eye icon inside a setup-key field (first-run Setup, Restore an admin account) that shows the typed key; aria-label, no visible text. It keeps this name while the key is shown (its pressed state says so).",
+    "security": true,
+    "max": 24
+  },
+  "auth.step": {
+    "context": "Screens before the mailbox (first-run Setup, Forgot password, Restore an admin account, the steps of a first sign-in): small line above the title, beside a thin progress bar. {current} is the number of this step and {total} the number of steps (2 or 3).",
+    "security": true,
+    "max": 30
+  },
+  "auth.trust_line": {
+    "context": "Sign-in and unlock screens: one quiet line with a lock icon at the foot of the card. A true claim (docs/security.md): mail is stored encrypted, and the server never receives the password (only a value derived from it). Do not make it a bigger promise (not 'end-to-end' for all mail, not 'nobody can ever read').",
     "security": true
   },
   "auth.try_again_in": {
@@ -731,6 +961,10 @@
     "context": "Error for a server answer whose code has no own text; {code} is a short technical code like 'rate_limited'. Keep {code} as it is",
     "security": false
   },
+  "compose.attaching": {
+    "context": "Compose: accessible name of the progress bar of a file being added to the message ({filename} is its name); the bar shows how much is read.",
+    "security": false
+  },
   "compose.attachment_read_failed": {
     "context": "Error when a chosen file cannot be read by the browser",
     "security": false
@@ -761,18 +995,38 @@
     "security": false,
     "max": 22
   },
-  "compose.confirm_discard": {
-    "context": "Screen-reader label of the discard button after the first click, when it asks to confirm",
-    "security": false
-  },
-  "compose.discard_ask": {
-    "context": "Visible text of the discard button after the first click (replaces the trash icon for 4 seconds)",
+  "compose.close_files_body": {
+    "context": "Compose: body of the question asked when the window is closed (X or Escape) while files are attached; the file names follow on a line of their own.",
     "security": false,
-    "max": 12
+    "max": 160
+  },
+  "compose.close_files_confirm": {
+    "context": "Compose: the confirm button of the close question (compose.close_files_title): closes the window, the text stays in Drafts, the files go.",
+    "security": false,
+    "max": 28
+  },
+  "compose.close_files_title": {
+    "context": "Compose: title of the question asked when the window is closed while files are attached (drafts keep no files).",
+    "security": false,
+    "max": 40
+  },
+  "compose.discard_body": {
+    "context": "Compose: text of the Discard draft confirmation dialog.",
+    "security": false
   },
   "compose.discard_failed": {
     "context": "Notice shown after the compose closes when the draft could not be deleted on the server",
     "security": false
+  },
+  "compose.discard_title": {
+    "context": "Compose: title of the confirmation dialog of the Discard draft button (only when something would be lost); the confirm button is action.discard_draft, Cancel keeps writing.",
+    "security": false,
+    "max": 40
+  },
+  "compose.draft_kept": {
+    "context": "Toast after the compose window was closed with content: the message is kept in Drafts; its button (compose.open_draft) opens it again.",
+    "security": false,
+    "max": 40
   },
   "compose.draft_not_saved": {
     "context": "Draft autosave status in the compose header, and the notice shown after the compose closes when the last save failed",
@@ -801,14 +1055,19 @@
     "context": "Screen-reader label of the compose formatting toolbar",
     "security": false
   },
-  "compose.from_placeholder": {
-    "context": "Placeholder of the sender address field in the compose window (an example address)",
+  "compose.from_label": {
+    "context": "Compose: label of the sender field (the From line of every mail app), beside To/Cc/Bcc/Subject in a narrow label column.",
     "security": false,
-    "max": 30
+    "max": 10
   },
   "compose.image_prompt": {
-    "context": "Browser prompt dialog asking for the web address of an image",
+    "context": "Compose: label of the web address field in the small Insert image form that opens from the formatting toolbar",
     "security": false
+  },
+  "compose.insert": {
+    "context": "Compose: the button of the small Insert link / Insert image form under the formatting toolbar; puts the web address into the message.",
+    "security": false,
+    "max": 16
   },
   "compose.insert_image_url": {
     "context": "Compose toolbar icon button that inserts an image from a web address (not from a file): tooltip and screen-reader label",
@@ -834,6 +1093,11 @@
     "security": false,
     "max": 22
   },
+  "compose.keep_editing": {
+    "context": "Compose: the safe button of the close question (compose.close_files_title): the window stays open with its files.",
+    "security": false,
+    "max": 24
+  },
   "compose.key_ctrl": {
     "context": "Text on the Ctrl key cap in the send shortcut hint; normally left as it is",
     "security": false,
@@ -845,12 +1109,13 @@
     "max": 6
   },
   "compose.link_prompt": {
-    "context": "Browser prompt dialog asking for the web address of a link",
+    "context": "Compose: label of the web address field in the small Insert link form that opens from the formatting toolbar",
     "security": false
   },
-  "compose.missing_from": {
-    "context": "Error in the compose header when no sender address is set; Settings is the Settings screen",
-    "security": false
+  "compose.more_formatting": {
+    "context": "Compose: label and tooltip of the last button of the formatting toolbar on a narrow screen; it opens a menu with the formatting tools that do not fit.",
+    "security": false,
+    "max": 32
   },
   "compose.need_recipient": {
     "context": "Validation error when Send is pressed with no recipient",
@@ -873,6 +1138,11 @@
     "security": false,
     "max": 22
   },
+  "compose.open_draft": {
+    "context": "Toast button after the compose was closed (compose.draft_kept): opens the saved draft again.",
+    "security": false,
+    "max": 12
+  },
   "compose.quote": {
     "context": "Compose toolbar icon button that turns the line into a block quote, tooltip and screen-reader label",
     "security": false,
@@ -893,6 +1163,14 @@
     "security": true,
     "max": 70
   },
+  "compose.recipient_armed": {
+    "context": "Screen-reader announcement in the compose recipient fields: Backspace in the empty field moved focus to the last recipient chip; a second Backspace removes it. {address} is the email address",
+    "security": false
+  },
+  "compose.recipient_removed": {
+    "context": "Screen-reader announcement after a recipient chip was removed from To, Cc or Bcc; {address} is the email address",
+    "security": false
+  },
   "compose.remove_file": {
     "context": "Screen-reader label of the x button on an attachment card; {filename} is the file name",
     "security": false
@@ -906,15 +1184,29 @@
     "security": true,
     "max": 75
   },
+  "compose.send_interrupted": {
+    "context": "Compose, reopened: a send held back for Undo could not go because a recipient's keys changed meanwhile (a question would have been needed).",
+    "security": false,
+    "max": 120
+  },
   "compose.send_shortcut": {
     "context": "Hint next to the Send button (desktop only); {keys} is replaced by two key caps, Ctrl and Enter",
     "security": false,
     "max": 16
   },
+  "compose.send_undone": {
+    "context": "Screen-reader announcement after Undo on the 'Sending…' toast: the message did not leave and the compose window is open again.",
+    "security": false,
+    "max": 60
+  },
   "compose.sending": {
     "context": "Send button label while the message is being sent",
     "security": false,
     "max": 14
+  },
+  "compose.sending_hint": {
+    "context": "Read out by screen readers (not shown) when the 'Sending…' toast with its Undo button appears after Send: the message waits the undo-send time and can still be taken back. 'Undo' is the toast's button (toast.undo); keep Ctrl+Z as it is",
+    "security": false
   },
   "compose.sent": {
     "context": "Success status in the compose header just before the window closes",
@@ -923,6 +1215,11 @@
   "compose.sent_copy_failed": {
     "context": "Warning when the message went out but the copy in the Sent folder could not be stored; the first Sent is the verb, the second the folder name (folder.sent)",
     "security": false
+  },
+  "compose.show_quoted": {
+    "context": "Compose, a reply: the button under the body that unfolds the quoted original message (it is sent either way).",
+    "security": false,
+    "max": 32
   },
   "compose.state_e2e": {
     "context": "Quiet line under the recipient fields of the compose window, shown when every recipient has encryption keys on this server: the message will be sealed in the sender's browser for each of them. Information, not a warning. Do not use the badge words \"end-to-end encrypted\" here.",
@@ -948,6 +1245,10 @@
     "context": "Text style dropdown option: smaller heading",
     "security": false,
     "max": 16
+  },
+  "compose.suggestions_label": {
+    "context": "Screen-reader name of the list of people suggested under the To, Cc and Bcc fields while an address is typed (from mail already in this browser)",
+    "security": false
   },
   "compose.text_style": {
     "context": "Screen-reader label of the text style dropdown in the compose toolbar",
@@ -977,12 +1278,36 @@
     "security": false,
     "max": 22
   },
+  "compose.url_invalid": {
+    "context": "Compose: error under the web address field of the Insert link / Insert image form when what was typed is not a web address.",
+    "security": false
+  },
   "confirm.delete_forever_body": {
     "context": "Body of the confirmation dialog before Delete forever (Trash and Spam only)",
     "security": false
   },
   "confirm.delete_forever_title": {
     "context": "Title of the confirmation dialog before Delete forever",
+    "security": false
+  },
+  "confirm.delete_selected_body": {
+    "context": "Body of the confirmation before the selected messages in Trash or Spam are deleted forever (no Undo).",
+    "security": false
+  },
+  "confirm.delete_selected_title": {
+    "context": "Title of the confirmation before the selected messages in Trash or Spam are deleted forever. {count} = how many are selected.",
+    "security": false
+  },
+  "confirm.empty_body": {
+    "context": "Text of the 'Empty Trash?' confirmation. {count} = how many messages are in the folder now, {folder} = Trash or Spam. Nothing can bring them back (no Undo).",
+    "security": false
+  },
+  "confirm.empty_title": {
+    "context": "Title of the confirmation before every message in Trash (or Spam) is deleted for good. {folder} = the folder's name (Trash or Spam).",
+    "security": false
+  },
+  "crash.keeps_happening": {
+    "context": "Crash screen ('Something went wrong'): quiet line above the Sign out button, under Reload.",
     "security": false
   },
   "crash.reload": {
@@ -1084,6 +1409,10 @@
     "security": false,
     "max": 20
   },
+  "docs.architecture_desc": {
+    "context": "Settings > Architecture (admins): one line under the page title.",
+    "security": false
+  },
   "docs.deploy_intro": {
     "context": "First line of the Deployment tab. {deployment} and {configuration} are file names (docs/deployment.md, docs/configuration.md), shown as code.",
     "security": false,
@@ -1139,6 +1468,10 @@
     "security": true,
     "max": 190
   },
+  "docs.deployment_desc": {
+    "context": "Settings > Deployment (admins): one line under the page title.",
+    "security": false
+  },
   "docs.routing_alt": {
     "context": "Note: for mail hosted elsewhere. {doc} is a file name shown as code. \"Option B\" is the heading name in that document; keep it.",
     "security": false,
@@ -1148,6 +1481,10 @@
     "context": "List item: use the catch-all rule of the whole domain. {action} is the Cloudflare action name (shown in bold, same as in the domains guide) and {worker} the destination.",
     "security": false,
     "max": 350
+  },
+  "docs.routing_desc": {
+    "context": "Settings > Email routing & MX (admins): one line under the page title.",
+    "security": false
   },
   "docs.routing_from": {
     "context": "Closing line of the sending part: each person sends only from their own primary address.",
@@ -1193,12 +1530,24 @@
     "context": "Domains tab: note under the add form. {check} is the Check DNS button name shown as a badge.",
     "security": false
   },
+  "domains.added": {
+    "context": "Announced to screen readers after a domain was added. {name} is the domain.",
+    "security": false
+  },
   "domains.addresses_count#one": {
     "context": "Domain card: how many addresses use the domain. {count} is a number.",
     "security": false
   },
   "domains.addresses_count#other": {
     "context": "Domain card: how many addresses use the domain. {count} is a number.",
+    "security": false
+  },
+  "domains.check_not_ready": {
+    "context": "Announced after Check DNS when something is missing. {name} is the domain.",
+    "security": false
+  },
+  "domains.check_ready": {
+    "context": "Announced after Check DNS when everything is in place. {name} is the domain.",
     "security": false
   },
   "domains.checked_at": {
@@ -1293,21 +1642,41 @@
     "context": "Setup steps: how to name the Cloudflare Worker that runs the app (fills {worker}).",
     "security": false
   },
+  "domains.hide_records": {
+    "context": "DNS checklist of a domain: disclosure that hides the DNS records of a step.",
+    "security": false
+  },
   "domains.hide_steps": {
     "context": "Button on a domain card that closes the Cloudflare setup steps.",
     "security": false,
     "max": 28
   },
+  "domains.in_use": {
+    "context": "Admin console, Domains: a quiet word in place of Remove on a domain that addresses still use (the server refuses to remove it); the count of addresses is in the line under the name.",
+    "security": false
+  },
   "domains.loading": {
     "context": "Admin Domains tab while the list loads (spinner and text).",
     "security": false
   },
+  "domains.mx_priority": {
+    "context": "Domain DNS check: the priority of an MX record, shown after its host. {priority} is a number.",
+    "security": false
+  },
   "domains.name_placeholder": {
-    "context": "Placeholder of the domain field of the Domains tab: an example domain.",
+    "context": "Placeholder of the domain field of the Domains tab: a sample domain name that is nobody's (the .example ending), never one of the real domains.",
+    "security": false
+  },
+  "domains.new_tab": {
+    "context": "Screen readers only, at the end of a link that opens in a new browser tab.",
     "security": false
   },
   "domains.no_mx": {
     "context": "DNS check result: the domain has no MX records.",
+    "security": false
+  },
+  "domains.not_checked": {
+    "context": "Domain card: status before Check DNS was pressed.",
     "security": false
   },
   "domains.not_ready": {
@@ -1331,12 +1700,12 @@
     "context": "DNS check result, receiving: the MX records point to another provider. {hosts} is a comma-separated list of host names.",
     "security": false
   },
-  "domains.note_sending_missing": {
-    "context": "DNS check result, sending: a required record is missing. The path is the Cloudflare dashboard menu, in English.",
-    "security": false
-  },
   "domains.note_sending_ready": {
     "context": "DNS check result, sending: all required records exist.",
+    "security": false
+  },
+  "domains.open_dashboard": {
+    "context": "Domains: link to dash.cloudflare.com (opens in a new tab), followed by the path to the page inside it.",
     "security": false
   },
   "domains.ready": {
@@ -1359,6 +1728,18 @@
     "security": false,
     "max": 14
   },
+  "domains.record_value_hint": {
+    "context": "Domains, DNS check: under a missing DNS record (type and host shown). The app cannot know the value; the dashboard link is in the same step.",
+    "security": false
+  },
+  "domains.records_missing#one": {
+    "context": "DNS check result, sending: how many Email Sending records the check did not find. {count} is a number. Email Sending is the name of the Cloudflare dashboard page, in English; a link to the dashboard follows.",
+    "security": false
+  },
+  "domains.records_missing#other": {
+    "context": "DNS check result, sending: how many Email Sending records the check did not find. {count} is a number. Email Sending is the name of the Cloudflare dashboard page, in English; a link to the dashboard follows.",
+    "security": false
+  },
   "domains.remove_body": {
     "context": "Body of the confirmation dialog before a domain is removed.",
     "security": false
@@ -1367,6 +1748,10 @@
     "context": "Button that confirms the removal of a domain.",
     "security": false,
     "max": 20
+  },
+  "domains.remove_failed": {
+    "context": "Admin console, Domains: error on the card of the domain whose removal failed. {name} is the domain, {reason} the server's error text.",
+    "security": false
   },
   "domains.remove_title": {
     "context": "Title of the confirmation dialog before a domain is removed. {name} is the domain name.",
@@ -1377,10 +1762,30 @@
     "security": false,
     "max": 24
   },
+  "domains.show_records": {
+    "context": "DNS checklist of a domain: disclosure that shows the DNS records of a step (receiving or sending).",
+    "security": false
+  },
   "domains.show_steps": {
     "context": "Button on a domain card that opens the Cloudflare setup steps.",
     "security": false,
     "max": 28
+  },
+  "domains.summary_none": {
+    "context": "Domain card, status after a DNS check: neither receiving nor sending is set up.",
+    "security": false
+  },
+  "domains.summary_ready": {
+    "context": "Domain card, status after a DNS check: mail can arrive and be sent.",
+    "security": false
+  },
+  "domains.summary_receiving_only": {
+    "context": "Domain card, status after a DNS check: mail arrives, but Email Sending is not set up.",
+    "security": false
+  },
+  "domains.summary_sending_only": {
+    "context": "Domain card, status after a DNS check: mail can be sent, but Email Routing (receiving) is not set up.",
+    "security": false
   },
   "drafts.locked": {
     "context": "Error text when a saved draft from the Drafts folder is clicked while no key is unlocked in the browser, so its encrypted content cannot be opened yet. Says what to do: unlock, then open the draft again.",
@@ -1391,7 +1796,7 @@
     "security": true
   },
   "e2e.badge_note": {
-    "context": "Note that opens under the badge 'End-to-end encrypted' in the reader (e2e.badge, a glossary key). Wording from the security review: encrypted in the sender's browser to the recipients' keys; the keys come from this server; it protects who can read the message, not who sent it. Do not strengthen it (no 'secure', no 'only the recipient').",
+    "context": "Note that opens under the badge 'End-to-end encrypted' in the reader (e2e.badge, a glossary key). Wording from the security review, in plain words: the sender's browser locked (encrypted) it for the recipients with keys this server provides; it limits who can read the message, it does not prove who sent it. Do not strengthen it (no 'secure', no 'only the recipient').",
     "security": true
   },
   "err.account_disabled": {
@@ -1814,6 +2219,10 @@
     "context": "Fallback error when the password change request failed and the server gave no reason.",
     "security": true
   },
+  "fail.policy_save": {
+    "context": "Error when the two-factor rule of the organisation could not be saved.",
+    "security": true
+  },
   "fail.push_key": {
     "context": "API fallback: loading the push public key failed (Settings > Notifications)",
     "security": false
@@ -1902,6 +2311,14 @@
     "context": "Fallback error when signing in fails and the server gave no reason",
     "security": true
   },
+  "auth.sign_in_host": {
+    "context": "Sign-in screen: quiet line under the heading naming the server the person signs in to. {host} = the web host of this deployment, e.g. 'mail.example.com' (shown as is, never translated).",
+    "security": true
+  },
+  "auth.sign_in_title": {
+    "context": "Sign-in screen: heading of the card (h1). A short greeting, deliberately different from the 'Sign in' button (auth.sign_in), which still names the browser tab.",
+    "security": true
+  },
   "fail.sign_out": {
     "context": "Fallback error when signing out fails: the keys on this device are removed anyway, but the server may not have ended the session",
     "security": true
@@ -1988,8 +2405,16 @@
     "context": "Under the heading of step 3 (the new recovery key screen): the old recovery key stops working.",
     "security": true
   },
+  "forgot.key_required": {
+    "context": "Forgot password, step 1: red line under the recovery key field after Continue was pressed with it empty.",
+    "security": true
+  },
   "forgot.lead": {
     "context": "Under the heading: what the three steps are.",
+    "security": true
+  },
+  "forgot.lost_key": {
+    "context": "Forgot password screen: note under Continue for a member who lost the recovery key too (the honest consequence and the next step).",
     "security": true
   },
   "forgot.nothing_changed": {
@@ -2070,6 +2495,14 @@
     "security": true,
     "max": 20
   },
+  "keys.unlock_forgot_hint": {
+    "context": "Unlock screen: line under the 'Forgot password' link (the link signs out and opens the forgotten-password flow).",
+    "security": true
+  },
+  "keys.unlock_host": {
+    "context": "Unlock screen (the session is still valid, but this device holds no key): quiet line under the heading naming the server. {host} = the web host of this deployment, e.g. 'mail.example.com'.",
+    "security": true
+  },
   "keys.unlock_lead": {
     "context": "Under the unlock heading. {address} is the person's email address.",
     "security": true
@@ -2099,14 +2532,35 @@
     "context": "Screen-reader name of the small language list on the sign-in screens (no visible label)",
     "security": false
   },
+  "list.all_in_selected": {
+    "context": "Line under the selection bar after 'Select all in Inbox' loaded and ticked every message of the folder (a Clear selection button follows it). {count} = how many are ticked, {folder} = the folder name.",
+    "security": false
+  },
+  "list.all_results_selected": {
+    "context": "Line under the selection bar after 'Select all results' loaded and ticked every result of the search (a Clear selection button follows it). {count} = how many are ticked.",
+    "security": false
+  },
+  "list.all_selected_capped": {
+    "context": "Line under the selection bar after 'Select all in Inbox' when the folder holds more than can be selected at once: only the most recent ones are ticked. {count} = the cap (500).",
+    "security": false
+  },
   "list.attachment": {
     "context": "Small chip on a message row that has an attachment (singular)",
     "security": false,
     "max": 14
   },
+  "list.clear_selection": {
+    "context": "Button (an X) at the end of the selection bar: unticks every selected message and gives the list its heading back.",
+    "security": false
+  },
   "list.draft_to": {
     "context": "Row title of a draft: who it is addressed to; {recipients} is one or more email addresses",
     "security": false
+  },
+  "list.empty_folder": {
+    "context": "Button in the head of the Trash and Spam folders: deletes every message there for good (a confirmation follows). {folder} = Trash or Spam. Short: it sits beside one line of text.",
+    "security": false,
+    "max": 24
   },
   "list.empty_in": {
     "context": "Empty-state title of a folder; {folder} is the folder name (Inbox, Sent, a label name)",
@@ -2210,6 +2664,10 @@
     "context": "Empty Trash folder, second line",
     "security": false
   },
+  "list.kept_until_deleted": {
+    "context": "Quiet line at the top of the Trash and Spam folders: nothing is deleted on its own after some days (there is no automatic clean-up). {folder} = Trash or Spam.",
+    "security": false
+  },
   "list.load_failed": {
     "context": "Empty-state title when the message list could not be loaded",
     "security": false
@@ -2231,6 +2689,22 @@
     "security": false,
     "max": 22
   },
+  "list.match_from": {
+    "context": "Search results: shown in a row in place of the preview when the search matched the sender's address but not the name shown, so the person sees why the message was found. {address} = an email address.",
+    "security": false
+  },
+  "list.match_hidden": {
+    "context": "Search results: shown in a row in place of the preview when the search matched the sender or a recipient but none of the words shown in the row (the server searches names and addresses).",
+    "security": false
+  },
+  "list.match_to": {
+    "context": "Search results: shown in a row in place of the preview when the search matched one of the recipients' addresses. {address} = that email address.",
+    "security": false
+  },
+  "list.more_actions": {
+    "context": "Button (three dots) in the phone's selection bar: opens a sheet with the other actions for the selected messages.",
+    "security": false
+  },
   "list.no_match": {
     "context": "Empty-state title when a filter chip matches nothing",
     "security": false
@@ -2251,13 +2725,87 @@
     "context": "Row title for a message with an empty subject",
     "security": false
   },
+  "list.page_all_selected": {
+    "context": "Line under the selection bar after 'Select all on this page' when the folder has more mail than the loaded page (Gmail's pattern); followed by the 'Select all in Inbox' button. {count} = rows on the page.",
+    "security": false
+  },
   "list.refresh": {
     "context": "Icon button above the message list, tooltip and screen-reader label",
     "security": false,
     "max": 22
   },
+  "list.results": {
+    "context": "Phone: the title of the top bar while a search is active, in place of the folder's name.",
+    "security": false
+  },
+  "list.results_for": {
+    "context": "Heading of the message list while a search is active (it replaces the folder's name). {query} = what the person typed.",
+    "security": false
+  },
+  "list.scope_all": {
+    "context": "Choice of where a search looks (beside the folder's own name): every folder except Spam and Trash. Also the place named in the result count ('4 results in All mail'). Short: a segmented button.",
+    "security": false,
+    "max": 16
+  },
+  "list.scope_all_hint": {
+    "context": "Under 'No results for …' when the search looked in All mail: those two folders are left out.",
+    "security": false
+  },
+  "list.scope_label": {
+    "context": "Accessible name of the two buttons that choose where a search looks: the open folder, or All mail.",
+    "security": false
+  },
+  "list.search_all": {
+    "context": "Button under 'No results for …' when the search looked in the open folder only: searches every folder except Spam and Trash.",
+    "security": false,
+    "max": 28
+  },
+  "list.select_all": {
+    "context": "Checkbox at the start of the selection bar: ticks every message loaded in the list (a dash when only some are ticked); unticks them all when all are.",
+    "security": false
+  },
+  "list.select_all_in": {
+    "context": "Button after 'All 50 on this page are selected.': loads the folder's other pages (up to the 500 most recent messages) and ticks them all. {folder} = the folder name, e.g. Inbox.",
+    "security": false
+  },
+  "list.select_all_results": {
+    "context": "Button after 'All 50 on this page are selected.' in a search: loads the other pages of results (up to 500) and ticks them all.",
+    "security": false
+  },
+  "list.select_message": {
+    "context": "Accessible name of the checkbox of a message row (it shows in place of the avatar on hover and while messages are selected). {sender} = the sender's name.",
+    "security": false
+  },
+  "list.selected_count": {
+    "context": "Selection bar: how many messages are ticked; screen readers also hear it when it changes. {count} = the number.",
+    "security": false
+  },
+  "list.selected_sr": {
+    "context": "Screen-reader text at the start of the name of a message row that is ticked (selected for an action on several messages).",
+    "security": false
+  },
+  "list.selecting_all": {
+    "context": "Shown in place of 'Select all in Inbox' while the other pages of the folder load to be ticked.",
+    "security": false
+  },
+  "list.selection_actions": {
+    "context": "Accessible name of the selection bar (a toolbar with Archive, Move to Trash, Mark as read...).",
+    "security": false
+  },
+  "list.selection_cleared": {
+    "context": "Said to screen readers (not shown) when Escape, Clear selection or the last unticked box empties the selection of messages, so the old count (\"2 selected\") is not left behind.",
+    "security": false
+  },
   "list.star_from": {
     "context": "Screen-reader label of the star button on a message row; {sender} is the sender name or address",
+    "security": false
+  },
+  "list.summary_lead": {
+    "context": "Reading pane while several messages are ticked (instead of the open message): one line under the heading '3 selected' that says the buttons act on all of them and how to get back to the open message.",
+    "security": false
+  },
+  "list.summary_more": {
+    "context": "Reading pane while several messages are ticked: after the first few senders and subjects, how many more are selected. {count} = the number not listed.",
     "security": false
   },
   "list.try_other_search": {
@@ -2269,7 +2817,7 @@
     "security": false
   },
   "locked.banner#one": {
-    "context": "Card above the mailbox, singular ({count} is 1). After an admin restored their account with the setup key, mail that arrived before is sealed to the OLD encryption key, which is gone, so nobody can open it. Calm, factual; two buttons follow (Keep, Delete). Glossary: message, key, encrypt.",
+    "context": "Card above the mailbox, singular ({count} is 1). After an admin restored their account with the setup key, mail that arrived before is sealed to the OLD encryption key; only the recovery key they had then can open it, so this browser cannot. Calm, factual; a 'Why?' button and two buttons follow (Keep it locked, Delete it…). Glossary: message, key, encrypt.",
     "security": true,
     "max": 130
   },
@@ -2283,15 +2831,29 @@
     "security": true,
     "max": 25
   },
+  "locked.card_title": {
+    "context": "Settings > Security: title of the card about old messages that are locked under a replaced key (Delete, or the planned date and Cancel).",
+    "security": true,
+    "max": 25
+  },
   "locked.confirm_label": {
     "context": "Label of the field in the confirmation dialog where the person types their own email address, which is shown in the label ({address}), so a stray click cannot start the deletion.",
     "security": true,
     "max": 50
   },
+  "locked.confirm_mismatch": {
+    "context": "Delete locked mail dialog: red line under the address field after Delete was pressed while the address typed is not the own one.",
+    "security": true
+  },
   "locked.delete": {
     "context": "Button on the locked-mail card that opens the confirmation, and the red button of that confirmation (title: Delete locked mail). It does not delete at once.",
     "security": true,
     "max": 10
+  },
+  "locked.delete_them": {
+    "context": "Button on the locked-mail card (danger style): opens the confirmation that deletes the locked messages (it asks for the address, the password and the code, then waits seven days). {count} = how many are locked; the word only changes for one.",
+    "security": true,
+    "max": 22
   },
   "locked.dialog_body#one": {
     "context": "First line of the confirmation dialog, singular. Deleted locked mail cannot be brought back.",
@@ -2313,10 +2875,10 @@
     "security": true,
     "max": 25
   },
-  "locked.keep": {
-    "context": "Button on the locked-mail card: leave the locked messages where they are and put the card away for now. Nothing is sent to the server.",
+  "locked.keep_locked": {
+    "context": "Button on the locked-mail card: leave the locked messages where they are and put the card away for now. Nothing is sent to the server. {count} = how many are locked; the word only changes for one.",
     "security": true,
-    "max": 10
+    "max": 22
   },
   "locked.not_pending": {
     "context": "Second line of the notice about a requested deletion of locked mail, shown when the deletion is not waiting any more (the person cancelled it, or it has been carried out).",
@@ -2337,6 +2899,15 @@
     "context": "Landmark label (read by screen readers) of the card above the mailbox that tells the person that some old messages are locked.",
     "security": true,
     "max": 20
+  },
+  "locked.why": {
+    "context": "Small button on the locked-mail card (a disclosure: it opens in place) that shows one paragraph explaining why the older messages cannot be opened. A verb, no final punctuation.",
+    "security": true,
+    "max": 12
+  },
+  "locked.why_text": {
+    "context": "The answer under 'See why' on the locked-mail card. Plain words for a non-expert. Glossary: setup key, encryption key, recovery key.",
+    "security": true
   },
   "login.signing_in": {
     "context": "Label of the sign-in button while the password is being checked",
@@ -2389,13 +2960,23 @@
     "security": true,
     "max": 16
   },
-  "notice.dismiss_later": {
-    "context": "Shown under a notice that cannot be dismissed yet: security notices stay for seven days. {date} is a date and time.",
+  "notice.dismiss_from": {
+    "context": "Quiet line under a notice that cannot be dismissed yet (security notices stay seven days); the Dismiss button appears from then on. {date} is a date and time.",
     "security": true
+  },
+  "notice.fewer": {
+    "context": "Button under the account notices above the mailbox when the other notices are shown: hides them again, leaving the most urgent one.",
+    "security": false,
+    "max": 20
   },
   "notice.more": {
     "context": "Button (link style) under the banner when there are more than three notices: opens Settings, Account tab, where all of them are listed.",
     "security": true
+  },
+  "notice.more_count": {
+    "context": "Button under the most urgent account notice above the mailbox: shows the others. {count} = how many more.",
+    "security": false,
+    "max": 24
   },
   "notice.region": {
     "context": "Accessible name of the banner above the mailbox that lists account notices. Read by screen readers only.",
@@ -2408,11 +2989,6 @@
   "password.check_loading": {
     "context": "Password field status line with a spinner while the data of the common-password check loads.",
     "security": true
-  },
-  "password.hide": {
-    "context": "Button (icon only): crossed-eye icon inside the password field that hides the typed password again; aria-label, no visible text.",
-    "security": true,
-    "max": 24
   },
   "password.level_fair": {
     "context": "Password strength result shown under the password field (second level) and spoken by the strength meter.",
@@ -2470,10 +3046,26 @@
     "context": "Password field status line while nothing is typed: the password rules, fixed by the Product Owner. {min} = minimum length for members (12), {adminMin} = minimum length for admins (16); both are numbers from constants.",
     "security": true
   },
+  "password.rules_admin": {
+    "context": "Password rules under an empty password field of an ADMIN account (Setup's first account, an admin's own password). {min} = 16.",
+    "security": true
+  },
   "password.show": {
-    "context": "Button (icon only): eye icon inside the password field that shows the typed password; aria-label, no visible text.",
+    "context": "Button (icon only): eye icon inside every password field that shows the typed password; aria-label, no visible text. It keeps this name while the password is shown (its pressed state says so).",
     "security": true,
     "max": 24
+  },
+  "password.show_current": {
+    "context": "Button (icon only): eye icon inside the 'Current password' field of Change password; aria-label and tooltip.",
+    "security": true
+  },
+  "password.show_new": {
+    "context": "Button (icon only): eye icon inside the field for a NEW password; aria-label and tooltip. Named after its field so it differs from the repeat field's button.",
+    "security": true
+  },
+  "password.show_repeat": {
+    "context": "Button (icon only): eye icon inside the field where the new password is typed a second time; aria-label and tooltip.",
+    "security": true
   },
   "password.suggest": {
     "context": "Button under the password field on admin screens: fills in a generated passphrase (random words) and shows it. Shown with a wand icon.",
@@ -2488,6 +3080,101 @@
   "password.suggest_hint": {
     "context": "Hint shown under the Suggest button after a passphrase was filled in. {words} = how many random words the passphrase has (a number, 6).",
     "security": true
+  },
+  "prefs.density": {
+    "context": "Settings > Mail: title of the card that chooses how tall the message rows are (device preference).",
+    "security": false
+  },
+  "prefs.density_comfortable": {
+    "context": "Settings > Mail > Density: the default choice (taller rows).",
+    "security": false
+  },
+  "prefs.density_comfortable_hint": {
+    "context": "Settings > Mail > Density: what a comfortable row shows.",
+    "security": false
+  },
+  "prefs.density_compact": {
+    "context": "Settings > Mail > Density: the choice with shorter rows.",
+    "security": false
+  },
+  "prefs.density_compact_hint": {
+    "context": "Settings > Mail > Density: what the compact choice does.",
+    "security": false
+  },
+  "prefs.device_only": {
+    "context": "Settings: line under the Motion and Keyboard headings; these choices are kept in this browser, not in the account",
+    "security": false
+  },
+  "prefs.keyboard_title": {
+    "context": "Settings: heading of the keyboard shortcuts section",
+    "security": false,
+    "max": 24
+  },
+  "prefs.motion": {
+    "context": "Settings > Appearance: heading of the motion section (animations of this device)",
+    "security": false,
+    "max": 24
+  },
+  "prefs.motion_choice": {
+    "context": "Settings > Appearance > Motion: label of the two options (Match system, Reduce motion), read before each of them",
+    "security": false,
+    "max": 44
+  },
+  "prefs.motion_reduce": {
+    "context": "Settings > Appearance > Motion: option that turns animations down on this device",
+    "security": false,
+    "max": 30
+  },
+  "prefs.motion_reduce_hint": {
+    "context": "Settings > Appearance > Motion: one line under the Reduce motion option",
+    "security": false
+  },
+  "prefs.motion_system": {
+    "context": "Settings > Appearance > Motion: option that follows the device's own reduce-motion setting",
+    "security": false,
+    "max": 30
+  },
+  "prefs.motion_system_hint": {
+    "context": "Settings > Appearance > Motion: one line under the Match system option",
+    "security": false
+  },
+  "prefs.shortcuts": {
+    "context": "Settings > Keyboard: label of the on/off switch for shortcuts that are a single key (/, C, J, K)",
+    "security": false,
+    "max": 36
+  },
+  "prefs.shortcuts_hint": {
+    "context": "Settings > Keyboard: one or two lines under the single-key shortcuts switch",
+    "security": false
+  },
+  "prefs.shortcuts_table": {
+    "context": "Settings > Keyboard: name of the table that lists the keyboard shortcuts (read by screen readers)",
+    "security": false,
+    "max": 30
+  },
+  "prefs.undo_action": {
+    "context": "Settings > Keyboard: what Ctrl+Z does (undo the archive, move or snooze of the toast on screen)",
+    "security": false
+  },
+  "prefs.undo_send": {
+    "context": "Settings > Mail: title of the card that sets how long a sent message waits so it can be taken back.",
+    "security": false
+  },
+  "prefs.undo_send_hint": {
+    "context": "Settings > Mail > Undo send: hint under the list. 'Send' and 'Undo' are the button names, 'Drafts' the folder name.",
+    "security": false
+  },
+  "prefs.undo_send_label": {
+    "context": "Settings > Mail > Undo send: label of the list of times (Off, 5, 10, 20, 30 seconds).",
+    "security": false
+  },
+  "prefs.undo_send_off": {
+    "context": "Settings > Mail > Undo send: the choice with no waiting time.",
+    "security": false
+  },
+  "prefs.undo_send_seconds": {
+    "context": "Settings > Mail > Undo send: one choice of the list; {seconds} is 5, 10, 20 or 30.",
+    "security": false
   },
   "push.blocked": {
     "context": "Settings > Notifications error when the browser has notifications blocked for this site",
@@ -2533,13 +3220,17 @@
     "context": "Settings > Notifications fallback error for turning notifications on",
     "security": false
   },
+  "reader.actions_label": {
+    "context": "Reader: accessible name of the toolbar of actions on the open message (Archive, Move to Trash, Snooze...). Not shown.",
+    "security": false
+  },
   "reader.add_label": {
     "context": "Reader toolbar: aria-label and tooltip of the icon button that opens the label menu. Icon-only: no visible text.",
     "security": false,
     "max": 24
   },
   "reader.arrived_by_email": {
-    "context": "A quiet chip above the text of a received message that arrived over email from outside (not sent between people of this deployment) while its From address is one of THIS deployment's own domains: anyone on the internet can write such an address, so the app says nobody checked it. Neutral colour, not an alarm; it does not say the message is fake.",
+    "context": "Reader: heading of the explanation (popover; bottom sheet on a phone) that the Unverified sender chip opens, on a received message that arrived over email from outside while its From address is one of THIS deployment's own domains (the organisation's): anyone on the internet can write such an address. Plain words for a non-expert; not an alarm; it does not say the message is fake.",
     "security": true,
     "max": 60
   },
@@ -2556,19 +3247,52 @@
     "security": false,
     "max": 24
   },
+  "reader.bar_delete": {
+    "context": "Reader on a phone, bottom bar (Trash and Spam): the words under the icon of Delete forever, saying it is permanent (J4-33); up to two short lines (its full name action.delete_forever is the accessible name; these words must be part of it).",
+    "security": false,
+    "max": 16
+  },
+  "reader.bar_inbox": {
+    "context": "Reader on a phone, bottom bar (Trash and Spam): the words under the icon of Move to Inbox, keeping the verb so it does not read as 'go to Inbox' (J4-33); up to two short lines; must be part of action.move_to_inbox.",
+    "security": false,
+    "max": 16
+  },
+  "reader.bar_more": {
+    "context": "Reader on a phone, bottom bar: short word under the More button (must be part of reader.more_actions).",
+    "security": false,
+    "max": 10
+  },
+  "reader.bar_trash": {
+    "context": "Reader on a phone, bottom bar: short word under the icon of Move to Trash (must be part of action.move_to_trash).",
+    "security": false,
+    "max": 10
+  },
+  "reader.bar_unread": {
+    "context": "Reader on a phone, bottom bar (Sent, Drafts): short word under the icon of Mark as unread (must be part of action.mark_unread).",
+    "security": false,
+    "max": 10
+  },
   "reader.create_label": {
     "context": "Label menu: aria-label and tooltip of the round + button that creates the typed label. Icon-only.",
     "security": false,
     "max": 24
   },
-  "reader.download_file": {
-    "context": "Reader attachments: aria-label and tooltip of the download icon of one attachment (a long name wraps in the tooltip); {name} is the file name.",
+  "reader.download_all": {
+    "context": "Text button on the attachments line of the reader (2 or more files): saves every attachment, one after the other",
     "security": false
   },
-  "reader.label_added": {
-    "context": "Label menu: small marker at the right of a label that is already on the open message, inside a 240 px menu row.",
+  "reader.download_file": {
+    "context": "Reader attachments: accessible name and tooltip of one attachment card, which is its download (a long name wraps in the tooltip); {type} is the type shown on the card's tile (PDF, XLSX), {name} the file name, {size} its size as shown on the card. Keep {type}, {name}, {size} first, the card's visible text in its order, then the action: the name must start with the visible text (WCAG 2.5.3, voice control).",
+    "security": false
+  },
+  "reader.hide_quoted": {
+    "context": "Reader: button under a received reply (plain text) and the control inside an HTML mail that folds the quoted original message away again; the pair of reader.show_quoted",
     "security": false,
-    "max": 12
+    "max": 28
+  },
+  "reader.label_applied": {
+    "context": "Screen-reader announcement after a label was put on the open message from the Labels picker; {label} is the label's name",
+    "security": false
   },
   "reader.label_exists": {
     "context": "Label menu: red hint when a label with that name already exists (case-insensitive).",
@@ -2586,8 +3310,35 @@
     "context": "Label menu: grey hint under the new-label field once the name has reached the longest allowed length. {max} is a fixed number (30).",
     "security": false
   },
+  "reader.label_removed": {
+    "context": "Screen-reader announcement after a label was taken off the open message (Labels picker or the x of its chip); {label} is the label's name",
+    "security": false
+  },
+  "reader.labels": {
+    "context": "Reader toolbar button (and the title of the picker it opens) that puts labels on the open message and takes them off: each label is a checkbox",
+    "security": false
+  },
+  "reader.load_failed": {
+    "context": "Reader: heading shown in place of a message that could not be loaded; under it list.load_failed_hint and a Try again button.",
+    "security": false,
+    "max": 60
+  },
   "reader.loading_message": {
     "context": "Reader pane while the open message loads (spinner and text).",
+    "security": false
+  },
+  "reader.mark_unread": {
+    "context": "Reader toolbar on a desktop: the words beside the envelope icon of Mark as unread when the pane has room (shorter than action.mark_unread, which stays its full name in menus)",
+    "security": false,
+    "max": 20
+  },
+  "reader.more_actions": {
+    "context": "Reader on a phone: aria-label and tooltip of the last button of the bottom bar; it opens a menu with Move to Spam, Mark as unread and Add label.",
+    "security": false,
+    "max": 24
+  },
+  "reader.nav_label": {
+    "context": "Reader on a phone: accessible name of the top row with Back, Newer message and Older message. Not shown.",
     "security": false
   },
   "reader.new_label": {
@@ -2608,6 +3359,10 @@
     "context": "Reader pane title when no message is open (under the Edgar picture).",
     "security": false
   },
+  "reader.none_selected_empty_hint": {
+    "context": "Reader pane line under 'No message selected' when the list beside it is empty (nothing to choose yet): where an opened message appears.",
+    "security": false
+  },
   "reader.none_selected_hint": {
     "context": "Reader pane hint under the empty-state title.",
     "security": false
@@ -2617,6 +3372,28 @@
     "security": false,
     "max": 24
   },
+  "reader.one_attachment": {
+    "context": "Reader attachments heading when the message has exactly one file (the file's card shows its size, so the heading only counts it).",
+    "security": false
+  },
+  "reader.remove_label": {
+    "context": "Screen-reader name and tooltip of the x button on a label chip in the reader's header; {label} is the label's name",
+    "security": false
+  },
+  "reader.reply_options": {
+    "context": "Reader header on a desktop: label and tooltip of the small chevron beside Reply; it opens a menu with Reply all and Forward.",
+    "security": false,
+    "max": 40
+  },
+  "reader.show_quoted": {
+    "context": "Reader: button under a received reply (plain text), and the control drawn inside an HTML mail, that shows the quoted original message folded away at the end of the reply (same words as compose.show_quoted)",
+    "security": false,
+    "max": 28
+  },
+  "reader.spam_notice": {
+    "context": "Quiet one-line notice under the header of a message opened in the Spam folder, beside a Move to Inbox button",
+    "security": false
+  },
   "reader.to_cc_line": {
     "context": "Reader sender block, grey line when the message also has copy recipients: {to} and {cc} are addresses or lists of addresses.",
     "security": false
@@ -2624,6 +3401,19 @@
   "reader.to_line": {
     "context": "Reader sender block, grey line under the sender name: who the message was sent to. {to} is an address or a list of addresses. Lowercase on purpose (it reads like \"to me\").",
     "security": false
+  },
+  "reader.to_me": {
+    "context": "Reader sender block, grey line under the sender name when the signed-in person's own address is the only recipient (the address itself shows when the line is opened). Lowercase, like reader.to_line.",
+    "security": false
+  },
+  "reader.unverified_note": {
+    "context": "Reader: the explanation of the Unverified sender chip, under its heading reader.arrived_by_email, above a Move to Spam button: why (an address of the organisation, but the message came from outside and nothing confirmed the sender) and what to be careful with. Calm, factual; it does not claim the message is fake.",
+    "security": true
+  },
+  "reader.unverified_sender": {
+    "context": "Reader header: words of a quiet neutral chip on a message that arrived over email from outside while its From address is on one of THIS deployment's own domains; pressing it explains (reader.arrived_by_email + reader.unverified_note). Not an alarm; it does not say the message is fake.",
+    "security": true,
+    "max": 28
   },
   "reader.view_html": {
     "context": "Reader: segmented switch above the body (shown only when the message has both forms): formatted (HTML) version. Technical word, may stay \"HTML\".",
@@ -2679,6 +3469,10 @@
     "security": true,
     "max": 12
   },
+  "recovery.group_required": {
+    "context": "Recovery key check: red line under one of the three boxes where the person types back a group of the key, after the button was pressed with that box empty. {number} is the number of that group (1 to 9).",
+    "security": true
+  },
   "recovery.old_stops": {
     "context": "Shown only when the new key replaces an earlier one: the old recovery key stops working ON THIS SERVER at once when the person finishes. The scope matters (PB-11): the mail key does not change, so an old copy of the stored data plus the old recovery key would still open old mail; do not translate it as \"stops working\" without \"on this server\".",
     "security": true,
@@ -2732,6 +3526,20 @@
     "context": "Delete account dialog: wording from the Product Owner, keep it word for word in every language.",
     "security": true
   },
+  "security.badge_off": {
+    "context": "Settings > Security, card 'Two-factor sign-in': state badge next to the title when it is off (amber, with an alert icon).",
+    "security": true,
+    "max": 12
+  },
+  "security.badge_on": {
+    "context": "Settings > Security, card 'Two-factor sign-in': state badge next to the title when it is on (green, with a tick icon).",
+    "security": true,
+    "max": 12
+  },
+  "security.badge_saved": {
+    "context": "Settings > Security, row 'Recovery key': badge saying the account has a recovery key (it was saved when the account was set up).",
+    "security": true
+  },
   "security.cannot_turn_off_admin": {
     "context": "Security card row 'Two-factor sign-in': shown instead of a Turn off button when the signed-in person is an admin.",
     "security": true
@@ -2745,8 +3553,21 @@
     "security": true,
     "max": 28
   },
+  "security.codes_action": {
+    "context": "Button on the Security card 'Recovery codes' (only with two-factor sign-in on): starts getting a new set; the old set stops working.",
+    "security": true,
+    "max": 18
+  },
+  "security.codes_hint": {
+    "context": "Settings > Security, card 'Recovery codes' (only with two-factor sign-in on): the line under the title.",
+    "security": true
+  },
   "security.codes_lead": {
     "context": "Paragraph above the password and code fields of the 'Get new recovery codes' form: the old recovery codes stop working.",
+    "security": true
+  },
+  "security.codes_new_title": {
+    "context": "Settings > Security, the view that shows a fresh set of recovery codes after the form: its only heading (the replaced-codes note sits under it).",
     "security": true
   },
   "security.codes_replace_note": {
@@ -2757,6 +3578,15 @@
     "context": "Label of the first field of the change-password form: the password used now (the next two fields are the new one, gate.new_password and gate.repeat_password).",
     "security": true
   },
+  "security.description": {
+    "context": "Settings > Security: one line under the page title.",
+    "security": true
+  },
+  "security.key_new_action": {
+    "context": "Button on the Security card 'Recovery key' (its name is read with the card title): starts creating a new key that replaces the old one.",
+    "security": true,
+    "max": 14
+  },
   "security.key_new_done": {
     "context": "Success message after the new recovery key was stored, with a Back button under it.",
     "security": true
@@ -2764,6 +3594,15 @@
   "security.key_new_lead": {
     "context": "Paragraph above the password field that starts making a new recovery key: it replaces the old one, the password and the mail stay as they are.",
     "security": true
+  },
+  "security.key_since": {
+    "context": "Settings > Security, row 'Recovery key': when the current recovery key was made (first sign-in, or the last replacement). {date} = date and time.",
+    "security": true
+  },
+  "security.key_test_action": {
+    "context": "Button on the Security card 'Recovery key' (its name is read with the card title): opens the check of the saved key.",
+    "security": true,
+    "max": 14
   },
   "security.key_test_button": {
     "context": "Button: submits the typed recovery key to the test (no request is sent; the check runs in the browser).",
@@ -2782,8 +3621,16 @@
     "context": "Result of the recovery key test when the key is the current one.",
     "security": true
   },
+  "security.key_test_required": {
+    "context": "Settings > Security > Test my recovery key: red line under the field after Test was pressed with it empty.",
+    "security": true
+  },
   "security.key_test_wrong": {
     "context": "Result of the recovery key test when the key is well formed but is not the current one. Does not say how it differs.",
+    "security": true
+  },
+  "security.key_tested_here": {
+    "context": "Settings > Security, row 'Recovery key': the last successful 'Test key' in this browser (the server is not told about tests). {date} = date and time.",
     "security": true
   },
   "security.new_codes": {
@@ -2821,6 +3668,10 @@
     "security": true,
     "max": 90
   },
+  "security.password_hint": {
+    "context": "Settings > Security, card 'Password': the line under the title.",
+    "security": true
+  },
   "security.password_note": {
     "context": "Plain note under the Change password button: what changing the password does and does not do.",
     "security": true
@@ -2831,14 +3682,6 @@
   },
   "security.recovery_hint": {
     "context": "Settings > Account > Security: line under the 'Recovery key' row label: what the recovery key is for (forgot-password flow keeps the mail readable).",
-    "security": true
-  },
-  "security.status_off": {
-    "context": "Security card row 'Two-factor sign-in': status line when it is off.",
-    "security": true
-  },
-  "security.status_on": {
-    "context": "Security card row 'Two-factor sign-in': status line when it is on.",
     "security": true
   },
   "security.step_up_lead": {
@@ -2867,6 +3710,14 @@
     "context": "Button: Security card row 'Two-factor sign-in' (only when it is off): starts the enrolment.",
     "security": true,
     "max": 16
+  },
+  "security.two_factor_off": {
+    "context": "Settings > Security, card 'Two-factor sign-in' when it is off: the line under the title (the badge says Off).",
+    "security": true
+  },
+  "security.two_factor_on": {
+    "context": "Settings > Security, card 'Two-factor sign-in' when it is on: the line under the title (the badge says On).",
+    "security": true
   },
   "send.changed_body": {
     "context": "Body of that confirmation. Honest and calm: a changed key is normal after a person sets up their keys again, but it can also mean the key was replaced. 'Fingerprint' is a short number (6 groups of 5 digits) that identifies a key; the person can read it to the other one by phone or in person. Do not claim the key is safe or unsafe.",
@@ -2947,12 +3798,12 @@
     "context": "Settings, Account tab: grey hint under the read-only address field. It says the address is the sign-in name and the sender address and cannot be changed (security review CAT-4).",
     "security": true
   },
-  "settings.admin_hint": {
-    "context": "Settings, Account tab (admins only): description inside the Admin console card.",
-    "security": false
-  },
   "settings.appearance": {
     "context": "Settings, Account tab: title of the Appearance card (a Language row will be added there by another batch).",
+    "security": false
+  },
+  "settings.appearance_desc": {
+    "context": "Settings > Appearance: one line under the page title.",
     "security": false
   },
   "settings.dark_theme": {
@@ -2963,6 +3814,18 @@
     "context": "Settings, Account tab: placeholder of the Display name field.",
     "security": false
   },
+  "settings.held_reason": {
+    "context": "Settings nav, under the disabled Admin console and Sign out while new recovery codes are on screen: why those are off (the dialog stays open until the codes are saved).",
+    "security": true
+  },
+  "settings.keyboard_desc": {
+    "context": "Settings > Keyboard: one line under the page title.",
+    "security": false
+  },
+  "settings.language_desc": {
+    "context": "Settings > Language: one line under the page title. The choice is saved to the account.",
+    "security": false
+  },
   "settings.light_theme": {
     "context": "Settings, Account tab, Appearance: the light choice of the two theme options (radio button, next to settings.dark_theme).",
     "security": false
@@ -2971,8 +3834,33 @@
     "context": "Settings, Account tab: red message when the settings could not be loaded.",
     "security": false
   },
-  "settings.open_admin": {
-    "context": "Settings, Account tab (admins only): button inside the Admin console card.",
+  "settings.mail": {
+    "context": "Settings: name of the section (left nav and page title) with the message list density and the undo-send time. Short.",
+    "security": false
+  },
+  "settings.mail_desc": {
+    "context": "Settings > Mail: the one line under the page title.",
+    "security": false
+  },
+  "settings.no_changes": {
+    "context": "Settings > Profile: status next to Save when it is pressed while nothing was changed.",
+    "security": false
+  },
+  "settings.notifications_desc": {
+    "context": "Settings > Notifications: one line under the page title.",
+    "security": false
+  },
+  "settings.profile": {
+    "context": "Settings nav row and page title: the name, address and signature of the account.",
+    "security": false,
+    "max": 24
+  },
+  "settings.profile_desc": {
+    "context": "Settings > Profile: one line under the page title.",
+    "security": false
+  },
+  "settings.push_ask": {
+    "context": "Settings > Notifications: line under the switch while it is off and the browser has not been asked for permission yet.",
     "security": false
   },
   "settings.push_blocked": {
@@ -2984,15 +3872,19 @@
     "security": false
   },
   "settings.push_off": {
-    "context": "Settings, Notifications card: status line under the switch label when notifications are off.",
+    "context": "Settings, Notifications card: status line under the switch label when notifications are off and the browser already allows them (it says that, not only Off).",
     "security": false
   },
   "settings.push_on": {
-    "context": "Settings, Notifications card: status line under the switch label when notifications are on.",
+    "context": "Settings, Notifications card: status line under the switch label when notifications are on (what that means on this device).",
     "security": false
   },
   "settings.push_test": {
     "context": "Settings, Notifications card: button that sends a test notification to this device.",
+    "security": false
+  },
+  "settings.push_test_hint": {
+    "context": "Settings > Notifications: says why 'Send test notification' is not available (it is greyed out while notifications are off).",
     "security": false
   },
   "settings.push_unsupported": {
@@ -3025,6 +3917,24 @@
   },
   "settings.signing_out": {
     "context": "Settings footer: label of the sign-out button while signing out (the idle label is auth.sign_out).",
+    "security": false
+  },
+  "settings.system_theme": {
+    "context": "Settings > Appearance > Theme: the third choice card; the app is light or dark as the device is set, and follows when it changes.",
+    "security": false
+  },
+  "settings.technical": {
+    "context": "Settings nav (admins only): small group label above Architecture, Deployment and Email routing & MX.",
+    "security": false,
+    "max": 20
+  },
+  "settings.theme": {
+    "context": "Settings > Appearance: title of the card with the Light / Dark choice (two radio cards with a small picture each).",
+    "security": false,
+    "max": 24
+  },
+  "settings.unsaved": {
+    "context": "Settings > Profile: quiet note next to Save once the name or signature was edited and not saved yet.",
     "security": false
   },
   "settings.your_address": {
@@ -3113,10 +4023,6 @@
     "security": false,
     "max": 16
   },
-  "setup.step": {
-    "context": "First-run Setup screen: small centred line above each step. {current} is the step number (1 or 2) and {total} the number of steps (2).",
-    "security": false
-  },
   "setup.title": {
     "context": "First-run Setup screen, step 1: heading of the card (shown before any account exists).",
     "security": false
@@ -3125,6 +4031,92 @@
     "context": "First-run Setup, step 2 (the recovery key screen): hint under a field to type the setup key again after the server refused it. Nothing was created, so the recovery key shown above is still valid; the person does not start again.",
     "security": true,
     "max": 220
+  },
+  "shortcuts.anywhere": {
+    "context": "Settings > Keyboard, under the list of keys: the ? key shows the same list as a dialog.",
+    "security": false
+  },
+  "shortcuts.clear_selection": {
+    "context": "In the list of keyboard shortcuts: what Esc does while messages are selected.",
+    "security": false
+  },
+  "shortcuts.group_act": {
+    "context": "Heading of a group in the list of keyboard shortcuts: the keys that act on the message in focus (Archive, Move to Trash, Star...) or on the selected messages.",
+    "security": false
+  },
+  "shortcuts.group_compose": {
+    "context": "Heading of a group in the list of keyboard shortcuts: the keys for writing (new message, send).",
+    "security": false
+  },
+  "shortcuts.group_move": {
+    "context": "Heading of a group in the list of keyboard shortcuts: the keys that move between messages, to the search, to the list of keys.",
+    "security": false
+  },
+  "shortcuts.group_select": {
+    "context": "Heading of a group in the list of keyboard shortcuts: the keys that tick several messages for one action (X, Shift+J, Shift+K, Esc).",
+    "security": false
+  },
+  "shortcuts.help": {
+    "context": "In the list of keyboard shortcuts: what the ? key does (opens that list).",
+    "security": false
+  },
+  "shortcuts.key_esc": {
+    "context": "The Escape key, on a keycap in the list of keyboard shortcuts (Esc clears the selected messages). Use the name printed on keyboards in the language's region; most keep Esc.",
+    "security": false
+  },
+  "shortcuts.key_shift": {
+    "context": "The Shift key, on a keycap in the list of keyboard shortcuts (Shift + F10 opens a message's actions). Use the name printed on keyboards in the language's region.",
+    "security": false,
+    "max": 8
+  },
+  "shortcuts.lead": {
+    "context": "First line of the keyboard shortcuts dialog (opened with ?).",
+    "security": false
+  },
+  "shortcuts.move": {
+    "context": "In the list of keyboard shortcuts: what the Up and Down arrow keys do in the message list (focus moves, nothing opens until Enter).",
+    "security": false
+  },
+  "shortcuts.open": {
+    "context": "Button in Settings > Keyboard, after the list of keys: opens the same list as a dialog (the one the ? key opens).",
+    "security": false
+  },
+  "shortcuts.or": {
+    "context": "In the list of keyboard shortcuts, between two keys that do the same thing (e.g. Shift+J or Shift+Down).",
+    "security": false
+  },
+  "shortcuts.row_menu": {
+    "context": "In the list of keyboard shortcuts: what Shift+F10 does on a row of the message list (opens the menu of that message: Archive, Move to Trash...).",
+    "security": false
+  },
+  "shortcuts.select": {
+    "context": "In the list of keyboard shortcuts: what X does (ticks or unticks the message in focus, for an action on several messages).",
+    "security": false
+  },
+  "shortcuts.select_down": {
+    "context": "In the list of keyboard shortcuts: what Shift+J / Shift+Down does (grows the selection by the next message).",
+    "security": false
+  },
+  "shortcuts.select_up": {
+    "context": "In the list of keyboard shortcuts: what Shift+K / Shift+Up does (grows the selection by the previous message).",
+    "security": false
+  },
+  "shortcuts.selection_note": {
+    "context": "In the list of keyboard shortcuts, under 'Act on a message': a quiet line followed by the keycaps (E, #, S, U, Shift+I, B, L, V) that act on every ticked message while several are selected (Reply, Reply all and Forward still answer the open one).",
+    "security": false
+  },
+  "shortcuts.send": {
+    "context": "In the list of keyboard shortcuts: what Ctrl+Enter does in the compose window.",
+    "security": false
+  },
+  "shortcuts.settings": {
+    "context": "Button in the keyboard shortcuts dialog: opens Settings at the Keyboard section (where single-key shortcuts can be turned off).",
+    "security": false,
+    "max": 24
+  },
+  "shortcuts.star": {
+    "context": "In the list of keyboard shortcuts: what the S key does to the open message.",
+    "security": false
   },
   "sidebar.close_mailboxes": {
     "context": "Screen-reader label of the X button of the phone folder drawer",
@@ -3209,8 +4201,45 @@
     "context": "Toast after a message was archived (has an Undo button)",
     "security": false
   },
+  "toast.batch_archived": {
+    "context": "Short notice after the selected messages were archived, with Undo. {count} = how many.",
+    "security": false
+  },
+  "toast.batch_labelled": {
+    "context": "Short notice after a label was added to the selected messages. {label} = the label's name, {count} = how many.",
+    "security": false
+  },
+  "toast.batch_moved": {
+    "context": "Short notice after the selected messages were moved, with Undo. {count} = how many, {folder} = the folder's name (Inbox, Trash, Spam...).",
+    "security": false
+  },
+  "toast.batch_starred": {
+    "context": "Short notice after the selected messages were starred, with Undo. {count} = how many.",
+    "security": false
+  },
+  "toast.batch_unread": {
+    "context": "Short notice after the selected messages were marked as unread, with Undo. {count} = how many.",
+    "security": false
+  },
+  "toast.batch_unstarred": {
+    "context": "Short notice after the selected messages were unstarred, with Undo. {count} = how many.",
+    "security": false
+  },
   "toast.deleted_forever": {
     "context": "Toast after a message was deleted for good (no Undo)",
+    "security": false
+  },
+  "toast.dismiss": {
+    "context": "Icon button (X) that closes a toast; tooltip and screen-reader label",
+    "security": false,
+    "max": 16
+  },
+  "toast.emptied": {
+    "context": "Short notice after Empty Trash / Empty Spam: how many messages the server deleted. No Undo.",
+    "security": false
+  },
+  "toast.marked_all_read": {
+    "context": "Short notice with an Undo button after 'Mark all as read': how many messages turned read. Undo makes them unread again.",
     "security": false
   },
   "toast.moved_back_to_inbox": {
@@ -3238,6 +4267,18 @@
     "security": false,
     "max": 12
   },
+  "toast.undo_hint": {
+    "context": "Read out by screen readers (not shown) for a toast with an Undo button; {text} is the toast ('Archived'). Keep Ctrl+Z as it is",
+    "security": false
+  },
+  "twofa.app_hint": {
+    "context": "Two-factor enrolment (gate and Settings): above 'Open your authenticator app and scan this code.' App names are product names, never translated.",
+    "security": true
+  },
+  "twofa.app_hint_phone": {
+    "context": "Two-factor enrolment on a phone or touch screen (gate and Settings): above the 'Open in authenticator app' button, the key and the QR code. Same as twofa.app_hint but ends with adding the account here instead of scanning. App names are product names, never translated.",
+    "security": true
+  },
   "twofa.code_hint": {
     "context": "Two-factor enrolment screen: small hint under the six-digit code input (codes change every 30 seconds).",
     "security": true
@@ -3247,7 +4288,7 @@
     "security": true
   },
   "twofa.code_required": {
-    "context": "Settings > Security: red line under the six-digit code field after the person pressed the action's button with fewer than six digits typed.",
+    "context": "Second step of sign-in, the two-factor setup (first sign-in and Settings > Security): red line under the six-digit code field after the button was pressed with fewer than six digits typed.",
     "security": true
   },
   "twofa.codes_keep": {
@@ -3287,11 +4328,19 @@
     "security": true
   },
   "twofa.intro": {
-    "context": "Two-factor enrolment screen (first sign-in gate, or Settings), paragraph under the card title, above the QR code: what two-factor sign-in is and what an authenticator app does.",
+    "context": "Settings > Security, turning on two-factor sign-in, step 1 of 3 (before the password): what two-factor sign-in is.",
     "security": true
   },
   "twofa.manual_title": {
     "context": "Two-factor enrolment screen: label above the text key (base32 secret, shown in groups of four) for a person who cannot scan the QR code.",
+    "security": true
+  },
+  "twofa.manual_title_phone": {
+    "context": "Two-factor enrolment on a phone or touch screen: label above the text key (base32 secret), under the Open in authenticator app link.",
+    "security": true
+  },
+  "twofa.open_app": {
+    "context": "Two-factor enrolment on a phone or touch screen: link (styled as a button) that opens the otpauth:// address, so the authenticator app on this device adds the account. Shown above the key and the QR code.",
     "security": true
   },
   "twofa.qr_failed": {
@@ -3303,19 +4352,35 @@
     "security": true
   },
   "twofa.saved_check": {
-    "context": "Recovery codes panel: label of the required checkbox that enables the Continue button.",
+    "context": "Recovery codes panel: label of the checkbox the person ticks once the codes are saved; Continue says to tick it when pressed without it.",
     "security": true
   },
   "twofa.saved_hint": {
     "context": "Recovery codes panel: small text under the 'I have saved these recovery codes' checkbox.",
     "security": true
   },
+  "twofa.saved_required": {
+    "context": "Recovery codes panel: red line under the 'I have saved these recovery codes' checkbox after Continue was pressed without ticking it.",
+    "security": true
+  },
   "twofa.scan_lead": {
     "context": "Two-factor enrolment screen: instruction line directly above the QR code.",
     "security": true
   },
+  "twofa.scan_other_device": {
+    "context": "Two-factor enrolment on a phone or touch screen: line above the QR code, which is for an authenticator app on a second device.",
+    "security": true
+  },
   "twofa.verify": {
     "context": "Button: primary button under the six-digit code input on the two-factor enrolment screen; checks the code and turns two-factor sign-in on.",
+    "security": true
+  },
+  "users.add_person": {
+    "context": "People page: the primary button that opens the New account dialog.",
+    "security": false
+  },
+  "users.admin_claim_more": {
+    "context": "Account dialog, Make admin confirmation: disclosure button that shows the full statement of what admins can and cannot do (the admin claim, security.admin_claim_*).",
     "security": true
   },
   "users.alias_add_label": {
@@ -3352,6 +4417,11 @@
     "security": false,
     "max": 16
   },
+  "users.col_two_factor": {
+    "context": "People table of the admin console: header of the column that says whether the person has two-factor sign-in (On or Off). Short.",
+    "security": true,
+    "max": 18
+  },
   "users.confirm_demote": {
     "context": "Account dialog: confirmation text before an admin is made a member again.",
     "security": false
@@ -3361,8 +4431,12 @@
     "security": true
   },
   "users.confirm_promote_note": {
-    "context": "Account dialog: second paragraph of the confirmation before making someone an admin (the first paragraph is the admin claim, security.admin_claim_*).",
+    "context": "Account dialog: second line of the confirmation before making someone an admin, under its title (users.confirm_promote_title) and users.make_admin_desc; the admin claim (security.admin_claim_*) is behind users.admin_claim_more.",
     "security": true
+  },
+  "users.confirm_promote_title": {
+    "context": "Account dialog: the question at the top of the confirmation before making someone an admin. {name} is the person's name or address.",
+    "security": false
   },
   "users.confirm_reissue": {
     "context": "Confirmation paragraph before a new temporary password is issued. {hours} is a number (72 today).",
@@ -3434,8 +4508,16 @@
     "context": "Delete account dialog: label of the field where the admin types the exact address.",
     "security": false
   },
+  "users.delete_confirm_mismatch": {
+    "context": "Delete account dialog: error under the confirmation field when Delete account is pressed and the typed text is not the address. {address} is the account address.",
+    "security": false
+  },
+  "users.delete_hint": {
+    "context": "Person dialog: the line beside Delete account (it opens a confirmation).",
+    "security": false
+  },
   "users.delete_key_note": {
-    "context": "Delete account dialog: second sentence under the Product Owner text, about the new key of a re-created account.",
+    "context": "Delete account dialog: second sentence under the warning, about the new key the address gets if the admin creates it again later.",
     "security": true
   },
   "users.delete_title": {
@@ -3447,8 +4529,16 @@
     "security": false,
     "max": 16
   },
+  "users.disable_desc": {
+    "context": "Person dialog: one line next to the Disable account button, saying what it does.",
+    "security": false
+  },
   "users.empty": {
     "context": "Admin People tab when there is no account at all.",
+    "security": false
+  },
+  "users.enable_desc": {
+    "context": "Person dialog of a disabled account: one line next to the Enable account button.",
     "security": false
   },
   "users.err_alias_incomplete": {
@@ -3479,6 +4569,53 @@
     "context": "User list row: how many extra addresses (aliases) the account has. {count} is a number.",
     "security": false
   },
+  "users.extra_addresses_short": {
+    "context": "People table where it is narrow: the number of extra addresses after the address, as a small count (the full words are read to screen readers).",
+    "security": false
+  },
+  "users.filter_all": {
+    "context": "People page, status filter: everyone.",
+    "security": false
+  },
+  "users.filter_count": {
+    "context": "People page, status filter: a segment with how many people it shows. {label} is the segment name (All, Active, Not signed in, Disabled), {count} a number.",
+    "security": false
+  },
+  "users.filter_label": {
+    "context": "People page: accessible name of the status filter.",
+    "security": false
+  },
+  "users.filter_none": {
+    "context": "People page: the status filter leaves nobody.",
+    "security": false
+  },
+  "users.filter_pending": {
+    "context": "People page: the status filter and the status word of a row for accounts still on their temporary password, never signed in with their own ('yet': not 'signed out now').",
+    "security": false
+  },
+  "users.filter_show_all": {
+    "context": "People page: button that resets the status filter.",
+    "security": false
+  },
+  "users.filter_two_factor_any": {
+    "context": "People page, two-factor filter: show everyone, with or without two-factor sign-in.",
+    "security": true,
+    "max": 24
+  },
+  "users.filter_two_factor_label": {
+    "context": "People page: accessible name of the two-factor filter (a list next to the status filter).",
+    "security": true
+  },
+  "users.filter_two_factor_off": {
+    "context": "People page, two-factor filter: only the people without two-factor sign-in. A count may follow.",
+    "security": true,
+    "max": 24
+  },
+  "users.filter_two_factor_on": {
+    "context": "People page, two-factor filter: only the people who have two-factor sign-in. A count may follow.",
+    "security": true,
+    "max": 24
+  },
   "users.last_sign_in": {
     "context": "People table of the admin console, phone layout (rows stacked, no column headers): when the person last signed in. {when} is a date and time already formatted for the language.",
     "security": false
@@ -3492,10 +4629,22 @@
     "security": false,
     "max": 20
   },
+  "users.make_admin_desc": {
+    "context": "Person dialog: one line next to the Make admin button, saying what it does.",
+    "security": false
+  },
   "users.make_member": {
     "context": "Button in the account dialog (and its confirm button): gives an admin the member role.",
     "security": false,
     "max": 20
+  },
+  "users.make_member_desc": {
+    "context": "Person dialog: one line next to the Make member button, saying what it does.",
+    "security": false
+  },
+  "users.never": {
+    "context": "People table, Last sign-in column: the person never signed in.",
+    "security": false
   },
   "users.new_account": {
     "context": "Button above the people list, and title of the dialog it opens.",
@@ -3515,6 +4664,22 @@
     "context": "Button that closes the temporary password dialog (the only way to close it).",
     "security": true,
     "max": 22
+  },
+  "users.people_count#one": {
+    "context": "People page: the count at the end of the table when it lists everyone. {count} is a number.",
+    "security": false
+  },
+  "users.people_count#other": {
+    "context": "People page: the count at the end of the table when it lists everyone. {count} is a number.",
+    "security": false
+  },
+  "users.profile_heading": {
+    "context": "Person dialog: heading of the display name section.",
+    "security": false
+  },
+  "users.reissue_desc": {
+    "context": "Person dialog of someone who never signed in: one line next to the Issue a new temporary password button.",
+    "security": true
   },
   "users.reissue_temp_password": {
     "context": "Button in the account dialog, shown only while the person has not signed in yet: issues a new temporary password (the old one stops working at once). Also the label of the confirm button.",
@@ -3536,6 +4701,14 @@
     "security": true,
     "max": 30
   },
+  "users.reset_two_factor_desc": {
+    "context": "Person dialog: one line next to the Reset two-factor sign-in button, saying when to use it and what follows.",
+    "security": true
+  },
+  "users.reset_two_factor_none": {
+    "context": "Person dialog: next to the Reset two-factor sign-in button, which is turned off because the person has no two-factor sign-in.",
+    "security": true
+  },
   "users.role": {
     "context": "New account dialog: legend of the radio group that picks Member or Admin. Also the header of the Role column of the People table in the admin console.",
     "security": false,
@@ -3551,7 +4724,7 @@
     "security": false
   },
   "users.search_placeholder": {
-    "context": "Placeholder of the search field of the People tab.",
+    "context": "Placeholder of the search field of the People tab (a search icon is before it and its label is Search people): what to type, short.",
     "security": false
   },
   "users.self_note": {
@@ -3572,8 +4745,38 @@
     "security": false,
     "max": 14
   },
+  "users.temp_expires": {
+    "context": "Person dialog, under the badges: an account still on its temporary password. {when} is a date and time.",
+    "security": true
+  },
+  "users.temp_password_expired": {
+    "context": "Admin People table, Last sign-in cell of a person who never signed in and whose temporary password already stopped working. {when} is a short date, e.g. \"Nov 10\".",
+    "security": true
+  },
+  "users.temp_password_expires": {
+    "context": "Admin People table, Last sign-in cell of a person who never signed in and still has the temporary password an admin made: when it stops working. {when} is a short date, e.g. \"Nov 19\".",
+    "security": true
+  },
   "users.this_is_you": {
     "context": "Account dialog: shown next to the badges when the admin opens their own account.",
     "security": false
+  },
+  "users.two_factor_is_off": {
+    "context": "Admin console: the person has no two-factor sign-in (stacked rows on a phone, the person's dialog).",
+    "security": true
+  },
+  "users.two_factor_is_on": {
+    "context": "Admin console: a person's two-factor state where no column header names it (stacked rows on a phone, the person's dialog).",
+    "security": true
+  },
+  "users.two_factor_off": {
+    "context": "People table, Two-factor column: this person has no two-factor sign-in.",
+    "security": true,
+    "max": 10
+  },
+  "users.two_factor_on": {
+    "context": "People table, Two-factor column: this person has two-factor sign-in set up.",
+    "security": true,
+    "max": 10
   }
 }

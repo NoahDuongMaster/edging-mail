@@ -1,4 +1,5 @@
 import type React from 'react';
+import { CircleAlert } from 'lucide-react';
 
 /** True when an optional text has something in it. */
 export const has = (text: string | undefined): text is string => text !== undefined && text !== '';
@@ -47,6 +48,7 @@ export function Field({ id, label, hideLabel = false, hint, error, native = true
       ) : null}
       {has(error) ? (
         <p id={`${id}-error`} className="ui-error">
+          <CircleAlert size={14} strokeWidth={2.25} aria-hidden="true" className="ui-error-icon" />
           {error}
         </p>
       ) : null}

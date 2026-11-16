@@ -10,7 +10,7 @@ import { contextWords } from '../../lib/password/policy';
 import { usePasswordCheck } from '../../lib/password/usePasswordCheck';
 import { useAction } from '../../lib/useAction';
 import { useCountdown } from '../../lib/useCountdown';
-import { PasswordField } from '../PasswordField';
+import { PasswordField, SecretField } from '../PasswordField';
 import { TextField } from '../../ui';
 import { AuthButton, AuthCard, ErrorLine, TextButton } from './authUi';
 import { RecoveryKeyPanel } from './RecoveryKeyPanel';
@@ -23,6 +23,9 @@ interface ForgotScreenProps {
 }
 
 type Step = 'details' | 'password' | 'key' | 'done';
+
+/** The three steps the person goes through (the last screen, "Password changed", is where they arrive, not a step). */
+const STEPS = 3;
 
 /** The typed key is read (length, alphabet, check characters) as soon as it is long enough: a typo is shown here, before any request. */
 function useKeyProblem(text: string): string | null {
@@ -54,6 +57,9 @@ function useKeyProblem(text: string): string | null {
   }, [text, judged]);
   return judged && verdict?.text === text ? verdict.problem : null;
 }
+
+/** An address the server can look up: something, an @, something (the server judges the rest). */
+const looksLikeAddress = (text: string): boolean => /^[^\s@]+@[^\s@]+$/.test(text.trim());
 
 /**
  * Forgot password, three steps (crypto-design.md 15.3): the recovery key (and a code when the account has two-factor sign-in), a new password,
@@ -96,9 +102,22 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
     []
   );
 
+  // Every step's Continue can always be pressed: a press with something missing shows each field's error and takes the keyboard to the first.
+  const [submitted, setSubmitted] = React.useState(false);
+  const focusLater = useFieldFocus();
+
   const verify = async (event: React.SyntheticEvent) => {
     event.preventDefault();
-    if (action.busy || wait > 0 || keyProblem !== null || email.trim() === '' || recoveryText.trim() === '') {
+    if (action.busy || wait > 0) {
+      return;
+    }
+    setSubmitted(true);
+    const toFix = firstInvalid([
+      ['forgot-email', !looksLikeAddress(email)],
+      ['forgot-key', recoveryText.trim() === '' || keyProblem !== null]
+    ]);
+    if (toFix !== undefined) {
+      focusLater(toFix);
       return;
     }
     const verified = await action.run(() => ForgotFlow.verify(email, recoveryText, factor));
@@ -106,26 +125,24 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
     setRecoveryText('');
     setFactor('');
     if (verified !== undefined) {
+      setSubmitted(false);
       setFlow(verified);
       setStep('password');
     }
   };
 
-  // The password step's Continue can always be pressed: a press with something missing shows both fields' errors and takes the keyboard to the first.
-  const [submitted, setSubmitted] = React.useState(false);
-  const focusLater = useFieldFocus();
   const mismatch = (repeat !== '' || submitted) && repeat !== password;
-  // The new password counts as missing while it is empty, refused or not judged yet (its check loading or failed): the line under it says which.
-  const toFix = firstInvalid([
-    ['forgot-new', check.assessment?.ok !== true],
-    ['forgot-repeat', repeat !== password]
-  ]);
   const toKey = async (event: React.SyntheticEvent) => {
     event.preventDefault();
     if (action.busy) {
       return;
     }
     setSubmitted(true);
+    // The new password counts as missing while it is empty, refused or not judged yet (its check loading or failed): the line under it says which.
+    const toFix = firstInvalid([
+      ['forgot-new', check.assessment?.ok !== true],
+      ['forgot-repeat', repeat !== password]
+    ]);
     if (toFix !== undefined) {
       focusLater(toFix);
       return;
@@ -135,6 +152,7 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
       chosen.current = password;
       setPassword('');
       setRepeat('');
+      setSubmitted(false);
       setDraft(made);
       setStep('key');
     }
@@ -150,7 +168,7 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
 
   if (step === 'key' && flow !== null && draft !== null) {
     return (
-      <AuthCard t={t} wide title={tr('recovery.title_new')} lead={tr('forgot.key_lead')}>
+      <AuthCard t={t} wide step={{ current: 3, total: STEPS }} title={tr('recovery.title_new')} lead={tr('forgot.key_lead')}>
         <RecoveryKeyPanel
           t={t}
           draft={draft}
@@ -177,6 +195,7 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
     return (
       <AuthCard
         t={t}
+        step={{ current: 2, total: STEPS }}
         title={tr('forgot.password_title')}
         lead={tr('forgot.password_lead')}
         onSubmit={(event) => {
@@ -193,19 +212,15 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
           offerPassphrase={role === 'admin'}
           submitted={submitted}
         />
-        <div className="au-row">
-          <TextField
-            id="forgot-repeat"
-            label={tr('gate.repeat_password')}
-            type="password"
-            value={repeat}
-            onChange={(event) => setRepeat(event.target.value)}
-            autoComplete="new-password"
-            aria-invalid={mismatch}
-            aria-describedby={mismatch ? 'forgot-mismatch' : undefined}
-          />
-          <ErrorLine t={t} id="forgot-mismatch" text={mismatch ? tr('gate.passwords_differ') : null} />
-        </div>
+        <SecretField
+          id="forgot-repeat"
+          label={tr('gate.repeat_password')}
+          showLabel={tr('password.show_repeat')}
+          error={mismatch ? tr('gate.passwords_differ') : undefined}
+          value={repeat}
+          onChange={(event) => setRepeat(event.target.value)}
+          autoComplete="new-password"
+        />
         <ErrorLine t={t} id="forgot-error" text={action.error} />
         <AuthButton t={t} busy={action.busy} label={tr('gate.continue')} />
         <div className="au-alt">
@@ -215,12 +230,14 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
     );
   }
 
-  const errorText =
-    keyProblem ?? (action.error !== null && wait > 0 ? `${action.error} ${tr('auth.try_again_in', { seconds: wait })}` : action.error);
+  const emailError = submitted && !looksLikeAddress(email) ? tr('auth.address_invalid') : undefined;
+  const keyError = keyProblem ?? (submitted && recoveryText.trim() === '' ? tr('forgot.key_required') : null);
+  const errorText = action.error !== null && wait > 0 ? `${action.error} ${tr('auth.try_again_in', { seconds: wait })}` : action.error;
   return (
     <AuthCard
       t={t}
       picker
+      step={{ current: 1, total: STEPS }}
       title={tr('forgot.title')}
       lead={tr('forgot.lead')}
       onSubmit={(event) => {
@@ -231,16 +248,19 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
         id="forgot-email"
         label={tr('auth.email_label')}
         type="email"
+        error={emailError}
         value={email}
         onChange={(event) => setEmail(event.target.value)}
         autoComplete="username"
         autoCapitalize="off"
+        autoCorrect="off"
         spellCheck={false}
       />
       <TextField
         id="forgot-key"
         label={tr('term.recovery_key')}
         hint={tr('forgot.key_hint')}
+        error={keyError ?? undefined}
         mono
         className="au-key-input"
         value={recoveryText}
@@ -250,8 +270,6 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
         autoCorrect="off"
         spellCheck={false}
         translate="no"
-        aria-invalid={keyProblem !== null}
-        aria-describedby={errorText === null ? undefined : 'forgot-error'}
       />
       <TextField
         id="forgot-code"
@@ -260,17 +278,15 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
         mono
         value={factor}
         onChange={(event) => setFactor(event.target.value)}
-        autoComplete="off"
+        autoComplete="one-time-code"
         autoCapitalize="off"
+        autoCorrect="off"
         spellCheck={false}
       />
       <ErrorLine t={t} id="forgot-error" text={errorText} />
-      <AuthButton
-        t={t}
-        busy={action.busy}
-        disabled={wait > 0 || keyProblem !== null || email.trim() === '' || recoveryText.trim() === ''}
-        label={tr('gate.continue')}
-      />
+      <AuthButton t={t} busy={action.busy} disabled={wait > 0} label={tr('gate.continue')} />
+      {/* The next step for a member who lost the key too, and what it costs (J4-08): no admin can reset a password or open the mail. */}
+      <p className="au-note">{tr('forgot.lost_key')}</p>
       <div className="au-alt">
         <TextButton t={t} label={tr('forgot.admin_link')} onClick={onBreakGlass} />
         <TextButton t={t} label={tr('common.back')} onClick={onBack} />

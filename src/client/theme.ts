@@ -1,7 +1,8 @@
-import { stringHue } from './lib/mail';
 import {
   CONTROL_HEIGHT,
   DARK,
+  DURATION,
+  EASING,
   FONT_FACE_CSS,
   FONT_MONO,
   FONT_SANS,
@@ -107,31 +108,84 @@ export function getTokens(dark: boolean, accent?: string): ThemeTokens {
 
 const THEME_STYLE_ID = 'nm-tokens';
 
-/** The key under which the choice of theme is stored ('dark' or 'light'). The app does not follow `prefers-color-scheme`. */
+/** The key under which the choice of theme is stored: 'light', 'dark' or 'system' (no value: 'system'). */
 export const THEME_STORAGE_KEY = 'edging-mail-theme';
 
-/** True when the stored choice is dark. A browser that refuses storage gets the light theme. */
-export function storedThemeIsDark(): boolean {
+/** The theme a person chose on this device: a fixed one, or 'system', which follows `prefers-color-scheme` while the app is open. */
+export type ThemeChoice = 'light' | 'dark' | 'system';
+
+const DARK_QUERY = '(prefers-color-scheme: dark)';
+
+/** The stored choice. Nothing stored (a new device), an unknown value or a browser that refuses storage: 'system'. */
+export function storedThemeChoice(): ThemeChoice {
   try {
-    return window.localStorage.getItem(THEME_STORAGE_KEY) === 'dark';
+    const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+    return stored === 'light' || stored === 'dark' ? stored : 'system';
   } catch {
-    return false;
+    return 'system';
   }
 }
 
-/** The CSS of the `nm-tokens` style: the font faces, the variables of the light palette, then the dark ones under `[data-theme='dark']`. */
-function themeCss(): string {
+/** Stores the choice (a browser that refuses storage keeps it for this visit only). */
+export function storeThemeChoice(choice: ThemeChoice): void {
+  try {
+    window.localStorage.setItem(THEME_STORAGE_KEY, choice);
+  } catch {
+    // storage full or blocked
+  }
+}
+
+/** True when the system asks for dark (false where there is no window or no media query). */
+export function systemPrefersDark(): boolean {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(DARK_QUERY).matches;
+}
+
+/** Whether a choice shows the dark theme now: 'system' asks the system. */
+export function resolveThemeChoice(choice: ThemeChoice): boolean {
+  return choice === 'system' ? systemPrefersDark() : choice === 'dark';
+}
+
+/** Calls `onChange` when the system switches between light and dark (only 'system' follows it). Returns the unsubscribe. */
+export function watchSystemTheme(onChange: () => void): () => void {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return () => {
+      // Nothing was listened to.
+    };
+  }
+  const query = window.matchMedia(DARK_QUERY);
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
+}
+
+/** True when the stored choice shows the dark theme now (a 'system' choice follows the system). Read before the first render. */
+export function storedThemeIsDark(): boolean {
+  return resolveThemeChoice(storedThemeChoice());
+}
+
+/** `emphEnter` -> `emph-enter`: the CSS name of a token key. */
+const cssName = (name: string): string => name.replaceAll(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+
+/**
+ * The CSS of the `nm-tokens` style: the font faces, the variables of the light palette (with `--focus`, `--indicator` and the material
+ * of tactile controls), the radii, heights, durations (`--dur-*`) and easings (`--ease-*`), then the dark palette under
+ * `[data-theme='dark']`. Reduced motion re-sets the durations in index.css (it out-ranks this rule).
+ */
+export function themeCss(): string {
   const shared = [
     `--font-sans:${FONT_SANS}`,
     `--font-mono:${FONT_MONO}`,
     `--radius-control:${RADIUS.control}px`,
     `--radius-card:${RADIUS.card}px`,
+    `--radius-popup:${RADIUS.popup}px`,
     `--radius-dialog:${RADIUS.dialog}px`,
+    `--radius-pill:${RADIUS.pill}px`,
     `--control-sm:${CONTROL_HEIGHT.sm}px`,
     `--control-md:${CONTROL_HEIGHT.md}px`,
     `--control-touch:${CONTROL_HEIGHT.touch}px`,
     `--motion-fast:${MOTION.fast}ms`,
-    `--motion-base:${MOTION.base}ms`
+    `--motion-base:${MOTION.base}ms`,
+    ...Object.entries(DURATION).map(([name, ms]) => `--dur-${name}:${ms}ms`),
+    ...Object.entries(EASING).map(([name, curve]) => `--ease-${cssName(name)}:${curve}`)
   ].join(';');
   return `${FONT_FACE_CSS}\n:root{${paletteToCssVars(LIGHT)};${shared}}\n:root[data-theme='dark']{${paletteToCssVars(DARK)}}`;
 }
@@ -144,13 +198,18 @@ export function applyTheme(dark: boolean): void {
   const root = document.documentElement;
   root.dataset.theme = dark ? 'dark' : 'light';
   root.style.colorScheme = dark ? 'dark' : 'light';
-  if (document.querySelector(`#${THEME_STYLE_ID}`) === null) {
+  const css = themeCss();
+  const current = document.querySelector(`#${THEME_STYLE_ID}`);
+  if (current === null) {
     const style = document.createElement('style');
     style.id = THEME_STYLE_ID;
-    style.textContent = themeCss();
+    style.textContent = css;
     // Not .append(): @cloudflare/workers-types overrides Element.append with the HTMLRewriter signature.
     // eslint-disable-next-line unicorn/prefer-dom-node-append -- see above
     document.head.appendChild(style);
+  } else if (current.textContent !== css) {
+    // A hot reload of the tokens in development: the variables follow without a page reload.
+    current.textContent = css;
   }
 }
 
@@ -178,13 +237,46 @@ export const FILE_HUES: Record<string, string> = {
   WEBP: '#6D28D9',
   GIF: '#6D28D9',
   HEIC: '#6D28D9',
-  DOC: '#2F5BEA',
-  DOCX: '#2F5BEA'
+  // Not the accent blue (it means selected, unread, focus): a cyan, 43 degrees away from it in perceived hue.
+  DOC: '#0E7490',
+  DOCX: '#0E7490'
 };
+
+/**
+ * The hues of labels: ten that stand apart on the colour wheel (none grey, so no label looks disabled; no amber, the colour of the star beside
+ * a row's chips; none within 20 degrees of the accent blue, which means selected, unread and focus), in an order where the sample labels of
+ * each language (Family, Travel, Work and their translations) land 60 degrees or more apart and neighbours are far apart in perceived hue, so
+ * the hash below, which spreads names over these slots, rarely gives two labels of one list look-alike colours. Through getChip each gives
+ * chip text over 6.7:1 on its chip and a dot over 3.9:1 on the surface, the window ground and the raised fill, in both themes
+ * (test/client/label-hues.test.ts).
+ */
+export const LABEL_HUES: readonly string[] = [
+  '#6D28D9', // violet
+  '#C81E1E', // red
+  '#4D7C0F', // lime
+  '#A21CAF', // fuchsia (was the accent blue: Family lands here)
+  '#15803D', // green
+  '#BE185D', // pink
+  '#0E7490', // cyan
+  '#A61E7A', // plum
+  '#C2410C', // orange
+  '#0F766E' // teal
+];
+
+/** The slot of a label name in LABEL_HUES: FNV-1a over its UTF-16 code units, so the same name is always the same colour, on every device. */
+export function labelHue(label: string): string {
+  let hash = 0x81_1c_9d_c5;
+  for (let i = 0; i < label.length; i++) {
+    // eslint-disable-next-line unicorn/prefer-code-point -- the hash reads UTF-16 code units; codePointAt would change it for emoji
+    hash ^= label.charCodeAt(i);
+    hash = Math.imul(hash, 0x01_00_01_93) >>> 0;
+  }
+  return LABEL_HUES[hash % LABEL_HUES.length];
+}
 
 /** Labels are user-made, so a name picks its colour from the fixed palette by hash: the same name is always the same colour. */
 export function getLabelChip(label: string, t: ThemeTokens): { name: string; bg: string; fg: string; dot: string } {
-  return { name: label, ...getChip(stringHue(label), t) };
+  return { name: label, ...getChip(labelHue(label), t) };
 }
 
 export function getFileChip(type: string, t: ThemeTokens): { bg: string; fg: string; dot: string } {

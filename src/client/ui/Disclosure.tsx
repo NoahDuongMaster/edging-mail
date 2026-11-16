@@ -22,7 +22,8 @@ export interface DisclosureProps extends Omit<
 /**
  * A control that shows or hides more of something in place (the recipients of a mail, the setup steps of a domain, the note of a badge):
  * a button with a chevron that turns when it is open, `aria-expanded`, and `aria-controls` naming the region. The caller renders the
- * region where it belongs (right after it, or in the next table row). The chevron does not turn under reduced motion, it flips.
+ * region where it belongs (right after it, or in the next table row), ideally as a DisclosurePanel, whose height opens with it. The chevron
+ * does not turn under reduced motion, it flips.
  */
 export function Disclosure({
   open,
@@ -66,5 +67,26 @@ export function Disclosure({
       {children}
       {chevron}
     </button>
+  );
+}
+
+export interface DisclosurePanelProps extends Omit<React.ComponentProps<'div'>, 'id' | 'children'> {
+  /** The id the Disclosure names in `controls`. */
+  id: string;
+  /** The `open` of its Disclosure. */
+  open: boolean;
+  children: React.ReactNode;
+}
+
+/**
+ * The region a Disclosure shows and hides, kept in the page: its height opens and closes through grid rows (200 ms; at once under reduced
+ * motion), and while it is closed it is hidden from the keyboard and from screen readers (ui.css `.ui-collapse`). Put it right after its
+ * Disclosure and give it the id the Disclosure names in `controls`.
+ */
+export function DisclosurePanel({ id, open, className, children, ...rest }: DisclosurePanelProps): React.ReactElement {
+  return (
+    <div id={id} className={cx('ui-collapse', className)} data-open={open ? 'true' : undefined} {...rest}>
+      <div className="ui-collapse-inner">{children}</div>
+    </div>
   );
 }

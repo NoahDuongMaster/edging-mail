@@ -8,7 +8,7 @@
   "push.locked_delete_requested.title": "Đã có yêu cầu xóa thư cũ bị khóa của bạn",
   "push.locked_delete_requested.body": "Lúc {time}, có người yêu cầu xóa thư cũ bị khóa dưới khóa trước đây của bạn. Thư sẽ bị xóa sau 7 ngày nếu bạn không hủy yêu cầu trong ứng dụng.",
   "push.second_factor_locked.title": "Có người đang đoán mã đăng nhập của bạn",
-  "push.second_factor_locked.body": "Lúc {time}, có người nhập sai mã sau khi đã biết đúng mật khẩu của bạn, nên đăng nhập bằng mã bị tạm dừng một lúc. Nếu không phải bạn, hãy đổi mật khẩu.",
+  "push.second_factor_locked.body": "Lúc {time}, có người nhập sai mã sau khi đã biết đúng mật khẩu của bạn, nên đăng nhập bằng mã bị tạm dừng ít nhất 15 phút (tối đa 24 giờ nếu việc này tiếp diễn). Nếu không phải bạn, hãy đổi mật khẩu.",
   "push.alert_break_glass_failures.title": "Có người đang đoán khóa thiết lập",
   "push.alert_break_glass_failures.body": "Có 10 lần dùng khóa thiết lập thất bại trong một giờ (lần cuối lúc {time}). Hãy kiểm tra ai có thể truy cập hệ thống này và cân nhắc thay khóa thiết lập.",
   "push.2fa_reset.title": "Đăng nhập hai lớp của bạn đã được đặt lại",

@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { BAR_BUTTON_WIDTH } from '../../src/client/components/reader/barDensity';
+import { BAR_BUTTON_WIDTH, LABELLED_CHROME } from '../../src/client/components/reader/barDensity';
 import { ROOT } from './helpers/scan';
 
 // The reader (MessageView and its parts), as files: what a source scan can hold. How it looks and behaves was run in a browser.
@@ -19,25 +19,48 @@ describe('the reader toolbar', () => {
       String(BAR_BUTTON_WIDTH.coarse)
     );
     expect(cssCode).toMatch(/\.rd-bar\[data-compact='false'\] \.ui-icon-btn\[data-size\] \{\s*width: var\(--rd-btn\);/);
+    // A labelled button is its words plus the chrome barDensity.ts counts: 10 px padding each side, a 16 px icon, a 6 px gap, 1 px borders.
+    const labelled = /\.rd-bar \.ui-btn\.rd-lbl \{\s*gap: (\d+)px;\s*padding: 0 (\d+)px;/.exec(cssCode);
+    expect(labelled).not.toBeNull();
+    expect(2 * Number(labelled?.[2]) + 16 + Number(labelled?.[1]) + 2).toBe(LABELLED_CHROME);
   });
 
-  it('keeps the phone arithmetic of index.css (.nm-bar, .nm-bar-sep) and the desktop class (.nm-bar-d)', () => {
+  it('is an ARIA toolbar (one Tab stop, arrow keys) built on ui/Toolbar, with a name, on desktop and on a phone', () => {
+    expect(view).toMatch(/<Toolbar\s+aria-label=\{tr\('reader\.actions_label'\)\}/);
+    expect(view).toMatch(/<Toolbar aria-label=\{tr\('reader\.nav_label'\)\} className="rd-top">/);
+  });
+
+  it('keeps the phone arithmetic of index.css (.nm-bar: the buttons share the row down to 320 px) and the desktop class (.nm-bar-d)', () => {
     expect(view).toMatch(/compact \? 'nm-bar' : 'nm-bar-d'/);
-    expect(view).toMatch(/compact && 'nm-bar-sep'/);
-    // The phone bar never wraps.
+    // The phone bar never wraps, and stays above the home indicator.
     expect(cssCode).toMatch(/\.rd-bar\[data-density='phone'\] \{\s*flex-wrap: nowrap;/);
+    expect(cssCode).toMatch(/\.rd-bar\[data-density='phone'\] \{[^}]*env\(safe-area-inset-bottom, 0px\)/);
   });
 
   it('names every button by its label (the tooltip comes from the IconButton): no native title tooltip in the reader', () => {
-    for (const name of ['MessageView.tsx', path.join('reader', 'LabelMenu.tsx'), 'E2eBadge.tsx', 'UnverifiedChip.tsx']) {
-      // The `title` of EmptyState is its heading, not a tooltip.
-      const code = components(name).replaceAll(/<EmptyState\b[^>]*\/>/g, '');
+    for (const name of [
+      'MessageView.tsx',
+      path.join('reader', 'LabelMenu.tsx'),
+      path.join('reader', 'TrustChip.tsx'),
+      'E2eBadge.tsx',
+      'UnverifiedChip.tsx'
+    ]) {
+      // The `title` of EmptyState and of a Dialog (the phone's label sheet) is its heading, not a tooltip.
+      const code = components(name)
+        .replaceAll(/<EmptyState\b[\s\S]*?\/>/g, '')
+        .replaceAll(/<Dialog\b[^>]*>/g, '');
       expect(code, name).not.toMatch(/\btitle=\{/);
     }
   });
 
   it('puts the colour of a state in the theme variables, not in the code', () => {
-    for (const name of ['MessageView.tsx', path.join('reader', 'LabelMenu.tsx'), 'E2eBadge.tsx', 'UnverifiedChip.tsx']) {
+    for (const name of [
+      'MessageView.tsx',
+      path.join('reader', 'LabelMenu.tsx'),
+      path.join('reader', 'TrustChip.tsx'),
+      'E2eBadge.tsx',
+      'UnverifiedChip.tsx'
+    ]) {
       expect(components(name), name).not.toMatch(/#[0-9a-f]{6}\b/i);
     }
   });
@@ -51,9 +74,10 @@ describe('the reader toolbar', () => {
 
 describe('the reader stylesheet', () => {
   it('stops every transition under reduced motion: the chevrons turn in ui/Disclosure, which rests there, and reader.css stops whatever it moves itself', () => {
-    // The recipients line and the end-to-end badge open through the ui Disclosure; the turn of its chevron is stopped in ui.css.
+    // The recipients line opens through the ui Disclosure; the turn of its chevron is stopped in ui.css. The trust chips open a Popover (its
+    // motion is ui.css's, reduced there too); the chip is the 44 px target on a phone.
     expect(view).toMatch(/<Disclosure className="rd-rcpt"/);
-    expect(components('E2eBadge.tsx')).toMatch(/<Disclosure className="nm-tap-h rd-badge-btn"/);
+    expect(components('reader', 'TrustChip.tsx')).toMatch(/className="nm-tap-h rd-badge-btn"\s+aria-haspopup="dialog"/);
     const ui = readFileSync(path.join(ROOT, 'src', 'client', 'ui', 'ui.css'), 'utf8');
     expect(ui).toMatch(/\.ui-disclosure-chevron \{[^}]*transition: transform/);
     expect(/@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/.exec(ui)?.[1]).toContain('.ui-disclosure-chevron');
@@ -92,8 +116,24 @@ describe('the reader stylesheet', () => {
     expect(cssCode).toMatch(/\.rd-addr-part \{\s*white-space: nowrap;\s*\}/);
     // The address is who the mail is from, in the face of the interface: not mono, which reads as code.
     expect(/\n\.rd-addr \{([^}]*)\}/.exec(cssCode)?.[1]).not.toMatch(/font-family/);
-    // The date and the Star / Reply buttons share one centre: the line is as high as the 32 px avatar.
-    expect(cssCode).toMatch(/\.rd-line \{[^}]*align-content: center;[^}]*min-height: 32px;/);
+    // The 40 px avatar stands beside two 20 px lines (name, address and the trust chips; then the date and the recipients, J3-21); Star and
+    // Reply are centred on the first.
+    expect(cssCode).toMatch(/\.rd-line \{[^}]*align-content: center;[^}]*min-height: 20px;/);
+    // J3-21: "date · to me" is one unit that never breaks at its dot; a column too narrow for both puts the recipients under the date, without it.
+    expect(cssCode).toMatch(/\n\.rd-meta \{[^}]*display: flex;[^}]*flex-wrap: nowrap;/);
+    expect(cssCode).toMatch(/\.rd-who \{[^}]*container: rd-who \/ inline-size;/);
+    expect(cssCode).toMatch(
+      /@container rd-who \(max-width: 320px\) \{\s*\.rd-meta \{\s*flex-direction: column;[\s\S]*?\.rd-meta > \.rd-date::after \{\s*content: none;/
+    );
+    // The date and the recipients are two facts: a quiet dot between them, with empty alternative text (not read out).
+    expect(cssCode).toMatch(/\.rd-meta > \.rd-date::after \{\s*content: '\\00B7' \/ '';/);
+    expect(view).toMatch(/<Avatar name=\{sender\} size="lg" \/>/);
+    expect(cssCode).toMatch(/\.rd-tools \{[^}]*margin: calc\(\(20px - var\(--ui-h-sm\)\) \/ 2\)/);
+  });
+
+  it('starts every phone bar slot at its top, so the icons share a row when a word takes two lines (J4-33)', () => {
+    expect(cssCode).toMatch(/\.rd-bar\.nm-bar \.rd-tab \{\s*justify-content: flex-start;\s*align-self: stretch;/);
+    expect(cssCode).toMatch(/\.rd-tab-text \{[^}]*-webkit-line-clamp: 2;[^}]*\}/);
   });
 });
 
@@ -117,6 +157,57 @@ describe('the mail frame', () => {
     expect(/function looksLong[\s\S]*?\n\}/.exec(frame)?.[0]).not.toMatch(/DOMParser|createElement|innerHTML|new Image/);
     // The sandbox is untouched.
     expect(frame).toMatch(/sandbox="allow-popups allow-popups-to-escape-sandbox"/);
+  });
+});
+
+describe('round-3 fixes of the reader (R3)', () => {
+  const menu = components('reader', 'LabelMenu.tsx');
+  const snooze = components('SnoozeMenu.tsx');
+
+  it('names the label control Labels and draws each label as a checkbox that says what it did (J4-42)', () => {
+    expect(view).toMatch(/const LABELS: MessageKey = 'reader\.labels';/);
+    expect(menu).toMatch(/label=\{tr\('reader\.labels'\)\}/);
+    expect(menu).toMatch(/role="checkbox"[\s\S]{0,120}aria-checked=\{on\}/);
+    expect(menu).toContain("announce(tr(on ? 'reader.label_removed' : 'reader.label_applied', { label }));");
+    expect(menu).not.toContain('reader.label_added');
+    // The chips of the header take themselves off with an X named after the label, and say so.
+    expect(view).toMatch(/removeLabel=\{tr\('reader\.remove_label', \{ label \}\)\}/);
+    expect(view).toContain("announce(tr('reader.label_removed', { label }));");
+  });
+
+  it('labels Mark unread before Labels, and puts the toolbar glyphs on the reading column where the bar has room (J4-18, J3-36)', () => {
+    expect(view).toContain(
+      "return canSnooze ? ['archive', 'main', 'snooze', 'unread', 'label', 'other'] : ['archive', 'main', 'unread', 'label', 'other'];"
+    );
+    expect(view).toMatch(/style=\{align === null \? undefined : \{ paddingInlineStart: align\.start, paddingInlineEnd: align\.end \}\}/);
+    // The column barDensity aligns to is the one reader.css draws.
+    expect(cssCode).toMatch(/\n\.rd-page \{\s*max-width: 784px;\s*margin: 0 auto;\s*padding: 28px 32px 48px;/);
+    expect(cssCode).toMatch(/@container \(max-width: 480px\) \{\s*\.rd-page:not\(\[data-compact='true'\]\) \{\s*padding-inline: 24px;/);
+    expect(view).toMatch(/const layout = compact \? null : alignedLayout\(pane\.width, pane\.coarse, widths\);/);
+  });
+
+  it('says a message is in Spam, with Move to Inbox, and makes Reply secondary there and for an unverified sender (J6-42)', () => {
+    expect(view).toMatch(/\{inSpam \? \(\s*<div className="rd-spam">/);
+    expect(view).toContain("tr('reader.spam_notice')");
+    expect(view).toContain("variant={index === 0 && !inSpam && !unverified ? 'primary' : 'secondary'}");
+  });
+
+  it('offers Download all on the count line of two files or more, saved one after the other (J6-43)', () => {
+    expect(view).toMatch(/\{attachments\.length > 1 \? \(\s*<Button[\s\S]{0,80}className="rd-dl-all"/);
+    expect(view).toMatch(/downloads\.saveAll\(attachments\)/);
+    expect(view).toMatch(/window\.setTimeout\(resolve, DOWNLOAD_GAP_MS\)/);
+  });
+
+  it("keeps one calendar glyph in the Snooze picker and says the picked time in the app's words (J3-39)", () => {
+    expect(snooze.match(/\{picking \? null : <CalendarClock/g)).toHaveLength(2);
+    expect(snooze.match(/<PickedTime id=\{`\$\{pickId\}-when`\} value=\{pick\} \/>/g)).toHaveLength(2);
+    expect(cssCode).toMatch(/\.rd-snooze-form input::-webkit-calendar-picker-indicator \{\s*opacity: 0\.55;/);
+  });
+
+  it('puts the phone top bar glyphs on the content column, in landscape too (J3-40)', () => {
+    expect(cssCode).toMatch(
+      /\.rd-top \{[^}]*padding: 2px calc\(max\(16px, env\(safe-area-inset-right, 0px\)\) - 12px\) 2px calc\(max\(16px, env\(safe-area-inset-left, 0px\)\) - 11px\);/
+    );
   });
 });
 

@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { ThemeTokens } from '../../theme';
 import type { SessionUser } from '../../lib/auth';
 import { requestLockedDelete } from '../../lib/crypto/account';
+import { firstInvalid, useFieldFocus } from '../../lib/fieldFocus';
 import { useT } from '../../lib/i18n';
 import { afterLockedChange, isOwnAddress } from '../../lib/lockedMail';
 import type { LockedMail } from '../../lib/lockedMail';
@@ -46,13 +47,29 @@ export const LockedMailDialog: React.FC<LockedMailDialogProps> = ({ t, user, mai
   const [typed, setTyped] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [code, setCode] = React.useState('');
-  const ready = isOwnAddress(typed, user.email) && password !== '' && (!user.totp_enabled || code.length === CODE_LENGTH);
+  // Delete can be pressed at any time (only a running request or a wait disables it): a press with something missing says what under each
+  // field and takes the keyboard to the first one. Typing the own address is still what lets the deletion start.
+  const [submitted, setSubmitted] = React.useState(false);
+  const focusLater = useFieldFocus();
+  const addressWrong = !isOwnAddress(typed, user.email);
+  const codeMissing = user.totp_enabled && code.length !== CODE_LENGTH;
+  const toFix = firstInvalid([
+    ['locked-confirm', addressWrong],
+    ['locked-password', password === ''],
+    ['locked-code', codeMissing]
+  ]);
 
   const submit = async (event: React.SyntheticEvent) => {
     event.preventDefault();
-    if (action.busy || wait > 0 || !ready) {
+    if (action.busy || wait > 0) {
       return;
     }
+    if (toFix !== undefined) {
+      setSubmitted(true);
+      focusLater(toFix);
+      return;
+    }
+    setSubmitted(false);
     const answer = await action.run(() => requestLockedDelete(user, password, code, mail.keyId));
     // The password and the code have done their job: neither stays in this screen's state, whatever the answer was.
     setPassword('');
@@ -70,7 +87,6 @@ export const LockedMailDialog: React.FC<LockedMailDialogProps> = ({ t, user, mai
     }
   };
 
-  const blocked = !ready || wait > 0;
   return (
     <Dialog
       open
@@ -80,12 +96,13 @@ export const LockedMailDialog: React.FC<LockedMailDialogProps> = ({ t, user, mai
       role="alertdialog"
       initialFocusRef={confirmRef}
       returnFocusRef={ACCOUNT_BUTTON}
+      closeDisabled={action.busy}
       footer={
         <>
           <Button onClick={onClose} disabled={action.busy}>
             {tr('common.cancel')}
           </Button>
-          <Button type="submit" form={FORM_ID} variant="danger" loading={action.busy} disabled={blocked}>
+          <Button type="submit" form={FORM_ID} variant="danger" loading={action.busy} disabled={wait > 0}>
             {tr('locked.delete')}
           </Button>
         </>
@@ -112,6 +129,7 @@ export const LockedMailDialog: React.FC<LockedMailDialogProps> = ({ t, user, mai
           value={typed}
           onChange={(event) => setTyped(event.target.value)}
           placeholder={user.email}
+          error={submitted && addressWrong ? tr('locked.confirm_mismatch') : undefined}
         />
         <PasswordInput
           t={t}
@@ -120,8 +138,18 @@ export const LockedMailDialog: React.FC<LockedMailDialogProps> = ({ t, user, mai
           value={password}
           onChange={setPassword}
           invalid={action.error !== null}
+          error={submitted && password === '' ? tr('security.password_required') : null}
         />
-        {user.totp_enabled ? <CodeInput t={t} id="locked-code" value={code} onChange={setCode} invalid={action.error !== null} /> : null}
+        {user.totp_enabled ? (
+          <CodeInput
+            t={t}
+            id="locked-code"
+            value={code}
+            onChange={setCode}
+            invalid={action.error !== null}
+            error={submitted && codeMissing ? tr('twofa.code_required') : null}
+          />
+        ) : null}
         <Failure t={t} id="locked-error" error={action.error} wait={wait} />
       </form>
     </Dialog>

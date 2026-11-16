@@ -2,6 +2,7 @@ import type React from 'react';
 import type { ThemeTokens } from '../../theme';
 import { tRich, useT } from '../../lib/i18n';
 import { Step, Steps } from '../../ui';
+import { DashboardLink } from './adminUi';
 
 // Names the Cloudflare dashboard shows and the DNS records it adds: shown as they are, never translated.
 const BOUNCE_HOST = 'cf-bounce';
@@ -18,6 +19,7 @@ export const DomainGuide: React.FC<{ t: ThemeTokens; domain: string }> = ({ doma
 
   return (
     <div className="ad-guide">
+      <DashboardLink />
       <h4 className="ad-guide-title">{tr('domains.receiving')}</h4>
       <Steps>
         <Step>

@@ -1,4 +1,5 @@
 import { normalizeCid } from './mailcrypto/inline';
+import { foldHtmlQuote, type QuoteLabels } from './mailQuote';
 import { settle } from './mailSettle';
 import { cssNamesAHost, namesAHost, srcsetNamesAHost, withoutRemoteCss } from './mailUrls';
 
@@ -122,9 +123,16 @@ function neutralise(doc: Document, allowImages: boolean): void {
  * While images are not allowed the document carries no remote address at all (`dropRemoteAddresses`). All of this is done again on the document read back from
  * its own text until the text stops changing (PX-15), because the frame parses the text and not the tree that was checked.
  */
-export function buildMailDocument(html: string, accent: string, allowImages: boolean, opened: ReadonlyMap<string, string>): MailDocument {
+export function buildMailDocument(
+  html: string,
+  accent: string,
+  allowImages: boolean,
+  opened: ReadonlyMap<string, string>,
+  quoteLabels?: QuoteLabels
+): MailDocument {
   // Parsed inertly (no script runs, nothing loads) so links can be fixed up before the sandboxed frame sees them.
   // The sender's markup lands in the body exactly as it did before, so its own <style> blocks keep working.
+  // J6-29: the quote that ends a reply is folded in a native <details> (it opens without a script); its control is drawn here.
   const doc = new DOMParser().parseFromString(
     `<!DOCTYPE html><html><head><meta charset="utf-8" /><style>
         html,body{margin:0;padding:0;background:#ffffff;}
@@ -132,6 +140,13 @@ export function buildMailDocument(html: string, accent: string, allowImages: boo
         img{max-width:100%;height:auto;} a{color:${accent};}
         blockquote{margin:0 0 0 12px;padding-left:12px;border-left:2px solid #e3e6eb;color:#535a66;}
         table{max-width:100%;}
+        details.em-quote{margin:16px 0 0;}
+        details.em-quote>summary{display:inline-flex;align-items:center;gap:6px;min-height:24px;box-sizing:border-box;padding:2px 10px;border:1px solid #e3e6eb;border-radius:6px;color:#535a66;font-size:13px;line-height:20px;cursor:pointer;list-style:none;}
+        details.em-quote>summary::-webkit-details-marker{display:none;}
+        details.em-quote>summary:hover{border-color:#535a66;}
+        details.em-quote>summary:focus-visible{outline:2px solid ${accent};outline-offset:2px;}
+        details.em-quote[open]>summary .em-show,details.em-quote:not([open])>summary .em-hide{display:none;}
+        details.em-quote>.em-quoted{margin-top:12px;padding-left:12px;border-left:2px solid #e3e6eb;color:#535a66;}
       </style></head><body>${html}</body></html>`,
     'text/html'
   );
@@ -156,6 +171,9 @@ export function buildMailDocument(html: string, accent: string, allowImages: boo
     }
   }
 
+  if (quoteLabels !== undefined) {
+    foldHtmlQuote(doc, quoteLabels);
+  }
   neutralise(doc, allowImages);
   // PX-15: the frame parses the TEXT of this document, not the tree walked above, and markup can be read differently the second time: a `<link>` that is
   // text in the first tree can be an element in the second (`<form><math><mtext></form><form><mglyph><style></math><link ...>`). So the text is read back and

@@ -14,15 +14,47 @@ import { contextWords } from '../../lib/password/policy';
 import { usePasswordCheck } from '../../lib/password/usePasswordCheck';
 import { pushForSignOut } from '../../lib/push';
 import { useAction } from '../../lib/useAction';
-import { PasswordField } from '../PasswordField';
-import { TextField } from '../../ui';
+import { PasswordField, SecretField } from '../PasswordField';
 import { AuthButton, AuthCard, CheckboxRow, ErrorLine, TextButton } from './authUi';
+import type { AuthStep } from './authUi';
 import { RecoveryKeyPanel } from './RecoveryKeyPanel';
 import { TwoFactorEnrolment } from './TwoFactorEnrolment';
 
 interface GateProps {
   t: ThemeTokens;
   user: SessionUser;
+}
+
+/**
+ * The steps of a first sign-in, in the server's order (middleware GATES): the own password and the recovery key, then two-factor sign-in,
+ * which is two steps for the person (add the account to the app and check a code, then save the recovery codes: J4-09).
+ */
+type GateStep = 'password' | 'key' | 'two_factor' | 'two_factor_codes';
+
+/** The steps this account still has before the mailbox, judged from the session the way the server does. */
+function gateSteps(user: SessionUser): GateStep[] {
+  const steps: GateStep[] = [];
+  if (user.must_change_password) {
+    steps.push('password', 'key');
+  } else if (!user.has_keys) {
+    steps.push('key');
+  }
+  if (!user.totp_enabled && (user.role === 'admin' || user.require_2fa)) {
+    steps.push('two_factor', 'two_factor_codes');
+  }
+  return steps;
+}
+
+/** The plan of the first sign-in in this page, made at its first gate, so the two-factor gate still says "Step 3 of 3" after the others closed. */
+let journey: { user: string; steps: GateStep[] } | null = null;
+
+/** "Step n of m" of a gate screen, or nothing when the whole way to the mailbox is this one step. */
+function gateStep(user: SessionUser, step: GateStep): AuthStep | undefined {
+  if (journey?.user !== user.id || !journey.steps.includes(step)) {
+    journey = { user: user.id, steps: gateSteps(user) };
+  }
+  const index = journey.steps.indexOf(step);
+  return index === -1 || journey.steps.length < 2 ? undefined : { current: index + 1, total: journey.steps.length };
 }
 
 const SignOutButton: React.FC<{ t: ThemeTokens }> = ({ t }) => {
@@ -39,56 +71,71 @@ interface CurrentPasswordProps extends GateProps {
   title: string;
   lead: string;
   label: string;
+  step: AuthStep | undefined;
   onReady: (credentials: GateCredentials) => void;
 }
 
 /** Shown when the sign-in's own copy of the credentials is gone (the page was reloaded in the middle of a gate): the current password, once. */
-const CurrentPasswordStep: React.FC<CurrentPasswordProps> = ({ t, user, title, lead, label, onReady }) => {
+const CurrentPasswordStep: React.FC<CurrentPasswordProps> = ({ t, user, title, lead, label, step, onReady }) => {
   const tr = useT();
   const action = useAction();
   const [password, setPassword] = React.useState('');
+  const [submitted, setSubmitted] = React.useState(false);
   const start = sharedDeviceStart(useSession().data?.shared);
   const [chosen, setChosen] = React.useState(start.shared);
   const shared = start.locked || chosen;
+  const focusLater = useFieldFocus();
   const submit = async (event: React.SyntheticEvent) => {
     event.preventDefault();
-    if (action.busy || password === '') {
+    if (action.busy) {
+      return;
+    }
+    setSubmitted(true);
+    // Continue can always be pressed: an empty password is said under the field, and the keyboard goes there.
+    const toFix = firstInvalid([['gate-current', password === '']]);
+    if (toFix !== undefined) {
+      focusLater(toFix);
       return;
     }
     const credentials = await action.run(() => gateCredentialsFromPassword(user.email, password, !shared));
     setPassword('');
+    setSubmitted(false);
     if (credentials !== undefined) {
       onReady(credentials);
     }
   };
+  const passwordError = submitted && password === '' ? tr('auth.password_required') : undefined;
   return (
     <AuthCard
       t={t}
+      step={step}
       title={title}
       lead={lead}
       onSubmit={(event) => {
         void submit(event);
       }}
     >
-      <TextField
+      <SecretField
         id="gate-current"
         label={label}
-        type="password"
+        error={passwordError}
         value={password}
         onChange={(event) => setPassword(event.target.value)}
         autoComplete="current-password"
+        aria-invalid={passwordError !== undefined || action.error !== null}
+        aria-describedby={action.error === null ? undefined : 'gate-current-error'}
       />
       <ErrorLine t={t} id="gate-current-error" text={action.error} />
       <CheckboxRow
         t={t}
         id="gate-shared"
         label={tr('auth.shared_device')}
-        hint={tr('auth.shared_device_hint')}
+        hint={shared ? tr('auth.shared_device_hint') : tr('auth.shared_device_short')}
         checked={shared}
         onChange={setChosen}
         locked={start.locked}
       />
-      <AuthButton t={t} busy={action.busy} disabled={password === ''} label={tr('gate.continue')} />
+      <AuthButton t={t} busy={action.busy} label={tr('gate.continue')} />
       <SignOutButton t={t} />
     </AuthCard>
   );
@@ -150,6 +197,7 @@ export const FirstPasswordScreen: React.FC<GateProps> = ({ t, user }) => {
       <CurrentPasswordStep
         t={t}
         user={user}
+        step={gateStep(user, 'password')}
         title={tr('gate.password_title')}
         lead={tr('gate.current_password_lead')}
         label={tr('term.temporary_password')}
@@ -159,7 +207,7 @@ export const FirstPasswordScreen: React.FC<GateProps> = ({ t, user }) => {
   }
   if (step === 'key') {
     return (
-      <AuthCard t={t} wide title={tr('recovery.title_first')}>
+      <AuthCard t={t} wide step={gateStep(user, 'key')} title={tr('recovery.title_first')}>
         {draft === null ? null : (
           <RecoveryKeyPanel
             t={t}
@@ -191,6 +239,7 @@ export const FirstPasswordScreen: React.FC<GateProps> = ({ t, user }) => {
   return (
     <AuthCard
       t={t}
+      step={gateStep(user, 'password')}
       title={tr('gate.password_title')}
       lead={tr('gate.password_lead')}
       onSubmit={(event) => {
@@ -218,19 +267,15 @@ export const FirstPasswordScreen: React.FC<GateProps> = ({ t, user }) => {
         offerPassphrase={user.role === 'admin'}
         submitted={submitted}
       />
-      <div className="au-row">
-        <TextField
-          id="gate-repeat"
-          label={tr('gate.repeat_password')}
-          type="password"
-          value={repeat}
-          onChange={(event) => setRepeat(event.target.value)}
-          autoComplete="new-password"
-          aria-invalid={mismatch}
-          aria-describedby={mismatch ? 'gate-mismatch' : undefined}
-        />
-        <ErrorLine t={t} id="gate-mismatch" text={mismatch ? tr('gate.passwords_differ') : null} />
-      </div>
+      <SecretField
+        id="gate-repeat"
+        label={tr('gate.repeat_password')}
+        showLabel={tr('password.show_repeat')}
+        error={mismatch ? tr('gate.passwords_differ') : undefined}
+        value={repeat}
+        onChange={(event) => setRepeat(event.target.value)}
+        autoComplete="new-password"
+      />
       <AuthButton t={t} label={tr('gate.continue')} />
       <SignOutButton t={t} />
     </AuthCard>
@@ -243,11 +288,13 @@ export const KeySetupScreen: React.FC<GateProps> = ({ t, user }) => {
   const queryClient = useQueryClient();
   const [credentials, setCredentials] = React.useState<GateCredentials | null>(readGateCredentials);
   const draft = useDraft(credentials !== null);
+  const step = gateStep(user, 'key');
   if (credentials === null) {
     return (
       <CurrentPasswordStep
         t={t}
         user={user}
+        step={step}
         title={tr('gate.keys_title')}
         lead={tr('gate.keys_lead')}
         label={tr('term.password')}
@@ -256,7 +303,7 @@ export const KeySetupScreen: React.FC<GateProps> = ({ t, user }) => {
     );
   }
   return (
-    <AuthCard t={t} wide title={tr('gate.keys_title')} lead={tr('gate.keys_lead')}>
+    <AuthCard t={t} wide step={step} title={tr('gate.keys_title')} lead={tr('gate.keys_lead')}>
       {draft === null ? null : (
         <RecoveryKeyPanel
           t={t}
@@ -279,11 +326,14 @@ export const TwoFactorGateScreen: React.FC<GateProps> = ({ t, user }) => {
   const tr = useT();
   const queryClient = useQueryClient();
   const [credentials, setCredentials] = React.useState<GateCredentials | null>(readGateCredentials);
+  const [phase, setPhase] = React.useState<'two_factor' | 'two_factor_codes'>('two_factor');
+  const step = gateStep(user, phase);
   if (credentials === null) {
     return (
       <CurrentPasswordStep
         t={t}
         user={user}
+        step={step}
         title={tr('gate.two_factor_title')}
         lead={tr('gate.two_factor_lead')}
         label={tr('term.password')}
@@ -292,10 +342,11 @@ export const TwoFactorGateScreen: React.FC<GateProps> = ({ t, user }) => {
     );
   }
   return (
-    <AuthCard t={t} wide title={tr('gate.two_factor_title')} lead={tr('gate.two_factor_lead')}>
+    <AuthCard t={t} wide step={step} title={tr('gate.two_factor_title')} lead={tr('gate.two_factor_lead')}>
       <TwoFactorEnrolment
         t={t}
         credentials={credentials}
+        onPhase={(next) => setPhase(next === 'codes' ? 'two_factor_codes' : 'two_factor')}
         onDone={() => {
           finishGates();
           applySignedIn(queryClient, { ...user, totp_enabled: true });

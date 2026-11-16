@@ -1,8 +1,10 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { Globe, ScrollText, SlidersHorizontal, Users, X } from 'lucide-react';
 import type { ThemeTokens } from '../../theme';
+import { useAdminUsers } from '../../lib/admin/users';
+import { useDocumentTitle } from '../../lib/documentTitle';
 import { trapTab } from '../../lib/focusTrap';
-import { useT } from '../../lib/i18n';
+import { fmt, useT } from '../../lib/i18n';
 import { IconButton, TabPanel, Tabs } from '../../ui';
 import { AuditPanel } from './AuditPanel';
 import { DomainsPanel } from './DomainsPanel';
@@ -22,34 +24,34 @@ type Tab = 'users' | 'domains' | 'audit' | 'settings';
 
 const TABS: readonly Tab[] = ['users', 'domains', 'audit', 'settings'];
 
-/** The admin console: People, Domains and the Audit log. Only an admin is offered it (Settings > Account); the server checks again on every call. */
-export const AdminConsole: React.FC<AdminConsoleProps> = ({ isOpen, t, onClose }) => {
+const ICONS: Record<Tab, React.ReactNode> = {
+  users: <Users size={16} aria-hidden="true" />,
+  domains: <Globe size={16} aria-hidden="true" />,
+  audit: <ScrollText size={16} aria-hidden="true" />,
+  settings: <SlidersHorizontal size={16} aria-hidden="true" />
+};
+
+/**
+ * The open console: a page over the mailbox. On a desktop the sections are a list down the left side on the window ground (the selected one
+ * tinted, with the 3px indicator that slides to the next) and the section is a page on the content sheet: its head (title, one line, the
+ * primary action) and its content in a column of at most 1080px. On a phone the sections are one row of tabs under the title that scrolls
+ * sideways, its hidden side faded (J3-05: a 2x2 grid took a quarter of the screen).
+ */
+const Workspace: React.FC<{ t: ThemeTokens; onClose: () => void }> = ({ t, onClose }) => {
   const tr = useT();
   const [tab, setTab] = React.useState<Tab>('users');
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   const closeRef = React.useRef<HTMLButtonElement | null>(null);
-
-  // Each time the console opens it starts on People (adjusting state while rendering, as SettingsModal does, not in an effect).
-  const [wasOpen, setWasOpen] = React.useState(isOpen);
-  if (isOpen !== wasOpen) {
-    setWasOpen(isOpen);
-    if (isOpen) {
-      setTab('users');
-    }
-  }
+  // The number of people, next to People in the list of sections (the People page reads the same answer: one request).
+  const people = useAdminUsers('');
+  const total = people.data?.pages.at(-1)?.total;
+  useDocumentTitle([tr('term.admin_console')]);
 
   React.useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
     closeRef.current?.focus({ preventScroll: true });
     // Opened from Settings, which closes at the same time: focus goes back to the avatar that opens Settings.
     return () => focusAccountButton();
-  }, [isOpen]);
-
-  if (!isOpen) {
-    return null;
-  }
+  }, []);
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     // A dialog inside the console (an account, a confirmation) handles its own Escape and Tab.
@@ -81,7 +83,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ isOpen, t, onClose }
     }
   };
 
-  // The tabs follow the ARIA tabs pattern (ui/Tabs): Left and Right move and wrap, Home and End jump, the tab that gets focus is shown.
+  // The sections follow the ARIA tabs pattern (ui/Tabs): Up and Down move and wrap, Home and End jump, the section that gets focus is shown.
   const choose = (value: string) => {
     const next = TABS.find((id) => id === value);
     if (next !== undefined) {
@@ -109,30 +111,51 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ isOpen, t, onClose }
             <X size={18} aria-hidden="true" />
           </IconButton>
         </div>
-        <Tabs
-          id="admin"
-          label={tr('admin.sections_label')}
-          tabs={TABS.map((id) => ({ value: id, label: tabLabel(id) }))}
-          value={tab}
-          onChange={choose}
-          className="ad-tabs"
-          grid
-        />
-        <div className="ad-main">
-          <TabPanel tabsId="admin" value="users" selected={tab}>
-            <UsersPanel t={t} onGoToDomains={() => setTab('domains')} />
-          </TabPanel>
-          <TabPanel tabsId="admin" value="domains" selected={tab}>
-            <DomainsPanel t={t} />
-          </TabPanel>
-          <TabPanel tabsId="admin" value="audit" selected={tab}>
-            <AuditPanel t={t} />
-          </TabPanel>
-          <TabPanel tabsId="admin" value="settings" selected={tab}>
-            <LanguagePanel t={t} />
-          </TabPanel>
+        <div className="ad-body">
+          <div className="ad-side">
+            <Tabs
+              id="admin"
+              label={tr('admin.sections_label')}
+              tabs={TABS.map((id) => ({
+                value: id,
+                label: tabLabel(id),
+                leading: ICONS[id],
+                trailing:
+                  id === 'users' && total !== undefined ? (
+                    <span className="ad-count" aria-hidden="true">
+                      {fmt.number(total)}
+                    </span>
+                  ) : undefined
+              }))}
+              value={tab}
+              onChange={choose}
+              className="ad-tabs"
+              phoneRow
+              orientation="vertical"
+            />
+          </div>
+          <div className="ad-main">
+            <TabPanel tabsId="admin" value="users" selected={tab}>
+              <UsersPanel t={t} onGoToDomains={() => setTab('domains')} />
+            </TabPanel>
+            <TabPanel tabsId="admin" value="domains" selected={tab}>
+              <DomainsPanel t={t} />
+            </TabPanel>
+            <TabPanel tabsId="admin" value="audit" selected={tab}>
+              <AuditPanel t={t} />
+            </TabPanel>
+            <TabPanel tabsId="admin" value="settings" selected={tab}>
+              <LanguagePanel t={t} />
+            </TabPanel>
+          </div>
         </div>
       </StepUpProvider>
     </div>
   );
+};
+
+/** The admin console: People, Domains and the Audit log. Only an admin is offered it (Settings > Account); the server checks again on every call. */
+export const AdminConsole: React.FC<AdminConsoleProps> = ({ isOpen, t, onClose }) => {
+  // Each time the console opens it starts on People: the workspace mounts afresh, with its own state.
+  return isOpen ? <Workspace t={t} onClose={onClose} /> : null;
 };

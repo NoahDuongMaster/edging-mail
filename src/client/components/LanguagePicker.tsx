@@ -1,4 +1,5 @@
 import React from 'react';
+import { Globe } from 'lucide-react';
 import type { ThemeTokens } from '../theme';
 import { LANGUAGE_NAMES, LOCALES, chooseLanguage, useLocale, useT, type Locale } from '../lib/i18n';
 import { Select } from '../ui';
@@ -13,8 +14,9 @@ interface LanguagePickerProps {
   id?: string;
 }
 
-// Each language by its own name, in its own script: the same list on every screen.
-const OPTIONS = LOCALES.map((tag) => ({ value: tag, label: LANGUAGE_NAMES[tag] }));
+// Each language by its own name, in its own script, marked with its own language (3.1.2: a screen reader reads 'Tiếng Việt' with a
+// Vietnamese voice in an English page): the same list on every screen.
+const OPTIONS = LOCALES.map((tag) => ({ value: tag, label: LANGUAGE_NAMES[tag], lang: tag }));
 
 /**
  * The language list: each language by its own name, in its own script, so a person who cannot read the current language still
@@ -44,7 +46,8 @@ export const LanguagePicker: React.FC<LanguagePickerProps> = ({ onChosen, showLa
   };
 
   return (
-    <div className="au-lang">
+    <div className="au-lang" data-compact={showLabel ? undefined : 'true'}>
+      {showLabel ? null : <Globe size={15} aria-hidden="true" className="au-lang-icon" />}
       <Select
         id={id}
         label={showLabel ? tr('lang.label') : tr('lang.picker_label')}

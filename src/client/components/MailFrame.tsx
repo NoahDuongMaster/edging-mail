@@ -37,11 +37,14 @@ export const MailFrame: React.FC<MailFrameProps> = ({ html, t, loadEmbedded }) =
   const tr = useT();
   const [showImages, setShowImages] = React.useState(false);
   const [opened, setOpened] = React.useState<EmbeddedImages | null>(null);
+  // J6-29: the words of the fold the frame draws around a reply's trailing quote (a native <details>: no script in the sandbox).
+  const showQuoted = tr('reader.show_quoted');
+  const hideQuoted = tr('reader.hide_quoted');
   // HTML mail is rendered on a light canvas in both themes, like a desktop mail client,
   // so sender-authored colours stay readable.
   const { srcDoc, hasRemoteImages, embedded } = React.useMemo(
-    () => buildMailDocument(html, t.accent, showImages, opened?.urls ?? NO_EMBEDDED),
-    [html, t.accent, showImages, opened]
+    () => buildMailDocument(html, t.accent, showImages, opened?.urls ?? NO_EMBEDDED, { show: showQuoted, hide: hideQuoted }),
+    [html, t.accent, showImages, opened, showQuoted, hideQuoted]
   );
   const hasEmbedded = loadEmbedded !== undefined && embedded.length > 0;
   const tall = React.useMemo(() => looksLong(html), [html]);

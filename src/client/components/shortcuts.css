@@ -1,0 +1,123 @@
+/* The list of keyboard shortcuts (components/ShortcutList.tsx), drawn in the ? dialog and in Settings > Keyboard. Classes are `sk-*`.
+   Each row is what the keys do, then the keys at the end of the row: every description starts on the left edge and every key ends on the
+   right one, in every group, and a wide combination (Shift+J or Shift+↓) never pushes the short ones away from their words. The DOM keeps
+   the keys first (dt, dd); only the grid places them. */
+.sk-groups {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  max-width: 560px;
+}
+.sk-title {
+  margin: 0 0 4px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  color: var(--text2);
+}
+.sk-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+/* Each row on its own: the words take the width its keys leave (a wide combination in one row never wraps the words of another). A
+   hairline between rows ties the words to their keys across the row. */
+.sk-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 32px;
+  padding: 4px 0;
+}
+.sk-row + .sk-row {
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+.sk-row dt {
+  order: 2;
+  flex: none;
+  display: flex;
+  justify-content: flex-end;
+}
+.sk-row dd {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 20px;
+}
+/* The ? dialog: Act on a message (the longest group) in a column of its own, the three others beside it, so every key fits a laptop
+   screen without scrolling; wide enough that the longest rows keep their words on one line. One column where the dialog is a sheet. */
+@media (min-width: 641px) {
+  .ui-dialog.mb-keys-dialog[data-size] {
+    max-width: 840px;
+  }
+  .sk-groups[data-columns='true'] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 28px;
+    align-items: start;
+    max-width: none;
+  }
+  /* A rule between the columns, so a key at the end of the left column is never read with the words of the right one. */
+  .sk-groups[data-columns='true'] .sk-group[data-group='act'] {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    align-self: stretch;
+    padding-left: 28px;
+    border-left: 1px solid var(--border);
+  }
+}
+/* One rule for every combination (J3-28): "+" inside a chord, "or" between two ways to press it (more room around "or" than "+"). */
+.sk-combo {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px 8px;
+}
+.sk-chord {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+.sk-plus,
+.sk-or {
+  color: var(--text2);
+  font-size: 12px;
+  line-height: 16px;
+}
+/* J6-38: under Act on a message, the keys that act on every ticked message (a quiet line, the keycaps after the words, wrapping as words). */
+.sk-note {
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  color: var(--text2);
+  font-size: 13px;
+  line-height: 20px;
+}
+.sk-note-keys {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  /* Wider than a chord's own 3px, so Shift + I reads as one key among the others. */
+  gap: 4px 10px;
+  vertical-align: middle;
+}
+/* Settings > Keyboard ends with the way to see the list anywhere (the ? key) and a button that opens it as a dialog. */
+.sk-more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.sk-more-text {
+  margin: 0;
+  color: var(--text2);
+  font-size: 13px;
+  line-height: 20px;
+}

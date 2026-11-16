@@ -1,6 +1,7 @@
 import React from 'react';
 import { Download } from 'lucide-react';
 import type { ThemeTokens } from '../../theme';
+import { useFieldFocus } from '../../lib/fieldFocus';
 import type { TFunction } from '../../lib/i18n';
 import { useT } from '../../lib/i18n';
 import { useSecretHold } from '../../lib/secretHold';
@@ -11,6 +12,7 @@ import { AuthButton, CheckboxRow, ErrorLine } from './authUi';
 // access to mail and lives in RecoveryKeyPanel); they only stand in for the authenticator app when the phone is lost.
 
 const RECOVERY_CODES_FILE = 'edging-mail-recovery-codes.txt';
+const SAVED_ID = 'twofa-codes-saved';
 
 /** The text file a person can keep: a title line, the codes one per line, and one sentence saying each works once. */
 export const recoveryCodesFile = (codes: readonly string[], tr: TFunction): string =>
@@ -23,16 +25,24 @@ interface RecoveryCodesPanelProps {
   onDone: () => void;
   /** The level of its heading in the page around it: 2 on a screen before the mailbox (under the h1), 5 in a view of Settings (under its h4). */
   headingLevel?: 2 | 3 | 4 | 5;
+  /**
+   * False when the view around it already names the codes and takes focus on its own heading (Settings' new codes, J3-41: one heading,
+   * "Save your new recovery codes"): the panel then has no heading of its own.
+   */
+  showHeading?: boolean;
 }
 
 /**
  * Shows the recovery codes with Copy and Download, says what they are for (and that they are not the recovery key), and does not let the
- * person continue before they confirm they saved them. The codes are on screen only while this panel is mounted and are not stored anywhere
- * else: the server cannot show them again.
+ * person continue before they confirm they saved them: Continue can be pressed, and a press without the tick says so under the box and moves
+ * the keyboard to it. The codes are on screen only while this panel is mounted and are not stored anywhere else: the server cannot show them
+ * again.
  */
-export const RecoveryCodesPanel: React.FC<RecoveryCodesPanelProps> = ({ t, codes, onDone, headingLevel = 2 }) => {
+export const RecoveryCodesPanel: React.FC<RecoveryCodesPanelProps> = ({ t, codes, onDone, headingLevel = 2, showHeading = true }) => {
   const tr = useT();
   const [saved, setSaved] = React.useState(false);
+  const [pressed, setPressed] = React.useState(false);
+  const focusLater = useFieldFocus();
   // In Settings the dialog stays open until the person says the codes are saved (C-7): the server cannot show them again.
   useSecretHold(!saved);
   const [copyFailed, setCopyFailed] = React.useState(false);
@@ -55,13 +65,15 @@ export const RecoveryCodesPanel: React.FC<RecoveryCodesPanelProps> = ({ t, codes
 
   return (
     <div data-testid="twofa-codes" className="au-stack">
-      <Heading ref={heading} tabIndex={-1} className="au-subtitle">
-        {tr('twofa.codes_title')}
-      </Heading>
+      {showHeading ? (
+        <Heading ref={heading} tabIndex={-1} className="au-subtitle">
+          {tr('twofa.codes_title')}
+        </Heading>
+      ) : null}
       <p className="au-text">{tr('twofa.codes_lead')}</p>
       <p className="au-muted">{tr('twofa.codes_not_key')}</p>
 
-      <SecretBox label={tr('term.recovery_codes')} value={codes} />
+      <SecretBox label={tr('term.recovery_codes')} value={codes} className="au-key au-codes" />
 
       <div className="au-actions">
         <CopyButton text={codes.join('\n')} size="lg" className="au-btn" onResult={(result) => setCopyFailed(result === 'failed')} />
@@ -79,13 +91,26 @@ export const RecoveryCodesPanel: React.FC<RecoveryCodesPanelProps> = ({ t, codes
 
       <CheckboxRow
         t={t}
-        id="twofa-codes-saved"
+        id={SAVED_ID}
         label={tr('twofa.saved_check')}
         hint={tr('twofa.saved_hint')}
         checked={saved}
         onChange={setSaved}
+        error={pressed && !saved ? tr('twofa.saved_required') : null}
       />
-      <AuthButton t={t} type="button" disabled={!saved} label={tr('twofa.continue')} onClick={onDone} />
+      <AuthButton
+        t={t}
+        type="button"
+        label={tr('twofa.continue')}
+        onClick={() => {
+          if (!saved) {
+            setPressed(true);
+            focusLater(SAVED_ID);
+            return;
+          }
+          onDone();
+        }}
+      />
     </div>
   );
 };

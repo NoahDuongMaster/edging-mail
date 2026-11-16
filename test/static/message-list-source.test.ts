@@ -17,14 +17,28 @@ const code = (name: string): string =>
 describe('MessageList: behaviour that the restyle keeps', () => {
   const list = code('MessageList.tsx');
 
-  it('swipe-to-archive: the gesture lives in refs (a flick can end before React re-renders), touch and pen only, a swipe never opens the mail', () => {
+  it('swipe (left to archive, right to Trash): the gesture lives in refs (a flick can end before React re-renders), touch and pen only, a swipe never opens the mail', () => {
     expect(list).toMatch(/const gesture = React\.useRef\(\{ startX: 0, startY: 0, tracking: false, active: false, dx: 0 \}\)/);
     expect(list).toMatch(/const swiped = React\.useRef\(false\)/);
     expect(list).toContain("e.pointerType === 'mouse'");
     expect(list).toMatch(/Math\.abs\(moveX\) < 10 \|\| Math\.abs\(moveX\) < Math\.abs\(e\.clientY - g\.startY\)/);
-    expect(list).toMatch(/g\.dx <= -SWIPE_REVEAL/);
-    expect(list).toMatch(/window\.setTimeout\(\(\) => onSwipeArchive\?\.\(m\), 160\)/);
+    // Armed at 96px or 35% of the row (M2), or by a flick; the action runs once the row has slid off (no wait under reduced motion).
+    expect(list).toMatch(/Math\.max\(SWIPE_REVEAL, width\(\) \* 0\.35\)/);
+    expect(list).toMatch(/\(Math\.abs\(g\.dx\) >= threshold\(\) \|\| fling\) && g\.dx !== 0/);
+    expect(list).toMatch(/window\.setTimeout\(\(\) => \(toTrash \? onSwipeTrash\?\.\(m\) : onSwipeArchive\?\.\(m\)\), ms\)/);
+    // The settle keeps the speed of the release (J2-09): at most the exit rule (0.7 of the distance rule), at once under reduced motion.
+    expect(list).toMatch(/motionReduced\(\) \? \{ ms: 0, curve: '' \} : swipeSettle\(rest, Math\.abs\(last\.current\.speed\)\)/);
+    expect(list).toMatch(/const longest = Math\.round\(durationFor\(rest\) \* 0\.7\)/);
     expect(list).toMatch(/onClickCapture=\{\(e\) => \{\s*if \(swiped\.current\) \{\s*e\.preventDefault\(\);\s*e\.stopPropagation\(\);/);
+  });
+
+  it('a row that leaves plays its exit on an inert copy (M1) and focus moves to the next row at once; one that comes back enters (M4)', () => {
+    expect(list).toMatch(/copy\.inert = true;\s*copy\.dataset\.leaving = 'true';/);
+    expect(list).toMatch(/void leaveRow\(copy, style === 'fade' \? 'none' : 'left'\)/);
+    expect(list).toMatch(/void enterRow\(el\)/);
+    // A bulk change, another view or a row still listed plays nothing.
+    expect(list).toMatch(/now\.view !== seenIn \|\| now\.removed > ROW_MOTION_MAX \|\| now\.ids\.has\(id\)/);
+    expect(list).toMatch(/neighbourRow\(el\)\?\.focus\(/);
   });
 
   it('scroll memory: the offset is restored before paint and written on scroll', () => {
@@ -75,7 +89,7 @@ describe('SnoozeMenu: behaviour that the restyle keeps', () => {
     expect(menu).toMatch(/onKeyDown=\{\(\) => \{\s*pointerOpen\.current = false;/);
     expect(menu).toMatch(/viaKeyboard: !viaPointer/);
     expect(menu).toMatch(
-      /if \(isOpen && viaKeyboard\) \{\s*menuRef\.current\?\.querySelector<HTMLElement>\('\[role="menuitem"\]'\)\?\.focus\(\)/
+      /if \(isOpen && viaKeyboard && !sheet\) \{\s*menuRef\.current\?\.querySelector<HTMLElement>\('\[data-snooze-choice\]'\)\?\.focus\(\)/
     );
   });
 
@@ -111,7 +125,7 @@ describe('SnoozeMenu: behaviour that the restyle keeps', () => {
   it('the date-time field is the library field (a native picker inside ui/TextField), the buttons are library buttons', () => {
     expect(menu).toMatch(/<TextField[\s\S]*?type="datetime-local"/);
     expect(menu).not.toMatch(/<input\b|<select\b/);
-    expect(menu).toMatch(/<IconButton/);
+    expect(menu).toMatch(/<ToolButton|<IconButton/);
     expect(menu).toMatch(/<Button type="submit" variant="primary"/);
   });
 });
@@ -136,7 +150,8 @@ describe('the look of the two files', () => {
 
   it('the CSS has no gradient, no blur, no coloured rail, and every transition rests under reduced motion', () => {
     const css = read('messagelist.css');
-    expect(css).not.toMatch(/gradient|backdrop-filter|filter:\s*blur/);
+    // The one gradient allowed is the alpha mask that fades the hidden edge of the phone's chip row: it paints no colour.
+    expect(css.replaceAll(/mask-image:[^;]*;/g, '')).not.toMatch(/gradient|backdrop-filter|filter:\s*blur/);
     expect(css).not.toMatch(/border-left:\s*\d+px solid var\(--(accent|danger|success|warning)/);
     const block = /@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
     expect(block).toMatch(/transition: none/);
@@ -147,33 +162,59 @@ describe('the look of the two files', () => {
     }
   });
 
-  it('keeps the star off the time: its box starts at the top of the subject line (20 px high with a mouse, down the row on touch)', () => {
+  it('keeps the star off the time and the quick actions: its box starts under the first line (24 px high with a mouse, 2.5.8; down the row on touch)', () => {
     const css = read('messagelist.css');
-    expect(css).toMatch(/\.ml-star \{[^}]*top: calc\(var\(--ml-pad-y\) \+ 20px\);[^}]*height: 20px;/);
+    expect(css).toMatch(/\.ml-star \{[^}]*top: calc\(var\(--ml-pad-y\) \+ 24px\);[^}]*height: 24px;/);
     expect(css).toMatch(/@media \(max-width: 900px\), \(pointer: coarse\) \{\s*\.ml-star \{\s*bottom: 0;\s*height: auto;/);
-    // On touch the preview line (and its chips) stops short of the star's column.
+    // The quick actions (28 px) end where the star's box starts: top at pad - 4, so their bottom is pad + 24.
+    expect(css).toMatch(/\.ml-quick \{[^}]*top: calc\(var\(--ml-pad-y\) - 4px\);/);
+    expect(css).toMatch(
+      /\.ml-quick \.ui-btn\[data-size\],\s*\.ml-quick \.ml-snooze \.ui-btn\[data-size\] \{\s*width: 28px;\s*min-width: 28px;\s*height: 28px;/
+    );
+    // The subject and the preview line (and its chips) stop short of the star's column.
+    expect(css).toMatch(/\.ml-item\[data-star='true'\] \.ml-line2 \{\s*padding-right: calc\(\(var\(--ml-star\) \+ 16px\) \/ 2 \+ 4px\);/);
     expect(css).toMatch(/\.ml-item\[data-star='true'\] \.ml-line3 \{\s*padding-right: calc\(\(var\(--ml-star\) \+ 16px\) \/ 2 \+ 4px\);/);
   });
 
-  it('starts the filters at the content edge of the list (16 px, as the title)', () => {
+  it('starts the head, the filters and the avatars at the content edge of the list (--ml-edge, as the title)', () => {
     const css = read('messagelist.css');
-    expect(css).toMatch(/\.ml-filters \{[^}]*padding: 8px 16px;/);
-    expect(css).toMatch(/\.ml-root\[data-compact='true'\] \.ml-filters \{[^}]*padding: 4px 16px;/);
-    expect(css).toMatch(/\.ml-head \{[^}]*padding: 8px 8px 8px 16px;/);
+    expect(css).toMatch(/\.ml-filters \{[^}]*padding: 8px var\(--ml-edge\);/);
+    expect(css).toMatch(/\.ml-root\[data-compact='true'\] \.ml-filters \{[^}]*padding: 8px var\(--ml-edge\) 4px;/);
+    expect(css).toMatch(/\.ml-head \{[^}]*padding: 8px 12px 8px var\(--ml-edge\);/);
+    // A row stands --ml-inset in and keeps the rest of the edge as the dot's column, so its avatar starts on the edge too.
+    expect(css).toMatch(/--ml-gutter: calc\(var\(--ml-edge\) - var\(--ml-inset\)\);/);
+    expect(css).toMatch(/\.ml-row \{[^}]*padding: var\(--ml-pad-y\) var\(--ml-end\) var\(--ml-pad-y\) var\(--ml-gutter\);/);
   });
 
   it("closes the head with a hairline in every folder, on the line of the reader toolbar's hairline beside it (both 8 + a small button + 8)", () => {
     const css = read('messagelist.css');
-    expect(css).toMatch(/\.ml-head \{[^}]*padding: 8px 8px 8px 16px;[^}]*border-bottom: 1px solid var\(--border\);/);
+    expect(css).toMatch(/\.ml-head \{[^}]*padding: 8px 12px 8px var\(--ml-edge\);[^}]*border-bottom: 1px solid var\(--border\);/);
     expect(css).not.toContain("data-last='true'");
     expect(read('reader.css')).toMatch(/\.rd-bar \{[^}]*padding: 8px 12px;[^}]*border-bottom: 1px solid var\(--border\);/);
   });
 
-  it('draws the loading rows as high as the rows that replace them, under the room of the first date heading', () => {
+  it('draws the loading rows as high as the rows that replace them, under the room of the first day heading', () => {
     const css = read('messagelist.css');
-    expect(css).toMatch(/\.ml-skel \{\s*padding-top: 32px;/);
+    // 32 px of heading (with its hairline) and the list's own 4 px.
+    expect(css).toMatch(/\.ml-skel \{\s*padding-top: 36px;/);
+    expect(css).toMatch(/\.ml-group-title \{[^}]*padding: 10px var\(--ml-edge\) 6px;[^}]*line-height: 16px;/);
     expect(css).toMatch(
-      /\.ml-skel \.ui-skel-row \{\s*gap: 6px;\s*padding: calc\(var\(--ml-pad-y\) \+ 3px\) 16px calc\(var\(--ml-pad-y\) \+ 5px\) 32px;/
+      /\.ml-group-title::after \{[^}]*right: var\(--ml-edge\);[^}]*left: var\(--ml-edge\);[^}]*height: 1px;[^}]*background: var\(--border\);/
     );
+    expect(css).toMatch(
+      /\.ml-skel \.ui-skel-row \{\s*gap: 6px;\s*padding: calc\(var\(--ml-pad-y\) \+ 3px\) 20px calc\(var\(--ml-pad-y\) \+ 5px\) var\(--ml-text\);/
+    );
+    // The avatar of a loading row is a circle on the content edge; they appear only after 300 ms of waiting (M13).
+    expect(css).toMatch(/\.ml-skel \.ui-skel-row::before \{[^}]*left: var\(--ml-edge\);[^}]*width: 32px;[^}]*height: 32px;/);
+    expect(css).toMatch(/\.ml-skel \{[^}]*animation: nm-fade var\(--dur-quick\) var\(--ease-enter\) 300ms both;/);
+  });
+
+  it('marks the open row with the tint AND a 3 px indicator bar, apart from the unread dot and weight', () => {
+    const css = read('messagelist.css');
+    expect(css).toMatch(/\.ml-cell\[data-selected='true'\] \{\s*--ml-row-bg: var\(--accent-soft\);/);
+    // The bar is a pill of its own inset from the rounded corners (J3-03), never an inset shadow or a border that bends with them.
+    expect(css).toMatch(/\.ml-row\[aria-current='true'\]::before \{[^}]*width: 3px;[^}]*background: var\(--indicator\);/);
+    expect(css).toMatch(/\.ml-row\[data-unread='true'\] \.ml-dot \{\s*opacity: 1;/);
+    expect(css).toMatch(/\.ml-row\[data-unread='true'\] \.ml-sender \{\s*font-weight: 600;/);
   });
 });

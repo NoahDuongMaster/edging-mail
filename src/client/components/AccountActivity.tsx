@@ -4,7 +4,7 @@ import { CircleAlert } from 'lucide-react';
 import type { ThemeTokens } from '../theme';
 import { fmt, useT } from '../lib/i18n';
 import { describeDevice, describeKind, describeNotice, formatWhen, useAccountActivity } from '../lib/activity';
-import { Button, Disclosure, Section, Spinner } from '../ui';
+import { Button, Card, Disclosure, Spinner } from '../ui';
 import { ErrorLine } from './auth/authUi';
 import './settings/settings.css';
 
@@ -59,14 +59,13 @@ export const AccountActivity: React.FC<AccountActivityProps> = ({ t }) => {
     const shown = more && !showAll ? activity.slice(0, PREVIEW) : activity;
     body = (
       <>
-        <div className="st-sub">
-          <h4 id="account-notices" className="st-subtitle">
+        <Card className="st-sub">
+          <h5 id="account-notices" className="st-subtitle">
             {tr('account.notices_title')}
-          </h4>
+          </h5>
           {notices.length === 0 ? (
-            <p aria-labelledby="account-notices" className="st-muted">
-              {tr('account.notices_empty')}
-            </p>
+            // A paragraph cannot be named (aria-labelledby on a <p> is ignored, J1-13): the heading above says what it is about.
+            <p className="st-muted">{tr('account.notices_empty')}</p>
           ) : (
             <ul aria-labelledby="account-notices" className="st-list">
               {notices.map((notice) => (
@@ -77,15 +76,13 @@ export const AccountActivity: React.FC<AccountActivityProps> = ({ t }) => {
               ))}
             </ul>
           )}
-        </div>
-        <div className="st-sub">
-          <h4 id="account-signins" className="st-subtitle">
+        </Card>
+        <Card className="st-sub">
+          <h5 id="account-signins" className="st-subtitle">
             {tr('account.signins_title')}
-          </h4>
+          </h5>
           {activity.length === 0 ? (
-            <p aria-labelledby="account-signins" className="st-muted">
-              {tr('account.signins_empty')}
-            </p>
+            <p className="st-muted">{tr('account.signins_empty')}</p>
           ) : (
             <ul id={SIGNINS_LIST} aria-labelledby="account-signins" className="st-list">
               {shown.map((entry) => (
@@ -120,14 +117,11 @@ export const AccountActivity: React.FC<AccountActivityProps> = ({ t }) => {
               {showAll ? tr('account.signins_show_fewer') : tr('account.signins_show_all', { count: fmt.number(activity.length) })}
             </Disclosure>
           ) : null}
-        </div>
+        </Card>
       </>
     );
   }
 
-  return (
-    <Section headingLevel={3} title={tr('account.activity_title')}>
-      {body}
-    </Section>
-  );
+  // Shown inside the Account activity view of Security, whose title (an h4) names it: the two groups are h5.
+  return <div className="st-cards">{body}</div>;
 };

@@ -45,7 +45,12 @@ const StepUpDialog: React.FC<{ t: ThemeTokens; onDone: () => void; onCancel: () 
 
   const submit = async (event: React.SyntheticEvent) => {
     event.preventDefault();
-    if (busy || !/^\d{6}$/.test(code)) {
+    if (busy) {
+      return;
+    }
+    // The button stays pressable: a code that is not six digits is said under the field, not hidden behind a disabled button.
+    if (!/^\d{6}$/.test(code)) {
+      setError(tr('twofa.code_required'));
       return;
     }
     setBusy(true);
@@ -79,7 +84,10 @@ const StepUpDialog: React.FC<{ t: ThemeTokens; onDone: () => void; onCancel: () 
             autoComplete="one-time-code"
             value={code}
             // No maxLength: it would cut a pasted "123 456" before the spaces are dropped.
-            onChange={(e) => setCode(e.target.value.replaceAll(/\D/g, '').slice(0, 6))}
+            onChange={(e) => {
+              setCode(e.target.value.replaceAll(/\D/g, '').slice(0, 6));
+              setError(null);
+            }}
             aria-invalid={error !== null}
             aria-describedby={error === null ? undefined : 'step-up-error'}
           />
@@ -89,7 +97,7 @@ const StepUpDialog: React.FC<{ t: ThemeTokens; onDone: () => void; onCancel: () 
           <Button onClick={onCancel} disabled={busy}>
             {tr('common.cancel')}
           </Button>
-          <Button type="submit" variant="primary" disabled={busy || code.length !== 6} loading={busy}>
+          <Button type="submit" variant="primary" disabled={busy} loading={busy}>
             {busy ? tr('admin.checking') : tr('common.confirm')}
           </Button>
         </div>

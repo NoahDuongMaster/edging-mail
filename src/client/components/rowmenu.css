@@ -1,0 +1,71 @@
+/* The row menu (RowMenu.tsx). Its items and lists are styled with the list (messagelist.css, which comes later in the cascade: a rule here
+   that changes one of them is one class more specific); this file holds what the menu adds on its own: the header of a list opened from
+   an item, and the layout of a short landscape screen. */
+
+/* A list opened from an item (Snooze, Add label, Move to folder) has a header: Back at the start, then the list's name (J3-37: as the
+   Snooze popup of the reader names its times), over a hairline. */
+.ml-menu-head {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+/* Back is as wide as an item's padding, icon and gap (12 + 20 + 12), so the list's name starts on the column of the items' words. */
+.ml-menu-head > .ml-menu-back {
+  flex: none;
+  justify-content: center;
+  width: 44px;
+  padding: 0;
+}
+.ml-menu-title {
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+/* The popup (a mouse): a 28px Back and the quiet 12px name of the reader's Snooze popup, on the words' column (8 + 16 + 10). */
+.ml-menu-pop .ml-menu-head {
+  gap: 6px;
+}
+.ml-menu-pop .ml-menu-head > .ml-menu-back {
+  width: 28px;
+  padding: 0;
+}
+.ml-menu-pop .ml-menu-title {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text3);
+}
+
+/* J5-27: a phone on its side is wider than a sheet (640px) and short: the menu is a centred dialog with room for two columns, so a long
+   list (the row's actions, 6 items and more) flows into two and none is cut at the bottom. The groups are the columns there: no hairlines.
+   The head and the dialog's edges give back a little height. */
+@media (min-width: 641px) and (max-height: 500px) {
+  .ui-dialog.ml-menu {
+    max-width: 560px;
+  }
+  .ui-dialog.ml-menu > .ui-dialog-head {
+    padding-top: 12px;
+  }
+  .ui-dialog.ml-menu > .ui-dialog-body {
+    padding-block: 8px 12px;
+  }
+  .ui-dialog.ml-menu .ml-menu-list:has(> li:nth-child(6)) {
+    display: block;
+    columns: 2;
+    column-gap: 12px;
+  }
+  .ui-dialog.ml-menu .ml-menu-list:has(> li:nth-child(6)) > li {
+    margin-bottom: 2px;
+    break-inside: avoid;
+  }
+  .ui-dialog.ml-menu .ml-menu-list:has(> li:nth-child(6)) > li[data-separated='true'] {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+}

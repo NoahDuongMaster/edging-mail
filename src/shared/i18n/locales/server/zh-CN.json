@@ -8,7 +8,7 @@
   "push.locked_delete_requested.title": "有人请求删除你被锁定的旧邮件",
   "push.locked_delete_requested.body": "在 {time}，有人请求删除锁定在你旧密钥下的旧邮件。如果你不在应用中取消，这些邮件将在 7 天后被删除。",
   "push.second_factor_locked.title": "有人正在猜测你的登录验证码",
-  "push.second_factor_locked.body": "在 {time}，你的密码正确后有人输错了验证码，因此验证码登录会暂停一段时间。如果不是你本人，请更改密码。",
+  "push.second_factor_locked.body": "在 {time}，你的密码正确后有人输错了验证码，因此验证码登录将暂停至少 15 分钟（如果反复发生，最长 24 小时）。如果不是你本人，请更改密码。",
   "push.alert_break_glass_failures.title": "有人正在猜测设置密钥",
   "push.alert_break_glass_failures.body": "一小时内有 10 次使用设置密钥失败（最近一次在 {time}）。请检查谁能访问此部署，并考虑更换设置密钥。",
   "push.2fa_reset.title": "你的双因素登录已被重置",

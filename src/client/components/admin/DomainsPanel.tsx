@@ -1,15 +1,16 @@
 import React from 'react';
-import { CheckCircle2, XCircle } from 'lucide-react';
+import { CheckCircle2, CircleDashed, Plus, RefreshCw, TriangleAlert, XCircle } from 'lucide-react';
 import type { ThemeTokens } from '../../theme';
 import { domainProblem } from '../../lib/admin/address';
 import { useAddDomain, useAdminDomains, useCheckDomain, useRemoveDomain } from '../../lib/admin/domains';
 import { adminErrorText } from '../../lib/admin/types';
 import type { AdminDomain, DnsCheck } from '../../lib/admin/types';
+import { announce } from '../../lib/announce';
 import { fmt, tRich, useT } from '../../lib/i18n';
-import { Badge, Button, Disclosure, EmptyState, Table, TableSkeleton, TextField, VisuallyHidden } from '../../ui';
+import { Badge, Button, Card, Disclosure, DisclosurePanel, EmptyState, Skeleton, TextField } from '../../ui';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { DomainGuide } from './DomainGuide';
-import { ErrorText, LoadError } from './adminUi';
+import { DashboardLink, ErrorText, LoadError, PageHead } from './adminUi';
 import { useAdminAction } from './useAdminAction';
 
 /** Ready or not: the word with an icon (the colour only adds to it). */
@@ -19,6 +20,46 @@ const Status: React.FC<{ ready: boolean }> = ({ ready }) => {
     <Badge tone={ready ? 'success' : 'danger'}>
       {ready ? <CheckCircle2 size={12} aria-hidden="true" /> : <XCircle size={12} aria-hidden="true" />}
       {ready ? tr('domains.ready') : tr('domains.not_ready')}
+    </Badge>
+  );
+};
+
+/**
+ * What a domain can do, in one phrase that is true to the last check: both work, one of the two works (and which), or neither. Before any
+ * check it says so, next to Check DNS in the card's head.
+ */
+const Summary: React.FC<{ check: DnsCheck | undefined }> = ({ check }) => {
+  const tr = useT();
+  if (check === undefined) {
+    return (
+      <Badge>
+        <CircleDashed size={12} aria-hidden="true" />
+        {tr('domains.not_checked')}
+      </Badge>
+    );
+  }
+  const receiving = check.receiving.ready;
+  const sending = check.sending.ready;
+  if (receiving && sending) {
+    return (
+      <Badge tone="success">
+        <CheckCircle2 size={12} aria-hidden="true" />
+        {tr('domains.summary_ready')}
+      </Badge>
+    );
+  }
+  if (receiving || sending) {
+    return (
+      <Badge tone="warning">
+        <TriangleAlert size={12} aria-hidden="true" />
+        {receiving ? tr('domains.summary_receiving_only') : tr('domains.summary_sending_only')}
+      </Badge>
+    );
+  }
+  return (
+    <Badge tone="danger">
+      <XCircle size={12} aria-hidden="true" />
+      {tr('domains.summary_none')}
     </Badge>
   );
 };
@@ -42,6 +83,82 @@ const RecordState: React.FC<{ found: boolean; required: boolean }> = ({ found, r
   );
 };
 
+/**
+ * One DNS record of Email Sending: its type, its host name, and whether the check found it. A missing one says where its value is: the app
+ * cannot know it (Cloudflare makes it when the domain is onboarded), and the step's dashboard link is right above.
+ */
+const RecordRow: React.FC<{ record: DnsCheck['sending']['records'][number] }> = ({ record }) => {
+  const tr = useT();
+  return (
+    <li className="ad-record">
+      <span className="ad-rtype">{record.type}</span>
+      <span className="ad-record-name" translate="no">
+        {record.name}
+      </span>
+      <span className="ad-record-end">
+        <RecordState found={record.found} required={record.required !== false} />
+      </span>
+      {record.found ? null : <span className="ad-record-hint">{tr('domains.record_value_hint')}</span>}
+    </li>
+  );
+};
+
+/** The DNS record type of the receiving rows: a protocol name, never translated. */
+const MX_TYPE = 'MX';
+
+/** The order of the records of Email Sending: a missing required record, a missing optional one, a record that was found. */
+const recordRank = (record: DnsCheck['sending']['records'][number]): number => {
+  if (record.found) {
+    return 2;
+  }
+  return record.required === false ? 1 : 0;
+};
+
+/** One step of the DNS checklist (receiving or sending): what it is, whether it works, what the check found, where to fix it. */
+interface Part {
+  title: string;
+  ready: boolean;
+  note: string;
+  /** The way to the page of the Cloudflare dashboard where the step is set up. */
+  path: string;
+  records: React.ReactNode;
+}
+
+/**
+ * A step of the checklist (an item of a list whose columns line up from one step to the next: name, Ready or Not ready, the rest). A step
+ * that works is one line (what was found) whose records open on request; a step that does not work is open: what is wrong, a link to the
+ * Cloudflare dashboard with the way to the page, and the records.
+ */
+const DnsStep: React.FC<{ part: Part }> = ({ part }) => {
+  const tr = useT();
+  const [open, setOpen] = React.useState(!part.ready);
+  const panelId = React.useId();
+  return (
+    <li className="ad-check">
+      <section aria-label={part.title} className="ad-dns-part">
+        <strong className="ad-dns-title">{part.title}</strong>
+        <Status ready={part.ready} />
+        <span className="ad-dns-line">{part.note}</span>
+        <Disclosure open={open} onOpenChange={setOpen} controls={panelId} look="button" className="ad-toggle">
+          {open ? tr('domains.hide_records') : tr('domains.show_records')}
+        </Disclosure>
+        {part.ready ? null : (
+          <div className="ad-dns-detail">
+            <DashboardLink path={part.path} />
+          </div>
+        )}
+        <DisclosurePanel id={panelId} open={open} className="ad-dns-panel">
+          <div className="ad-dns-records">{part.records}</div>
+        </DisclosurePanel>
+      </section>
+    </li>
+  );
+};
+
+/**
+ * What the last DNS check found, as a checklist of receiving (the MX records) and sending (each record of Email Sending): the step that
+ * does not work first and open, a step that works folded to one line. Not numbered: the order is the order of what to do first.
+ */
 export const DnsResult: React.FC<{ check: DnsCheck }> = ({ check }) => {
   const tr = useT();
   // RFC 7505: a null MX ("0 .", parsed to an empty host) says the domain accepts no mail. It is said in words and never listed as a host.
@@ -60,11 +177,16 @@ export const DnsResult: React.FC<{ check: DnsCheck }> = ({ check }) => {
   }
   let mxList: React.ReactNode = null;
   if (listed.length > 0) {
+    // The MX hosts the domain points to, in the same rows as the records of Email Sending: type, host, and the priority where a status would be.
     mxList = (
-      <ul className="ad-mono-list">
+      <ul className="ad-records">
         {listed.map((mx) => (
-          <li key={`${mx.priority}-${mx.host}`}>
-            {mx.priority} {mx.host}
+          <li key={`${mx.priority}-${mx.host}`} className="ad-record">
+            <span className="ad-rtype">{MX_TYPE}</span>
+            <span className="ad-record-name" translate="no">
+              {mx.host}
+            </span>
+            <span className="ad-record-end ad-muted">{tr('domains.mx_priority', { priority: mx.priority })}</span>
           </li>
         ))}
       </ul>
@@ -72,87 +194,145 @@ export const DnsResult: React.FC<{ check: DnsCheck }> = ({ check }) => {
   } else if (!nullMx) {
     mxList = <p className="ad-muted">{tr('domains.no_mx')}</p>;
   }
+  const receiving: Part = {
+    title: tr('domains.receiving'),
+    ready: check.receiving.ready,
+    note: receivingNote,
+    path: tr('domains.guide_path_routing'),
+    records: mxList
+  };
+  const sending: Part = {
+    title: tr('domains.sending'),
+    ready: check.sending.ready,
+    note: check.sending.ready
+      ? tr('domains.note_sending_ready')
+      : tr('domains.records_missing', { count: check.sending.records.filter((record) => !record.found).length }),
+    path: tr('domains.guide_path_sending'),
+    records: (
+      <ul className="ad-records">
+        {/* What is missing first (required, then optional), then what was found: the row to act on is never under the fold. */}
+        {check.sending.records
+          .toSorted((a, b) => recordRank(a) - recordRank(b))
+          .map((record) => (
+            <RecordRow key={`${record.type}-${record.name}`} record={record} />
+          ))}
+      </ul>
+    )
+  };
+  // The step to act on comes first; two steps that work, or two that do not, keep their order (receiving, then sending).
+  const parts = check.sending.ready || !check.receiving.ready ? [receiving, sending] : [sending, receiving];
   return (
     <div className="ad-dns">
-      <section aria-label={tr('domains.receiving')} className="ad-dns-part">
-        <div className="ad-dns-head">
-          <strong className="ad-dns-title">{tr('domains.receiving')}</strong>
-          <Status ready={check.receiving.ready} />
-        </div>
-        <p className="ad-muted">{receivingNote}</p>
-        {mxList}
-      </section>
-      <section aria-label={tr('domains.sending')} className="ad-dns-part">
-        <div className="ad-dns-head">
-          <strong className="ad-dns-title">{tr('domains.sending')}</strong>
-          <Status ready={check.sending.ready} />
-        </div>
-        <p className="ad-muted">{check.sending.ready ? tr('domains.note_sending_ready') : tr('domains.note_sending_missing')}</p>
-        <ul className="ad-records">
-          {check.sending.records.map((record) => (
-            <li key={`${record.type}-${record.name}`} className="ad-record">
-              <span className="ad-record-name">
-                {record.type} {record.name}
-              </span>
-              <RecordState found={record.found} required={record.required !== false} />
-            </li>
-          ))}
-        </ul>
-      </section>
-      <p className="ad-muted ad-dns-when">{tr('domains.checked_at', { when: fmt.dateTime(check.checked_at) })}</p>
+      <ul className="ad-checklist">
+        {parts.map((part) => (
+          // Keyed by its state as well: a step that a new check finds working folds, one that breaks opens.
+          <DnsStep key={`${part.title}-${String(part.ready)}`} part={part} />
+        ))}
+      </ul>
     </div>
   );
 };
 
-/** One domain: its row of buttons, and under it (in a row of its own) the DNS answer and the setup steps once they are asked for. */
-const DomainRow: React.FC<{ t: ThemeTokens; domain: AdminDomain; onRemove: () => void; removing: boolean }> = ({
-  t,
-  domain,
-  onRemove,
-  removing
-}) => {
+/** When a check ran, short: the time alone today, the date and time on another day. */
+function checkedWhen(at: number): string {
+  return new Date(at).toDateString() === new Date().toDateString()
+    ? fmt.time(at)
+    : fmt.dateTime(at, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+interface DomainCardProps {
+  t: ThemeTokens;
+  domain: AdminDomain;
+  onRemove: () => void;
+  removing: boolean;
+  /** Why the last Remove of this domain failed (shown on this card, naming the domain), or null. */
+  removeError: string | null;
+}
+
+/**
+ * One domain as a card: its name, how many addresses it has and what it can do after the last check; in its head the check (Check DNS,
+ * the same button every time; the answer is said by the live region as well as shown) and Remove, quiet and apart; the setup steps behind a
+ * disclosure at its foot. A domain that addresses use cannot be removed (the server refuses it): its head says "In use by N addresses"
+ * instead of offering a Remove that can only fail (J4-31), and it is checked once when the page opens, so it never reads "Not checked yet"
+ * while mail depends on it (J4-27).
+ */
+const DomainCard: React.FC<DomainCardProps> = ({ t, domain, onRemove, removing, removeError }) => {
   const tr = useT();
   const check = useCheckDomain();
   const [guide, setGuide] = React.useState(false);
   const panelId = React.useId();
-  const open = guide || check.isError || check.data !== undefined;
+  const result = check.data;
+  const inUse = domain.addresses_count > 0;
+  const addresses = tr('domains.addresses_count', { count: domain.addresses_count });
+
+  // Once per card (a ref, so StrictMode's second effect run does not ask again), quietly: the result is shown, not announced.
+  const { mutate } = check;
+  const autoChecked = React.useRef(false);
+  React.useEffect(() => {
+    if (inUse && !autoChecked.current) {
+      autoChecked.current = true;
+      mutate(domain.id);
+    }
+  }, [inUse, mutate, domain.id]);
+
+  const runCheck = () => {
+    check.mutate(domain.id, {
+      onSuccess: (answer) => {
+        const both = answer.receiving.ready && answer.sending.ready;
+        announce(tr(both ? 'domains.check_ready' : 'domains.check_not_ready', { name: domain.name }));
+      }
+    });
+  };
+
+  const checkLabel = check.isPending ? tr('admin.checking') : tr('admin.check_dns');
+
   return (
-    <>
-      <tr data-open={open ? 'true' : undefined}>
-        <td className="ad-cell-domain ad-wrap">
-          <span className="ad-cell-title">{domain.name}</span>
-          <span className="ad-sub">{tr('domains.addresses_count', { count: domain.addresses_count })}</span>
-        </td>
-        <td className="ad-cell-actions ad-end">
-          <div className="ad-actions">
-            <Button variant="ghost" size="sm" disabled={check.isPending} loading={check.isPending} onClick={() => check.mutate(domain.id)}>
-              {check.isPending ? tr('admin.checking') : tr('admin.check_dns')}
+    <li className="ad-domain">
+      <Card
+        title={domain.name}
+        headingLevel={3}
+        description={
+          // J3-38: every card has the same head: the count always first in the meta line, then the state of the last check.
+          <span className="ad-domain-meta">
+            <span>{addresses}</span>
+            <Summary check={result} />
+            {result === undefined ? null : (
+              <span className="ad-checked">{tr('domains.checked_at', { when: checkedWhen(result.checked_at) })}</span>
+            )}
+          </span>
+        }
+        actions={
+          // A fixed column: Check DNS first, then Remove or, where addresses use the domain, a quiet "In use" in its place (same width).
+          <>
+            <Button size="sm" leadingIcon={<RefreshCw size={14} aria-hidden="true" />} loading={check.isPending} onClick={runCheck}>
+              {checkLabel}
             </Button>
-            <Disclosure look="button" open={guide} onOpenChange={setGuide} controls={panelId}>
+            {inUse ? (
+              <span className="ad-in-use">{tr('domains.in_use')}</span>
+            ) : (
+              <Button variant="ghost" size="sm" className="ad-remove" disabled={removing} onClick={onRemove}>
+                {tr('common.remove')}
+              </Button>
+            )}
+          </>
+        }
+        className="ad-domain-card"
+      >
+        <div className="ad-domain-body">
+          {removeError === null ? null : <ErrorText>{tr('domains.remove_failed', { name: domain.name, reason: removeError })}</ErrorText>}
+          {check.isError ? <ErrorText>{adminErrorText(check.error)}</ErrorText> : null}
+          {result === undefined ? null : <DnsResult check={result} />}
+          <div className="ad-guide-wrap">
+            <Disclosure open={guide} onOpenChange={setGuide} controls={panelId} look="button" className="ad-toggle">
               {guide ? tr('domains.hide_steps') : tr('domains.show_steps')}
             </Disclosure>
-            <Button variant="danger" size="sm" disabled={removing} onClick={onRemove}>
-              {tr('common.remove')}
-            </Button>
+            <DisclosurePanel id={panelId} open={guide}>
+              <DomainGuide t={t} domain={domain.name} />
+            </DisclosurePanel>
           </div>
-        </td>
-      </tr>
-      {open ? (
-        <tr className="ad-detail">
-          <td colSpan={2}>
-            <div className="ad-detail-body">
-              {check.isError ? <ErrorText>{adminErrorText(check.error)}</ErrorText> : null}
-              {check.data === undefined ? null : <DnsResult check={check.data} />}
-              {guide ? (
-                <div id={panelId}>
-                  <DomainGuide t={t} domain={domain.name} />
-                </div>
-              ) : null}
-            </div>
-          </td>
-        </tr>
-      ) : null}
-    </>
+        </div>
+      </Card>
+    </li>
   );
 };
 
@@ -166,6 +346,8 @@ export const DomainsPanel: React.FC<{ t: ThemeTokens }> = ({ t }) => {
   const [value, setValue] = React.useState('');
   const [touched, setTouched] = React.useState(false);
   const [removeTarget, setRemoveTarget] = React.useState<AdminDomain | null>(null);
+  // The domain whose last Remove failed: its card shows why (removeAction.error), not the top of the page.
+  const [removeFailed, setRemoveFailed] = React.useState<string | null>(null);
   const name = value.trim().toLowerCase();
   const problem = touched && name !== '' ? domainProblem(name) : null;
 
@@ -176,6 +358,7 @@ export const DomainsPanel: React.FC<{ t: ThemeTokens }> = ({ t }) => {
       return;
     }
     if (await addAction.run(() => add.mutateAsync(name))) {
+      announce(tr('domains.added', { name }));
       setValue('');
       setTouched(false);
     }
@@ -187,7 +370,10 @@ export const DomainsPanel: React.FC<{ t: ThemeTokens }> = ({ t }) => {
     }
     const target = removeTarget;
     setRemoveTarget(null);
-    await removeAction.run(() => remove.mutateAsync(target.id));
+    setRemoveFailed(null);
+    if (!(await removeAction.run(() => remove.mutateAsync(target.id)))) {
+      setRemoveFailed(target.id);
+    }
   };
 
   let list: React.ReactNode;
@@ -201,37 +387,40 @@ export const DomainsPanel: React.FC<{ t: ThemeTokens }> = ({ t }) => {
       />
     );
   } else if (domains.data === undefined) {
-    list = <TableSkeleton label={tr('domains.loading')} />;
+    list = (
+      <div role="status" aria-label={tr('domains.loading')} className="ad-domains-loading">
+        <Skeleton height={112} />
+        <Skeleton height={112} />
+      </div>
+    );
   } else if (domains.data.length === 0) {
     list = <EmptyState title={tr('domains.empty')} />;
   } else {
     list = (
-      <Table label={tr('admin.tab_domains')} dense className="ad-table">
-        <thead>
-          <tr>
-            <th scope="col">{tr('term.domain')}</th>
-            <th scope="col" className="ad-end">
-              <VisuallyHidden>{tr('admin.col_actions')}</VisuallyHidden>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {domains.data.map((domain) => (
-            <DomainRow key={domain.id} t={t} domain={domain} removing={removeAction.busy} onRemove={() => setRemoveTarget(domain)} />
-          ))}
-        </tbody>
-      </Table>
+      <ul aria-label={tr('admin.tab_domains')} className="ad-domains">
+        {domains.data.map((domain) => (
+          <DomainCard
+            key={domain.id}
+            t={t}
+            domain={domain}
+            removing={removeAction.busy}
+            removeError={removeFailed === domain.id ? removeAction.error : null}
+            onRemove={() => setRemoveTarget(domain)}
+          />
+        ))}
+      </ul>
     );
   }
 
   return (
     <div className="ad-pane">
+      <PageHead title={tr('admin.tab_domains')} description={tr('admin.domains_desc')} />
       <form
         noValidate
         onSubmit={(event) => {
           void submit(event);
         }}
-        className="ad-field-group"
+        className="ad-field-group ad-add-domain"
       >
         <div className="ad-inline">
           <TextField
@@ -249,15 +438,22 @@ export const DomainsPanel: React.FC<{ t: ThemeTokens }> = ({ t }) => {
             aria-invalid={problem !== null}
             aria-describedby={problem === null ? undefined : 'domain-new-error'}
           />
-          <Button type="submit" variant="primary" disabled={addAction.busy} loading={addAction.busy}>
+          <Button
+            type="submit"
+            variant="primary"
+            leadingIcon={<Plus size={16} aria-hidden="true" />}
+            disabled={addAction.busy}
+            loading={addAction.busy}
+          >
             {tr('domains.add_domain')}
           </Button>
         </div>
         {problem === null ? null : <ErrorText id="domain-new-error">{problem}</ErrorText>}
+        <p className="ad-muted ad-note">
+          {tRich('domains.add_note', { check: <span className="ad-strong">{tr('admin.check_dns')}</span> })}
+        </p>
       </form>
       {addAction.error === null ? null : <ErrorText>{addAction.error}</ErrorText>}
-      <p className="ad-muted ad-note">{tRich('domains.add_note', { check: <Badge>{tr('admin.check_dns')}</Badge> })}</p>
-      {removeAction.error === null ? null : <ErrorText>{removeAction.error}</ErrorText>}
       {list}
       <ConfirmDialog
         isOpen={removeTarget !== null}

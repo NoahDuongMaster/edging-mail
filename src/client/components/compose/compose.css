@@ -1,6 +1,7 @@
 /* The compose window (ComposeModal and components/compose/*). Classes are `cp-*`. Colours, radii and control heights are the theme variables
-   (ui.css, index.css): nothing here names a colour. Above 900px it is a 720px window over a veil; at 900px and below (the width where controls
-   become 44px) it is the whole screen. */
+   (ui.css, index.css): nothing here names a colour. Above 900px it is a 760px window over a veil, in the material of a dialog (radius 12, a
+   layered shadow and an inner highlight); at 900px and below (the width where controls become 44px) it is the whole screen, as tall as what
+   the on-screen keyboard leaves. Its opening and closing motion (M10, M11) is in compose/composeMotion.ts. */
 
 .cp-root {
   position: fixed;
@@ -20,17 +21,23 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 720px;
-  /* A steady window: as tall as the screen allows up to 720px, whatever is typed. */
-  height: min(100%, 720px);
+  position: relative;
+  max-width: 760px;
+  /* A steady window: as tall as the screen allows up to 700px, whatever is typed. */
+  height: min(100%, 700px);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-dialog);
-  box-shadow: var(--shadow-lg);
+  box-shadow:
+    var(--shadow-lg),
+    inset 0 1px 0 var(--inset-highlight);
   overflow: hidden;
 }
+:root[data-theme='dark'] .cp-panel {
+  border-color: var(--border-strong);
+}
 
-/* Right padding: the Close icon (18px in its button) ends on the content edge of the rows below (24px), as the trash icon of the footer does. */
+/* The header: what this is, the autosave line, Close. The Close icon (18px in its button) ends on the content edge of the rows below (24px). */
 .cp-head {
   display: flex;
   flex: none;
@@ -43,30 +50,46 @@
 .cp-title {
   flex: none;
   margin: 0;
-  font-size: 16px;
+  font-size: 17px;
   line-height: 24px;
   font-weight: 600;
+  letter-spacing: -0.01em;
   white-space: nowrap;
 }
-/* The draft's status: always in the page (empty while idle), so a change never moves anything and a screen reader hears it. */
+/* The draft's status: always in the page (empty while idle), so a change never moves anything. "Draft saved" carries a tick. */
 .cp-draft {
+  display: inline-flex;
   flex: 1 1 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
   min-width: 0;
   font-size: 12px;
   line-height: 16px;
   text-align: right;
   color: var(--text3);
+  font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
+}
+.cp-draft svg {
+  flex: none;
+  color: var(--success);
+}
+/* The header's X never gives way to a long status ("Could not save the draft" in a long language): the words wrap instead, and it stays a
+   whole 44 px target on touch, in the corner a thumb reaches last (J5-20, J1-21). */
+.cp-head .ui-icon-btn.cp-close {
+  flex: none;
+  min-width: var(--ui-h-md);
 }
 .cp-draft[data-state='error'] {
   color: var(--danger);
   font-weight: 500;
 }
 
-/* A validation hint, a failed send, a sent mail. Pinned under the header so it is seen wherever the body is scrolled to. */
+/* A failed send or a file that could not be added. Pinned under the header so it is seen wherever the body is scrolled to. */
 .cp-notice {
   flex: none;
-  padding: 12px 24px;
+  padding: 12px 24px 0;
 }
 .cp-notice .ui-banner-text {
   overflow-wrap: anywhere;
@@ -93,13 +116,19 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* What scrolls into view (a focused control, the attachments' note) stops clear of the footer's hairline. */
+  scroll-padding-bottom: 16px;
 }
 .cp-scroll > * {
   flex: none;
 }
 
-/* ---------- The fields: one group, a hairline under each row ---------- */
+/* ---------- The fields: one group of hairline rows, the label inline ---------- */
 
+/* A recipient row and, while they are open, its suggestions (J6-44): on a desktop they hang from here, over what follows. */
+.cp-rcpt {
+  position: relative;
+}
 .cp-row {
   display: flex;
   align-items: flex-start;
@@ -111,7 +140,8 @@
   display: flex;
   flex: none;
   align-items: center;
-  width: 68px;
+  width: 64px;
+  white-space: nowrap;
   min-height: var(--ui-h-md);
   font-size: 13px;
   line-height: 20px;
@@ -122,9 +152,29 @@
   flex: 1 1 0;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0 6px;
+  gap: 4px 6px;
   min-width: 0;
   min-height: var(--ui-h-md);
+}
+/* J6-30: From is text, not a field: the account's name, then its address in text2, on the column of the other fields' text (4 px in). */
+.cp-from {
+  margin: 0;
+  padding: 0 4px;
+  font-size: 14px;
+  line-height: 20px;
+}
+.cp-from-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cp-from-name {
+  color: var(--text);
+  font-weight: 500;
+}
+.cp-from-addr {
+  color: var(--text2);
 }
 .cp-input {
   flex: 1 1 140px;
@@ -139,6 +189,13 @@
   font-size: var(--ui-field-size);
   line-height: 20px;
   text-overflow: ellipsis;
+}
+/* J3-35: an empty input beside chips takes no room at rest, so the row is as tall as its chips (no empty line under them); it takes its room
+   back with focus, where the caret is. A press on the free part of the field, or on the label, gives it focus. */
+.cp-input[data-empty='true']:not(:focus) {
+  flex: 0 0 0;
+  min-width: 0;
+  padding: 0;
 }
 .cp-input::placeholder {
   color: var(--text3);
@@ -162,19 +219,133 @@
     outline: none;
   }
   .cp-row:has(.cp-input:focus-visible) {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--focus);
     outline-offset: -2px;
   }
 }
-/* Its text, not its box, ends on the content edge, where the Close and trash icons end: the 1px border and 10px padding go into the row's own. */
+/* Its text, not its box, ends on the content edge, where the Close and trash icons end: the 1px border and 10px padding go into the row's own.
+   J3-35: it is the row's last column, not a part of the field, so it stays on the FIRST line (centred on it) however many lines the chips and
+   the input take in the field's column. */
 .cp-toggle {
   flex: none;
-  margin-left: auto;
+  align-self: flex-start;
+  margin-top: calc((var(--ui-h-md) - var(--ui-h-sm)) / 2);
   margin-right: -11px;
 }
-/* A recipient that is not an address: the row's hairline turns red and the error stands on a line of its own under the field, in the flow, so
-   it never covers the row below (the rows under it move down once when it comes and back once when it goes). It stays until that field
-   holds only addresses (ComposeModal), not one keystroke. It is an alert, and the field is described by it. */
+/* A recipient: a pill with the person's initials (22 px, inside the 28 px pill), the whole address and its X. */
+.ui-chip.cp-chip[data-removable='true'] {
+  gap: 6px;
+  padding-left: 3px;
+}
+/* A line of chips is as tall as a line with the field (the 28px pill centred in the field's height): the first chip sits level with the
+   label beside it. Each chip is wrapped in a span that its address tooltip hangs from. */
+.cp-chip-wrap {
+  display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
+  margin-block: calc((var(--ui-h-md) - 28px) / 2);
+}
+.ui-avatar.cp-avatar[data-size] {
+  width: 22px;
+  height: 22px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+  font-size: 10px;
+  letter-spacing: 0;
+}
+/* J1-24: the chip whose X has keyboard focus (Backspace in the empty field went to it; a second Backspace removes it) reads as chosen. */
+.cp-chip-wrap:has(.ui-chip-x:focus-visible) .ui-chip.cp-chip {
+  border-color: var(--focus);
+  background: var(--accent-soft);
+}
+
+/* J6-44: the people this browser has seen in its mail, suggested under a recipient field while an address is typed (an APG listbox owned by
+   the input: the input keeps focus, the arrows mark a row). On a desktop it floats under the field's column in the material of a popup; in
+   the full-screen compose of a phone it is a list in the flow under the field (below), with 44 px rows. */
+.cp-suggest {
+  position: absolute;
+  /* Clear of the row's focus ring (drawn inside the row), its left edge on the field's column, where the chips start. */
+  top: calc(100% + 6px);
+  left: calc(24px + 64px + 12px);
+  z-index: var(--z-float);
+  width: min(420px, calc(100% - 100px - 24px));
+  margin: 0;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-popup);
+  box-shadow:
+    var(--pop-shadow),
+    inset 0 1px 0 var(--inset-highlight);
+  transition:
+    opacity var(--dur-base) var(--ease-enter),
+    transform var(--dur-base) var(--ease-enter);
+}
+@starting-style {
+  .cp-suggest {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cp-suggest {
+    transition: opacity var(--dur-fast) linear;
+  }
+  @starting-style {
+    .cp-suggest {
+      transform: none;
+    }
+  }
+}
+:root[data-motion='reduce'] .cp-suggest {
+  transition: opacity var(--dur-fast) linear;
+}
+@starting-style {
+  :root[data-motion='reduce'] .cp-suggest {
+    transform: none;
+  }
+}
+:root[data-theme='dark'] .cp-suggest {
+  border-color: var(--border-strong);
+}
+.ui-option.cp-option {
+  justify-content: flex-start;
+  gap: 10px;
+}
+/* The marked row says so with its tint and bar (ui.css); its words keep their weight, so the bold of the match still stands out. */
+.ui-option.cp-option[aria-selected='true'] {
+  font-weight: 400;
+}
+.cp-option-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.cp-option-name,
+.cp-option-addr {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cp-option-addr {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--text2);
+}
+/* What matched what is typed (the start of a word of the name or of the address): in bold, in the text colour. */
+.cp-match {
+  font-weight: 600;
+  color: var(--text);
+}
+/* A row with no name: the address is its one line, in the colour of a name. */
+.cp-option-text > .cp-option-addr:only-child {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text);
+}
+/* A field with a problem (not an address, or empty at Send): the row's hairline turns red and the problem stands on a line of its own under
+   the field, in the flow, so it never covers the row below (the rows under it move down once when it comes and back once when it goes). It
+   stays until that field is right (ComposeModal), not one keystroke. It is an alert, and the field is described by it. */
 .cp-row:has(.cp-input[aria-invalid='true']) {
   border-bottom-color: var(--danger);
 }
@@ -210,73 +381,93 @@
   color: var(--text2);
   overflow-wrap: anywhere;
 }
+/* The icon stands at the end of the label column, the words in the column of the values above and below (the label's 12px gap and the
+   4px inside a field). */
+.cp-note {
+  gap: 16px;
+}
 .cp-note svg {
   flex: none;
   margin-top: 2px;
+  margin-inline-start: calc(64px - 16px);
 }
 
-/* ---------- The formatting toolbar: one row, scrolling sideways when it does not fit ---------- */
+/* ---------- The formatting toolbar: one Tab stop, one row; what does not fit goes into More formatting ---------- */
 
-/* The style list (the one framed control of the row) starts at the column of the field labels above it. */
+/* The row stays at the top of the scrolling form while a long message is written (sticky), on the surface of the window, with the hairline
+   under it. It never scrolls sideways (a hidden scroll hid Numbered list, Quote, Link and Image on a phone: J1-12, J5-06): FormatToolbar
+   measures the row and moves the tools that do not fit into a More formatting menu at its end. The words of the style list start at the
+   column of the field labels above it. */
+.cp-fmt-row {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-raise);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
 .cp-fmt {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
   gap: 2px;
-  padding: 4px 16px 4px 24px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  border-bottom: 1px solid var(--border);
+  padding: 6px 16px 6px 15px;
+  overflow: hidden;
 }
 .cp-fmt > * {
   flex: none;
 }
-/* With its scrollbar hidden, the row shows that it scrolls by fading out the edge that still has buttons beyond it: the right one at the
-   start, both in between, the left one at the end. The fade follows the scroll position (a scroll-driven animation of the mask's two
-   lengths); where a browser has no scroll timeline, or the row fits and does not scroll, nothing fades and nothing moves. A mask is not a
-   colour: only its alpha counts. */
-@property --cp-fade-start {
-  syntax: '<length>';
-  inherits: false;
-  initial-value: 0px;
-}
-@property --cp-fade-end {
-  syntax: '<length>';
-  inherits: false;
-  initial-value: 0px;
-}
-@keyframes cp-fmt-fade {
-  0% {
-    --cp-fade-start: 0px;
-    --cp-fade-end: 24px;
-  }
-  10% {
-    --cp-fade-start: 24px;
-  }
-  90% {
-    --cp-fade-end: 24px;
-  }
-  100% {
-    --cp-fade-start: 24px;
-    --cp-fade-end: 0px;
-  }
-}
-@supports (animation-timeline: scroll()) {
-  .cp-fmt {
-    /* Focus scrolls a button clear of the fade, so its ring is never faded out. */
-    scroll-padding-inline: 24px;
-    mask-image: linear-gradient(to right, transparent, black var(--cp-fade-start), black calc(100% - var(--cp-fade-end)), transparent);
-    animation: cp-fmt-fade linear both;
-    animation-timeline: scroll(self inline);
-  }
+/* The hairline between the groups (FormatToolbar counts its width and margins). */
+.cp-fmt .cp-fmt-sep.ui-divider {
+  height: 20px;
+  margin: 0 4px;
 }
 .cp-style {
-  width: 144px;
+  width: auto;
 }
 .cp-style .ui-select {
   min-height: var(--ui-h-sm);
   padding: 0 8px;
   font-size: 13px;
+}
+/* In the row of icon tools the style list is quiet like them (no edge until the pointer or focus is on it); its words and chevron say it opens. */
+.cp-style .ui-select:not(:focus-visible, [aria-expanded='true']) {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+@media (hover: hover) {
+  .cp-style .ui-select:hover {
+    background: var(--hover);
+  }
+}
+.cp-tool {
+  display: flex;
+}
+/* Insert link / Insert image: a small form under its button (a Popover, not the browser's prompt). */
+.ui-popover.cp-ask {
+  width: min(320px, calc(100vw - 16px));
+}
+/* Clear of the toolbar's hairline under the button it belongs to. */
+.ui-popover.cp-ask:not([data-side='above']) {
+  margin-top: 6px;
+}
+.cp-ask-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+}
+.cp-ask-error {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--danger);
+}
+.cp-ask-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 /* ---------- The body ---------- */
@@ -286,8 +477,8 @@
   display: block;
   flex: 1 0 auto;
   width: 100%;
-  min-height: 240px;
-  padding: 16px 24px;
+  min-height: 140px;
+  padding: 18px 24px;
   background: transparent;
   color: var(--text);
   font-size: 15px;
@@ -298,62 +489,112 @@
   overflow-wrap: anywhere;
 }
 
-/* ---------- Attachments ---------- */
+/* The mail being answered: folded away behind a quiet "Show quoted text" button under the body (it is sent whole all the same). */
+.cp-quote {
+  padding: 0 24px 12px;
+}
+/* A quiet outlined button with a hairline, the same control as the reader's fold (J6-29). */
+.ui-btn.cp-quote-btn {
+  border: 1px solid var(--border);
+  color: var(--text2);
+}
 
+/* ---------- Attachments: chips under the body ---------- */
+
+.cp-attach {
+  padding: 4px 24px 14px;
+}
 .cp-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   margin: 0;
-  padding: 0 24px;
+  padding: 0;
   list-style: none;
-  border-top: 1px solid var(--border);
 }
 .cp-file {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-  min-height: var(--ui-h-md);
-  padding: 4px 0;
-  border-bottom: 1px solid var(--border);
+  gap: 8px;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 4px 2px 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--raised);
+  box-shadow: var(--control-shadow);
 }
-.cp-file:last-child {
-  border-bottom: 0;
-}
-/* The type badges are one column: PDF and DOCX are as wide as each other. */
-.cp-file .ui-badge {
-  flex: none;
-  justify-content: center;
-  min-width: 44px;
+/* The type of the file: the reader's tile (FileTypeTile, fileTile.css, size sm), so PDF and DOCX read the same in both places (J3-15). */
+.cp-file-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 .cp-file-name {
-  flex: 1 1 auto;
-  min-width: 0;
+  max-width: 240px;
   overflow: hidden;
   font-size: 13px;
-  line-height: 20px;
+  line-height: 18px;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .cp-file-size {
-  flex: none;
   font-size: 12px;
   line-height: 16px;
   color: var(--text3);
   font-variant-numeric: tabular-nums;
 }
+/* M12: how much of a file is read, in the indicator colour on the hairline colour. The fill is the whole track scaled from its left edge
+   (transform: scaleX, J2-11: no width or other layout property moves); each step eases over 150 ms, and jumps under reduced motion. Its
+   name says what it is for. */
+.cp-progress {
+  display: block;
+  width: 120px;
+  max-width: 100%;
+  height: 4px;
+  margin: 6px 0;
+  border-radius: var(--radius-pill);
+  background: var(--border);
+  overflow: hidden;
+}
+.cp-progress-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--indicator);
+  transform-origin: left center;
+  transition: transform var(--dur-quick) linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cp-progress-fill {
+    transition: none;
+  }
+}
+:root[data-motion='reduce'] .cp-progress-fill {
+  transition: none;
+}
 .cp-file-note {
-  margin: 0;
-  padding: 8px 24px 16px;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text2);
+}
+.cp-file-note svg {
+  flex: none;
 }
 
-/* ---------- The footer: Send, then the tools ---------- */
+/* ---------- The footer: Send, its shortcut, then the tools ---------- */
 
 .cp-foot {
   display: flex;
   flex: none;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   padding: 12px calc(24px - (var(--ui-h-md) - 18px) / 2) 12px 24px;
   border-top: 1px solid var(--border);
 }
@@ -376,12 +617,17 @@
   gap: 2px;
   margin-left: auto;
 }
-/* The first press on the trash only asks: the same button turns into "Discard?" (it keeps focus). */
-.cp-discard[data-confirming='true'] {
-  width: auto;
-  padding: 0 10px;
-  font-size: 13px;
-  font-weight: 600;
+/* Discard: set apart from the other tools by a hairline, quiet until the pointer is on it, then in the danger colour (it asks before
+   anything is lost). */
+.cp-tools .cp-sep.ui-divider {
+  height: 20px;
+  margin: 0 6px;
+}
+@media (hover: hover) {
+  .cp-tools .ui-btn.cp-discard[data-variant]:hover:not(:disabled) {
+    background: var(--danger-soft);
+    color: var(--danger);
+  }
 }
 
 /* No keyboard to press Ctrl+Enter on a touch screen, and no room for the hint on a narrow one. */
@@ -399,9 +645,13 @@
   }
 }
 
-/* Phone and narrow window: the whole screen, no window chrome. */
+/* Phone and narrow window: the whole screen, no window chrome. It is as tall as the visual viewport (ComposeModal sets --vv-height and
+   --vv-top from it), so the on-screen keyboard never covers the footer with Send. */
 @media (max-width: 900px) {
   .cp-root {
+    top: var(--vv-top, 0px);
+    bottom: auto;
+    height: var(--vv-height, 100%);
     padding: 0;
     background: var(--surface);
   }
@@ -412,30 +662,70 @@
     border-radius: 0;
     box-shadow: none;
   }
+  /* J5-16: a phone in landscape draws under its notch and rounded corners (viewport-fit=cover): every row keeps its 16 px from the safe
+     area's edge, on both sides. J3-40: the X's glyph (18 px in its 44 px button) ends on that same content edge, inset or not. */
   .cp-head {
-    padding: max(8px, env(safe-area-inset-top)) calc(16px - (var(--ui-h-md) - 18px) / 2) 8px 16px;
+    padding: max(8px, env(safe-area-inset-top, 0px)) calc(max(16px, env(safe-area-inset-right, 0px)) - (var(--ui-h-md) - 18px) / 2) 8px
+      max(16px, env(safe-area-inset-left, 0px));
   }
   .cp-notice {
-    padding: 8px 16px;
+    padding: 8px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px));
   }
   .cp-row {
     gap: 8px;
-    padding: 0 16px;
+    padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px));
+  }
+  .cp-label {
+    width: 56px;
+  }
+  /* J6-44 on a phone: the suggestions are rows of the compose itself, under the row (outside its focus ring), on the column of the field,
+     44 px and more each (two lines: name, address). */
+  .cp-suggest {
+    position: static;
+    width: auto;
+    margin: 0;
+    padding: 6px max(16px, env(safe-area-inset-right, 0px)) 6px calc(max(16px, env(safe-area-inset-left, 0px)) + 56px + 8px);
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    background: var(--surface);
+    box-shadow: none;
+  }
+  :root[data-theme='dark'] .cp-suggest {
+    border-color: var(--border);
+  }
+  .ui-option.cp-option {
+    min-height: var(--ui-h-md);
+    padding-inline: 8px;
   }
   .cp-note {
-    padding: 8px 16px;
+    gap: 12px;
+    padding: 8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px));
+  }
+  .cp-note svg {
+    margin-inline-start: calc(56px - 16px);
   }
   .cp-fmt {
-    padding: 4px 8px 4px 16px;
+    padding: 4px max(8px, env(safe-area-inset-right, 0px)) 4px max(7px, env(safe-area-inset-left, 0px));
   }
   .cp-editor {
-    padding: 16px;
+    padding: 16px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px));
   }
-  .cp-files {
-    padding: 0 16px;
+  .cp-quote {
+    padding: 0 max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px));
   }
-  .cp-file-note {
-    padding: 8px 16px 16px;
+  .cp-attach {
+    padding: 4px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px));
+  }
+  /* One file a line, all as wide as the column: the X of each is in the same place. */
+  .cp-file {
+    flex: 1 1 100%;
+  }
+  .cp-file .ui-icon-btn {
+    margin-left: auto;
+  }
+  .cp-file-name {
+    max-width: 180px;
   }
   /* A touch screen scrolls by dragging; the 8px custom scrollbar would cut a strip off the pane. */
   .cp-scroll {
@@ -444,9 +734,73 @@
   .cp-scroll::-webkit-scrollbar {
     display: none;
   }
-  /* Send starts on the column of the labels (16px), the trash icon ends on the content edge, as in the header. */
+  /* Send starts on the column of the labels (16px), the trash icon's glyph ends on the content edge, as in the header (J3-40). */
   .cp-foot {
     gap: 4px;
-    padding: 8px calc(16px - (var(--ui-h-md) - 18px) / 2) calc(8px + env(safe-area-inset-bottom)) 16px;
+    padding: 8px calc(max(16px, env(safe-area-inset-right, 0px)) - (var(--ui-h-md) - 18px) / 2) calc(8px + env(safe-area-inset-bottom, 0px))
+      max(16px, env(safe-area-inset-left, 0px));
   }
+}
+
+/* J5-25: a phone on its side (a short screen) keeps room to write while its keyboard is up. The head is 44 px, and while the keyboard takes
+   the bottom of the screen (ComposeModal sets data-keyboard from the visual viewport) Send moves into the head, the foot goes (its tools come
+   back with the keyboard down) and the format row scrolls away with the fields: 390 px less a 200 px keyboard leaves 137 px of writing room. */
+.ui-btn.cp-head-send {
+  display: none;
+}
+@media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
+  /* The 44 px controls of the head (Send, Close) with 4 px of air above and under them: 52 px instead of 61. */
+  .cp-head {
+    min-height: 52px;
+    padding-block: max(4px, env(safe-area-inset-top, 0px)) 4px;
+  }
+  .cp-root[data-keyboard='true'] .cp-foot {
+    display: none;
+  }
+  .cp-root[data-keyboard='true'] .ui-btn.cp-head-send {
+    display: inline-flex;
+    flex: none;
+  }
+  .cp-root[data-keyboard='true'] .cp-fmt-row {
+    position: static;
+  }
+}
+
+/* ---------- M11: the send flight (compose/composeMotion.ts) ---------- */
+
+/* Send's icon takes off from the window that closes: a fixed overlay at --z-float, under nothing, read by nobody (aria-hidden). Its two wing
+   strokes are 14 x 2 px in the indicator colour, trailing behind the icon. */
+.cp-flight {
+  position: fixed;
+  z-index: var(--z-float);
+  display: grid;
+  place-items: center;
+  color: var(--accent-text);
+  pointer-events: none;
+}
+.cp-flight > svg {
+  width: 20px;
+  height: 20px;
+}
+.cp-flight-wing {
+  position: absolute;
+  top: 40%;
+  right: 78%;
+  width: 14px;
+  height: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--indicator);
+  transform-origin: right center;
+}
+.cp-flight-wing + .cp-flight-wing {
+  top: 62%;
+  width: 10px;
+}
+/* M10: the window starts in the look of the Compose button (its accent fill and radius), which fades into the window's surface. */
+.cp-morph {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
 }

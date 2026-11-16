@@ -127,11 +127,17 @@ describe('Delete account opens with the keyboard in the field for the address (D
   it('focuses the field after the frame has put focus on its first control, the Close button of the title bar', () => {
     expect(remove).toMatch(/const field = React\.useRef<HTMLInputElement \| null>\(null\);/);
     expect(remove).toMatch(/React\.useEffect\(\(\) => \{\s*field\.current\?\.focus\(\{ preventScroll: true \}\);\s*\}, \[\]\);/);
-    expect(remove).toMatch(/<TextField\s+ref=\{field\}\s+id="delete-user-confirm"/);
-    // A held Enter that opened this dialog lands in the field and submits the form: the submit button is disabled and the handler returns until the typed address
-    // matches the account's, so nothing destructive can happen from the keyboard repeat (ADM-1).
-    expect(remove).toMatch(/if \(!matches \|\| action\.busy\) \{\s*return;\s*\}/);
-    expect(remove).toMatch(/type="submit"\s+disabled=\{!matches \|\| action\.busy\}/);
+    expect(remove).toMatch(/<TextField\s+ref=\{field\}\s+id=\{CONFIRM_ID\}/);
+    expect(remove).toMatch(/const CONFIRM_ID = 'delete-user-confirm';/);
+    // A held Enter that opened this dialog lands in the field and submits the form: the handler returns before any request until the typed address
+    // matches the account's, so nothing destructive can happen from the keyboard repeat (ADM-1). The button itself stays enabled (DESIGN 6, J1-17,
+    // J4-30): a press with another text shows what to type under the field, announces it, and takes the keyboard back to the field.
+    expect(remove).toMatch(
+      /if \(action\.busy\) \{\s*return;\s*\}\s*if \(!matches\) \{\s*setSubmitted\(true\);[^]*?focusLater\(CONFIRM_ID\);\s*return;\s*\}/
+    );
+    expect(remove).toMatch(/type="submit"\s+disabled=\{action\.busy\}/);
+    expect(remove).toMatch(/error=\{submitted && !matches \? mismatch : undefined\}/);
+    expect(remove).toMatch(/announce\(mismatch, \{ assertive: true \}\);/);
     // The focus is the dialog's own effect, not a change of the shared frame (a child's effect runs first, so this one comes last): the frame is a ui
     // Dialog, whose effect (inside the frame, so a child of this dialog) gives the focus to the frame's first control and, on close, back to the opener
     // or, when the opener is gone, to the account avatar.

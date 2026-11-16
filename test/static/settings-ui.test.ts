@@ -53,21 +53,27 @@ describe('the Settings dialog and its sections', () => {
   });
 
   it('is the ui Dialog at the lg size, rendered in place: no portal, so the C-7 render test sees every button', () => {
-    // The props of the dialog, up to its toolbar row (the tabs).
+    // The props of the dialog, up to its toolbar slot (the nav).
     const dialog = settings.slice(settings.indexOf('<Dialog'), settings.indexOf('toolbar={'));
     expect(dialog).toMatch(/^<Dialog\s+inline\s/);
     expect(dialog).toMatch(/size="lg"/);
     expect(dialog).toMatch(/rootClassName="st-root"/);
     expect(dialog).toMatch(/className="st-dialog"/);
     expect(settings).not.toMatch(/createPortal|className="ui-dialog/);
-    // A member has no tabs: a hairline stands between the title and the content, where the row of tabs would be.
-    expect(cssCode).toMatch(
-      /\.st-dialog > \.ui-dialog-head \+ \.ui-dialog-body \{\s*margin-top: 16px;\s*border-top: 1px solid var\(--border\);/
+    // A desktop: the nav down the left and the page on the right, each scrolling on its own, so the nav stays in view however long the
+    // page is (1024x768, 1440x600); the dialog is about 880px wide.
+    const desktop = /@media \(min-width: 641px\) \{([\s\S]*?)\n\}/.exec(cssCode)?.[1] ?? '';
+    expect(desktop).toMatch(
+      /\.ui-dialog\.st-dialog \{[^}]*display: grid;[^}]*grid-template-columns: var\(--st-nav-w\) minmax\(0, 1fr\);[^}]*max-width: 880px;/
     );
+    expect(desktop).toMatch(/\.st-dialog > \.ui-dialog-toolbar \{[^}]*grid-column: 1;[^}]*min-height: 0;[^}]*overflow-y: auto;/);
+    expect(desktop).toMatch(/\.st-dialog > \.ui-dialog-body \{[^}]*grid-column: 2;/);
     // The shell's rules live in ui/Dialog now (ui-design.test.ts): Tab is kept inside with trapTab, focus goes back to the opener, the scrim
-    // closes only when the press began on it. Settings gives focus to the dialog element itself, and back to the drawer button when the
-    // opener is gone (it sat in the phone drawer, which closes when Settings opens).
-    expect(dialog).toMatch(/ref=\{dialogRef\}\s+initialFocusRef=\{dialogRef\}\s+returnFocusRef=\{NAV_TOGGLE\}/);
+    // closes only when the press began on it. Settings gives focus to the row of the open section in the nav (J1-07: a visible ring on a
+    // keyboard open, never a field that raises a phone keyboard), and back to the drawer button when the opener is gone (it sat in the
+    // phone drawer, which closes when Settings opens).
+    expect(dialog).toMatch(/ref=\{dialogRef\}\s+initialFocusRef=\{navItemRef\}\s+returnFocusRef=\{NAV_TOGGLE\}/);
+    expect(settings).toMatch(/querySelector<HTMLElement>\('\[role="tab"\]\[aria-selected="true"\]'\)/);
     expect(settings).toMatch(/document\.querySelector<HTMLElement>\('button\[data-nav-toggle="mailboxes"\]'\)/);
     const ui = read(path.join(ROOT, 'src', 'client', 'ui', 'Dialog.tsx'));
     expect(ui).toMatch(/trapTab\(event, panelRef\.current\)/);
@@ -75,15 +81,17 @@ describe('the Settings dialog and its sections', () => {
     expect(ui).toMatch(/pressedOnScrim\.current = event\.target === event\.currentTarget/);
   });
 
-  it('keeps the X a real button that a held secret disables, next to the footer Close and Sign out (C-7)', () => {
-    // closeDisabled: the dialog's X is drawn disabled, and Escape and the scrim do nothing; every way out is the guarded `leave`.
+  it('keeps the X a real button that a held secret disables, next to Sign out and the phone Back (C-7)', () => {
+    // closeDisabled: the dialog's X is drawn disabled, and Escape and the scrim do nothing; every way out is the guarded `leave`. Settings
+    // has no footer Close: the X, Escape, the scrim and a phone's Back button are the ways out.
     expect(settings).toMatch(/onClose=\{leave\}\s+closeDisabled=\{secretHeld\}/);
     const ui = read(path.join(ROOT, 'src', 'client', 'ui', 'Dialog.tsx'));
     expect(ui).toMatch(/<IconButton label=\{tr\('common\.close'\)\} size="sm" onClick=\{onClose\} disabled=\{closeDisabled\}>/);
     expect(ui).toMatch(/const canClose = dismissible && !closeDisabled;/);
-    expect(settings).toMatch(/<Button onClick=\{leave\} disabled=\{secretHeld\}>/);
+    expect(settings).not.toMatch(/footer=\{/);
     expect(settings).toMatch(/disabled=\{signingOut \|\| secretHeld\}/);
     expect(settings).toMatch(/disabled: secretHeld/);
+    expect(settings).toMatch(/disabled=\{secretHeld\}\s+onClick=\{\(\) => setPane\('nav'\)\}/);
   });
 
   it('keeps the notifications switch usable when the browser blocks notifications: only a running request disables it', () => {
@@ -100,10 +108,27 @@ describe('the Settings dialog and its sections', () => {
     );
   });
 
-  it('fits the four tabs on a phone: a 2x2 grid that never scrolls sideways and lets a long label wrap instead of cutting it', () => {
-    // The grid is ui/Tabs `grid` (shared with the admin console): Settings asks for it, ui.css draws it at 640px and less.
-    expect(settings).toMatch(/<Tabs\s+id=\{TABS_ID\}\s+className="st-tabs"\s+grid\s/);
+  it('on a phone, shows the list of sections, then one section with a way back: no row scrolls sideways or is cut, a tap opens, arrows do not', () => {
+    // The nav is ui/Tabs vertical (a list down the side, Up and Down move); a click or Enter on a row opens its section on a phone
+    // (onActivate), the arrows only move the selection, so moving through the list never hides it under the keyboard's focus.
+    expect(settings).toMatch(/<Tabs\s+id=\{TABS_ID\}\s+className="st-tabs"\s+orientation="vertical"\s/);
+    expect(settings).toMatch(/onActivate=\{\(\) => \{\s*if \(!secretHeld\) \{\s*setPane\('section'\);/);
+    expect(settings).toMatch(/onClick=\{\(\) => setPane\('nav'\)\}/);
+    const phone = /@media \(max-width: 640px\) \{([\s\S]*?)\n\}/.exec(cssCode)?.[1] ?? '';
+    expect(phone).toMatch(
+      /\.st-dialog:has\(\.st-nav\[data-pane='nav'\]\) > \.ui-dialog-body,\s*\.st-dialog:has\(\.st-nav\[data-pane='section'\]\) > \.ui-dialog-toolbar \{\s*display: none;/
+    );
+    expect(phone).toMatch(/\.ui-tabs\.st-tabs > \.ui-tab,[^{]*\{[^}]*min-height: 48px;/);
+    // In a section a phone's head is a nav bar: Back to the list over the head, on the left; the title is kept for screen readers only.
+    expect(phone).toMatch(/\.st-back \{\s*position: absolute;[^}]*display: block;/);
+    expect(phone).toMatch(
+      /\.st-dialog:has\(\.st-nav\[data-pane='section'\]\) > \.ui-dialog-head > \.ui-dialog-title \{[^}]*clip-path: inset\(50%\);/
+    );
+    // A vertical row never scrolls sideways and a long label (vi, zh-CN) wraps instead of being cut.
     const uiCss = withoutComments(read(path.join(ROOT, 'src', 'client', 'ui', 'ui.css')));
+    expect(uiCss).toMatch(/\.ui-tabs\[aria-orientation='vertical'\] \{[^}]*overflow: visible;/);
+    expect(uiCss).toMatch(/\.ui-tabs\[aria-orientation='vertical'\] > \.ui-tab \{[^}]*white-space: normal;/);
+    // The grid of segments stays available in ui/Tabs (`grid`); the admin console's tabs are a scrolling row on a phone now (`phoneRow`).
     const uiPhone = [...uiCss.matchAll(/@media \(max-width: 640px\) \{([\s\S]*?)\n\}/g)]
       .map((match) => match[1])
       .find((block) => block.includes('ui-tabs'));
@@ -114,24 +139,22 @@ describe('the Settings dialog and its sections', () => {
     expect(uiPhone).not.toMatch(/text-overflow|ellipsis/);
     expect(uiCss).toMatch(/@media \(max-width: 350px\) \{\s*\.ui-tabs\[data-grid='true'\] \.ui-tab \{\s*padding-inline: 4px;/);
     expect(read(path.join(ROOT, 'src', 'client', 'ui', 'Tabs.tsx'))).toMatch(/data-grid=\{grid \? 'true' : undefined\}/);
-    const phone = /@media \(max-width: 640px\) \{([\s\S]*?)\n\}/.exec(cssCode)?.[1] ?? '';
-    // A sign-out message gets its own full-width row on a phone.
-    expect(phone).toMatch(/\.st-foot-msg \{\s*order: 1;\s*flex-basis: 100%;/);
     // A short phone screen (320x568): the sheet is the whole height, so the content keeps more than half of it.
     const short = /@media \(max-width: 640px\) and \(max-height: 700px\) \{([\s\S]*?)\n\}/.exec(cssCode)?.[1] ?? '';
-    expect(short).toMatch(/\.ui-dialog\.st-dialog \{[^}]*height: 100dvh;[^}]*max-height: none;/);
+    expect(short).toMatch(/\.ui-dialog\.st-dialog \{[^}]*height: min\(100dvh, var\(--ui-vv-height, 100dvh\)\);[^}]*max-height: none;/);
   });
 
   it('puts the focus back on the button that opened a view of Security when the person goes back, or on the heading when it is gone', () => {
     const section = read(path.join(COMPONENTS, 'security', 'SecuritySection.tsx'));
     const opened = [...section.matchAll(/data-view="(\w+)"\s+onClick=\{\(\) => \{\s*open\('(\w+)'\);/g)];
     expect(opened.map((match) => match[1])).toEqual([
-      'password',
+      'two_factor_off',
+      'two_factor_on',
       'key_test',
       'key_new',
       'two_factor_codes',
-      'two_factor_off',
-      'two_factor_on'
+      'password',
+      'activity'
     ]);
     expect(opened.every((match) => match[1] === match[2])).toBe(true);
     expect(section).toMatch(/const back = view === null && before !== null;/);

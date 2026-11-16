@@ -138,10 +138,12 @@ describe('what the meter and the rules say', () => {
   it('says the rules in the words the Product Owner fixed, the numbers coming from the constants', () => {
     expect(rulesText()).toBe('At least 12 characters (16 for admins), common passwords are rejected.');
     expect(rulesText()).toContain(`${MEMBER_MIN_LENGTH} characters (${ADMIN_MIN_LENGTH} for admins)`);
-    // An empty field is told the rules, whoever types in it.
+    // An admin's form says the admin rule alone (J4-17: Setup's first account is an admin; the members' number would fail on submit).
+    expect(rulesText(ADMIN_MIN_LENGTH)).toBe('At least 16 characters (admin account); common passwords are rejected.');
+    // An empty field is told the rules of its own account, whoever types in it.
     for (const role of ['member', 'admin'] as const) {
       const empty = assessPassword('', role, data);
-      expect(problemMessages(empty.problems, empty.length, empty.min)).toBe(rulesText());
+      expect(problemMessages(empty.problems, empty.length, empty.min)).toBe(rulesText(role === 'admin' ? ADMIN_MIN_LENGTH : undefined));
     }
   });
 

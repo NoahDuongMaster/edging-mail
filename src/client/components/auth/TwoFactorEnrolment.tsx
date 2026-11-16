@@ -3,11 +3,12 @@ import type { ThemeTokens } from '../../theme';
 import { confirmEnrolment, startEnrolment } from '../../lib/crypto/gates';
 import type { EnrolmentStart } from '../../lib/crypto/gates';
 import type { GateCredentials } from '../../lib/crypto/gateCredentials';
+import { firstInvalid, useFieldFocus } from '../../lib/fieldFocus';
 import { qrMatrix } from '../../lib/crypto/qr';
 import type { QrMatrix } from '../../lib/crypto/qr';
 import { useT } from '../../lib/i18n';
 import { useAction } from '../../lib/useAction';
-import { CopyButton, Divider, SecretBox, Spinner, TextField } from '../../ui';
+import { CopyButton, Divider, SecretBox, Spinner, TextField, useMediaMatch } from '../../ui';
 import { AuthButton, ErrorLine, TextButton } from './authUi';
 import { RecoveryCodesPanel } from './RecoveryCodesPanel';
 
@@ -19,6 +20,8 @@ import { RecoveryCodesPanel } from './RecoveryCodesPanel';
 const CODE_LENGTH = 6;
 // The empty border a scanner needs around the code, drawn by the viewBox (the matrix itself has none).
 const QUIET_ZONE = 4;
+// A phone, or any touch screen: the authenticator app is most likely on this very device, which cannot scan its own screen.
+const ON_THE_PHONE = '(max-width: 640px), (pointer: coarse)';
 
 /** The secret in groups of four characters, the way an authenticator app shows its manual key. */
 export function groupSecret(secret: string): string[] {
@@ -69,16 +72,15 @@ const QrCode: React.FC<QrCodeProps> = ({ t, matrix }) => {
 };
 
 /** The fallback for a phone that cannot scan: the same secret as text, in groups of four, with a Copy button. */
-const ManualKey: React.FC<{ t: ThemeTokens; secret: string }> = ({ t, secret }) => {
+const ManualKey: React.FC<{ t: ThemeTokens; secret: string; title: string }> = ({ t, secret, title }) => {
   const tr = useT();
   const [copyFailed, setCopyFailed] = React.useState(false);
   return (
-    <div className="au-row">
-      <p className="ui-label">{tr('twofa.manual_title')}</p>
-      <SecretBox label={tr('twofa.manual_title')} value={groupSecret(secret)} layout="inline" data-testid="twofa-secret" />
-      <div className="au-actions">
-        <CopyButton text={secret} size="lg" className="au-btn" onResult={(result) => setCopyFailed(result === 'failed')} />
-      </div>
+    <div className="au-manual">
+      <p className="au-strong">{title}</p>
+      <SecretBox label={tr('twofa.manual_title')} value={groupSecret(secret)} layout="inline" data-testid="twofa-secret">
+        <CopyButton text={secret} size="md" onResult={(result) => setCopyFailed(result === 'failed')} />
+      </SecretBox>
       {copyFailed ? <ErrorLine t={t} id="twofa-secret-copy-error" text={tr('twofa.copy_failed')} /> : null}
     </div>
   );
@@ -94,9 +96,11 @@ interface TwoFactorEnrolmentProps {
   onCancel?: () => void;
   /** The level of the heading of the recovery codes shown at the end (RecoveryCodesPanel): 2 by default, 5 in a view of Settings. */
   headingLevel?: 2 | 3 | 4 | 5;
+  /** Told when the screen moves on from the QR code to the recovery codes, so the caller's step indicator follows ("Step 2 of 2"). */
+  onPhase?: (phase: 'scan' | 'codes') => void;
 }
 
-export const TwoFactorEnrolment: React.FC<TwoFactorEnrolmentProps> = ({ t, credentials, onDone, onCancel, headingLevel = 2 }) => {
+export const TwoFactorEnrolment: React.FC<TwoFactorEnrolmentProps> = ({ t, credentials, onDone, onCancel, headingLevel = 2, onPhase }) => {
   const tr = useT();
   const start = useAction();
   const confirm = useAction();
@@ -105,8 +109,11 @@ export const TwoFactorEnrolment: React.FC<TwoFactorEnrolmentProps> = ({ t, crede
   const [matrix, setMatrix] = React.useState<QrMatrix | 'failed' | null>(null);
   const [code, setCode] = React.useState('');
   const [codes, setCodes] = React.useState<readonly string[] | null>(null);
+  const [submitted, setSubmitted] = React.useState(false);
   const input = React.useRef<HTMLInputElement>(null);
   const started = React.useRef(false);
+  const focusLater = useFieldFocus();
+  const onThePhone = useMediaMatch(ON_THE_PHONE);
 
   const begin = React.useCallback(async () => {
     const answer = await runStart(() => startEnrolment(credentials));
@@ -148,7 +155,14 @@ export const TwoFactorEnrolment: React.FC<TwoFactorEnrolmentProps> = ({ t, crede
 
   const verify = async (event: React.SyntheticEvent) => {
     event.preventDefault();
-    if (confirm.busy || code.length !== CODE_LENGTH) {
+    if (confirm.busy) {
+      return;
+    }
+    // Verify can always be pressed: fewer than six digits is said under the field, and the keyboard goes there.
+    setSubmitted(true);
+    const toFix = firstInvalid([['twofa-code', code.length !== CODE_LENGTH]]);
+    if (toFix !== undefined) {
+      focusLater(toFix);
       return;
     }
     const done = await confirm.run(() => confirmEnrolment(credentials, code));
@@ -162,16 +176,17 @@ export const TwoFactorEnrolment: React.FC<TwoFactorEnrolmentProps> = ({ t, crede
     setMatrix(null);
     setCode('');
     setCodes(done.recovery_codes);
+    onPhase?.('codes');
   };
 
   if (codes !== null) {
     return <RecoveryCodesPanel t={t} codes={codes} onDone={onDone} headingLevel={headingLevel} />;
   }
 
+  const codeError = submitted && code.length !== CODE_LENGTH ? tr('twofa.code_required') : undefined;
+
   return (
     <div className="au-stack">
-      <p className="au-muted">{tr('twofa.intro')}</p>
-
       {enrolment === null && start.error !== null ? (
         <>
           <ErrorLine t={t} id="twofa-start-error" text={start.error} />
@@ -195,9 +210,34 @@ export const TwoFactorEnrolment: React.FC<TwoFactorEnrolmentProps> = ({ t, crede
 
       {enrolment === null ? null : (
         <>
-          <p className="au-strong">{tr('twofa.scan_lead')}</p>
-          <QrCode t={t} matrix={matrix} />
-          <ManualKey t={t} secret={enrolment.secret_base32} />
+          {/* What an authenticator app is, with names a first-timer can look for (J4-10); the only explanation of the six-digit code on this
+              step (J4-39: Settings says what two-factor sign-in is on the step before). */}
+          <p className="au-muted">{tr(onThePhone ? 'twofa.app_hint_phone' : 'twofa.app_hint')}</p>
+          {onThePhone ? (
+            // J5-21: the app is on this phone, which cannot scan its own screen. First the link that opens the account in the app (the same
+            // otpauth URI as the QR code), then the key with Copy, then the QR code for an app on another device.
+            <>
+              <a href={enrolment.otpauth_uri} className="ui-btn au-open-app" data-variant="secondary" data-size="lg">
+                {tr('twofa.open_app')}
+              </a>
+              <ManualKey t={t} secret={enrolment.secret_base32} title={tr('twofa.manual_title_phone')} />
+              <p className="au-strong">{tr('twofa.scan_other_device')}</p>
+              <div className="au-enrol-scan">
+                <QrCode t={t} matrix={matrix} />
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="au-strong">{tr('twofa.scan_lead')}</p>
+              {/* Scan, or type the key: the QR code and the manual key side by side where the card is wide enough, one above the other. */}
+              <div className="au-enrol">
+                <div className="au-enrol-scan">
+                  <QrCode t={t} matrix={matrix} />
+                </div>
+                <ManualKey t={t} secret={enrolment.secret_base32} title={tr('twofa.manual_title')} />
+              </div>
+            </>
+          )}
           <Divider />
           <form
             onSubmit={(event) => {
@@ -206,32 +246,31 @@ export const TwoFactorEnrolment: React.FC<TwoFactorEnrolmentProps> = ({ t, crede
             noValidate
             className="au-stack"
           >
-            <div className="au-row">
-              <TextField
-                id="twofa-code"
-                ref={input}
-                label={tr('twofa.code_label')}
-                hint={tr('twofa.code_hint')}
-                mono
-                className="au-otp-large"
-                value={code}
-                onChange={(event) => {
-                  setCode(sixDigits(event.target.value));
-                  if (confirm.error !== null) {
-                    confirm.clear();
-                  }
-                }}
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                autoCapitalize="off"
-                autoCorrect="off"
-                spellCheck={false}
-                aria-invalid={confirm.error !== null}
-                aria-describedby={confirm.error === null ? undefined : 'twofa-code-error'}
-              />
-              <ErrorLine t={t} id="twofa-code-error" text={confirm.error} />
-            </div>
-            <AuthButton t={t} busy={confirm.busy} disabled={code.length !== CODE_LENGTH} label={tr('twofa.verify')} />
+            <TextField
+              id="twofa-code"
+              ref={input}
+              label={tr('twofa.code_label')}
+              hint={tr('twofa.code_hint')}
+              error={codeError}
+              mono
+              className="au-otp-large"
+              value={code}
+              onChange={(event) => {
+                setCode(sixDigits(event.target.value));
+                if (confirm.error !== null) {
+                  confirm.clear();
+                }
+              }}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              aria-invalid={codeError !== undefined || confirm.error !== null}
+              aria-describedby={confirm.error === null ? undefined : 'twofa-code-error-server'}
+            />
+            <ErrorLine t={t} id="twofa-code-error-server" text={confirm.error} />
+            <AuthButton t={t} busy={confirm.busy} label={tr('twofa.verify')} />
           </form>
         </>
       )}

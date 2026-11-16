@@ -1,7 +1,10 @@
 import React from 'react';
+import { TriangleAlert } from 'lucide-react';
 import type { ThemeTokens } from '../../theme';
 import type { AdminUser } from '../../lib/admin/types';
 import { useDeleteUser } from '../../lib/admin/users';
+import { announce } from '../../lib/announce';
+import { useFieldFocus } from '../../lib/fieldFocus';
 import { tRich, useT } from '../../lib/i18n';
 import { Button, TextField } from '../../ui';
 import { ErrorText, ModalFrame } from './adminUi';
@@ -14,14 +17,25 @@ interface DeleteUserDialogProps {
   onDeleted: () => void;
 }
 
-/** Deleting an account takes its mail with it, so the admin types the exact address first. */
+const CONFIRM_ID = 'delete-user-confirm';
+/** The warning: what is lost. The alert dialog is described by it, so it is read on open, before the field (J1-26). */
+const WARNING_ID = 'delete-user-warning';
+
+/**
+ * Deleting an account takes its mail with it, so the admin types the exact address first. Delete account can be pressed at any time (only
+ * a running request turns it off): a press with another text says what to type under the field, is announced, and takes the keyboard back
+ * to the field (DESIGN 6: submit buttons stay enabled and show errors on submit), as the locked-mail dialog does.
+ */
 export const DeleteUserDialog: React.FC<DeleteUserDialogProps> = ({ t, user, onClose, onDeleted }) => {
   const tr = useT();
   const remove = useDeleteUser();
   const action = useAdminAction();
   const [typed, setTyped] = React.useState('');
+  const [submitted, setSubmitted] = React.useState(false);
   const field = React.useRef<HTMLInputElement | null>(null);
+  const focusLater = useFieldFocus();
   const matches = typed.trim() === user.email;
+  const mismatch = tr('users.delete_confirm_mismatch', { address: user.email });
 
   // The frame puts focus on its first control, which is the Close button in its title bar and comes before the form; the field for the address is where it belongs.
   // The frame's own effect has run by now (a child's effect runs first), so this one wins.
@@ -31,9 +45,17 @@ export const DeleteUserDialog: React.FC<DeleteUserDialogProps> = ({ t, user, onC
 
   const submit = async (event: React.SyntheticEvent) => {
     event.preventDefault();
-    if (!matches || action.busy) {
+    if (action.busy) {
       return;
     }
+    if (!matches) {
+      setSubmitted(true);
+      // Focus may already be in the field (Enter pressed there), so moving it says nothing: the error is also said by the live region.
+      announce(mismatch, { assertive: true });
+      focusLater(CONFIRM_ID);
+      return;
+    }
+    setSubmitted(false);
     const done = await action.run(() => remove.mutateAsync({ id: user.id, confirm: user.email }));
     if (done) {
       onDeleted();
@@ -41,7 +63,7 @@ export const DeleteUserDialog: React.FC<DeleteUserDialogProps> = ({ t, user, onC
   };
 
   return (
-    <ModalFrame t={t} title={tr('users.delete_title')} onClose={onClose} locked={action.busy} alert>
+    <ModalFrame t={t} title={tr('users.delete_title')} onClose={onClose} locked={action.busy} alert describedBy={WARNING_ID}>
       <form
         noValidate
         onSubmit={(event) => {
@@ -49,14 +71,18 @@ export const DeleteUserDialog: React.FC<DeleteUserDialogProps> = ({ t, user, onC
         }}
         className="ad-form"
       >
-        <p className="ad-text">{tRich('users.delete_body', { address: <strong className="ad-strong ad-wrap">{user.email}</strong> })}</p>
+        {/* What is lost, on the danger tint with its icon: the one thing to read before typing the address. */}
+        <p id={WARNING_ID} className="ad-text ad-warn">
+          <TriangleAlert size={16} aria-hidden="true" />
+          <span>{tRich('users.delete_body', { address: <strong className="ad-strong ad-wrap">{user.email}</strong> })}</span>
+        </p>
         <div className="ad-field-group">
           <p className="ad-muted">{tr('security.admin_delete_lost_keys')}</p>
           <p className="ad-muted">{tr('users.delete_key_note')}</p>
         </div>
         <TextField
           ref={field}
-          id="delete-user-confirm"
+          id={CONFIRM_ID}
           label={tr('users.delete_confirm_label')}
           data-autofocus
           autoCapitalize="none"
@@ -65,14 +91,14 @@ export const DeleteUserDialog: React.FC<DeleteUserDialogProps> = ({ t, user, onC
           autoComplete="off"
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
-          placeholder={user.email}
+          error={submitted && !matches ? mismatch : undefined}
         />
         {action.error === null ? null : <ErrorText>{action.error}</ErrorText>}
         <div className="ad-dialog-foot">
           <Button onClick={onClose} disabled={action.busy}>
             {tr('common.cancel')}
           </Button>
-          <Button type="submit" disabled={!matches || action.busy} variant="danger" loading={action.busy}>
+          <Button type="submit" disabled={action.busy} variant="danger" loading={action.busy}>
             {action.busy ? tr('users.deleting') : tr('admin.delete_account')}
           </Button>
         </div>

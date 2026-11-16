@@ -75,7 +75,7 @@ describe('the screens before the mailbox (truong C-9, C-11, C-12)', () => {
   it('C-11: under reduced motion the slide-in and the spinner do not move at all (no turning, no pulsing)', () => {
     const css = read('index.css');
     const block = /@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
-    expect(block).toMatch(/\.nm-fade-in,\s*\.nm-spin \{\s*animation: none;/);
+    expect(block).toMatch(/\.nm-spin \{\s*animation: none;/);
     expect(block).not.toMatch(/rotate|nm-pulse|infinite|opacity/);
     expect(css).not.toMatch(/@keyframes nm-pulse/);
   });
@@ -85,11 +85,15 @@ describe('the screens before the mailbox (truong C-9, C-11, C-12)', () => {
     // The heading is an h2 under the h1 of a screen before the mailbox, and one level under the view's h4 in Settings (`headingLevel`): at every
     // level it is the element that takes the focus.
     expect(panel).toMatch(/<Heading\s+ref=\{heading\}\s+tabIndex=\{-1\}/);
-    expect(panel).toMatch(/headingLevel = 2 \}/);
+    expect(panel).toMatch(/headingLevel = 2, showHeading = true \}/);
     expect(panel).toMatch(/const Heading = `h\$\{headingLevel\}` as const;/);
     expect(panel).toMatch(/useEffect\(\(\) => \{\s*heading\.current\?\.focus\(\);\s*\}, \[\]\)/);
     const views = read('components', 'security', 'TwoFactorView.tsx');
-    expect(views.match(/headingLevel=\{5\}/g)).toHaveLength(2);
+    // The codes at the end of turning two-factor on: the panel's own heading (h5 under the view's h4) takes the focus. New codes (J3-41): one
+    // heading, the view's, whose title changes from the form's (term.recovery_codes) to codes_new_title, so ViewFrame focuses it.
+    expect(views.match(/headingLevel=\{5\}/g)).toHaveLength(1);
+    expect(views).toMatch(/title=\{tr\('security\.codes_new_title'\)\}[\s\S]*?showHeading=\{false\}/);
+    expect(views).toMatch(/<ViewFrame t=\{t\} title=\{tr\('term\.recovery_codes'\)\} onBack=\{onBack\}>/);
     expect(read('components', 'auth', 'TwoFactorEnrolment.tsx')).toContain(
       '<RecoveryCodesPanel t={t} codes={codes} onDone={onDone} headingLevel={headingLevel} />'
     );

@@ -1,9 +1,28 @@
 import React from 'react';
-import { CircleAlert } from 'lucide-react';
+import { Ban, CircleAlert, Clock, ExternalLink, ShieldCheck, ShieldOff } from 'lucide-react';
 import type { ThemeTokens } from '../../theme';
-import { adminErrorText } from '../../lib/admin/types';
+import { adminErrorText, type AdminUser } from '../../lib/admin/types';
 import { useT } from '../../lib/i18n';
-import { Banner, Button, Dialog } from '../../ui';
+import { Badge, Banner, Button, Dialog, Disclosure, DisclosurePanel, VisuallyHidden } from '../../ui';
+
+/**
+ * A long text that is there for whoever wants it (the full statement of what admins can and cannot do): a quiet disclosure with `label`,
+ * the text in a panel under it, closed at first.
+ */
+export const MoreText: React.FC<{ label: string; text: string }> = ({ label, text }) => {
+  const [open, setOpen] = React.useState(false);
+  const panelId = React.useId();
+  return (
+    <div className="ad-more">
+      <Disclosure open={open} onOpenChange={setOpen} controls={panelId} look="button" className="ad-toggle">
+        {label}
+      </Disclosure>
+      <DisclosurePanel id={panelId} open={open}>
+        <p className="ad-muted">{text}</p>
+      </DisclosurePanel>
+    </div>
+  );
+};
 
 /** The visible account avatar (the one that opens Settings), if there is one on screen. */
 function accountButton(): HTMLElement | null {
@@ -30,6 +49,125 @@ export const ErrorText: React.FC<{ id?: string; children: React.ReactNode }> = (
     <span>{children}</span>
   </p>
 );
+
+/** Where an account stands: in use, made but never signed into (on its temporary password), or turned off by an admin. */
+export type PersonState = 'active' | 'pending' | 'disabled';
+
+export function personState(user: AdminUser): PersonState {
+  if (user.status === 'disabled') {
+    return 'disabled';
+  }
+  return user.never_signed_in ? 'pending' : 'active';
+}
+
+/**
+ * A state in words after a 14px icon, never a pill, so every value of a column starts its text at the same edge. `tone` colours an
+ * exception (the words and the icon say it too).
+ */
+const StateWord: React.FC<{ icon: React.ReactNode; tone?: 'warning' | 'danger'; children: React.ReactNode }> = ({
+  icon,
+  tone,
+  children
+}) => (
+  <span className="ad-plain" data-tone={tone}>
+    <span className="ad-state-icon" aria-hidden="true">
+      {icon}
+    </span>
+    {children}
+  </span>
+);
+
+/**
+ * The status of an account in words. The usual case, an account in use, is quiet text after a small neutral dot; an exception has its
+ * icon and colour: Not signed in (warning) and Disabled (danger).
+ */
+export const PersonStatus: React.FC<{ user: AdminUser }> = ({ user }) => {
+  const tr = useT();
+  switch (personState(user)) {
+    case 'active': {
+      return <StateWord icon={<span className="ad-dot" />}>{tr('users.status_active')}</StateWord>;
+    }
+    case 'pending': {
+      return (
+        <StateWord icon={<Clock size={14} />} tone="warning">
+          {tr('users.filter_pending')}
+        </StateWord>
+      );
+    }
+    case 'disabled': {
+      return (
+        <StateWord icon={<Ban size={14} />} tone="danger">
+          {tr('users.status_disabled')}
+        </StateWord>
+      );
+    }
+  }
+};
+
+/**
+ * Whether the account has two-factor sign-in. On is quiet; Off is a warning on an account someone can sign in to (a disabled one is
+ * quiet). `short`: "On" or "Off" under the column header of a
+ * table; the whole phrase where nothing names the column (the stacked rows of a phone, the person's dialog).
+ */
+export const PersonTwoFactor: React.FC<{ user: AdminUser; short?: boolean }> = ({ user, short = false }) => {
+  const tr = useT();
+  // Off is a warning on any account that is not disabled.
+  const exposed = !user.two_factor && personState(user) !== 'disabled';
+  const long = tr(user.two_factor ? 'users.two_factor_is_on' : 'users.two_factor_is_off');
+  return (
+    <StateWord icon={user.two_factor ? <ShieldCheck size={14} /> : <ShieldOff size={14} />} tone={exposed ? 'warning' : undefined}>
+      {short ? (
+        <>
+          <span className="ad-wide">{tr(user.two_factor ? 'users.two_factor_on' : 'users.two_factor_off')}</span>
+          <span className="ad-narrow">{long}</span>
+        </>
+      ) : (
+        long
+      )}
+    </StateWord>
+  );
+};
+
+/** The role of an account, the same pill for both roles so their words line up; an admin's pill is a step stronger. */
+export const PersonRole: React.FC<{ user: AdminUser }> = ({ user }) => {
+  const tr = useT();
+  return user.role === 'admin' ? <Badge className="ad-role-admin">{tr('term.admin')}</Badge> : <Badge>{tr('term.member')}</Badge>;
+};
+
+/**
+ * The head of a section of the console: its title (the h2 under the console's h1), one line that says what the section is for, and on the
+ * right the section's one primary action.
+ */
+export const PageHead: React.FC<{ title: string; description: string; action?: React.ReactNode }> = ({ title, description, action }) => (
+  <div className="ad-page-head">
+    <div className="ad-page-heading">
+      <h2 className="ad-page-title">{title}</h2>
+      <p className="ad-page-desc">{description}</p>
+    </div>
+    {action === undefined ? null : <div className="ad-page-action">{action}</div>}
+  </div>
+);
+
+/** The Cloudflare dashboard: the setup of a domain is done there, not in this app. */
+const DASHBOARD_URL = 'https://dash.cloudflare.com/';
+
+/**
+ * A link that opens the Cloudflare dashboard in a new tab (said by its icon, and in words to screen readers), with the way to the page
+ * inside it after the link (`path`: "Compute → Email Service → Email Sending"): the dashboard has no stable address for a page of one zone.
+ */
+export const DashboardLink: React.FC<{ path?: string }> = ({ path }) => {
+  const tr = useT();
+  return (
+    <p className="ad-dash">
+      <a href={DASHBOARD_URL} target="_blank" rel="noopener noreferrer" className="ad-ext">
+        {tr('domains.open_dashboard')}
+        <ExternalLink size={13} aria-hidden="true" />
+        <VisuallyHidden>{tr('domains.new_tab')}</VisuallyHidden>
+      </a>
+      {path === undefined ? null : <span className="ad-dash-path">{path}</span>}
+    </p>
+  );
+};
 
 /** A list that could not be loaded at all: the reason, and Try again. */
 export const LoadError: React.FC<{ error: unknown; onRetry: () => void }> = ({ error, onRetry }) => {
@@ -58,6 +196,10 @@ interface ModalFrameProps {
   maxWidth?: number;
   /** Role "alertdialog" for a dialog that asks before something that cannot be undone. */
   alert?: boolean;
+  /** False hides the X of the title bar (a temporary password not copied yet: a dead X that looks live says nothing). */
+  closeButton?: boolean;
+  /** The id of the part of the content a screen reader reads when the dialog opens: the warning of a deletion (J1-26). */
+  describedBy?: string;
 }
 
 /**
@@ -74,7 +216,16 @@ const FIRST_CONTROL = '[data-autofocus], input:not([disabled]), textarea:not([di
  * never nested, so Escape and Tab only ever act on the one on top. A control inside answers Escape first: the confirmation of the person
  * dialog takes itself back before the dialog closes (D-6).
  */
-export const ModalFrame: React.FC<ModalFrameProps> = ({ title, onClose, children, locked = false, maxWidth = 480, alert = false }) => {
+export const ModalFrame: React.FC<ModalFrameProps> = ({
+  title,
+  onClose,
+  children,
+  locked = false,
+  maxWidth = 480,
+  alert = false,
+  closeButton = true,
+  describedBy
+}) => {
   const firstRef = React.useRef<HTMLElement | null>(null);
   // Looked up as soon as the panel is in the page, so it is ready when ui/Dialog's effect gives the focus.
   const findFirst = React.useCallback((panel: HTMLDivElement | null) => {
@@ -87,8 +238,10 @@ export const ModalFrame: React.FC<ModalFrameProps> = ({ title, onClose, children
       open
       onClose={onClose}
       closeDisabled={locked}
+      closeButton={closeButton}
       title={title}
       role={alert ? 'alertdialog' : 'dialog'}
+      describedBy={describedBy}
       width={maxWidth}
       className="nm-admin ad-dialog"
       ref={findFirst}

@@ -54,13 +54,26 @@ export function Section({ className, children, ...header }: SectionProps): React
 interface CardProps extends SectionProps {
   /** `none` when the content is a table or a list that runs to the edges. */
   padding?: 'md' | 'none';
+  /**
+   * The whole card is one link or button (a domain card that opens its page): it lifts 2 px with a deeper shadow on hover. Put the link or
+   * button inside; never on a card that only holds controls, and never on message rows.
+   */
+  interactive?: boolean;
 }
 
-/** A bordered surface (hairline, 8 px corners) for one self-contained thing: an account, a domain, a form. Do not put a Card in a Card. */
-export function Card({ className, padding = 'md', children, ...header }: CardProps): React.ReactElement {
+/**
+ * A bordered surface (hairline, 8 px corners, a small shadow and the inset highlight of the site's cards) for one self-contained thing: an
+ * account, a domain, a form, a security status. Do not put a Card in a Card.
+ */
+export function Card({ className, padding = 'md', interactive = false, children, ...header }: CardProps): React.ReactElement {
   const titleId = React.useId();
   return (
-    <section className={cx('ui-card', className)} data-padding={padding} aria-labelledby={has(header.title) ? titleId : undefined}>
+    <section
+      className={cx('ui-card', className)}
+      data-padding={padding}
+      data-interactive={interactive ? 'true' : undefined}
+      aria-labelledby={has(header.title) ? titleId : undefined}
+    >
       <SectionHeader titleId={titleId} {...header} />
       {children}
     </section>

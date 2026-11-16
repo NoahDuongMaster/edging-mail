@@ -1,28 +1,93 @@
 import React from 'react';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, type LucideIcon } from 'lucide-react';
 import type { ThemeTokens } from '../../theme';
 import { useT } from '../../lib/i18n';
-import { Banner, Button, TextField } from '../../ui';
-import { AuthButton, ErrorLine } from '../auth/authUi';
+import { Banner, Button, Card, TextField } from '../../ui';
+import { SecretField } from '../PasswordField';
+import { AuthButton, AuthSteps, ErrorLine, type AuthStep } from '../auth/authUi';
 import { sixDigits } from '../auth/TwoFactorEnrolment';
 import '../settings/settings.css';
 
-// The small pieces the views of the Security section share: a frame with a Back button and the name of the action, the fields for a
-// password and a six-digit code (ui/TextField), the closing line of a finished action and the last failure. The look is in settings.css
-// (`st-view*`); the steps shown once (the recovery key, the codes, the enrolment) come from auth/ and look the same here as there.
+// The small pieces the views of the Security section share: the status card of the overview, a frame with a Back button and the name of
+// the action, the fields for a password and a six-digit code, the closing line of a finished action and the last failure. The look is in
+// settings.css (`st-status*`, `st-view*`); the steps shown once (the recovery key, the codes, the enrolment) come from auth/ and look the
+// same here as there.
 
 export const CODE_LENGTH = 6;
+
+interface StatusRowProps {
+  /** Prefix of the ids: the title is `${id}-label`. */
+  id: string;
+  icon: LucideIcon;
+  title: string;
+  /** A Badge after the title: the state in a word (On, Off, Saved, a count). */
+  status?: React.ReactNode;
+  /** Plain lines under the title (each one different): what it is for. */
+  lines: readonly string[];
+  /** Facts about its state (a date, a device), quieter and in tabular figures under the lines. */
+  facts?: readonly string[];
+  /** The action (one, two at most), at the right; under the text in a narrow card. */
+  children?: React.ReactNode;
+}
+
+/** No facts (one array for every row without any, so the default prop is stable). */
+const NO_FACTS: readonly string[] = [];
+
+/**
+ * One thing of the account's security on the overview: a row of the one Security card (StatusList), divided from the next by a hairline:
+ * a small bare icon, its name and state, a line or two, and what can be done about it on the right.
+ */
+export const StatusRow: React.FC<StatusRowProps> = ({ id, icon: Icon, title, status, lines, facts = NO_FACTS, children }) => (
+  // Read in order: the title and its status, what it means, then the action; settings.css puts the action at the right of the text and
+  // under it in a narrow card, so a short action never squeezes the text into a narrow column.
+  <div className="st-status-row">
+    <Icon size={16} strokeWidth={1.75} aria-hidden="true" className="st-status-icon" />
+    <div className="st-status-top">
+      <h4 id={`${id}-label`} className="st-status-title">
+        {title}
+      </h4>
+      {status}
+    </div>
+    {lines.length === 0 && facts.length === 0 ? null : (
+      <div className="st-status-lines">
+        {lines.map((line) => (
+          <p key={line} className="st-muted">
+            {line}
+          </p>
+        ))}
+        {facts.map((fact) => (
+          <p key={fact} className="st-status-fact">
+            {fact}
+          </p>
+        ))}
+      </div>
+    )}
+    {children === undefined ? null : <div className="st-status-actions">{children}</div>}
+  </div>
+);
+
+/** The one card of the Security overview: its rows (StatusRow) under each other, hairlines between (J3-09: no card per row). */
+export const StatusList: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  // .st-cards is the container whose width puts the actions under the text in a narrow card (settings.css).
+  <div className="st-cards">
+    <Card padding="none" className="st-status-list">
+      {children}
+    </Card>
+  </div>
+);
 
 interface ViewFrameProps {
   t: ThemeTokens;
   title: string;
   /** null where the view brings its own way out (a Cancel under a recovery key, a Back under a result). */
   onBack: (() => void) | null;
+  /** Where this view is in a flow of several (turning on two-factor sign-in: password, app, codes): "Step 2 of 3" over the title. */
+  step?: AuthStep;
   children: React.ReactNode;
 }
 
-/** What replaces the rows of the section while one action is open: a Back button, the name of the action, and the action itself. */
-export const ViewFrame: React.FC<ViewFrameProps> = ({ title, onBack, children }) => {
+/** What replaces the cards of the section while one action is open: a Back button above, the name of the action, and the action itself. */
+export const ViewFrame: React.FC<ViewFrameProps> = ({ title, onBack, step, children }) => {
   const tr = useT();
   const heading = React.useRef<HTMLHeadingElement>(null);
   const first = React.useRef(title);
@@ -34,22 +99,23 @@ export const ViewFrame: React.FC<ViewFrameProps> = ({ title, onBack, children })
   }, [title]);
   return (
     <div className="st-view">
-      <div className="st-view-head">
-        {onBack === null ? null : (
-          <Button variant="ghost" size="md" leadingIcon={<ChevronLeft size={16} aria-hidden="true" />} onClick={onBack}>
+      {onBack === null ? null : (
+        <div className="st-view-back">
+          <Button variant="ghost" size="sm" leadingIcon={<ChevronLeft size={16} aria-hidden="true" />} onClick={onBack}>
             {tr('common.back')}
           </Button>
-        )}
-        <h4 ref={heading} tabIndex={-1} className="st-view-title st-focus-title">
-          {title}
-        </h4>
-      </div>
+        </div>
+      )}
+      {step === undefined ? null : <AuthSteps current={step.current} total={step.total} />}
+      <h4 ref={heading} tabIndex={-1} className="st-view-title st-focus-title">
+        {title}
+      </h4>
       {children}
     </div>
   );
 };
 
-/** What an action says when it worked, and the way back to the rows. */
+/** What an action says when it worked, and the way back to the cards. */
 export const DoneNote: React.FC<{ t: ThemeTokens; text: string; onBack: () => void }> = ({ t, text, onBack }) => {
   const tr = useT();
   return (
@@ -84,6 +150,8 @@ interface PasswordInputProps {
   value: string;
   onChange: (value: string) => void;
   autoComplete?: 'current-password' | 'new-password';
+  /** The name of the Show button when the form has several password fields ('Show current password'); 'Show password' by default. */
+  showLabel?: string;
   invalid?: boolean;
   describedBy?: string;
   /** What is missing, as an alert under the field (`${id}-error`). A form that uses it always passes it (null while nothing is missing), so the
@@ -113,7 +181,10 @@ const WithError: React.FC<{ t: ThemeTokens; id: string; error: string | null | u
 const describedIds = (id: string, describedBy: string | undefined, error: string | null | undefined): string | undefined =>
   showsError(error) ? [describedBy, `${id}-error`].filter((ref) => ref !== undefined).join(' ') : describedBy;
 
-/** A password typed into a plain field: it is handed to a function by the screen and never kept anywhere else. */
+/**
+ * A password typed into a masked field with a Show button (SecretField, WCAG 3.3.8: what was typed or pasted can be checked); paste and
+ * password managers work. It is handed to a function by the screen and never kept anywhere else.
+ */
 export const PasswordInput: React.FC<PasswordInputProps> = ({
   t,
   id,
@@ -121,21 +192,19 @@ export const PasswordInput: React.FC<PasswordInputProps> = ({
   value,
   onChange,
   autoComplete = 'current-password',
+  showLabel,
   invalid = false,
   describedBy,
   error
 }) => (
   <WithError t={t} id={id} error={error}>
-    <TextField
+    <SecretField
       id={id}
       label={label}
-      type="password"
+      showLabel={showLabel}
       value={value}
       onChange={(event) => onChange(event.target.value)}
       autoComplete={autoComplete}
-      autoCapitalize="none"
-      autoCorrect="off"
-      spellCheck={false}
       aria-invalid={invalid || showsError(error)}
       aria-describedby={describedIds(id, describedBy, error)}
     />

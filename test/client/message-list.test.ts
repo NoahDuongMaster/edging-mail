@@ -85,7 +85,7 @@ describe('the desktop list', () => {
     expect(tagOf(rows[0], 'ml-row')).not.toContain('aria-current');
   });
 
-  it('shows the sender (or the bare address), the subject, the preview, the paperclip and the label chip in one row, with no avatar', () => {
+  it('shows the avatar, the sender (or the bare address), the subject, the preview, the paperclip and the label chip in one row', () => {
     expect(html).toContain('Dana Whitfield');
     expect(html).toContain('noreply@example.org');
     expect(html).toContain('Quarterly plan');
@@ -94,7 +94,22 @@ describe('the desktop list', () => {
     expect(html).toMatch(
       /<span class="ui-chip" data-kind="label" style="[^"]*"><span aria-hidden="true" class="ui-chip-dot"[^>]*><\/span><span class="ui-chip-text">Work<\/span>/
     );
+    // The avatar is the library's neutral initials tile, hidden from screen readers (the name is written beside it), never a hue per
+    // person; the open row's sender takes the accent tint.
+    const avatars = [...html.matchAll(/<span class="ui-avatar ml-avatar"[^>]*>([^<]*)<\/span>/g)];
+    expect(avatars.map((match) => match[1])).toEqual(['DW', 'N']);
+    expect(avatars[0][0]).toContain('aria-hidden="true"');
+    expect(avatars[0][0]).not.toContain('data-selected');
+    expect(avatars[1][0]).toContain('data-selected="true"');
     expect(html).not.toMatch(/border-radius:\s*50%/);
+  });
+
+  it('says only the clock time under a day heading (no second "Yesterday"), the day word where the group is another time', () => {
+    const yesterday = NOW - 86_400_000;
+    const listed = render({ messages: [mail({ id: 'y', created_at: yesterday, updated_at: yesterday })] });
+    expect(listed).toContain(`<h2 class="ml-group-title">${tr('list.group_yesterday')}</h2>`);
+    expect(listed).toMatch(/<span class="ml-time">[^<]*\d[^<]*<\/span>/);
+    expect(listed).not.toMatch(new RegExp(`class="ml-time">${tr('time.yesterday')}</span>`));
   });
 
   it('puts a star button beside each row: pressed when starred, named after the sender', () => {
@@ -105,18 +120,52 @@ describe('the desktop list', () => {
     expect(stars[1]).toContain('aria-pressed="false"');
   });
 
-  it('offers All, Unread and Attachments as toggle buttons (a ui SegmentedControl in toggle mode), the current one pressed', () => {
-    expect(html).toMatch(new RegExp(`<div role="group" aria-label="${tr('list.filter_label')}" class="ui-seg"`));
-    const filters = [...html.matchAll(/<button[^>]*class="ui-seg-item"[^>]*aria-pressed="(true|false)"[^>]*>/g)];
-    expect(filters.map((match) => match[1])).toEqual(['true', 'false', 'false']);
+  it('offers All, Unread, Starred and Attachments as one radio group (one Tab stop, the arrows choose; J1-10), the same four as a phone', () => {
+    expect(html).toMatch(new RegExp(`<div role="radiogroup" aria-label="${tr('list.filter_label')}" class="ui-seg`));
+    const filters = [
+      ...html.matchAll(/<button[^>]*role="radio"[^>]*class="ui-seg-item"[^>]*aria-checked="(true|false)"[^>]*tabindex="(0|-1)"/g)
+    ];
+    expect(filters.map((match) => match[1])).toEqual(['true', 'false', 'false', 'false']);
+    expect(filters.map((match) => match[2])).toEqual(['0', '-1', '-1', '-1']);
     expect(html).toContain(tr('list.filter_unread'));
+    expect(html).toContain(`>${tr('folder.starred')}<`);
     expect(html).toContain(tr('term.attachments'));
-    expect(html).not.toContain(`>${tr('folder.starred')}<`);
+    expect(html).not.toMatch(/aria-pressed="(true|false)"[^>]*class="ui-seg-item"|class="ui-seg-item"[^>]*aria-pressed/);
   });
 
   it('is not the phone board: no swipe wrapper, a heading, no compact mark', () => {
     expect(html).not.toContain('ml-swipe');
     expect(tagOf(html, 'ml-root')).not.toContain('data-compact');
+  });
+});
+
+/** The accessible names of the quick actions of every row, in order. */
+const quickNames = (html: string): string[] =>
+  [...html.matchAll(/<div class="ml-quick">([\s\S]*?)<\/div><\/div><\/li>/g)].flatMap((match) =>
+    [...match[1].matchAll(/aria-label="([^"]+)"/g)].map((label) => label[1])
+  );
+
+describe('the quick actions of a desktop row', () => {
+  const actions = { archive: noop, trash: noop, restore: noop, deleteForever: noop, toggleRead: noop, snooze: noop, unsnooze: noop };
+  const names = quickNames;
+
+  it('offers Archive, Move to Trash, Mark as read/unread and Snooze, labelled, in every Inbox row', () => {
+    const html = render({ rowActions: actions, messages: [mail({ id: 'u', is_read: 0 }), mail({ id: 'r', is_read: 1 })] });
+    expect((html.match(/class="ml-quick"/g) ?? []).length).toBe(2);
+    const labels = names(html);
+    expect(labels.slice(0, 4)).toEqual([tr('action.archive'), tr('action.move_to_trash'), tr('action.mark_read'), tr('action.snooze')]);
+    expect(labels.slice(4)).toEqual([tr('action.archive'), tr('action.move_to_trash'), tr('action.mark_unread'), tr('action.snooze')]);
+  });
+
+  it('offers Move to Inbox and Delete forever in Trash (no Snooze), and nothing without actions or in Drafts', () => {
+    const trash = render({ rowActions: actions, folder: 'trash', title: 'Trash', messages: [mail({ folder: 'trash' })] });
+    expect(names(trash)).toEqual([tr('action.move_to_inbox'), tr('action.delete_forever'), tr('action.mark_unread')]);
+    expect(render({ messages: [mail()] })).not.toContain('ml-quick');
+    expect(render({ rowActions: actions, isDrafts: true, folder: 'drafts', messages: [mail()] })).not.toContain('ml-quick');
+  });
+
+  it('is never on the phone board (rows swipe there)', () => {
+    expect(render({ rowActions: actions, compact: true, messages: [mail()] })).not.toContain('ml-quick');
   });
 });
 
@@ -177,6 +226,10 @@ describe('the phone board', () => {
   it('turns the swipe off when the folder cannot archive', () => {
     expect(render({ compact: true, messages: [mail()] })).not.toContain('data-swipeable');
   });
+
+  it('swipes when either way is open (a folder that can only move to Trash still swipes)', () => {
+    expect(render({ compact: true, onSwipeTrash: noop, messages: [mail()] })).toContain('data-swipeable="true"');
+  });
 });
 
 describe('the states of an empty list', () => {
@@ -201,11 +254,16 @@ describe('the states of an empty list', () => {
     expect(html).not.toContain('/edgar.svg');
   });
 
-  it('says the search or the filter found nothing, without Edgar', () => {
+  it('says the search or the filter found nothing, without Edgar, and offers to clear the search', () => {
     const searched = render({ searchQuery: 'zebra' });
     expect(searched).toContain(tr('list.no_results', { query: 'zebra' }));
     expect(searched).toContain(tr('list.try_other_search'));
     expect(searched).not.toContain('/edgar.svg');
+    expect(searched).not.toContain(tr('app.clear_search'));
+    // ONE Clear control (J6-37): the head's (with the scope switch); the empty state only offers to look in all mail.
+    const cleared = render({ searchQuery: 'zebra', onClearSearch: noop, onScopeChange: noop });
+    expect(cleared.match(new RegExp(`<button[^>]*>${tr('app.clear_search')}</button>`, 'g'))).toHaveLength(1);
+    expect(cleared).toMatch(new RegExp(`<button[^>]*>${tr('list.search_all')}</button>`));
     const filtered = render({ filter: 'unread' });
     expect(filtered).toContain(tr('list.no_match'));
     expect(filtered).toContain(tr('list.hint_switch_all'));
@@ -241,10 +299,12 @@ describe('Load more', () => {
 describe('the Snoozed folder', () => {
   const until = NOW + 3 * 3_600_000;
   const snoozed = mail({ id: 's', folder: 'snoozed', snoozed_until: until });
+  // Late in the evening, three hours from now is tomorrow: the heading follows the calendar day of the wake time.
+  const wakesToday = new Date(until).toDateString() === new Date(NOW).toDateString();
 
   it('groups by the day the mail comes back and shows its wake time as a chip in the row', () => {
     const html = render({ isSnoozed: true, folder: 'snoozed', title: 'Snoozed', messages: [snoozed] });
-    expect(html).toContain(`<h2 class="ml-group-title">${tr('list.group_today')}</h2>`);
+    expect(html).toContain(`<h2 class="ml-group-title">${tr(wakesToday ? 'list.group_today' : 'list.group_tomorrow')}</h2>`);
     expect(html).toContain('data-kind="plain"');
     expect(html).not.toContain('data-bare');
   });
@@ -260,10 +320,10 @@ describe('the Snoozed folder', () => {
 describe('SnoozeMenu and SnoozeChip', () => {
   const props = { t: getTokens(false), buttonStyle: { width: 40 }, onSnooze: noop, onUnsnooze: noop };
 
-  it('renders a closed menu button named Snooze, that says it opens a menu and is not expanded', () => {
+  it('renders a closed Snooze button that says it opens a small dialog (the choices hold a date field) and is not expanded', () => {
     const html = renderToStaticMarkup(createElement(SnoozeMenu, { ...props, snoozed: false }));
     expect(html).toContain(`aria-label="${tr('action.snooze')}"`);
-    expect(html).toContain('aria-haspopup="menu"');
+    expect(html).toContain('aria-haspopup="dialog"');
     expect(html).toContain('aria-expanded="false"');
     expect(html).toContain('width:40px');
     expect(html).not.toContain('role="menu"');
@@ -287,5 +347,55 @@ describe('SnoozeMenu and SnoozeChip', () => {
     );
     expect(bare).toContain('data-bare="true"');
     expect(bare).toContain('data-selected="true"');
+  });
+});
+
+describe('multi-select and the row names (J6-26, J1-20)', () => {
+  const rows = [mail({ id: 'a', is_read: 0, has_attachments: 1, labels: '["Work"]' }), mail({ id: 'b', from_name: 'Lee Park' })];
+
+  it('names a row by its summary (its content without the preview: 2.5.3 holds) and describes it by its preview', () => {
+    const html = render({ messages: rows });
+    const button = /<button type="button" class="ml-row"[^>]*>/.exec(html)?.[0] ?? '';
+    // No aria-label(ledby): the name comes from the content, in the order it is seen; the preview is hidden from it.
+    expect(button).not.toMatch(/aria-label/);
+    const described = /aria-describedby="([^"]+)"/.exec(button)?.[1] ?? '';
+    expect(html).toMatch(new RegExp(`<span id="${described}" aria-hidden="true" class="ml-preview">Meet at the harbour on Friday</span>`));
+    expect(html).toContain(`<span class="ui-visually-hidden">${tr('list.unread_sr')}</span>`);
+  });
+
+  it('puts a labelled box in every desktop row (not a Tab stop) once the list can select, and none in Drafts', () => {
+    const html = render({ messages: rows, onSelectionChange: noop });
+    expect(html.match(/class="ui-check ml-check"/g)).toHaveLength(2);
+    expect(html).toContain(tr('list.select_message', { sender: 'Lee Park' }));
+    expect(html).toMatch(/<input[^>]*tabindex="-1"[^>]*type="checkbox"|<input[^>]*type="checkbox"[^>]*tabindex="-1"/);
+    expect(render({ messages: rows })).not.toContain('ml-check');
+    expect(render({ messages: rows, onSelectionChange: noop, isDrafts: true, folder: 'drafts' })).not.toContain('ml-check');
+  });
+
+  it('marks the ticked rows, says "Selected" in their name, and shows the selection bar in place of the head', () => {
+    const html = render({ messages: rows, onSelectionChange: noop, selection: new Set(['b']), selectionBar: '<BAR>' });
+    expect(html).toContain('data-selecting="true"');
+    expect(html.match(/data-checked="true"/g)).toHaveLength(1);
+    expect(html).toContain(tr('list.selected_sr'));
+    expect(html).toContain('&lt;BAR&gt;');
+    expect(html).toMatch(/<h1 id="list-title" class="ui-visually-hidden">Inbox<\/h1>/);
+    expect(html).not.toContain('class="ml-heading"');
+  });
+
+  it('on the phone board: the avatar becomes a round tick, the row a toggle (aria-pressed), and no swipe while selecting', () => {
+    const html = render({ messages: rows, compact: true, onSwipeArchive: noop, onSelectionChange: noop, selection: new Set(['a']) });
+    expect(html.match(/class="ml-pick"/g)).toHaveLength(2);
+    expect(html).toContain('aria-pressed="true"');
+    expect(html).toContain('aria-pressed="false"');
+    expect(html).not.toContain('data-swipeable');
+    expect(html).not.toContain('ml-avatar');
+  });
+
+  it("starts a search result's preview a few words before the match, marked (J6-32)", () => {
+    const long = mail({
+      snippet: 'The quarterly numbers are in and the plan is ready, so we can meet with Maya on Friday to go through it.'
+    });
+    const html = render({ messages: [long], searchQuery: 'maya' });
+    expect(html).toMatch(/…[^<]*with <mark class="ml-hit">Maya<\/mark>/);
   });
 });

@@ -8,8 +8,7 @@ import { contextWords } from '../../lib/password/policy';
 import { usePasswordCheck } from '../../lib/password/usePasswordCheck';
 import { useAction } from '../../lib/useAction';
 import { useCountdown } from '../../lib/useCountdown';
-import { TextField } from '../../ui';
-import { PasswordField } from '../PasswordField';
+import { PasswordField, SecretField } from '../PasswordField';
 import { AuthButton, ErrorLine } from '../auth/authUi';
 import { DoneNote, Failure, PasswordInput, ViewFrame } from './securityUi';
 
@@ -71,14 +70,14 @@ export const ChangePasswordView: React.FC<ChangePasswordViewProps> = ({ t, user,
 
   if (done) {
     return (
-      <ViewFrame t={t} title={tr('term.password')} onBack={null}>
+      <ViewFrame t={t} title={tr('security.change_password')} onBack={null}>
         <DoneNote t={t} text={tr('security.password_changed')} onBack={onBack} />
       </ViewFrame>
     );
   }
 
   return (
-    <ViewFrame t={t} title={tr('term.password')} onBack={onBack}>
+    <ViewFrame t={t} title={tr('security.change_password')} onBack={onBack}>
       <form
         noValidate
         onSubmit={(event) => {
@@ -86,6 +85,7 @@ export const ChangePasswordView: React.FC<ChangePasswordViewProps> = ({ t, user,
         }}
         className="st-view-form"
       >
+        <p className="st-lead">{tr('security.password_note')}</p>
         {/* A visually hidden copy of the address, so a password manager updates the right entry. Not a secret. */}
         <input
           type="text"
@@ -101,6 +101,7 @@ export const ChangePasswordView: React.FC<ChangePasswordViewProps> = ({ t, user,
           t={t}
           id="security-current"
           label={tr('security.current_password')}
+          showLabel={tr('password.show_current')}
           value={current}
           onChange={setCurrent}
           invalid={action.error !== null}
@@ -117,16 +118,13 @@ export const ChangePasswordView: React.FC<ChangePasswordViewProps> = ({ t, user,
           submitted={submitted}
         />
         <div className="au-row">
-          <TextField
+          <SecretField
             id="security-repeat"
             label={tr('gate.repeat_password')}
-            type="password"
+            showLabel={tr('password.show_repeat')}
             value={repeat}
             onChange={(event) => setRepeat(event.target.value)}
             autoComplete="new-password"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
             aria-invalid={mismatch}
             aria-describedby={mismatch ? 'security-mismatch' : undefined}
           />
@@ -136,7 +134,6 @@ export const ChangePasswordView: React.FC<ChangePasswordViewProps> = ({ t, user,
         <div>
           <AuthButton t={t} busy={action.busy} disabled={wait > 0} label={tr('security.change_password')} />
         </div>
-        <p className="st-muted">{tr('security.password_note')}</p>
       </form>
     </ViewFrame>
   );

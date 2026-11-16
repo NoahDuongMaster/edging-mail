@@ -1,0 +1,32 @@
+/* The type tile of a file (components/FileTypeTile.tsx), shared by the reader's attachment cards and the compose's file chips (J3-15):
+   the type's hue from the theme (--type-bg / --type-fg, set by the component), as it is in the light theme; in the dark theme a quarter of
+   the hue over --raised with a hairline of the same hue, so "red PDF" and "green sheet" read on the raised card without a muddy badge. */
+
+.ft-tile {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-control);
+  background: var(--type-bg);
+  color: var(--type-fg);
+  font-size: 10px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.ft-tile[data-size='sm'] {
+  width: 34px;
+  height: 34px;
+  line-height: 12px;
+}
+/* Four letters (XLSX, DOCX) are set a step smaller so they keep the margin three have. */
+.ft-tile[data-long] {
+  font-size: 9px;
+}
+:root[data-theme='dark'] .ft-tile {
+  background: color-mix(in oklab, var(--type-fg) 24%, var(--raised));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--type-fg) 34%, transparent);
+}

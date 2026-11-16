@@ -3,10 +3,53 @@ import { Eye, EyeOff, Wand2 } from 'lucide-react';
 import type { ThemeTokens } from '../theme';
 import { useT } from '../lib/i18n';
 import { levelLabel, meterValueText, problemMessages, rulesText } from '../lib/password/messages';
+import { ADMIN_MIN_LENGTH } from '../lib/password/policy';
 import { PASSPHRASE_WORDS, generatePassphrase } from '../lib/password/random';
 import type { PasswordCheck } from '../lib/password/usePasswordCheck';
 import { Button, IconButton, Spinner, TextField } from '../ui';
+import type { TextFieldProps } from '../ui';
 import './auth/auth.css';
+
+export type SecretFieldProps = Omit<TextFieldProps, 'type' | 'trailing'> & {
+  /**
+   * The name of the Show button: 'Show password' by default; a setup key says 'Show key', and a form with several password fields names
+   * each after its field ('Show new password', 'Show repeated password', 'Show current password': 2.4.6, J1-14).
+   */
+  showLabel?: string;
+  /** Controlled: whether the text is shown (the generated passphrase shows itself). Uncontrolled when absent. */
+  shown?: boolean;
+  onShownChange?: (shown: boolean) => void;
+};
+
+/**
+ * A field for a password, a setup key or any secret the person types: masked, with a Show button inside its right edge (WCAG 3.3.8: what
+ * was typed or pasted can be checked before it is sent, without a puzzle). The button keeps one name and says its state with
+ * `aria-pressed`. Paste and password managers work: the `autoComplete` the caller gives says which (current-password, new-password, off).
+ */
+export function SecretField({ showLabel, shown: controlled, onShownChange, disabled, ...field }: SecretFieldProps): React.ReactElement {
+  const tr = useT();
+  const [own, setOwn] = React.useState(false);
+  const shown = controlled ?? own;
+  const toggle = () => {
+    setOwn(!shown);
+    onShownChange?.(!shown);
+  };
+  return (
+    <TextField
+      autoCapitalize="none"
+      autoCorrect="off"
+      spellCheck={false}
+      {...field}
+      disabled={disabled}
+      type={shown ? 'text' : 'password'}
+      trailing={
+        <IconButton label={showLabel ?? tr('password.show')} size="sm" pressed={shown} disabled={disabled} onClick={toggle}>
+          {shown ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+        </IconButton>
+      }
+    />
+  );
+}
 
 interface PasswordFieldProps {
   t: ThemeTokens;
@@ -29,7 +72,7 @@ type Tone = 'danger' | 'warning' | 'success' | undefined;
 /** The colour of the filled segments: weak is red, fair is amber, good and strong are green. The words under the bar say the same. */
 const meterTone = (level: number): Tone => (level <= 1 ? 'danger' : level === 2 ? 'warning' : 'success');
 
-/** A password input with a show/hide button, a strength bar and the reason a password is refused. Used on every screen that sets one. */
+/** A new password: a SecretField with a strength bar and the reason a password is refused. Used on every screen that sets one. */
 export const PasswordField: React.FC<PasswordFieldProps> = ({
   id,
   label,
@@ -74,7 +117,7 @@ export const PasswordField: React.FC<PasswordFieldProps> = ({
     );
   } else if (missing) {
     statusTone = 'danger';
-    status = `${tr('password.required')} ${rulesText()}`;
+    status = `${tr('password.required')} ${rulesText(check.role === 'admin' ? ADMIN_MIN_LENGTH : undefined)}`;
   } else if (assessment === null) {
     status = (
       <>
@@ -91,33 +134,21 @@ export const PasswordField: React.FC<PasswordFieldProps> = ({
 
   return (
     <div className="au-pw">
-      <TextField
+      <SecretField
         id={id}
         label={label}
-        type={shown ? 'text' : 'password'}
+        showLabel={tr('password.show_new')}
         autoComplete="new-password"
-        autoCapitalize="none"
-        autoCorrect="off"
-        spellCheck={false}
         value={value}
         disabled={disabled}
+        shown={shown}
+        onShownChange={setShown}
         onChange={(e) => {
           onChange(e.target.value);
           setSuggested(false);
         }}
         aria-invalid={refused || missing}
         aria-describedby={`${id}-status${describedBy === undefined ? '' : ` ${describedBy}`}`}
-        trailing={
-          <IconButton
-            label={shown ? tr('password.hide') : tr('password.show')}
-            size="sm"
-            pressed={shown}
-            disabled={disabled}
-            onClick={() => setShown((on) => !on)}
-          >
-            {shown ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
-          </IconButton>
-        }
       />
       <div
         role="meter"

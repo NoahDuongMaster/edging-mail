@@ -1,6 +1,8 @@
-/* The mailbox shell (App.tsx, Sidebar, NoticesBanner, LockedMailBanner, ErrorBoundary): the Operate surface. A frame of `--bg` (header, sidebar) round
-   two panes of `--surface` (the list and the reader) that are separated by hairlines, not by gaps or cards. Classes are `mb-*`. Colours, radii and
-   control heights are the variables of ui.css; nothing here names a colour.
+/* The mailbox shell (App.tsx, Sidebar, BrandMark, NoticesBanner, LockedMailBanner, ErrorBoundary's status page): the Operate surface. On a
+   desktop the window ground (`--chrome`) holds the header and the folders, and ONE rounded content sheet (surface, radius 12, hairline, the
+   sheet shadow) holds the list and the reader, 8px in from the right and bottom edges of the window (DESIGN.md section 2: the inset canvas).
+   On a phone one pane fills the screen. Classes are `mb-*`. Colours, radii, heights, durations are the variables of ui.css and theme.ts;
+   nothing here names a colour.
 
    Order: main.tsx imports index.css (and with it ui.css) before App, so this file comes later in the cascade: a rule here wins over a ui
    primitive's rule of the same specificity (`.ui-btn[data-size]` is 0,2,0) and has to be more specific only to beat a stronger one. */
@@ -8,17 +10,22 @@
 /* ---------- The page ---------- */
 
 .mb-root {
+  /* The columns of a desktop: the folders, the list (the header's search takes its width), and the reader that takes the rest. */
+  --mb-side-w: 240px;
+  --mb-list-w: clamp(336px, 28vw + 32px, 440px);
+  /* How far the content sheet stands in from the window's right and bottom edges. */
+  --mb-gap: 8px;
   /* The phone's Compose button: its height and its distance from the bottom edge. The list scrolls its last row above it with the clearance
      these make (--ml-fab-clear, read by messagelist.css): the button, its offset and 8px. */
   --mb-fab-h: 48px;
-  --mb-fab-bottom: calc(32px + env(safe-area-inset-bottom));
-  --ml-fab-clear: calc(var(--mb-fab-h) + var(--mb-fab-bottom) + 8px);
+  --mb-fab-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  --ml-fab-clear: calc(var(--mb-fab-h) + var(--mb-fab-bottom) + 16px);
   position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  background: var(--bg);
+  background: var(--chrome);
   color: var(--text);
   font-size: 14px;
   line-height: 20px;
@@ -39,57 +46,131 @@
   min-width: 0;
   min-height: 0;
 }
+/* The content sheet: the notices, then the list and the reader, on one rounded surface lifted off the ground. */
+.mb-root[data-layout='desktop'] .mb-main {
+  margin: 0 var(--mb-gap) var(--mb-gap) 0;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-dialog);
+  box-shadow: var(--sheet-shadow);
+}
 
-/* ---------- Desktop header: mark, search, account ---------- */
+/* ---------- The brand: Edgar's tile and the wordmark (BrandMark.tsx) ---------- */
 
-/* The brand column is as wide as the sidebar under it, so the search sits in the middle of the room that is left. */
+.mb-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.mb-brand-tile {
+  display: block;
+  flex: none;
+  border-radius: var(--radius-control);
+}
+.mb-wordmark {
+  font-size: 16px;
+  line-height: 24px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.mb-wordmark-first {
+  font-weight: 600;
+}
+.mb-wordmark-rest {
+  font-weight: 400;
+  color: var(--text2);
+}
+
+/* ---------- Desktop header: mark, search, theme, account ---------- */
+
+/* On the window ground, in the columns of the page under it: the mark over the folders (its tile over their icons), the search over the list
+   column with the list's edges, the theme and the account on the right, the account's edge on the sheet's right edge. */
 .mb-header {
   display: grid;
   flex: none;
-  grid-template-columns: 240px minmax(0, 1fr) 240px;
+  grid-template-columns: var(--mb-side-w) var(--mb-list-w) minmax(0, 1fr);
   align-items: center;
   height: 56px;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
+  padding-right: var(--mb-gap);
 }
 .mb-header-brand {
   min-width: 0;
-  padding-inline: 16px;
+  padding-inline: 17px 12px;
 }
-/* The search never meets the hairlines of the columns under it: on a narrow desktop (1024px) its edge starts at the list's text (16px in), on
-   a wide one it is 640px wide in the middle. */
 .mb-header-search {
-  width: 100%;
-  max-width: 672px;
   min-width: 0;
-  padding-inline: 16px;
-  justify-self: center;
 }
 .mb-header-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 4px;
-  padding-inline: 12px 16px;
+  min-width: 0;
 }
 .mb-search {
   width: 100%;
   min-width: 0;
   margin: 0;
 }
+/* The search is a FILLED field, not a well (a resting edge of --control beside the header read as focused): the raised fill and a hairline at
+   rest, its magnifier (text3, 4.9:1 light / 5.2:1 dark on the fill) and its placeholder (the same) say what it is (1.4.11 Understanding:
+   a field identified by its text and icon needs no 3:1 edge); hovered, the edge firms up; focused, it takes the surface and the full --focus
+   ring of ui.css. Light theme on the desktop header: the window ground is a step under --raised, so the field is the surface there. */
+.mb-search .ui-input {
+  background: var(--mb-search-fill, var(--raised));
+  border-color: var(--border);
+  box-shadow: none;
+}
+/* Its placeholder and its magnifier are what say it is a field (the fill and the hairline are 1.2:1 and 1.3:1 in the dark theme), so the
+   placeholder is the full text3 there too (5.3:1 on the dark fill, 1.4.3), not the dimmer mix ui.css gives other fields. */
+.mb-search {
+  --ui-placeholder: var(--text3);
+}
+:root[data-theme='light'] .mb-header-search {
+  --mb-search-fill: var(--surface);
+}
+@media (hover: hover) {
+  .mb-search .ui-input:hover:not([data-disabled='true'], [data-invalid='true'], :focus-within) {
+    border-color: var(--border-strong);
+  }
+}
+@supports selector(:has(*)) {
+  .mb-search .ui-input:has(> .ui-input-el:focus-visible) {
+    background: var(--surface);
+  }
+}
 
 /* The owner's round avatar: the one way into Settings. The button is as high as any control (44px on touch), the face is 32px. */
 .mb-account.ui-icon-btn {
   border-radius: 999px;
 }
+.mb-phone-bar > .mb-mark-read {
+  margin-right: 8px;
+}
 
 /* ---------- Phone header: menu, folder title, mark all read, account ---------- */
 
+/* With viewport-fit=cover (index.html) an installed app draws under the status bar and beside a notch in landscape: the bar keeps clear of
+   both with the safe-area insets (0 in a browser tab, so nothing moves there). */
 .mb-phone-bar {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 8px 8px 0;
+  /* J3-40: the glyphs of the bar's first and last buttons stand on the content column, which is max(20px, the safe insets) from each edge
+     (messagelist.css --ml-edge, --ml-end): the bar pads that much less the button's own inset (12px round a 20px icon in a 44px box on the
+     left, 6px round the 32px avatar face on the right), so the menu glyph and the avatar line up with the search field in both orientations. */
+  padding: calc(8px + env(safe-area-inset-top, 0px)) calc(max(20px, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px)) - 6px)
+    2px calc(max(20px, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px)) - 12px);
+}
+/* Back from a selection the app bar fades in after the selection bar's copy has mostly gone (J2-23, lib/shellMotion fadeOutInPlace). */
+.mb-phone-bar[data-return='true'] {
+  animation: nm-fade var(--dur-fast) linear 60ms both;
+}
+/* The open message has no app bar (the reader's own bar is the top of the screen): the pane takes the inset itself. */
+.mb-root[data-layout='phone'] .mb-pane[data-pane='reader'] {
+  padding-top: env(safe-area-inset-top, 0px);
 }
 /* The buttons keep their 44px: the title gives way (its count wraps below it) before a button would be squeezed (41px at 320px in Vietnamese). */
 .mb-phone-bar > .ui-btn {
@@ -103,7 +184,7 @@
   align-items: baseline;
   column-gap: 8px;
   min-width: 0;
-  padding-left: 4px;
+  padding-left: 8px;
 }
 .mb-phone-title h1 {
   max-width: 100%;
@@ -111,9 +192,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 18px;
-  line-height: 26px;
+  font-size: 20px;
+  line-height: 28px;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 .mb-phone-count {
   flex: none;
@@ -123,54 +205,108 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.mb-phone-search {
-  padding: 4px 16px 0;
-}
-/* Drafts have no filter row under the search, so the search closes the head itself. */
-.mb-phone-search[data-closing] {
-  padding-bottom: 8px;
-}
 
-/* Compose on a phone: a button above the list, in the corner the thumb reaches. */
-.mb-root .mb-fab.ui-btn[data-size] {
+/* Compose on a phone: the one primary button, in the corner the thumb reaches (clear of a landscape notch, J5-16). It says its name at the
+   top of the list and folds to its icon (a 48px square) while the list scrolls down; scrolling up unfolds it. The name stays its accessible
+   name. The fold moves nothing in the layout (J2-11): the button keeps its size, a clip shows only its first 48px (the icon) and a
+   transform slides that square to the corner, the name fades; the clip also takes the hidden part out of reach of a tap. Its shadow is on
+   the wrapper (a drop shadow follows the clipped shape; a box shadow would be clipped away), which lets taps through around the button. */
+.mb-fab-wrap {
   position: absolute;
-  right: 16px;
+  right: max(16px, env(safe-area-inset-right, 0px));
   bottom: var(--mb-fab-bottom);
   z-index: var(--z-float);
+  display: flex;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 12px color-mix(in srgb, var(--accent) 28%, transparent))
+    drop-shadow(0 1px 2px color-mix(in srgb, var(--text) 16%, transparent));
+}
+.mb-fab-wrap[hidden] {
+  display: none;
+}
+.mb-root .mb-fab.ui-btn[data-size] {
+  gap: 8px;
   height: var(--mb-fab-h);
-  padding: 0 20px 0 16px;
+  padding: 0 20px 0 14px;
   border-radius: var(--radius-dialog);
-  box-shadow: var(--shadow-md);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--on-accent) 22%, transparent);
   font-size: 15px;
   font-weight: 600;
+  pointer-events: auto;
+  clip-path: inset(0 0 0 0 round var(--radius-dialog));
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    translate var(--dur-micro) var(--ease-standard),
+    transform var(--dur-base) var(--ease-standard),
+    clip-path var(--dur-base) var(--ease-standard);
+}
+/* The ring is drawn inside the button (an outer ring would be clipped), in the on-accent colour (5.5:1 on the accent). */
+.mb-root .mb-fab.ui-btn[data-size]:focus-visible {
+  outline: 2px solid var(--on-accent);
+  outline-offset: -4px;
+}
+.mb-fab-label {
+  display: inline-block;
+  white-space: nowrap;
+  transition: opacity var(--dur-fast) linear;
+}
+.mb-root .mb-fab.ui-btn[data-short='true'] {
+  transform: translateX(calc(100% - var(--mb-fab-h)));
+  clip-path: inset(0 calc(100% - var(--mb-fab-h)) 0 0 round var(--radius-dialog));
+}
+.mb-fab[data-short='true'] .mb-fab-label {
+  opacity: 0;
+}
+/* A phone on its side shows about two rows: the Compose button would cover the second one's time at rest. There it stays its icon (48px)
+   in a lane of its own at the end of the rows, whose content (time, star) ends 8px before it; the list's end clearance (--ml-fab-clear)
+   still lets the last row scroll above it. It does not fold there, so it IS the icon: a 48px square box (no clip, no slide) with the name
+   visually hidden (still its accessible name), so its box, its tap area and what is seen are one, inside the safe area. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .mb-root[data-layout='phone'] .ml-root[data-compact='true'] {
+    --ml-end: calc(max(16px, env(safe-area-inset-right, 0px)) + var(--mb-fab-h) + 8px);
+  }
+  .mb-root[data-layout='phone'] .mb-fab.ui-btn[data-size] {
+    justify-content: center;
+    width: var(--mb-fab-h);
+    min-width: 0;
+    padding: 0;
+    gap: 0;
+    transform: none;
+    clip-path: none;
+  }
+  .mb-root[data-layout='phone'] .mb-fab-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    opacity: 0;
+  }
 }
 
 /* ---------- Sidebar ---------- */
 
+/* On the window ground beside the sheet, so it needs no edge of its own. */
 .mb-sidebar {
   display: flex;
-  flex: 0 0 240px;
+  flex: 0 0 var(--mb-side-w, 240px);
   flex-direction: column;
-  width: 240px;
+  width: var(--mb-side-w, 240px);
   min-height: 0;
-  background: var(--bg);
-  border-right: 1px solid var(--border);
   color: var(--text);
 }
 /* In the phone drawer the panel decides the width. */
 .mb-sidebar[data-drawer] {
   flex: 1 1 auto;
   width: 100%;
-  border-right: 0;
 }
 .mb-sidebar-top {
   display: flex;
   flex: none;
   align-items: center;
   justify-content: space-between;
-  height: 56px;
-  padding: 0 8px 0 16px;
-  border-bottom: 1px solid var(--border);
+  height: 60px;
+  padding: 8px 8px 0 17px;
 }
 /* The folders and the labels scroll on a short screen. */
 .mb-sidebar-scroll {
@@ -185,10 +321,10 @@
 .mb-sidebar-scroll > * {
   flex: none;
 }
-/* Desktop: Compose stands in the band of the list's head and the reader's toolbar beside it (8px + a small button + 8px), on the same middle
-   line as the folder's title and the toolbar's icons. */
+/* Desktop: Compose stands in the band of the list's head and the reader's toolbar beside it (the sheet's 1px edge, 8px, a small button, 8px),
+   on the same middle line as the folder's title and the toolbar's icons. */
 .mb-sidebar:not([data-drawer]) .mb-sidebar-scroll {
-  padding-top: calc(8px + (var(--ui-h-sm) - var(--ui-h-md)) / 2);
+  padding-top: calc(1px + 8px + (var(--ui-h-sm) - var(--ui-h-md)) / 2);
 }
 /* Compose: the one primary button of the page. Label on the left, the key of its shortcut on the right. Its icon, label and key stand in the
    columns of the folders under it (icon 10px in, label 12px after it, the key where the counts end): 9px of padding beside the 1px border. */
@@ -201,10 +337,17 @@
   display: inline-flex;
   margin-left: auto;
 }
+/* The key of the shortcut (C) on the Compose button: white on a chip of the pressed accent (accentHover), 7.4:1 light and 7.2:1 dark (a
+   chip of white mixed into the accent fell under 4.5:1, 1.4.3). The chip is a step darker than the button, so it reads as a key on it. */
 .mb-compose .ui-kbd {
-  background: color-mix(in srgb, #fff 18%, transparent);
-  border-color: color-mix(in srgb, #fff 36%, transparent);
-  color: #fff;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  background: var(--accent-hover);
+  border: 0;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--on-accent) 24%, transparent);
+  color: var(--on-accent);
+  font-size: 11px;
 }
 
 .mb-nav-list {
@@ -225,14 +368,17 @@
   border: 0;
   border-radius: var(--radius-control);
   background: transparent;
-  color: var(--text);
+  color: var(--text2);
   font: inherit;
   font-size: 14px;
   line-height: 20px;
+  font-weight: 500;
   text-align: left;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background-color var(--motion-fast) ease-out;
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
 }
 .mb-nav-item:active {
   background: color-mix(in srgb, var(--text) 10%, transparent);
@@ -240,17 +386,31 @@
 @media (hover: hover) {
   .mb-nav-item:hover:not([aria-current='page']) {
     background: var(--hover);
+    color: var(--text);
   }
 }
 .mb-nav-item svg {
   flex: none;
-  color: var(--text2);
+  color: var(--text3);
 }
-/* The open folder: a tint of the accent and a heavier weight, so it is not told by colour alone. */
+/* The open folder: an accent-soft pill with a 3px indicator bar at its left edge and a heavier weight, so it is not told by colour alone. */
 .mb-nav-item[aria-current='page'] {
+  position: relative;
   background: var(--accent-soft);
   color: var(--accent-text);
   font-weight: 600;
+}
+/* The bar is a 3px pill inset from the item's rounded corners (top and bottom 10px), so it stays straight: a border-left or an inset shadow
+   on a rounded box bends into a crescent at the corners. The same rule as the open row of the list. */
+.mb-nav-item[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 0;
+  width: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--indicator);
 }
 .mb-nav-item[aria-current='page'] svg {
   color: currentcolor;
@@ -264,9 +424,10 @@
 }
 .mb-nav-count {
   flex: none;
-  color: var(--text2);
+  color: var(--text3);
   font-size: 12px;
   line-height: 16px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 /* The Inbox shows its unread mail in the weight of the text; the other counts are quiet. */
@@ -287,20 +448,20 @@
 .mb-label-swatch > span {
   width: 8px;
   height: 8px;
-  border-radius: 2px;
+  border-radius: 50%;
 }
 
 .mb-labels {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding-top: 16px;
+  padding-top: 12px;
   border-top: 1px solid var(--border);
 }
 .mb-labels-title {
-  margin: 0;
+  margin: 0 0 2px;
   padding: 0 10px;
-  color: var(--text2);
+  color: var(--text3);
   font-size: 12px;
   line-height: 16px;
   font-weight: 600;
@@ -328,34 +489,198 @@
   box-shadow: none !important;
 }
 .mb-panes > .mb-pane[data-pane='list'] {
-  flex: 1 1 400px;
+  flex: 0 0 var(--mb-list-w);
 }
 .mb-panes > .mb-pane[data-pane='reader'] {
-  flex: 999 1 480px;
+  flex: 1 1 0;
   border-left: 1px solid var(--border);
 }
+/* While a toast is up on a desktop it stands over the bottom of the list: the list gets room under its last row and keeps a row reached
+   with the keyboard above it (2.4.11). */
+.mb-root[data-layout='desktop'] .mb-body[data-toast] .ml-scroll {
+  scroll-padding-bottom: 80px;
+}
+.mb-root[data-layout='desktop'] .mb-body[data-toast] .ml-body {
+  padding-bottom: 72px;
+}
+/* On a phone the toast stands above the Compose button (104px up) and is about 48px high: while it is up the list's last row scrolls clear of
+   it (--ml-fab-clear, read by messagelist.css) and a row or a reader control reached with the keyboard stays above it (2.4.11). */
+.mb-root[data-layout='phone'] .mb-body[data-toast] {
+  --ml-fab-clear: calc(168px + env(safe-area-inset-bottom, 0px));
+}
+.mb-root[data-layout='phone'] .mb-body[data-toast] .ml-scroll {
+  scroll-padding-bottom: calc(168px + env(safe-area-inset-bottom, 0px));
+}
+/* The reader's column ends on its bottom bar, so the toast covers about 100px of it. */
+.mb-root[data-layout='phone'] .mb-body[data-toast] .rd-scroll {
+  scroll-padding-bottom: 112px;
+}
+.mb-root[data-layout='phone'] .mb-body[data-toast] .rd-page {
+  padding-bottom: 112px;
+}
+/* The phone shows one pane; a pane that goes (M9) plays on a copy laid over the same box (lib/shellMotion): under the reader that comes, over
+   the list that comes back. */
 .mb-phone-panes {
+  position: relative;
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
 }
 .mb-phone-panes > .mb-pane {
+  position: relative;
+  z-index: var(--z-raise);
   flex: 1 1 0;
+}
+.mb-phone-panes > [data-pane-exit='list'] {
+  z-index: auto;
+}
+.mb-phone-panes > [data-pane-exit='reader'] {
+  z-index: var(--z-float);
+}
+
+/* The reading pane while messages are ticked (SelectionSummary.tsx, J6-38): 3 selected, the first senders and subjects, the selection's
+   actions as labelled buttons, Clear selection. Centred in the pane's upper half, as the empty reader is, and scrolls when the pane is short.
+   The open message stays mounted under it (its frame keeps its page), hidden until the selection is cleared. */
+.mb-pane[data-pane='reader'][data-summary='true'] > :not(.mb-selsum) {
+  display: none;
+}
+.mb-selsum {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: safe center;
+  justify-content: center;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 32px;
+  animation: nm-fade var(--dur-quick) var(--ease-enter);
+}
+.mb-selsum-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 600px;
+  text-align: center;
+}
+.mb-selsum-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 16px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.mb-selsum-title {
+  margin: 0;
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.mb-selsum-lead {
+  max-width: 44ch;
+  margin: 8px 0 0;
+  color: var(--text2);
+  font-size: 14px;
+  line-height: 20px;
+}
+/* The first ticked messages: sender, then subject, one line each, on a quiet card (what the actions will touch). */
+.mb-selsum-list {
+  align-self: stretch;
+  margin: 20px 0 0;
+  padding: 4px 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  text-align: left;
+}
+.mb-selsum-item,
+.mb-selsum-rest {
+  display: grid;
+  grid-template-columns: minmax(0, 34%) minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+  padding: 6px 12px;
+  font-size: 13px;
+  line-height: 20px;
+}
+.mb-selsum-item + .mb-selsum-item,
+.mb-selsum-item + .mb-selsum-rest {
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+/* One column for the senders, one for the subjects: every subject starts at the same x. */
+.mb-selsum-sender {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--text);
+}
+.mb-selsum-subject {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text2);
+}
+.mb-selsum-rest {
+  display: block;
+  color: var(--text2);
+  font-variant-numeric: tabular-nums;
+}
+/* Two tiers of actions, each a centred row that wraps as words do (never cut, never a scroller): what takes the messages away (Archive is
+   the view's one primary), then what changes them. */
+.mb-selsum-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+}
+.mb-selsum-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.mb-selsum-chevron {
+  margin-left: 2px;
+  color: var(--text2);
+}
+.mb-selsum-clear.ui-btn {
+  margin-top: 12px;
+}
+/* The keys that act on all of them: one quiet line under Clear (13/20 text2; the caps as the ? dialog's). */
+.mb-selsum-keys {
+  max-width: 44ch;
+  margin: 16px 0 0;
+  font-size: 13px;
+  line-height: 24px;
+  color: var(--text2);
+}
+.mb-selsum-keys .sk-note-keys {
+  justify-content: center;
 }
 
 /* ---------- Notices above the panes ---------- */
 
 .mb-strip {
   flex: none;
-  padding: 12px 16px;
+  /* The list's left edge (--ml-edge, 24px): one text edge for the banner and the rows under it (J3-30). */
+  padding: 12px 24px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
 /* On a phone the notices come under the header (App.tsx), on the same surface as the search under them: no hairline, the search's own 4px
    above it make the 8px between them. */
 .mb-root[data-layout='phone'] .mb-strip {
-  padding: 8px 16px 4px;
+  padding: 8px 20px 4px;
   border-bottom: 0;
 }
 .mb-strip-list {
@@ -387,6 +712,9 @@
 
 /* ---------- The mailbox drawer on a phone ---------- */
 
+/* M14: the panel slides in from the left in --dur-slow (300ms, emphasized), the scrim fades in --dur-gentle (250ms), both from their
+   @starting-style. It closes on an inert copy (lib/shellMotion leaveDrawer): back out in 0.7 of those (exitDuration). Under reduced motion
+   --motion is 0 and the --dur-* are capped at 150ms, so the panel starts in place and only fades in (its opacity starts at --motion). */
 .mb-drawer-root {
   position: fixed;
   inset: 0;
@@ -397,35 +725,121 @@
   position: absolute;
   inset: 0;
   background: var(--scrim);
+  transition: opacity var(--dur-gentle) linear;
 }
 .mb-drawer {
   position: relative;
   z-index: var(--z-raise);
   display: flex;
   flex-direction: column;
-  width: 280px;
-  max-width: 100%;
+  width: min(300px, 86vw);
   height: 100%;
-  background: var(--bg);
+  /* Under the status bar and beside a notch of an installed app (viewport-fit=cover); 0 in a browser tab. */
+  padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  box-sizing: border-box;
+  background: var(--chrome);
   border-right: 1px solid var(--border);
+  border-radius: 0 var(--radius-dialog) var(--radius-dialog) 0;
   box-shadow: var(--shadow-lg);
   outline: none;
+  transition:
+    translate var(--dur-slow) var(--ease-emph-enter),
+    opacity var(--dur-quick) linear;
+}
+/* A sideways drag is the swipe that puts the drawer away (useSwipeToDismiss): the browser keeps only the vertical scroll, also on the
+   folders (a scroller: touch-action is not inherited past it), so a drag that starts on a folder button is the swipe too. */
+.mb-drawer,
+.mb-drawer * {
+  touch-action: pan-y;
+}
+/* While the finger drags it (the hook writes an inline translate), it follows at once instead of easing behind. */
+.mb-drawer[style*='translate'] {
+  transition: opacity var(--dur-quick) linear;
+}
+@starting-style {
+  .mb-drawer-scrim {
+    opacity: 0;
+  }
+  .mb-drawer {
+    translate: calc(-100% * var(--motion, 1)) 0;
+    opacity: var(--motion, 1);
+  }
 }
 
 /* ---------- Status screens: the server cannot be reached, the app crashed ---------- */
 
 /* Scrolls as a normal web page, like the screens before the mailbox (auth.css): body is let scroll while a status screen is shown, so on a
    short window or at 200% text the message is reached by scrolling the window, and its auto margins (not justify/align centre,
-   which push an overflow past the top edge) keep the top in reach. A browser without :has() scrolls the box itself. */
+   which push an overflow past the top edge) keep the top in reach. A browser without :has() scrolls the box itself. The page is the
+   landing hero's: the ground with a faint hairline grid that fades out from the middle and one soft accent glow behind the card. */
 .mb-status {
+  position: relative;
+  isolation: isolate;
   display: flex;
   min-height: 100%;
-  padding: 16px;
+  padding: 24px 16px;
   background: var(--bg);
   color: var(--text);
 }
+.mb-status::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1px);
+  background-position: calc(50% - 24px) calc(50% - 24px);
+  background-size: 48px 48px;
+  -webkit-mask-image: radial-gradient(ellipse 60% 55% at 50% 45%, var(--text) 25%, transparent 75%);
+  mask-image: radial-gradient(ellipse 60% 55% at 50% 45%, var(--text) 25%, transparent 75%);
+  pointer-events: none;
+}
+.mb-status::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 34% 30% at 50% 46%, color-mix(in srgb, var(--accent) 16%, transparent), transparent);
+  pointer-events: none;
+}
+:root[data-theme='dark'] .mb-status::after {
+  background: radial-gradient(ellipse 34% 30% at 50% 46%, color-mix(in srgb, var(--accent) 12%, transparent), transparent);
+}
 .mb-status > * {
+  position: relative;
+  z-index: var(--z-raise);
   margin: auto;
+}
+/* J3-34: Trying again in 3 s is helper text of the Try again button: 12px under it, text2, 13px, tabular figures (the seconds do not jitter). */
+.mb-retry {
+  margin: 12px 0 0;
+  color: var(--text2);
+  font-size: 13px;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+}
+/* The message of the page is a card (as the sign-in's): Edgar, the headline, one line, the action. */
+.mb-status > .ui-empty {
+  width: 100%;
+  max-width: 440px;
+  padding: 36px 32px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-dialog);
+  box-shadow:
+    var(--shadow-lg),
+    inset 0 1px 0 var(--inset-highlight);
+}
+.mb-status > .ui-empty .ui-empty-title {
+  font-size: 20px;
+  line-height: 28px;
+  letter-spacing: -0.01em;
+}
+.mb-status > .ui-empty .ui-empty-description {
+  max-width: 340px;
+  text-wrap: balance;
+}
+.mb-status > .ui-empty .ui-empty-action {
+  margin-top: 16px;
 }
 body:has(.mb-status) {
   overflow-y: auto;
@@ -443,7 +857,12 @@ body:has(.mb-status) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mb-nav-item {
+  .mb-nav-item,
+  .mb-root .mb-fab.ui-btn[data-size],
+  .mb-fab-label {
     transition: none;
   }
+}
+:root[data-motion='reduce'] :is(.mb-nav-item, .mb-root .mb-fab.ui-btn[data-size], .mb-fab-label) {
+  transition: none;
 }

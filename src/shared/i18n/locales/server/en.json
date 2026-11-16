@@ -8,7 +8,7 @@
   "push.locked_delete_requested.title": "Deleting your locked old mail was requested",
   "push.locked_delete_requested.body": "At {time}, someone asked to delete the old mail locked under your previous key. It will be deleted in 7 days unless you cancel it in the app.",
   "push.second_factor_locked.title": "Someone is guessing your sign-in code",
-  "push.second_factor_locked.body": "At {time}, wrong codes were entered after your password was right, so sign-in with a code is paused for a while. If it was not you, change your password.",
+  "push.second_factor_locked.body": "At {time}, wrong codes were entered after your password was right, so sign-in with a code is paused for at least 15 minutes (up to 24 hours if it keeps happening). If it was not you, change your password.",
   "push.alert_break_glass_failures.title": "The setup key is being guessed",
   "push.alert_break_glass_failures.body": "There were 10 failed attempts to use the setup key within an hour (the last at {time}). Check who can reach this deployment and consider replacing the setup key.",
   "push.2fa_reset.title": "Your two-factor sign-in was reset",

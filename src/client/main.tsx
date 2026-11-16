@@ -6,17 +6,22 @@ import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@ta
 import './index.css';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { LiveRegion } from './components/LiveRegion';
 import { UnauthorizedError } from './lib/api';
 import { askSession, endSession, useSession } from './lib/auth';
 import { wipeKeysInBackground } from './lib/crypto/keyStore';
 import { registerCredentialDeriver } from './lib/crypto/registerDeriver';
 import { initLanguage, useLanguageSync } from './lib/i18n';
 import { useAdoptDeviceLanguage } from './lib/language';
+import { applyDensityPref, applyMotionPref } from './lib/prefs';
 import { confirmSession, renewalInProgress, whenRenewalEnds } from './lib/sessionRenewal';
 import { applyTheme, storedThemeIsDark } from './theme';
 
-// The stored theme is on the page before anything renders (and before the language is loaded), so no screen flashes the wrong one.
+// The stored theme is on the page before anything renders (and before the language is loaded), so no screen flashes the wrong one. The
+// motion choice of this device too (`data-motion="reduce"`), so nothing moves once before it applies.
 applyTheme(storedThemeIsDark());
+applyMotionPref();
+applyDensityPref();
 registerCredentialDeriver();
 
 const queryClient = new QueryClient({
@@ -112,6 +117,9 @@ if (root) {
         <ErrorBoundary>
           <App />
         </ErrorBoundary>
+        {/* The live regions are in the page from the first render on every screen, before any status goes into them (WCAG 4.1.3); after
+            the app in reading order, and outside the ErrorBoundary, so even the crash screen keeps them. */}
+        <LiveRegion />
       </QueryClientProvider>
     </React.StrictMode>
   );

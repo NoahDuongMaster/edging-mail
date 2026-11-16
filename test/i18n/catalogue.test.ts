@@ -448,7 +448,6 @@ describe('length limits', () => {
 const IDENTICAL_BY_DESIGN = new Set([
   'compose.key_ctrl',
   'compose.key_enter',
-  'compose.from_placeholder',
   'domains.guide_settings',
   'domains.guide_subdomains',
   'domains.guide_action_worker',

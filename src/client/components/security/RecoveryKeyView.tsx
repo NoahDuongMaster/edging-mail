@@ -1,15 +1,18 @@
 import React from 'react';
+import { CircleAlert, CircleCheck } from 'lucide-react';
 import type { ThemeTokens } from '../../theme';
 import { ApiError } from '../../lib/api';
 import type { SessionUser } from '../../lib/auth';
 import { NewRecoveryKeyFlow, stepUp, testRecoveryKey } from '../../lib/crypto/account';
 import { RecoveryKeyDraft } from '../../lib/crypto/recoveryDraft';
+import { useFieldFocus } from '../../lib/fieldFocus';
 import { useT } from '../../lib/i18n';
 import { useAction } from '../../lib/useAction';
-import { TextField } from '../../ui';
+import { Card, TextField } from '../../ui';
 import { AuthButton, ErrorLine } from '../auth/authUi';
 import { RecoveryKeyPanel } from '../auth/RecoveryKeyPanel';
 import { CredentialForm } from './CredentialForm';
+import { forgetKeyTested, markKeyTested } from './keyTested';
 import { CODE_LENGTH, CodeInput, DoneNote, ViewFrame } from './securityUi';
 
 export type RecoveryKeyMode = 'test' | 'new';
@@ -29,10 +32,18 @@ const TestKey: React.FC<InnerProps> = ({ t, user, onBack }) => {
   const action = useAction();
   const [typed, setTyped] = React.useState('');
   const [result, setResult] = React.useState<'ok' | 'wrong' | null>(null);
+  // Test can be pressed while the field is empty: the press says what is missing under the field and takes the keyboard there.
+  const [missing, setMissing] = React.useState(false);
+  const focusLater = useFieldFocus();
 
   const submit = async (event: React.SyntheticEvent) => {
     event.preventDefault();
-    if (action.busy || typed.trim() === '') {
+    if (action.busy) {
+      return;
+    }
+    if (typed.trim() === '') {
+      setMissing(true);
+      focusLater('security-key-test');
       return;
     }
     setResult(null);
@@ -41,11 +52,15 @@ const TestKey: React.FC<InnerProps> = ({ t, user, onBack }) => {
     if (correct !== undefined) {
       setTyped('');
       setResult(correct ? 'ok' : 'wrong');
+      if (correct) {
+        // The overview says when the key was last tested here (the server is never told about a test).
+        markKeyTested(user.id);
+      }
     }
   };
 
   return (
-    <ViewFrame t={t} title={tr('term.recovery_key')} onBack={onBack}>
+    <ViewFrame t={t} title={tr('security.test_key')} onBack={onBack}>
       <form
         noValidate
         onSubmit={(event) => {
@@ -64,6 +79,7 @@ const TestKey: React.FC<InnerProps> = ({ t, user, onBack }) => {
           onChange={(event) => {
             setTyped(event.target.value);
             setResult(null);
+            setMissing(false);
             if (action.error !== null) {
               action.clear();
             }
@@ -73,16 +89,19 @@ const TestKey: React.FC<InnerProps> = ({ t, user, onBack }) => {
           autoCorrect="off"
           spellCheck={false}
           translate="no"
-          aria-invalid={action.error !== null}
+          aria-invalid={action.error !== null || missing}
+          aria-describedby={missing ? 'security-key-test-missing' : undefined}
         />
+        <ErrorLine t={t} id="security-key-test-missing" text={missing ? tr('security.key_test_required') : null} />
         <ErrorLine t={t} id="security-key-test-error" text={action.error} />
         {result === null ? null : (
-          <p role="status" className="st-result" data-tone={result === 'ok' ? 'success' : undefined}>
+          <p role="status" className="st-result" data-tone={result === 'ok' ? 'success' : 'danger'}>
+            {result === 'ok' ? <CircleCheck size={16} aria-hidden="true" /> : <CircleAlert size={16} aria-hidden="true" />}
             {result === 'ok' ? tr('security.key_test_ok') : tr('security.key_test_wrong')}
           </p>
         )}
         <div>
-          <AuthButton t={t} busy={action.busy} disabled={typed.trim() === ''} label={tr('security.key_test_button')} />
+          <AuthButton t={t} busy={action.busy} label={tr('security.key_test_button')} />
         </div>
       </form>
     </ViewFrame>
@@ -177,6 +196,8 @@ const NewKey: React.FC<InnerProps> = ({ t, user, onBack }) => {
     }
     flow.current = null;
     setNeedCode(false);
+    // A test of the old key says nothing about the new one.
+    forgetKeyTested();
     setStep('done');
   };
 
@@ -192,10 +213,12 @@ const NewKey: React.FC<InnerProps> = ({ t, user, onBack }) => {
     return (
       <ViewFrame t={t} title={tr('recovery.title_new')} onBack={null}>
         {needCode ? (
-          <div className="st-view-form">
+          // The server wants a fresh code before it replaces the key (step-up): asked above the key, in a box of its own, with the
+          // one-time-code field (paste and the phone's autofill work).
+          <Card className="st-stepup">
             <p className="st-lead">{tr('security.step_up_lead')}</p>
             <CodeInput t={t} id="security-step-up" value={code} onChange={setCode} />
-          </div>
+          </Card>
         ) : null}
         {draft === null ? null : (
           <RecoveryKeyPanel
@@ -213,7 +236,7 @@ const NewKey: React.FC<InnerProps> = ({ t, user, onBack }) => {
   }
 
   return (
-    <ViewFrame t={t} title={tr('term.recovery_key')} onBack={onBack}>
+    <ViewFrame t={t} title={tr('security.new_key')} onBack={onBack}>
       <CredentialForm
         t={t}
         id="security-key-new"

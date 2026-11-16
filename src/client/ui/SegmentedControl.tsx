@@ -1,6 +1,14 @@
 import React from 'react';
 import { cx } from './cx';
+import { useInBrowser, useSlidingIndicator, type IndicatorBox } from './indicator';
 import { firstEnabled, lastEnabled, moveIndex } from './listNav';
+
+const CHOSEN_SEGMENT = '.ui-seg-item[aria-checked="true"], .ui-seg-item[aria-pressed="true"]';
+
+/** The thumb covers the chosen segment exactly (in a track that wraps, on whichever row it is). */
+function measureSegment(segment: HTMLElement): IndicatorBox {
+  return { x: segment.offsetLeft, y: segment.offsetTop, width: segment.offsetWidth, height: segment.offsetHeight };
+}
 
 export interface SegmentOption<V extends string = string> {
   value: V;
@@ -81,6 +89,11 @@ export function SegmentedControl<V extends string>({
   className
 }: SegmentedControlProps<V>): React.ReactElement {
   const refs = React.useRef<(HTMLButtonElement | null)[]>([]);
+  const trackRef = React.useRef<HTMLDivElement | null>(null);
+  const thumbRef = React.useRef<HTMLSpanElement | null>(null);
+  // The lifted thumb slides to the chosen segment (browser only: the server lifts the chosen segment itself).
+  const thumb = useInBrowser();
+  useSlidingIndicator(trackRef, thumbRef, CHOSEN_SEGMENT, measureSegment, value);
   const chosen = options.findIndex((option) => option.value === value);
   // The one Tab stop of a radiogroup: the chosen option, or the first one that can be chosen.
   const stop = chosen !== -1 && options[chosen].disabled !== true ? chosen : firstEnabled(options);
@@ -96,11 +109,14 @@ export function SegmentedControl<V extends string>({
   };
 
   const common = {
+    ref: trackRef,
     'aria-label': label,
     className: cx('ui-seg', className),
     'data-size': size,
-    'data-wrap': wrap ? 'true' : undefined
+    'data-wrap': wrap ? 'true' : undefined,
+    'data-thumb': thumb ? 'true' : undefined
   };
+  const thumbElement = thumb ? <span ref={thumbRef} className="ui-seg-thumb" aria-hidden="true" /> : null;
 
   if (mode === 'toggle') {
     const segments = options.map((option) => (
@@ -112,11 +128,14 @@ export function SegmentedControl<V extends string>({
         disabled={option.disabled}
         onClick={() => onChange(option.value)}
       >
-        <span className="ui-seg-label">{option.label}</span>
+        <span className="ui-seg-label" data-text={option.label}>
+          {option.label}
+        </span>
       </button>
     ));
     return (
       <div role="group" {...common}>
+        {thumbElement}
         {wrap ? inPairs(segments) : segments}
       </div>
     );
@@ -136,13 +155,16 @@ export function SegmentedControl<V extends string>({
       disabled={option.disabled}
       onClick={() => onChange(option.value)}
     >
-      <span className="ui-seg-label">{option.label}</span>
+      <span className="ui-seg-label" data-text={option.label}>
+        {option.label}
+      </span>
     </button>
   ));
   return (
     // The arrow keys are handled on the group, for the option that has focus: the options themselves are the controls (roving tabindex).
     // eslint-disable-next-line jsx-a11y/interactive-supports-focus -- the radios inside are the focusable parts
     <div role="radiogroup" {...common} onKeyDown={onKeyDown}>
+      {thumbElement}
       {wrap ? inPairs(segments) : segments}
     </div>
   );

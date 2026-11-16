@@ -6,7 +6,10 @@ import { useT } from '../lib/i18n';
 import { cx } from './cx';
 import { IconButton } from './IconButton';
 import { useLayer, useScrollLock } from './layers';
+import { useOverflows } from './media';
+import { useExitMotion, useSheetResize } from './motion';
 import { assignRef } from './refs';
+import { pressedOnControl, useSwipeToDismiss } from './useSwipeToDismiss';
 
 export interface DialogProps {
   open: boolean;
@@ -16,6 +19,11 @@ export interface DialogProps {
   title: string;
   /** One or two sentences under the title; a screen reader reads them when the dialog opens. */
   description?: React.ReactNode;
+  /**
+   * The id of what a screen reader reads when the dialog opens, for a dialog whose message is a part of its content (the warning callout
+   * of a deletion, J1-26); it wins over `description`.
+   */
+  describedBy?: string;
   /** 400, 520 or 720 px wide on a desktop. On a phone every dialog is a sheet that rises from the bottom edge. */
   size?: 'sm' | 'md' | 'lg';
   /** The largest width in px, for a dialog whose content was laid out for a width between the sizes; it wins over `size`. */
@@ -50,6 +58,11 @@ export interface DialogProps {
   rootClassName?: string;
   /** The panel, the element with the role (`initialFocusRef={ref}` gives focus to the dialog itself). */
   ref?: React.Ref<HTMLDivElement>;
+  /**
+   * The id of what names the content while it scrolls (J1-22: the content is then a Tab stop, a region named by this); the dialog's title
+   * when left out. Settings names it by the section that shows.
+   */
+  bodyLabelledBy?: string;
   children?: React.ReactNode;
 }
 
@@ -67,6 +80,20 @@ function firstControl(panel: HTMLElement): HTMLElement | null {
   return null;
 }
 
+/** The width under which a dialog is a bottom sheet (ui.css). */
+const SHEET_QUERY = '(max-width: 640px)';
+/** True while dialogs are bottom sheets (a phone): a sheet whose content is swapped animates its height (useSheetResize). */
+const isSheet = (): boolean => window.matchMedia(SHEET_QUERY).matches;
+/** The strip at the top of a sheet where a drag down starts (the grab handle and the heading), at least this high. */
+const SHEET_GRIP_PX = 44;
+
+/** A press in the top strip of a sheet that is not on a control (the close button keeps its click). */
+function inGrip(event: PointerEvent, panel: HTMLElement): boolean {
+  const top = panel.getBoundingClientRect().top;
+  const head = panel.querySelector('.ui-dialog-head')?.getBoundingClientRect().bottom ?? 0;
+  return event.clientY <= Math.max(top + SHEET_GRIP_PX, head) && !pressedOnControl(event);
+}
+
 /** Gives focus back to the element that had it before the dialog opened; when that is gone, to `fallback`. */
 function restoreFocus(opener: Element | null, fallback: React.RefObject<HTMLElement | null> | undefined): void {
   const gone = !(opener instanceof HTMLElement) || opener === document.body || !opener.isConnected;
@@ -78,8 +105,9 @@ function restoreFocus(opener: Element | null, fallback: React.RefObject<HTMLElem
  * Use it for a task that needs the whole of the person's attention (a form, a confirmation, Settings); not for a message (Banner) or a list
  * of actions (Menu). A press on the scrim closes it only when the press also began there, so selecting text and letting go outside does
  * not. A control inside that has a use for Escape gets it first (a confirmation that takes itself back): when it stops the key or calls
- * preventDefault, the dialog stays open. On a phone it is a sheet from the bottom edge. Render it always and pass `open`; nothing is
- * mounted while it is closed.
+ * preventDefault, the dialog stays open. It scales in from 96% (250 ms) over a fading scrim and leaves in 180 ms; on a phone it is a sheet
+ * that slides up from the bottom edge (300 ms) with a grab handle, and a drag down from the handle or the heading closes it
+ * (useSwipeToDismiss). Under reduced motion it only fades. Render it always and pass `open`; nothing is mounted while it is closed.
  */
 export function Dialog(props: DialogProps): React.ReactElement | null {
   return props.open ? <DialogPanel {...props} /> : null;
@@ -89,6 +117,7 @@ function DialogPanel({
   onClose,
   title,
   description,
+  describedBy,
   size = 'md',
   width,
   role = 'dialog',
@@ -103,6 +132,7 @@ function DialogPanel({
   className,
   rootClassName,
   ref,
+  bodyLabelledBy,
   children
 }: DialogProps) {
   const tr = useT();
@@ -110,6 +140,12 @@ function DialogPanel({
   const descriptionId = React.useId();
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   const panelRef = React.useRef<HTMLDivElement | null>(null);
+  const bodyRef = React.useRef<HTMLDivElement | null>(null);
+  // J1-22: content that scrolls is a Tab stop (a region named by the title, or by `bodyLabelledBy`), so a keyboard can scroll text that
+  // holds no control (the Architecture section of Settings); content that fits is no empty stop (J1-18). Plain on the server.
+  const bodyScrolls = useOverflows(bodyRef, false);
+  // J2-21: a sheet whose content is swapped (a sub-list of the row menu) moves its top edge to the new height instead of jumping.
+  useSheetResize(panelRef, bodyRef, isSheet);
   const pressedOnScrim = React.useRef(false);
   const canClose = dismissible && !closeDisabled;
   const escape = () => {
@@ -120,6 +156,38 @@ function DialogPanel({
   // An Escape pressed inside the dialog comes to `onKeyDown` below; one pressed elsewhere (focus on the page behind) is taken by layers.ts.
   const isTop = useLayer(true, escape, rootRef);
   useScrollLock(true);
+  // It leaves on an inert copy (motion.ts): focus, Escape and Tab are given back at once, the copy fades out where the dialog was.
+  useExitMotion(rootRef, 'dialog');
+  // A phone sheet follows a drag down from its handle or heading and closes past 30% or on a flick (the same as the close button).
+  useSwipeToDismiss(panelRef, {
+    direction: 'down',
+    onDismiss: escape,
+    enabled: () => canClose && window.matchMedia(SHEET_QUERY).matches,
+    startsDrag: inGrip
+  });
+
+  // J5-22: on a phone the sheet stands on what the on-screen keyboard leaves (the visual viewport, as compose does): the scrim is padded by
+  // the height the keyboard covers and the sheet is never taller than the visible height (ui.css --ui-vv-bottom and --ui-vv-height, read
+  // by the phone rules only), so its footer stays above the keyboard. Measured on the root, which only exists while the dialog is open.
+  React.useEffect(() => {
+    const viewport = window.visualViewport;
+    const root = rootRef.current;
+    if (viewport === null || root === null) {
+      return;
+    }
+    const fit = () => {
+      const covered = window.innerHeight - viewport.offsetTop - viewport.height;
+      root.style.setProperty('--ui-vv-height', `${Math.round(viewport.height)}px`);
+      root.style.setProperty('--ui-vv-bottom', `${Math.max(0, Math.round(covered))}px`);
+    };
+    fit();
+    viewport.addEventListener('resize', fit);
+    viewport.addEventListener('scroll', fit);
+    return () => {
+      viewport.removeEventListener('resize', fit);
+      viewport.removeEventListener('scroll', fit);
+    };
+  }, []);
 
   // The panel is ours (focus, Tab) and the caller's (`ref`).
   const setPanel = React.useCallback(
@@ -150,6 +218,34 @@ function DialogPanel({
     };
     document.addEventListener('keydown', onKeyDown, true);
     return () => document.removeEventListener('keydown', onKeyDown, true);
+  }, [isTop]);
+
+  // J1-23: when a change of the content took away the control that had focus (a sheet that shows another list in place of the one tapped),
+  // the first control of the new content takes it, unless the component placed it itself (checked a frame later). Focus is never lost.
+  React.useEffect(() => {
+    const body = bodyRef.current;
+    const panel = panelRef.current;
+    if (body === null || panel === null) {
+      return;
+    }
+    let frame = 0;
+    const observer = new MutationObserver(() => {
+      if (document.activeElement !== document.body && document.activeElement !== null) {
+        return;
+      }
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const now = document.activeElement;
+        if ((now === document.body || now === null) && panel.isConnected && isTop()) {
+          (firstControl(panel) ?? panel).focus({ preventScroll: true });
+        }
+      });
+    });
+    observer.observe(body, { childList: true, subtree: true });
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
   }, [isTop]);
 
   // Escape pressed inside the dialog arrives here after every control inside had its turn: a control that used it stopped it or called
@@ -193,7 +289,7 @@ function DialogPanel({
         role={role}
         aria-modal="true"
         aria-labelledby={titleId}
-        aria-describedby={description === undefined ? undefined : descriptionId}
+        aria-describedby={describedBy ?? (description === undefined ? undefined : descriptionId)}
         tabIndex={-1}
         className={cx('ui-dialog', className)}
         data-size={size}
@@ -215,7 +311,17 @@ function DialogPanel({
           </p>
         )}
         {toolbar === undefined ? null : <div className="ui-dialog-toolbar">{toolbar}</div>}
-        <div className="ui-dialog-body">{children}</div>
+        <div
+          ref={bodyRef}
+          className="ui-dialog-body"
+          role={bodyScrolls ? 'region' : undefined}
+          aria-labelledby={bodyScrolls ? (bodyLabelledBy ?? titleId) : undefined}
+          // A Tab stop only while it scrolls (useOverflows), so the arrows and Page Down can read it (J1-22).
+          // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scroll area with text only must take focus to be scrolled
+          tabIndex={bodyScrolls ? 0 : undefined}
+        >
+          {children}
+        </div>
         {footer === undefined ? null : <div className="ui-dialog-foot">{footer}</div>}
       </div>
     </div>

@@ -30,6 +30,11 @@ A failed send is a failed send:
 - If the mail is delivered but saving the Sent copy then fails, the answer is `500` with `The email was sent but could not be saved to Sent`. The mail is out:
   do not send it again.
 
+**Undo send.** After Send the compose window closes at once and the message waits in the browser before it goes, with **Undo** in the notice at the
+bottom of the screen; Undo (or `Ctrl+Z`) opens the compose again as it was. The wait is a setting of each device (**Settings → Mail → Undo send**: off, or 5,
+10, 20, 30, 60 or 120 seconds; 10 by default), and it pauses while the pointer or the keyboard focus is on the notice. Nothing reaches the server during the
+wait: close the app before it ends and the message is not sent, and its draft stays in **Drafts**.
+
 **Replies, attachments and drafts.** A reply (`in_reply_to` = the Message-ID of the mail you answer) sends `In-Reply-To` and a `References` header made of the
 answered mail's own stored chain plus its Message-ID, oldest first and without duplicates. If that mail is not stored, the `references` list of the request
 stands in for its chain. When the chain would not fit in 2048 bytes, the oldest ids are dropped, except the first (the thread root) and the last (the mail you
@@ -98,15 +103,17 @@ The request, the answer and the codes are in the [API reference](api.md#post-api
   characters is cut after its last complete id). A mail that answers a stored mail joins that mail's thread (`thread_id`), including when it answers one of your own
   sent replies. The server keeps the thread; the interface lists single mails and has no conversation view yet.
 - **Stats.** `GET /api/stats` answers the `{ total, unread }` of each folder and of the starred view; a draft is never unread, so `drafts.unread` is always `0`.
-- **Search.** `GET /api/messages?q=…` finds the text in the sender name, sender address and recipients (To) of the folder being listed, ignoring upper/lower case for ASCII
+- **Search.** `GET /api/messages?q=…` finds the text in the sender name, sender address and recipients (To) of the folder being listed (`folder=all`, the app's
+  **All mail** scope, lists every folder except Trash and Spam, each row keeping its own `folder`), ignoring upper/lower case for ASCII
   letters; `%`, `_` and `\` are ordinary characters. Subject, snippet and body are sealed, so the server cannot search them: the app filters the subjects it has
   already opened. The text is cut to 200 characters. The test is `instr()`, not `LIKE`, because D1 refuses `LIKE` patterns over
   50 bytes (a long search would be an HTTP 500). The label filter (`folder=label:<name>`) uses the same test, so a 30-character CJK label (90 bytes) works.
 - **Opening a mail.** `GET /api/messages/:id` marks the mail read. `GET /api/messages/:id?peek=1` returns the same JSON without marking it: the client uses it to
   refresh a mail that is already open, so a mail the cron has just woken stays unread until it is really opened.
 - **Who a mail claims to be from.** Every row of the list and the opened mail carry `origin` (`smtp` for mail that arrived by email, `internal` for mail sent between
-  people of this deployment) and `from_hosted` (the From address is on a domain this deployment hosts). A mail with `origin: smtp` and `from_hosted: true` shows a plain
-  chip, "Arrived by email; the sender is not verified": anyone on the internet can write a colleague's address in From, and nothing in the app can check it. When the
+  people of this deployment) and `from_hosted` (the From address is on a domain this deployment hosts). A mail with `origin: smtp` and `from_hosted: true` shows a caution
+  chip, "Unverified sender", whose popover explains it in plain words and offers **Move to Spam**: anyone on the internet can write a colleague's address in From,
+  and nothing in the app can check it. When the
   mail has a `Reply-To` other than the sender, the reply window says in one line where the answer goes, for as long as that address is in To.
 - **Names a sender chose.** Attachment names are shown, and offered for download, the way they are saved: path separators are replaced, and control characters and the
   direction controls of right-to-left text are removed (U+202E in `photo<U+202E>gpj.exe` would make it read as `photoexe.jpg`).
@@ -115,6 +122,9 @@ The request, the answer and the codes are in the [API reference](api.md#post-api
   `snoozed_until`.
 - **Mark all as read.** `POST /api/messages/read-all` with `{ "folder": "inbox", "q": "…" }` (`q` optional) marks every unread mail of that folder view as read,
   also the ones beyond the pages the client has loaded, using the same folder, label and search rules as the list.
+- **Empty Trash and Spam.** `POST /api/messages/empty` with `{ "folder": "trash" }` or `"spam"` deletes every mail of that folder for good (rows, attachment
+  rows and R2 objects); one call stops after about 8000 mails and answers `more: true`, and the app calls again until it is done. Nothing is deleted on its own:
+  mail stays in Trash and Spam until you delete it.
 - **Inbound.** Everything Email Routing hands to the Worker lands in the Inbox. There is no spam filter: the Spam folder only holds mail you moved there.
 
 ## Drafts

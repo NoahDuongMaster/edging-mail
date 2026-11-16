@@ -4,12 +4,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it } from 'vitest';
 import en from '../../src/shared/i18n/locales/en.json';
 import { MessageView } from '../../src/client/components/MessageView';
+import { phoneBar } from '../../src/client/components/reader/actions';
 import { getTokens } from '../../src/client/theme';
 import type { Attachment, Message } from '../../src/client/types';
 
-// The reader toolbar, as the HTML it renders: which buttons each folder has, in which order, and what they are called. This is the part of the reader
-// that was settled in the browser (Trash and Spam have Move to Inbox and Delete forever and no Snooze, so the toolbar stays at the 8 buttons the width
-// arithmetic of reader/barDensity.ts allows; a phone has 7), so a restyle must not change it.
+// The reader toolbars, as the HTML they render: which buttons each folder has, in which order, and what they are called. This is the part of the
+// reader that was settled in the browser (Trash and Spam have Move to Inbox and Delete forever and no Snooze, so the desktop toolbar stays at the 8
+// buttons the width arithmetic of reader/barDensity.ts allows; on a phone no action is lost: Back and Newer / Older on top, five buttons at the
+// bottom and the rest in More), so a restyle must not change it. Every toolbar is one ARIA toolbar (one Tab stop) with a name.
 
 const t = getTokens(false);
 const noop = (): void => undefined;
@@ -46,7 +48,14 @@ const attachment = (over: Partial<Attachment> = {}): Attachment => ({
 
 function render(
   open: Message | null,
-  props: { attachments?: Attachment[]; compact?: boolean; isLoading?: boolean; listEmpty?: boolean } = {}
+  props: {
+    attachments?: Attachment[];
+    compact?: boolean;
+    isLoading?: boolean;
+    listEmpty?: boolean;
+    loadFailed?: boolean;
+    self?: string;
+  } = {}
 ): string {
   return renderToStaticMarkup(
     createElement(
@@ -78,19 +87,33 @@ function render(
         position: '1 of 7',
         compact: props.compact ?? false,
         listEmpty: props.listEmpty ?? false,
+        loadFailed: props.loadFailed ?? false,
+        onRetry: noop,
+        selfAddress: props.self,
         onBack: props.compact === true ? noop : undefined
       })
     )
   );
 }
 
-/** The accessible names of the buttons of the toolbar, left to right. */
+/** Each toolbar of the reader, in page order: its own name, and the accessible names of its buttons, left to right. */
+function toolbars(html: string): { name: string; buttons: string[] }[] {
+  return html
+    .split('role="toolbar"')
+    .slice(1)
+    .map((part) => {
+      const ends = ['class="rd-scroll"', '</article>'].map((mark) => part.indexOf(mark)).filter((index) => index !== -1);
+      const names = [...part.slice(0, Math.min(...ends)).matchAll(/aria-label="([^"]*)"/g)].map((match) => match[1]);
+      return { name: names[0], buttons: names.slice(1) };
+    });
+}
+
+/** The buttons of the desktop action toolbar (the only toolbar on a desktop). */
 function toolbar(html: string): string[] {
-  const start = html.indexOf('class="rd-bar');
-  const end = html.indexOf('class="rd-scroll"');
-  expect(start).toBeGreaterThan(-1);
-  expect(end).toBeGreaterThan(start);
-  return [...html.slice(start, end).matchAll(/aria-label="([^"]*)"/g)].map((match) => match[1]);
+  const bars = toolbars(html);
+  expect(bars).toHaveLength(1);
+  expect(bars[0].name).toBe(en['reader.actions_label']);
+  return bars[0].buttons;
 }
 
 const ARCHIVE = en['action.archive'];
@@ -100,53 +123,100 @@ const INBOX = en['action.move_to_inbox'];
 const DELETE = en['action.delete_forever'];
 const UNREAD = en['action.mark_unread'];
 const SNOOZE = en['action.snooze'];
-const LABEL = en['reader.add_label'];
+const LABEL = en['reader.labels'];
 const NEWER = en['reader.newer_message'];
 const OLDER = en['reader.older_message'];
 const BACK = en['reader.back_to_list'];
+const REPLY = en['action.reply'];
+const MORE = en['reader.more_actions'];
+
+/** The tools of the reader's header (Reply, its menu, Star). */
+const tools = (html: string): string => html.slice(html.indexOf('class="rd-tools"'), html.indexOf('</header>'));
 
 describe('the desktop toolbar', () => {
+  // Groups: Archive | the moves (the folder's main one first, Delete forever, the other bin) | Mark as unread, Snooze, Label | the counter, Newer, Older.
   it('has 8 buttons in the Inbox, and each folder hides only its own move button', () => {
-    expect(toolbar(render(message()))).toEqual([ARCHIVE, SPAM, TRASH, UNREAD, SNOOZE, LABEL, NEWER, OLDER]);
+    expect(toolbar(render(message()))).toEqual([ARCHIVE, TRASH, SPAM, UNREAD, SNOOZE, LABEL, NEWER, OLDER]);
   });
 
-  it('has Move to Inbox and Delete forever in Trash, and no Snooze: still 8 buttons', () => {
-    expect(toolbar(render(message({ folder: 'trash' })))).toEqual([ARCHIVE, SPAM, INBOX, DELETE, UNREAD, LABEL, NEWER, OLDER]);
+  it('has Move to Inbox first and Delete forever last, in a group of its own, in Trash, and no Snooze: still 8 buttons', () => {
+    // J4-03: the way back leads; the one move that cannot be undone stands apart at the end, after a divider.
+    expect(toolbar(render(message({ folder: 'trash' })))).toEqual([INBOX, ARCHIVE, SPAM, UNREAD, LABEL, DELETE, NEWER, OLDER]);
+    const html = render(message({ folder: 'trash' }));
+    const bar = html.slice(html.indexOf('role="toolbar"'), html.indexOf('class="rd-scroll"'));
+    expect(bar.lastIndexOf('role="separator"')).toBeLessThan(bar.indexOf(`aria-label="${DELETE}"`));
+    expect(bar.match(/role="separator"/g)).toHaveLength(2);
   });
 
-  it('has them in Spam too, without the Spam button', () => {
-    expect(toolbar(render(message({ folder: 'spam' })))).toEqual([ARCHIVE, TRASH, INBOX, DELETE, UNREAD, LABEL, NEWER, OLDER]);
+  it('has them in Spam too, without the Spam button; Move to Trash only with its words (J4-32)', () => {
+    // The server render has no width to measure: no words, so no bare trash can beside the red one of Delete forever.
+    expect(toolbar(render(message({ folder: 'spam' })))).toEqual([INBOX, ARCHIVE, UNREAD, LABEL, DELETE, NEWER, OLDER]);
   });
 
   it('has no Snooze for a draft or sent mail', () => {
-    expect(toolbar(render(message({ folder: 'drafts' })))).toEqual([ARCHIVE, SPAM, TRASH, UNREAD, LABEL, NEWER, OLDER]);
+    expect(toolbar(render(message({ folder: 'drafts' })))).toEqual([ARCHIVE, TRASH, SPAM, UNREAD, LABEL, NEWER, OLDER]);
     expect(toolbar(render(message({ folder: 'sent' })))).not.toContain(SNOOZE);
+  });
+
+  it('opens Snooze and Label as small dialogs (they hold a field), not as ARIA menus', () => {
+    const html = render(message());
+    const bar = html.slice(html.indexOf('role="toolbar"'), html.indexOf('class="rd-scroll"'));
+    expect(bar.match(/aria-haspopup="dialog"/g)).toHaveLength(2);
+    expect(bar).not.toContain('aria-haspopup="menu"');
   });
 
   it('says where the message is among the others', () => {
     expect(render(message())).toContain('<span class="rd-count">1 of 7</span>');
   });
 
-  it('is one plain row of buttons: the divider, the label menu and the counter are not extra buttons', () => {
+  it('is one plain row of buttons (an ARIA toolbar): the dividers, the label button and the counter are not extra buttons', () => {
     const html = render(message());
-    expect(html).toContain('class="rd-bar nm-bar-d"');
+    expect(html).toContain('class="ui-toolbar rd-bar nm-bar-d"');
     expect(html).toContain('data-density="full"');
-    expect(html).toContain('role="separator"');
+    expect(html.match(/role="separator"/g)).toHaveLength(2);
   });
 });
 
-describe('the phone toolbar', () => {
-  it('has 7 buttons in the Inbox: back, three moves, and Mark as unread, Snooze, Label; no counter and no Newer / Older', () => {
+describe('the phone toolbars', () => {
+  it('has one bar on top (Back, the place in the list, Newer, Older) and Archive, Move to Trash, Reply, Snooze and More in the bottom bar', () => {
     const html = render(message(), { compact: true });
-    expect(toolbar(html)).toEqual([BACK, ARCHIVE, SPAM, TRASH, UNREAD, SNOOZE, LABEL]);
-    expect(html).toContain('class="rd-bar nm-bar"');
+    const [top, bottom] = toolbars(html);
+    expect(top).toEqual({ name: en['reader.nav_label'], buttons: [BACK, NEWER, OLDER] });
+    expect(bottom).toEqual({ name: en['reader.actions_label'], buttons: [ARCHIVE, TRASH, REPLY, SNOOZE, MORE] });
+    expect(html).toContain('class="ui-toolbar rd-bar nm-bar"');
     expect(html).toContain('data-density="phone"');
-    expect(html).toContain('nm-bar-sep');
+    // The app's own bar is gone while a message is open (App.tsx), so the top bar says where the message is; the desktop counter is not there.
+    expect(html).toContain('<span class="rd-pos">1 of 7</span>');
     expect(html).not.toContain('rd-count');
+    // The bottom bar comes after the message in the page (and in Tab order): within reach of the thumb.
+    expect(html.indexOf('class="rd-scroll"')).toBeLessThan(html.indexOf('class="ui-toolbar rd-bar nm-bar"'));
   });
 
-  it('has 7 buttons in Trash as well: Snooze is the one that goes', () => {
-    expect(toolbar(render(message({ folder: 'trash' }), { compact: true }))).toEqual([BACK, ARCHIVE, SPAM, INBOX, DELETE, UNREAD, LABEL]);
+  it('keeps the top bar, and so Back, while the message loads and when it could not be opened', () => {
+    for (const html of [render(null, { compact: true, isLoading: true }), render(null, { compact: true, loadFailed: true })]) {
+      expect(toolbars(html)[0]).toEqual({ name: en['reader.nav_label'], buttons: [BACK, NEWER, OLDER] });
+    }
+    expect(render(null, { compact: true, loadFailed: true })).toContain(en['reader.load_failed']);
+  });
+
+  it('has Move to Inbox and Delete forever in Trash and Spam (no Snooze), and Mark as unread where nothing can be snoozed', () => {
+    expect(toolbars(render(message({ folder: 'trash' }), { compact: true }))[1].buttons).toEqual([ARCHIVE, INBOX, REPLY, DELETE, MORE]);
+    expect(toolbars(render(message({ folder: 'spam' }), { compact: true }))[1].buttons).toEqual([ARCHIVE, INBOX, REPLY, DELETE, MORE]);
+    expect(toolbars(render(message({ folder: 'sent' }), { compact: true }))[1].buttons).toEqual([ARCHIVE, TRASH, REPLY, UNREAD, MORE]);
+  });
+
+  it('loses no action of the desktop bar: what the bottom bar does not show is in its More menu', () => {
+    for (const folder of ['inbox', 'snoozed', 'archive', 'trash', 'spam', 'drafts', 'sent']) {
+      const { fourth, more } = phoneBar(folder);
+      // Archive, the main move and Reply are always on the bar; the other move and Label are always in More.
+      expect(more, folder).toContain('other-move');
+      expect(more, folder).toContain('label');
+      // Mark as unread is on the bar or in More, never in neither and never in both.
+      expect([fourth === 'unread', more.includes('unread')].filter(Boolean), folder).toHaveLength(1);
+      expect(fourth, folder).toBe(
+        folder === 'trash' || folder === 'spam' ? 'delete' : folder === 'drafts' || folder === 'sent' ? 'unread' : 'snooze'
+      );
+    }
   });
 });
 
@@ -165,13 +235,16 @@ describe('the rest of the reader', () => {
     expect(html).toContain('photogpj.exe');
     expect(html).toContain('href="/api/attachments/a1"');
     expect(html).toContain('download="photogpj.exe"');
-    expect(html).toContain('aria-label="Download photogpj.exe"');
+    // The name starts with the card's visible text, in its order (J1-09, 2.5.3): the type tile, the file, its size (a space between the two
+    // spans, or the text reads 'photogpj.exe2 KB'), then the action.
+    expect(html).toMatch(/aria-label="[A-Z]+, photogpj\.exe, 2 KB, download"/);
+    expect(html).toMatch(/<span class="rd-file-name">photogpj\.exe<\/span> <span class="rd-file-size">2 KB<\/span>/);
   });
 
   it('opens an encrypted attachment with a button, not a link (a link would save the encrypted bytes)', () => {
     const html = render(message({ enc_fmt: 1, has_attachments: 1 }), { attachments: [attachment()] });
     expect(html).not.toContain('/api/attachments/');
-    expect(html).toContain('aria-label="Download report.pdf"');
+    expect(html).toContain('aria-label="PDF, report.pdf, 2 KB, download"');
   });
 
   it('says why a locked message is not shown, and offers neither Forward nor the sealed badge', () => {
@@ -185,19 +258,23 @@ describe('the rest of the reader', () => {
   it('shows the sealed badge only for a sealed message that was opened, and the unverified chip only for mail from outside that claims a hosted address', () => {
     expect(render(message({ is_e2e: 1 }))).toContain('data-e2e-badge');
     expect(render(message())).not.toContain('data-e2e-badge');
-    // The badge's button names its note with aria-controls, and the note is there while it is closed (hidden), so the reference never dangles.
+    // The chip is a button that opens its explanation in a small dialog; it names the explanation (aria-controls) only while it is open, so the
+    // reference never dangles.
     const sealed = render(message({ is_e2e: 1 }));
-    expect(sealed).toMatch(/<button[^>]*aria-expanded="false"[^>]*aria-controls="e2e-badge-note"/);
-    expect(sealed).toMatch(/<p id="e2e-badge-note" class="rd-e2e-note" hidden="">/);
+    expect(sealed).toMatch(/<button type="button" class="nm-tap-h rd-badge-btn" aria-haspopup="dialog" aria-expanded="false">/);
+    expect(sealed).not.toContain('aria-controls="e2e-badge-note"');
+    expect(sealed).toContain(en['e2e.badge']);
     expect(render(message({ origin: 'smtp', from_hosted: true }))).toContain('data-unverified-sender');
     expect(render(message({ origin: 'internal', from_hosted: true }))).not.toContain('data-unverified-sender');
   });
 
-  it('has Reply, Reply all and Forward under the message', () => {
+  it('has Reply, Reply all and Forward under the message: Reply is the one primary button, the other two secondary', () => {
     const html = render(message());
     for (const label of [en['action.reply'], en['action.reply_all'], en['action.forward']]) {
       expect(html).toContain(`>${label}</button>`);
     }
+    const row = html.slice(html.indexOf('class="rd-reply"'));
+    expect([...row.matchAll(/data-variant="(\w+)"/g)].slice(0, 3).map((match) => match[1])).toEqual(['primary', 'secondary', 'secondary']);
   });
 
   it('draws the reply row in its full size until the row is measured (reader/barDensity.ts replyDensity picks a smaller one), and on a phone', () => {
@@ -226,17 +303,21 @@ describe('the rest of the reader', () => {
     expect(html).not.toContain('rd-link');
   });
 
-  it('says it is loading, and what to do when nothing is selected', () => {
+  it('says it is loading (a skeleton of the message, named for screen readers), and what to do when nothing is selected', () => {
     expect(render(null, { isLoading: true })).toContain(en['reader.loading_message']);
+    expect(render(null, { isLoading: true })).toContain('ui-skeleton');
     expect(render(null)).toContain(en['reader.none_selected']);
     expect(render(null)).toContain('/edgar.svg');
   });
 
-  it('only names itself, quietly, when the list beside it is empty: no second Edgar, no pointer at a list with nothing to choose', () => {
+  it('names itself with the heading and line of the list empty state when that list is empty: no second Edgar, no pointer at it', () => {
     const html = render(null, { listEmpty: true });
     expect(html).toContain('data-state="empty"');
-    expect(html).toContain('class="ui-empty rd-idle"');
+    // J3-17: heading and line as the list's empty state (no quiet one-line label), under a blank band of the toolbar's height.
+    expect(html).toContain('<div class="ui-empty"><h2 class="ui-empty-title">');
     expect(html).toContain(en['reader.none_selected']);
+    expect(html).toContain(en['reader.none_selected_empty_hint']);
+    expect(html).toContain('class="rd-bar rd-bar-skel" data-blank="true"');
     expect(html).not.toContain(en['reader.none_selected_hint']);
     expect(html).not.toContain('/edgar.svg');
     // An open message is shown whatever the list holds (a notification link opens one that is not in it).
@@ -246,7 +327,11 @@ describe('the rest of the reader', () => {
   it('opens the recipients line in place (a ui Disclosure) and shows the labels of the message as ui Chips in their hue', () => {
     const html = render(message({ cc: 'bob@example.com', labels: JSON.stringify(['Work']) }));
     expect(html).toContain('<button type="button" class="ui-disclosure rd-rcpt" data-look="text" aria-expanded="false">');
-    expect(html).toMatch(/<span class="ui-chip" data-kind="label" style="[^"]*">.*?<span class="ui-chip-text">Work<\/span>/);
+    expect(html).toMatch(
+      /<span class="ui-chip rd-tag" data-kind="label" data-removable="true" style="[^"]*">.*?<span class="ui-chip-text">Work<\/span>/
+    );
+    // J4-42: the chip takes the label off with its X, named after the label.
+    expect(html).toContain('aria-label="Remove label Work"');
   });
 
   it('shows one recipient as plain text: nothing is hidden, so there is nothing to open (until a measure finds the line cut)', () => {
@@ -257,5 +342,75 @@ describe('the rest of the reader', () => {
     expect(html).not.toContain('ui-disclosure rd-rcpt');
     // Two recipients in the To line count as more than one, as a Cc does.
     expect(render(message({ to_address: 'me@example.com, ann@example.com' }))).toContain('ui-disclosure rd-rcpt');
+  });
+
+  it("says 'to me' when the signed-in address is the only recipient, with the address in the disclosure", () => {
+    const html = render(message(), { self: 'Me <ME@example.com>' });
+    expect(html).toContain(`<span class="rd-rcpt-text">${en['reader.to_me']}</span>`);
+    expect(html).toContain('ui-disclosure rd-rcpt');
+    // Someone else's address, or another recipient beside it, is shown as it is.
+    const toMe = `<span class="rd-rcpt-text">${en['reader.to_me']}</span>`;
+    expect(render(message(), { self: 'other@example.com' })).not.toContain(toMe);
+    expect(render(message({ to_address: 'me@example.com, ann@example.com' }), { self: 'me@example.com' })).not.toContain(toMe);
+  });
+
+  it('counts a single attachment without its size (the card shows it), and gives several their total', () => {
+    const one = render(message({ has_attachments: 1 }), { attachments: [attachment()] });
+    expect(one).toContain(`${en['reader.one_attachment']}</h3>`);
+    // Seen once (the card); the card's accessible name also says it (J1-09), which is not text on screen.
+    expect(one.replaceAll(/aria-label="[^"]*"/g, '').match(/2 KB/g)).toHaveLength(1);
+    const two = render(message({ has_attachments: 1 }), { attachments: [attachment(), attachment({ id: 'a2', filename: 'b.pdf' })] });
+    expect(two).toContain(en['reader.attachments_summary#other'].replace('{count}', '2').replace('{size}', '4 KB'));
+  });
+
+  it('puts the trust chips on the sender line: the sealed one neutral, an unverified sender in the caution tone (J3-08, J4-01, J6-01)', () => {
+    const html = render(message({ is_e2e: 1 }));
+    const from = html.slice(html.indexOf('class="rd-from"'), html.indexOf('class="rd-date"'));
+    expect(from).toContain('data-e2e-badge');
+    expect(from).toContain('data-tone="neutral"');
+    const outside = render(message({ origin: 'smtp', from_hosted: true }));
+    const line = outside.slice(outside.indexOf('class="rd-from"'), outside.indexOf('class="rd-date"'));
+    expect(line).toContain('data-unverified-sender');
+    expect(line).toContain('data-tone="warning"');
+  });
+
+  it('gives the date one place in every state: first on the line under the sender, never on the sender line (J3-21)', () => {
+    for (const html of [
+      render(message()),
+      render(message({ is_e2e: 1 })),
+      render(message({ origin: 'smtp', from_hosted: true })),
+      render(message({ to_address: 'me@example.com, ann@example.com' }))
+    ]) {
+      const line = html.slice(html.indexOf('class="rd-line"'), html.indexOf('class="rd-meta"'));
+      expect(line).not.toContain('rd-date');
+      expect(html).toMatch(/<div class="rd-meta"><span class="rd-date">[^<]+<\/span><(p|button)[^>]*class="[^"]*rd-rcpt/);
+    }
+  });
+
+  it('has Reply beside the star in the header on a desktop, with Reply all and Forward in its small menu (J6-10); not on a phone', () => {
+    const desktop = tools(render(message()));
+    expect(desktop).toContain(`aria-label="${en['action.star']}"`);
+    expect(desktop).toContain(`aria-label="${REPLY}"`);
+    expect(desktop).toContain(`aria-label="${en['reader.reply_options']}"`);
+    expect(desktop).toContain('aria-haspopup="menu"');
+    const phone = tools(render(message(), { compact: true }));
+    expect(phone).toContain(`aria-label="${en['action.star']}"`);
+    expect(phone).not.toContain(`aria-label="${REPLY}"`);
+  });
+
+  it('gives each button of the phone bottom bar a short word under its icon that is part of its name (J5-15, 2.5.3)', () => {
+    const html = render(message(), { compact: true });
+    const bar = html.slice(html.indexOf('class="ui-toolbar rd-bar nm-bar"'));
+    const words = [...bar.matchAll(/class="rd-tab-text">([^<]*)</g)].map((match) => match[1]);
+    expect(words).toEqual([ARCHIVE, en['reader.bar_trash'], REPLY, SNOOZE, en['reader.bar_more']]);
+    for (const [word, name] of [
+      [en['reader.bar_trash'], TRASH],
+      [en['reader.bar_more'], MORE],
+      [en['reader.bar_inbox'], INBOX],
+      [en['reader.bar_delete'], DELETE],
+      [en['reader.bar_unread'], UNREAD]
+    ]) {
+      expect(name.toLowerCase()).toContain(word.toLowerCase());
+    }
   });
 });

@@ -7,12 +7,15 @@ import { useT } from '../../lib/i18n';
 import { contextWords } from '../../lib/password/policy';
 import { usePasswordCheck } from '../../lib/password/usePasswordCheck';
 import { useAction } from '../../lib/useAction';
-import { PasswordField } from '../PasswordField';
+import { PasswordField, SecretField } from '../PasswordField';
 import { TextField } from '../../ui';
 import { AuthButton, AuthCard, ErrorLine, TextButton } from './authUi';
 import { RecoveryKeyPanel } from './RecoveryKeyPanel';
 
 type Step = 'details' | 'key' | 'done';
+
+/** The details, then the new recovery key ("Account restored" is where the person arrives, not a step). */
+const STEPS = 2;
 
 /**
  * Break-glass (crypto-design.md 15.7), reached from the forgot-password page: an admin who lost both password and recovery key restores their
@@ -47,8 +50,8 @@ export const BreakGlassScreen: React.FC<{ t: ThemeTokens; onBack: () => void }> 
   // Continue can always be pressed: a press with something missing shows every field's error and takes the keyboard to the first of them.
   const [submitted, setSubmitted] = React.useState(false);
   const focusLater = useFieldFocus();
-  const keyError = submitted && setupKey.trim() === '' ? tr('setup.err_key_required') : null;
-  const emailError = submitted && email.trim() === '' ? tr('auth.address_invalid') : null;
+  const keyError = submitted && setupKey.trim() === '' ? tr('setup.err_key_required') : undefined;
+  const emailError = submitted && email.trim() === '' ? tr('auth.address_invalid') : undefined;
   const mismatch = (repeat !== '' || submitted) && repeat !== password;
   const toFix = firstInvalid([
     ['glass-key', setupKey.trim() === ''],
@@ -90,7 +93,7 @@ export const BreakGlassScreen: React.FC<{ t: ThemeTokens; onBack: () => void }> 
 
   if (step === 'key' && draft !== null) {
     return (
-      <AuthCard t={t} wide title={tr('recovery.title_new')} lead={tr('breakglass.key_lead')}>
+      <AuthCard t={t} wide step={{ current: 2, total: STEPS }} title={tr('recovery.title_new')} lead={tr('breakglass.key_lead')}>
         <RecoveryKeyPanel
           t={t}
           draft={draft}
@@ -116,42 +119,35 @@ export const BreakGlassScreen: React.FC<{ t: ThemeTokens; onBack: () => void }> 
     <AuthCard
       t={t}
       picker
+      step={{ current: 1, total: STEPS }}
       title={tr('breakglass.title')}
       lead={tr('breakglass.lead')}
       onSubmit={(event) => {
         void next(event);
       }}
     >
-      <div className="au-row">
-        <TextField
-          id="glass-key"
-          label={tr('breakglass.setup_key')}
-          hint={tr('breakglass.setup_key_hint')}
-          type="password"
-          value={setupKey}
-          onChange={(event) => setSetupKey(event.target.value)}
-          autoComplete="off"
-          spellCheck={false}
-          aria-invalid={keyError !== null}
-          aria-describedby={keyError === null ? undefined : 'glass-key-error'}
-        />
-        <ErrorLine t={t} id="glass-key-error" text={keyError} />
-      </div>
-      <div className="au-row">
-        <TextField
-          id="glass-email"
-          label={tr('breakglass.address')}
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          autoComplete="username"
-          autoCapitalize="off"
-          spellCheck={false}
-          aria-invalid={emailError !== null}
-          aria-describedby={emailError === null ? undefined : 'glass-email-error'}
-        />
-        <ErrorLine t={t} id="glass-email-error" text={emailError} />
-      </div>
+      <SecretField
+        id="glass-key"
+        label={tr('breakglass.setup_key')}
+        hint={tr('breakglass.setup_key_hint')}
+        error={keyError}
+        showLabel={tr('auth.show_key')}
+        value={setupKey}
+        onChange={(event) => setSetupKey(event.target.value)}
+        autoComplete="off"
+      />
+      <TextField
+        id="glass-email"
+        label={tr('breakglass.address')}
+        type="email"
+        error={emailError}
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+        autoComplete="username"
+        autoCapitalize="off"
+        autoCorrect="off"
+        spellCheck={false}
+      />
       <PasswordField
         t={t}
         id="glass-new"
@@ -162,19 +158,15 @@ export const BreakGlassScreen: React.FC<{ t: ThemeTokens; onBack: () => void }> 
         offerPassphrase
         submitted={submitted}
       />
-      <div className="au-row">
-        <TextField
-          id="glass-repeat"
-          label={tr('gate.repeat_password')}
-          type="password"
-          value={repeat}
-          onChange={(event) => setRepeat(event.target.value)}
-          autoComplete="new-password"
-          aria-invalid={mismatch}
-          aria-describedby={mismatch ? 'glass-mismatch' : undefined}
-        />
-        <ErrorLine t={t} id="glass-mismatch" text={mismatch ? tr('gate.passwords_differ') : null} />
-      </div>
+      <SecretField
+        id="glass-repeat"
+        label={tr('gate.repeat_password')}
+        showLabel={tr('password.show_repeat')}
+        error={mismatch ? tr('gate.passwords_differ') : undefined}
+        value={repeat}
+        onChange={(event) => setRepeat(event.target.value)}
+        autoComplete="new-password"
+      />
       <ErrorLine t={t} id="glass-error" text={action.error} />
       <AuthButton t={t} busy={action.busy} label={tr('gate.continue')} />
       <div className="au-alt">

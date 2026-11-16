@@ -5,6 +5,7 @@ import { getLabelChip } from '../theme';
 import type { FolderStats } from '../types';
 import { useT } from '../lib/i18n';
 import { folderName } from '../lib/mail';
+import { usePrefs } from '../lib/prefs';
 import { Button, IconButton, Kbd } from '../ui';
 import { BrandMark } from './BrandMark';
 import './mailbox.css';
@@ -31,8 +32,14 @@ const NAV_ITEMS = [
   { id: 'trash', icon: Trash2 }
 ] as const;
 
+/**
+ * The folders column: Compose (the one primary button of the page, with its C key while single-key shortcuts are on), the folders with their
+ * counts, then the person's labels. On the desktop it stands on the window ground beside the content sheet; on a phone it is the drawer.
+ */
 export const Sidebar: React.FC<SidebarProps> = ({ t, folder, onSelectFolder, stats, labels, onCompose, onCloseMobile }) => {
   const tr = useT();
+  // The C key works only while single-key shortcuts are on (Settings, WCAG 2.1.4): its keycap says so.
+  const singleKeys = usePrefs().shortcuts;
   // Stats come from the API, so any folder can be missing.
   const folderStats: Partial<FolderStats> = stats;
 
@@ -61,7 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ t, folder, onSelectFolder, sta
           className="mb-compose"
           leadingIcon={<PenLine size={18} strokeWidth={1.75} aria-hidden="true" />}
           trailingIcon={
-            onCloseMobile ? undefined : (
+            onCloseMobile || !singleKeys ? undefined : (
               <span aria-hidden="true" className="mb-compose-key">
                 <Kbd>C</Kbd>
               </span>

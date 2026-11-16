@@ -7,13 +7,14 @@ import { keepLockedMail, lockedMailKept } from '../lib/lockedKept';
 import { bannerRows, useCancelLockedDelete, useLockedMail } from '../lib/lockedMail';
 import type { LockedMail } from '../lib/lockedMail';
 import { bannerNotices, useNotices } from '../lib/notices';
-import { Banner, Button } from '../ui';
+import { Banner, Button, Disclosure, DisclosurePanel } from '../ui';
 import { LockedMailDialog } from './security/LockedMailDialog';
 import './mailbox.css';
 
 /**
- * Old mail that is locked under a key that was replaced (an admin restored with the setup key): how many messages, and two plain choices. Keep
- * leaves them as they are and puts the banner away for this tab; Delete asks for the address, the password and the code, and then the banner says
+ * Old mail that is locked under a key that was replaced (an admin restored with the setup key): how many messages, why (one plain paragraph
+ * behind "Why?"), and two choices that say what they do. Keep them locked leaves them as they are and puts the banner away for this tab;
+ * Delete them… (danger) opens the confirmation that names the count and asks for the address, the password and the code; then the banner says
  * on which date the server will delete them, with a Cancel. Calm on purpose: one neutral info banner, no counters beyond the one that matters.
  */
 export const LockedMailBanner: React.FC<{ t: ThemeTokens }> = ({ t }) => {
@@ -25,6 +26,8 @@ export const LockedMailBanner: React.FC<{ t: ThemeTokens }> = ({ t }) => {
   // Keys kept in this tab: sessionStorage is the memory (lockedKept.ts), this set is what the page already knows when storage is blocked.
   const [keptNow, setKeptNow] = React.useState<ReadonlySet<string>>(() => new Set());
   const [deleting, setDeleting] = React.useState<LockedMail | null>(null);
+  const [why, setWhy] = React.useState(false);
+  const whyId = React.useId();
 
   if (user === undefined || mail === undefined) {
     return null;
@@ -49,10 +52,10 @@ export const LockedMailBanner: React.FC<{ t: ThemeTokens }> = ({ t }) => {
                       {row.state === 'ask' ? (
                         <>
                           <Button size="sm" data-locked-keep onClick={() => keep(row.mail.keyId)}>
-                            {tr('locked.keep')}
+                            {tr('locked.keep_locked', { count: row.mail.locked })}
                           </Button>
-                          <Button size="sm" data-locked-delete onClick={() => setDeleting(row.mail)}>
-                            {tr('locked.delete')}
+                          <Button size="sm" variant="danger" data-locked-delete onClick={() => setDeleting(row.mail)}>
+                            {tr('locked.delete_them', { count: row.mail.locked })}
                           </Button>
                         </>
                       ) : (
@@ -68,6 +71,16 @@ export const LockedMailBanner: React.FC<{ t: ThemeTokens }> = ({ t }) => {
                       ? tr('locked.banner', { count: row.mail.locked })
                       : tr('locked.pending', { count: row.mail.locked, date: formatWhen(row.until) })}
                   </p>
+                  {row.state === 'ask' ? (
+                    <>
+                      <Disclosure open={why} onOpenChange={setWhy} controls={whyId} size="sm">
+                        {tr('locked.why')}
+                      </Disclosure>
+                      <DisclosurePanel id={whyId} open={why}>
+                        <p className="mb-note">{tr('locked.why_text')}</p>
+                      </DisclosurePanel>
+                    </>
+                  ) : null}
                   {cancel.isError && row.state === 'pending' ? (
                     <p role="alert" data-tone="error" className="mb-note">
                       {cancel.error.message}

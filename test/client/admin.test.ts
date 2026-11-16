@@ -2,12 +2,13 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { DnsResult } from '../../src/client/components/admin/DomainsPanel';
+import { PersonStatus, PersonTwoFactor } from '../../src/client/components/admin/adminUi';
 import { describeAgent, describeKind, describeNotice } from '../../src/client/lib/activity';
 import { ApiError, errorText } from '../../src/client/lib/api';
 import { domainProblem, localPartProblem } from '../../src/client/lib/admin/address';
 import { adminClaim } from '../../src/client/lib/admin/claims';
-import { adminErrorText, detailPairs, isStepUpRequired } from '../../src/client/lib/admin/types';
-import type { DnsCheck } from '../../src/client/lib/admin/types';
+import { adminErrorText, detailLine, detailPairs, isStepUpRequired } from '../../src/client/lib/admin/types';
+import type { AdminUser, DnsCheck } from '../../src/client/lib/admin/types';
 import { tr } from '../../src/client/lib/i18n';
 
 const dnsAnswer = (mx: DnsCheck['receiving']['mx']): DnsCheck => ({
@@ -26,13 +27,20 @@ const dnsAnswer = (mx: DnsCheck['receiving']['mx']): DnsCheck => ({
 });
 const renderDns = (check: DnsCheck): string => renderToStaticMarkup(createElement(DnsResult, { check }));
 
+// The MX hosts are rows of the receiving step of the DNS checklist (before the sending step): the type, the host name, its priority.
+const mxRows = (html: string): string[] =>
+  [
+    ...(html.split(`aria-label="${tr('domains.sending')}"`)[0] ?? '').matchAll(
+      /<li class="ad-record"><span class="ad-rtype">MX<\/span><span class="ad-record-name" translate="no">([^<]*)<\/span>/g
+    )
+  ].map((match) => match[1]);
+
 describe('the DNS answer of a domain', () => {
   it('says that a null MX (RFC 7505, "0 .") accepts no mail, and lists no empty host', () => {
     const html = renderDns(dnsAnswer([{ priority: 0, host: '' }]));
     expect(html).toContain(tr('domains.note_mx_null'));
     expect(html).not.toContain('point to');
-    expect(html).not.toMatch(/<li>0 <\/li>/);
-    expect(html).not.toContain('ad-mono-list');
+    expect(mxRows(html)).toEqual([]);
     // Nor "No MX records found": the domain has one, and it says something.
     expect(html).not.toContain(tr('domains.no_mx'));
   });
@@ -40,16 +48,98 @@ describe('the DNS answer of a domain', () => {
   it('still names the hosts of another provider, and only them', () => {
     const html = renderDns(dnsAnswer([{ priority: 10, host: 'mx.other.example' }]));
     expect(html).toContain(tr('domains.note_mx_other', { hosts: 'mx.other.example' }));
-    expect(html).toMatch(/<ul class="ad-mono-list"><li>10 mx\.other\.example<\/li><\/ul>/);
+    expect(mxRows(html)).toEqual(['mx.other.example']);
+    expect(html).toContain(tr('domains.mx_priority', { priority: 10 }));
   });
 
   it('shows found and missing records of Email Sending as different badges with words: success, danger, warning when not required', () => {
     const html = renderDns(dnsAnswer([]));
     const badges = [...html.matchAll(/<span class="ui-badge" data-tone="(\w+)">[\s\S]*?<\/span>/g)].map((match) => match[1]);
-    // Receiving and sending not ready (danger), then the three records.
-    expect(badges).toEqual(['danger', 'danger', 'success', 'danger', 'warning']);
+    // Receiving and sending not ready (danger), then the three records, what is missing first: required (danger), optional (warning), found.
+    expect(badges).toEqual(['danger', 'danger', 'danger', 'warning', 'success']);
     expect(html).toContain(tr('domains.record_ok'));
     expect(html.match(new RegExp(tr('domains.record_absent'), 'g'))).toHaveLength(2);
+  });
+
+  it('puts the step that does not work first and open, with a dashboard link, and folds a step that works to one line', () => {
+    const answer = dnsAnswer([{ priority: 13, host: 'route1.mx.cloudflare.net' }]);
+    const html = renderDns({ ...answer, receiving: { ...answer.receiving, ready: true, via_cloudflare: true } });
+    // Sending (not ready) comes before receiving (ready).
+    expect(html.indexOf(`aria-label="${tr('domains.sending')}"`)).toBeLessThan(html.indexOf(`aria-label="${tr('domains.receiving')}"`));
+    // The failing step is open, says where to fix it, and links to the dashboard in a new tab; the ready step is closed.
+    const toggles = [...html.matchAll(/aria-expanded="(true|false)"/g)].map((match) => match[1]);
+    expect(toggles).toEqual(['true', 'false']);
+    expect(html).toContain(tr('domains.guide_path_sending'));
+    expect(html).not.toContain(tr('domains.guide_path_routing'));
+    expect(html).toMatch(/<a href="https:\/\/dash\.cloudflare\.com\/" target="_blank" rel="noopener noreferrer"/);
+    expect(html).toContain(tr('domains.note_mx_cloudflare'));
+  });
+});
+
+describe('a missing record of Email Sending', () => {
+  it('says where its value is (the app cannot know it), and only under the records that are missing', () => {
+    const html = renderDns(dnsAnswer([]));
+    expect(html.match(/class="ad-record-hint"/g)).toHaveLength(2);
+    expect(html).toContain(tr('domains.record_value_hint'));
+  });
+});
+
+const person = (fields: Partial<AdminUser>): AdminUser => ({
+  id: 'u1',
+  email: 'maya.chen@example.com',
+  display_name: 'Maya Chen',
+  role: 'member',
+  status: 'active',
+  last_login_at: null,
+  has_keys: true,
+  two_factor: true,
+  two_factor_reset_due_at: null,
+  never_signed_in: false,
+  temp_password_expires_at: null,
+  aliases: [],
+  ...fields
+});
+const render = (element: Parameters<typeof renderToStaticMarkup>[0]): string => renderToStaticMarkup(element);
+
+describe('the state of a person in the admin console', () => {
+  it('says two-factor in words with an icon: On quiet, Off a warning unless the account is disabled', () => {
+    const on = render(createElement(PersonTwoFactor, { user: person({}) }));
+    expect(on).toContain(tr('users.two_factor_is_on'));
+    expect(on).not.toContain('data-tone');
+    const off = render(createElement(PersonTwoFactor, { user: person({ two_factor: false }) }));
+    expect(off).toContain(tr('users.two_factor_is_off'));
+    expect(off).toContain('data-tone="warning"');
+    expect(render(createElement(PersonTwoFactor, { user: person({ two_factor: false, never_signed_in: true }) }))).toContain(
+      'data-tone="warning"'
+    );
+    expect(render(createElement(PersonTwoFactor, { user: person({ two_factor: false, status: 'disabled' }) }))).not.toContain('data-tone');
+    // Under its column header the short word, with the whole phrase for the stacked rows of a narrow table.
+    const short = render(createElement(PersonTwoFactor, { user: person({}), short: true }));
+    expect(short).toContain(`<span class="ad-wide">${tr('users.two_factor_on')}</span>`);
+    expect(short).toContain(`<span class="ad-narrow">${tr('users.two_factor_is_on')}</span>`);
+  });
+
+  it('draws every status as an icon and a word, never a pill, so the words of the column share one edge', () => {
+    for (const fields of [{}, { never_signed_in: true }, { status: 'disabled' as const }]) {
+      const html = render(createElement(PersonStatus, { user: person(fields) }));
+      expect(html).toMatch(/^<span class="ad-plain"( data-tone="(warning|danger)")?><span class="ad-state-icon" aria-hidden="true">/);
+      expect(html).not.toContain('ui-badge');
+    }
+  });
+});
+
+describe('the audit log in words', () => {
+  it('says every value the server writes as words: a change, a language, a reason, on and off', () => {
+    const change = (from: string, to: string) => tr('audit.detail_change', { from, to });
+    expect(detailLine({ from: 'member', to: 'admin' })).toBe(change(tr('term.member'), tr('term.admin')));
+    expect(detailLine({ from: 'vi', to: 'en' })).toBe(change('Tiếng Việt', 'English'));
+    expect(detailLine({ from: false, to: true })).toBe(change(tr('audit.value_off'), tr('audit.value_on')));
+    expect(detailLine({ reason: 'wrong_credentials' })).toBe(`${tr('audit.detail_reason')}: ${tr('audit.reason_wrong_password')}`);
+    expect(detailLine({ reason: 'second_factor' })).toBe(`${tr('audit.detail_reason')}: ${tr('audit.reason_second_factor')}`);
+    expect(detailLine({ second_factor: 'totp' })).toBe(`${tr('audit.detail_second_factor')}: ${tr('term.authenticator_app')}`);
+    // A reason the client does not know is shown as the server wrote it, never hidden.
+    expect(detailLine({ reason: 'left the company' })).toBe(`${tr('audit.detail_reason')}: left the company`);
+    expect(detailLine({})).toBe('');
   });
 });
 

@@ -7,7 +7,10 @@ import { PasswordField } from '../../src/client/components/PasswordField';
 import { BreakGlassScreen } from '../../src/client/components/auth/BreakGlassScreen';
 import { RecoveryCodesPanel } from '../../src/client/components/auth/RecoveryCodesPanel';
 import { SetupScreen } from '../../src/client/components/auth/SetupScreen';
-import { AuthButton, CheckboxRow, TextButton } from '../../src/client/components/auth/authUi';
+import { SignInScreen } from '../../src/client/components/auth/SignInScreen';
+import { UnlockScreen } from '../../src/client/components/auth/UnlockScreen';
+import { ErrorBoundary } from '../../src/client/components/ErrorBoundary';
+import { AuthButton, AuthSteps, CheckboxRow, HintedLink, TextButton, TrustLine } from '../../src/client/components/auth/authUi';
 import { ChangePasswordView } from '../../src/client/components/security/ChangePasswordView';
 import { CredentialForm } from '../../src/client/components/security/CredentialForm';
 import type { SessionUser } from '../../src/client/lib/auth';
@@ -111,6 +114,14 @@ describe('RecoveryCodesPanel', () => {
     expect(html.indexOf('<h2')).toBeLessThan(html.indexOf('<ol'));
   });
 
+  it('can be pressed before the box is ticked: Continue is never disabled, the press says to tick the box (the settled pattern)', () => {
+    const html = renderToStaticMarkup(createElement(RecoveryCodesPanel, { t, codes: ['aaaa-bbbb'], onDone: nothing }));
+    const tag = /<button[^>]*>(?:(?!<\/button>)[\s\S])*Continue<\/button>/.exec(html)?.[0] ?? '';
+    expect(tag).toContain('type="button"');
+    expect(tag).not.toMatch(/\bdisabled=""/);
+    expect(html).not.toContain('twofa-codes-saved-error');
+  });
+
   it('takes the level of its heading from where it is shown (an h5 under a view of Settings), and that heading still takes the focus (C-9b)', () => {
     const html = renderToStaticMarkup(createElement(RecoveryCodesPanel, { t, codes: ['aaaa-bbbb'], onDone: nothing, headingLevel: 5 }));
     expect(html).toMatch(/<h5[^>]*tabindex="-1"[^>]*class="au-subtitle"/);
@@ -149,6 +160,32 @@ const buttonTag = (html: string, label: string): string => {
 };
 
 describe('a form whose button is always pressable', () => {
+  it('Sign in: the button can be pressed on the empty form, both fields can show their password managers what they are, no error yet', () => {
+    const html = page(createElement(SignInScreen, { t, onForgot: nothing }));
+    const button = buttonTag(html, 'Sign in');
+    expect(button).toContain('type="submit"');
+    expect(button).not.toMatch(/\bdisabled=""/);
+    expect(html).not.toContain('role="alert"');
+    expect(html).not.toContain('aria-invalid="true"');
+    expect(html).toMatch(
+      /<input[^>]*id="signin-email"[^>]*autoComplete="username"|<input[^>]*autoComplete="username"[^>]*id="signin-email"/i
+    );
+    const password = /<input[^>]*id="signin-password"[^>]*>/.exec(html)?.[0] ?? '';
+    expect(password).toContain('type="password"');
+    expect(password.toLowerCase()).toContain('autocomplete="current-password"');
+    // The Show button of the password: one name, the state in aria-pressed.
+    expect(html).toMatch(
+      /<button[^>]*aria-label="Show password"[^>]*aria-pressed="false"|<button[^>]*aria-pressed="false"[^>]*aria-label="Show password"/
+    );
+  });
+
+  it('Unlock: the button can be pressed with the password empty', () => {
+    const user: SessionUser = { ...USER, has_keys: true };
+    const html = page(createElement(UnlockScreen, { t, user }));
+    expect(buttonTag(html, 'Unlock')).not.toMatch(/\bdisabled=""/);
+    expect(html).not.toContain('role="alert"');
+  });
+
   it('Setup: Continue is a submit button that can be pressed on the empty form, and no field shows an error before anything was done', () => {
     const html = page(
       createElement(SetupScreen, { t, session: { authenticated: false, setup_required: true, configured: true, missing_secrets: [] } })
@@ -211,6 +248,43 @@ const passwordField = (value: string, submitted: boolean, check: PasswordCheck):
 const statusLine = (html: string): string => /<p id="pw-status"[^>]*>[\s\S]*?<\/p>/.exec(html)?.[0] ?? '';
 const passwordInput = (html: string): string => /<input[^>]*id="pw"[^>]*>/.exec(html)?.[0] ?? '';
 
+describe('the step of a flow', () => {
+  it('says the step in words beside a bar of one segment per step, the done ones on (the bar is a picture)', () => {
+    const html = renderToStaticMarkup(createElement(AuthSteps, { current: 2, total: 3 }));
+    expect(html).toContain('Step 2 of 3');
+    expect(html.match(/class="au-steps-seg"/g)).toHaveLength(3);
+    expect(html.match(/data-on="true"/g)).toHaveLength(2);
+    expect(html).toMatch(/<span class="au-steps-bar" aria-hidden="true">/);
+  });
+
+  it('Setup shows its first step over the title', () => {
+    const html = page(
+      createElement(SetupScreen, { t, session: { authenticated: false, setup_required: true, configured: true, missing_secrets: [] } })
+    );
+    expect(html.indexOf('Step 1 of 2')).toBeGreaterThan(-1);
+    expect(html.indexOf('Step 1 of 2')).toBeLessThan(html.indexOf('<h1'));
+  });
+});
+
+/** A component that fails to render: what the crash screen stands in for. */
+const Broken = (): never => {
+  throw new Error('broken on purpose');
+};
+
+describe('the crash screen', () => {
+  it('is a status page: Edgar (112 px), the title as the h1, one line, and Reload as the one primary button', () => {
+    // The server renderer does not run error boundaries: render the boundary in its failed state directly.
+    const boundary = new ErrorBoundary({ children: createElement(Broken) });
+    boundary.state = { failed: true };
+    const html = renderToStaticMarkup(boundary.render() as ReactElement);
+    expect(html).toContain('class="au-page"');
+    expect(html).toMatch(/<img src="\/edgar\.svg" alt="" width="112"/);
+    expect(html).toMatch(/<h1 class="ui-empty-title">Something went wrong<\/h1>/);
+    expect(html.match(/data-variant="primary"/g)).toHaveLength(1);
+    expect(html).toContain('Reload</button>');
+  });
+});
+
 describe('PasswordField after a press of the form', () => {
   it('says nothing is wrong with an empty field before the press: the rules, in the neutral tone', () => {
     const html = passwordField('', false, EMPTY);
@@ -222,7 +296,8 @@ describe('PasswordField after a press of the form', () => {
   it('after the press, says in red that a password is needed, then the rules, and marks the field invalid', () => {
     const html = passwordField('', true, EMPTY);
     expect(statusLine(html)).toContain('data-tone="danger"');
-    expect(statusLine(html)).toMatch(/Choose a password\. At least 12 characters/);
+    // The check is an admin's (EMPTY: min 16), so the rules are the admin's alone (J4-17).
+    expect(statusLine(html)).toMatch(/Choose a password\. At least 16 characters \(admin account\)/);
     expect(passwordInput(html)).toContain('aria-invalid="true"');
     expect(passwordInput(html)).toContain('aria-describedby="pw-status"');
   });
@@ -232,5 +307,36 @@ describe('PasswordField after a press of the form', () => {
     const typed = statusLine(passwordField('something', true, checkIn(null)));
     expect(typed).not.toContain('Choose a password.');
     expect(typed).toContain('Loading the password check');
+  });
+});
+
+describe('the sign-in and unlock cards say where and how', () => {
+  it('Sign in: a greeting as the h1 (not the button label), a real-looking link to Forgot password with what a reset needs, the trust line', () => {
+    const html = page(createElement(SignInScreen, { t, onForgot: nothing }));
+    expect(html).toMatch(/<h1[^>]*>Welcome back<\/h1>/);
+    expect(html).not.toMatch(/<h1[^>]*>Sign in<\/h1>/);
+    expect(buttonTag(html, 'Sign in')).toContain('type="submit"');
+    // Forgot password: a ghost button with the link look, described by the line under it (the recovery key).
+    const forgot = buttonTag(html, 'Forgot password');
+    expect(forgot).toContain('class="ui-btn au-link-btn"');
+    expect(forgot).toContain('aria-describedby="signin-forgot-hint"');
+    expect(html).toMatch(/<p id="signin-forgot-hint" class="au-link-hint">You need your recovery key to reset it\.<\/p>/);
+    // The shared-device row explains itself before it is ticked, in one short line.
+    expect(html).toContain('id="signin-shared-hint"');
+    expect(html).toContain('Asks for your password again when this tab is closed or reloaded.');
+    // The trust line: a lock and one sentence, after the form's actions.
+    expect(html).toMatch(/<p class="au-trust"><svg[^>]*aria-hidden="true"[\s\S]*?<\/svg><span>Your mail is stored encrypted/);
+    expect(html.indexOf('class="au-trust"')).toBeGreaterThan(html.indexOf('signin-forgot-hint'));
+    // The card stands on its stage (the glow centred on it).
+    expect(html.indexOf('class="au-stage"')).toBeLessThan(html.indexOf('class="au-card"'));
+  });
+
+  it('Unlock: the short shared-device line and the trust line, and the same pieces render alone', () => {
+    const html = page(createElement(UnlockScreen, { t, user: { ...USER, has_keys: true } }));
+    expect(html).toContain('Asks for your password again when this tab is closed or reloaded.');
+    expect(html).toContain('class="au-trust"');
+    const link = renderToStaticMarkup(createElement(HintedLink, { id: 'x', label: 'Go', hint: 'Needs a key', onClick: nothing }));
+    expect(link).toMatch(/^<div class="au-hinted"><button type="button" class="ui-btn au-link-btn" data-variant="ghost" data-size="sm"/);
+    expect(renderToStaticMarkup(createElement(TrustLine))).toMatch(/^<p class="au-trust">/);
   });
 });

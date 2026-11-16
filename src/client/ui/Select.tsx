@@ -10,6 +10,8 @@ export interface SelectOption {
   value: string;
   label: string;
   disabled?: boolean;
+  /** The language of the label when it is not the page's (a language named in its own language: lang="vi" on 'Tiếng Việt', 3.1.2). */
+  lang?: string;
 }
 
 export interface SelectProps {
@@ -212,7 +214,7 @@ export function Select({
         onKeyDown={onKeyDown}
         onBlur={() => setOpen(false)}
       >
-        <span className="ui-select-value" data-placeholder={current === undefined ? 'true' : undefined}>
+        <span className="ui-select-value" data-placeholder={current === undefined ? 'true' : undefined} lang={current?.lang}>
           {current?.label ?? placeholder}
         </span>
         <ChevronDown size={16} aria-hidden="true" />
@@ -250,7 +252,7 @@ export function Select({
             }}
             onClick={() => choose(index)}
           >
-            <span>{option.label}</span>
+            <span lang={option.lang}>{option.label}</span>
             {index === selected ? <Check size={16} aria-hidden="true" /> : null}
           </div>
         ))}

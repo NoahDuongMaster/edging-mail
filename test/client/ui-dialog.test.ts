@@ -46,6 +46,17 @@ describe('an inline ui Dialog', () => {
     expect(html).toContain(`<p id="${describedBy}" class="ui-dialog-description">Why</p>`);
   });
 
+  it('points at a part of its content when asked (J1-26: the warning of a deletion is read on open), over its description', () => {
+    const html = render({ role: 'alertdialog', description: 'Why', describedBy: 'the-warning' });
+    const panel = /<div\b[^>]*role="alertdialog"[^>]*>/.exec(html)?.[0] ?? '';
+    expect(panel).toContain('aria-describedby="the-warning"');
+  });
+
+  it('renders its content plain on the server: a Tab stop and a region only once the browser measures that it scrolls (J1-22, J1-18)', () => {
+    const body = tagWith(render({ bodyLabelledBy: 'section-tab' }), 'ui-dialog-body');
+    expect(body).toBe('<div class="ui-dialog-body">');
+  });
+
   it('closeDisabled keeps the X in its place, disabled; without it the X is usable; not dismissible or closeButton false: no X', () => {
     const open = closeButton(render());
     expect(open).toContain('aria-label="Close"');

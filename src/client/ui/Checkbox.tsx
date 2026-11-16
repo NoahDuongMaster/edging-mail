@@ -46,15 +46,21 @@ export function Checkbox({
 
   return (
     <label className={cx('ui-check', className)} data-disabled={input.disabled === true ? 'true' : undefined}>
-      <input
-        ref={setRefs}
-        id={inputId}
-        type="checkbox"
-        className="ui-check-input"
-        aria-describedby={has(hint) ? `${inputId}-hint` : undefined}
-        onChange={(event) => onChange?.(event.target.checked)}
-        {...input}
-      />
+      {/* The box holds the real checkbox and the tick drawn over it (its stroke draws in when it is ticked, ui.css). */}
+      <span className="ui-check-box">
+        <input
+          ref={setRefs}
+          id={inputId}
+          type="checkbox"
+          className="ui-check-input"
+          aria-describedby={has(hint) ? `${inputId}-hint` : undefined}
+          onChange={(event) => onChange?.(event.target.checked)}
+          {...input}
+        />
+        <svg className="ui-check-mark" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M3 7.4l2.6 2.6L11 4.4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </span>
       <span className="ui-check-text">
         <span>{label}</span>
         {has(hint) ? (

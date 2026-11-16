@@ -55,6 +55,18 @@ describe('the recent sign-ins', () => {
     }
   });
 
+  it('give each sign-in a machine date and say a failed one in words (the danger colour is a second cue)', () => {
+    const html = render(4);
+    expect(html).toMatch(/<time datetime="2026-11-02T09:30:00\.000Z" class="st-entry-time">/i);
+    expect(html).toMatch(/<span class="st-entry-kind" data-ok="true">/);
+    const client = new QueryClient();
+    client.setQueryData(activityKey, { activity: signIns(1).map((entry) => ({ ...entry, ok: false })), notices: [] });
+    const failed = renderToStaticMarkup(
+      createElement(QueryClientProvider, { client }, createElement(AccountActivity, { t: getTokens(false) }))
+    );
+    expect(failed).toMatch(/<span class="st-entry-kind" data-ok="false">Sign-in failed<\/span>/);
+  });
+
   it('have no button when there are three rows or fewer: every row is already shown', () => {
     for (const count of [1, 2, 3]) {
       const html = render(count);

@@ -2,6 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { cx } from './cx';
 import { useLayer } from './layers';
+import { useExitMotion } from './motion';
 import { positionNextTo, type Align } from './position';
 
 export interface PopoverProps extends Omit<React.ComponentProps<'div'>, 'ref'> {
@@ -39,6 +40,8 @@ function PopoverPanel({
 }: Omit<PopoverProps, 'open'>) {
   const panelRef = React.useRef<HTMLDivElement | null>(null);
   useLayer(true, () => onClose('escape'));
+  // It leaves on an inert copy that fades in 140 ms (motion.ts); the popup itself is gone at once.
+  useExitMotion(panelRef, 'popup');
 
   // Before the first paint, and again when the window changes size or the page scrolls (a scroll inside the popup itself is not one).
   React.useLayoutEffect(() => {

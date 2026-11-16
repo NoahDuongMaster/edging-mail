@@ -27,13 +27,19 @@ export const levelLabel = (level: StrengthLevel): string => (level === 0 ? '' : 
 /** What the strength meter says to a screen reader: the label, or that nothing was entered. */
 export const meterValueText = (level: StrengthLevel): string => (level === 0 ? tr('password.meter_empty') : tr(LEVEL_KEYS[level]));
 
-/** The password rules in one sentence (the Product Owner's text), for a field that is still empty. */
-export const rulesText = (): string => tr('password.rules', { min: MEMBER_MIN_LENGTH, adminMin: ADMIN_MIN_LENGTH });
+/**
+ * The password rules in one sentence (the Product Owner's text), for a field that is still empty. With the minimum of THIS account: an
+ * admin's form (Setup, an admin's own password) says the admin rule alone, so nobody follows the members' number and fails (J4-17).
+ */
+export const rulesText = (min?: number): string =>
+  min === ADMIN_MIN_LENGTH
+    ? tr('password.rules_admin', { min: ADMIN_MIN_LENGTH })
+    : tr('password.rules', { min: MEMBER_MIN_LENGTH, adminMin: ADMIN_MIN_LENGTH });
 
 /** One reason a password is refused. `length` is what is typed (as the rules count it) and `min` the minimum for this account. */
 export function problemMessage(problem: PasswordProblem, length: number, min: number): string {
   if (problem === 'too_short') {
-    return length === 0 ? rulesText() : tr('password.problem_too_short', { count: min - length, min });
+    return length === 0 ? rulesText(min) : tr('password.problem_too_short', { count: min - length, min });
   }
   return tr(PROBLEM_KEYS[problem], problem === 'too_long' ? { max: MAX_LENGTH } : undefined);
 }

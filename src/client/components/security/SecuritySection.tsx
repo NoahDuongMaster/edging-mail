@@ -1,102 +1,155 @@
 import React from 'react';
+import { CircleAlert, CircleCheck, History, KeyRound, ListOrdered, Lock, LockKeyhole, ShieldCheck } from 'lucide-react';
 import type { ThemeTokens } from '../../theme';
+import { describeDevice, describeKind, formatWhen, useAccountActivity } from '../../lib/activity';
 import { useSession } from '../../lib/auth';
 import type { SessionUser } from '../../lib/auth';
 import { useT } from '../../lib/i18n';
-import { Button } from '../../ui';
+import { bannerRows, useCancelLockedDelete, useLockedMail, type LockedMail } from '../../lib/lockedMail';
+import { Badge, Button } from '../../ui';
+import { AccountActivity } from '../AccountActivity';
+import { SettingsPage } from '../settings/SettingsPage';
 import { ChangePasswordView } from './ChangePasswordView';
+import { LockedMailDialog } from './LockedMailDialog';
 import { RecoveryKeyView } from './RecoveryKeyView';
+import { keyTestedAt } from './keyTested';
+import { StatusList, StatusRow, ViewFrame } from './securityUi';
 import { TwoFactorView } from './TwoFactorView';
 import '../settings/settings.css';
 
-type View = 'password' | 'key_test' | 'key_new' | 'two_factor_on' | 'two_factor_codes' | 'two_factor_off';
+type View = 'password' | 'key_test' | 'key_new' | 'two_factor_on' | 'two_factor_codes' | 'two_factor_off' | 'activity';
 
-interface RowProps {
-  id: string;
-  label: string;
-  /** Plain lines under the label. */
-  hints?: readonly string[];
-  children?: React.ReactNode;
-}
+/** Which way the content moved last: into a view (forward) or back to the cards. Null until the first move (no motion on arrival). */
+type Direction = 'forward' | 'back' | null;
 
-const NO_HINTS: readonly string[] = [];
-
-/** One setting: what it is on the left, what can be done on the right (under it on a narrow screen). Rows are split by hairlines. */
-const Row: React.FC<RowProps> = ({ id, label, hints = NO_HINTS, children }) => (
-  <div role="group" aria-labelledby={`${id}-label`} className="st-setting">
-    <div className="st-setting-text">
-      <div id={`${id}-label`} className="st-setting-label">
-        {label}
-      </div>
-      {hints.map((hint) => (
-        <p key={hint} className="st-muted">
-          {hint}
-        </p>
-      ))}
-    </div>
-    {children === undefined ? null : <div className="st-setting-actions">{children}</div>}
-  </div>
-);
-
-interface RowsProps {
+interface CardsProps {
   user: SessionUser;
   open: (view: View) => void;
+  onDeleteLocked: (mail: LockedMail) => void;
 }
 
-const Rows: React.FC<RowsProps> = ({ user, open }) => {
+/** The events after which the account has a new recovery key: its first sign-in (the key is made then), a replacement, a reset with it. */
+const KEY_EVENTS = new Set(['first_sign_in', 'recovery_key_replaced', 'password_recovered', 'break_glass']);
+
+interface ActivitySummary {
+  lines: string[];
+  notices: number;
+  /** When the current recovery key was made, from the latest key event among the loaded activity (null when none is in it). */
+  keySince: number | null;
+}
+
+/** The account activity in one line (the latest event and when, or what is still loading), and what it tells about the recovery key. */
+function useActivitySummary(): ActivitySummary {
   const tr = useT();
+  const query = useAccountActivity();
+  if (query.isError) {
+    return { lines: [tr('account.signins_load_failed')], notices: 0, keySince: null };
+  }
+  if (query.data === undefined) {
+    return { lines: [tr('common.loading')], notices: 0, keySince: null };
+  }
+  const latest = query.data.activity.at(0);
+  const keyEvent = query.data.activity.find((row) => row.ok && KEY_EVENTS.has(row.kind));
+  return {
+    // The latest event, when, and from which browser and address: what tells the person whether it was them.
+    lines:
+      latest === undefined
+        ? [tr('account.signins_empty')]
+        : [
+            tr('account.latest', { event: describeKind(latest.kind, latest.ok), when: formatWhen(latest.at) }),
+            describeDevice(latest.user_agent, latest.ip)
+          ],
+    notices: query.data.notices?.length ?? 0,
+    keySince: keyEvent?.at ?? null
+  };
+}
+
+/** Old mail under a key that was replaced: one row per key, with Delete, or the planned date and Cancel. Nothing when there is none. */
+const LockedRows: React.FC<{ onDelete: (mail: LockedMail) => void }> = ({ onDelete }) => {
+  const tr = useT();
+  const mail = useLockedMail().data;
+  const cancel = useCancelLockedDelete();
+  if (mail === undefined) {
+    return null;
+  }
+  // Every key is listed here, also one this tab chose to keep in the mailbox banner: the person came to Security to deal with it.
+  return (
+    <>
+      {bannerRows(mail, [], () => false).map((row) => (
+        <StatusRow
+          key={row.mail.keyId}
+          id={`security-locked-${row.mail.keyId}`}
+          icon={Lock}
+          title={tr('locked.card_title')}
+          lines={[
+            row.state === 'ask'
+              ? tr('locked.banner', { count: row.mail.locked })
+              : tr('locked.pending', { count: row.mail.locked, date: formatWhen(row.until) })
+          ]}
+        >
+          {row.state === 'ask' ? (
+            <Button size="sm" data-locked-delete onClick={() => onDelete(row.mail)}>
+              {tr('locked.delete')}
+            </Button>
+          ) : (
+            <Button size="sm" data-locked-cancel disabled={cancel.isPending} onClick={() => cancel.mutate(row.mail.keyId)}>
+              {tr('locked.cancel')}
+            </Button>
+          )}
+        </StatusRow>
+      ))}
+      {cancel.isError ? (
+        <p role="alert" className="st-feedback st-status-error" data-tone="danger">
+          <CircleAlert size={16} aria-hidden="true" />
+          {cancel.error.message}
+        </p>
+      ) : null}
+    </>
+  );
+};
+
+/**
+ * The overview: ONE card with a row per thing (J3-09), each with its state where the app knows it and one action (two for the recovery
+ * key: test it, or replace it). The recovery key's row says since when the current key exists (from the account activity) and when it was
+ * last tested in this browser; the server keeps no count of the recovery codes left, so their row has no number.
+ */
+const Cards: React.FC<CardsProps> = ({ user, open, onDeleteLocked }) => {
+  const tr = useT();
+  const activity = useActivitySummary();
   // Only a member of an organisation that does not require it can turn it off: the same rule the Worker applies.
   const canTurnOff = user.role !== 'admin' && !user.require_2fa;
   const reason = user.role === 'admin' ? tr('security.cannot_turn_off_admin') : tr('security.cannot_turn_off_required');
+  const on = user.totp_enabled;
+  const tested = keyTestedAt(user.id);
+  const keyFacts = [
+    ...(activity.keySince === null ? [] : [tr('security.key_since', { date: formatWhen(activity.keySince) })]),
+    ...(tested === null ? [] : [tr('security.key_tested_here', { date: formatWhen(tested) })])
+  ];
   return (
-    <div>
-      <Row id="security-password" label={tr('term.password')}>
-        <Button
-          size="sm"
-          data-view="password"
-          onClick={() => {
-            open('password');
-          }}
-        >
-          {tr('security.change_password')}
-        </Button>
-      </Row>
-      <Row id="security-key" label={tr('term.recovery_key')} hints={[tr('security.recovery_hint')]}>
-        <Button
-          size="sm"
-          data-view="key_test"
-          onClick={() => {
-            open('key_test');
-          }}
-        >
-          {tr('security.test_key')}
-        </Button>
-        <Button
-          size="sm"
-          data-view="key_new"
-          onClick={() => {
-            open('key_new');
-          }}
-        >
-          {tr('security.new_key')}
-        </Button>
-      </Row>
-      {user.totp_enabled ? (
-        <Row
-          id="security-two-factor"
-          label={tr('term.two_factor')}
-          hints={canTurnOff ? [tr('security.status_on')] : [tr('security.status_on'), reason]}
-        >
-          <Button
-            size="sm"
-            data-view="two_factor_codes"
-            onClick={() => {
-              open('two_factor_codes');
-            }}
-          >
-            {tr('security.new_codes')}
-          </Button>
-          {canTurnOff ? (
+    <StatusList>
+      <StatusRow
+        id="security-two-factor"
+        icon={ShieldCheck}
+        title={tr('term.two_factor')}
+        status={
+          on ? (
+            <Badge tone="success">
+              <CircleCheck size={12} aria-hidden="true" />
+              {tr('security.badge_on')}
+            </Badge>
+          ) : (
+            <Badge tone="warning">
+              <CircleAlert size={12} aria-hidden="true" />
+              {tr('security.badge_off')}
+            </Badge>
+          )
+        }
+        lines={
+          on ? (canTurnOff ? [tr('security.two_factor_on')] : [tr('security.two_factor_on'), reason]) : [tr('security.two_factor_off')]
+        }
+      >
+        {on ? (
+          canTurnOff ? (
             <Button
               size="sm"
               data-view="two_factor_off"
@@ -106,12 +159,11 @@ const Rows: React.FC<RowsProps> = ({ user, open }) => {
             >
               {tr('security.turn_off')}
             </Button>
-          ) : null}
-        </Row>
-      ) : (
-        <Row id="security-two-factor" label={tr('term.two_factor')} hints={[tr('security.status_off')]}>
+          ) : undefined
+        ) : (
           <Button
             size="sm"
+            variant="primary"
             data-view="two_factor_on"
             onClick={() => {
               open('two_factor_on');
@@ -119,13 +171,101 @@ const Rows: React.FC<RowsProps> = ({ user, open }) => {
           >
             {tr('security.turn_on')}
           </Button>
-        </Row>
-      )}
-    </div>
+        )}
+      </StatusRow>
+      <StatusRow
+        id="security-key"
+        icon={KeyRound}
+        title={tr('term.recovery_key')}
+        status={
+          user.has_keys ? (
+            <Badge tone="success">
+              <CircleCheck size={12} aria-hidden="true" />
+              {tr('security.badge_saved')}
+            </Badge>
+          ) : undefined
+        }
+        lines={[tr('security.recovery_hint')]}
+        facts={keyFacts}
+      >
+        <Button
+          size="sm"
+          data-view="key_test"
+          onClick={() => {
+            open('key_test');
+          }}
+          aria-describedby="security-key-label"
+        >
+          {tr('security.key_test_action')}
+        </Button>
+        <Button
+          size="sm"
+          data-view="key_new"
+          onClick={() => {
+            open('key_new');
+          }}
+          aria-describedby="security-key-label"
+        >
+          {tr('security.key_new_action')}
+        </Button>
+      </StatusRow>
+      {on ? (
+        <StatusRow id="security-codes" icon={ListOrdered} title={tr('term.recovery_codes')} lines={[tr('security.codes_hint')]}>
+          <Button
+            size="sm"
+            data-view="two_factor_codes"
+            onClick={() => {
+              open('two_factor_codes');
+            }}
+            aria-describedby="security-codes-label"
+          >
+            {tr('security.codes_action')}
+          </Button>
+        </StatusRow>
+      ) : null}
+      <StatusRow id="security-password" icon={LockKeyhole} title={tr('term.password')} lines={[tr('security.password_hint')]}>
+        <Button
+          size="sm"
+          data-view="password"
+          onClick={() => {
+            open('password');
+          }}
+        >
+          {tr('security.change_password')}
+        </Button>
+      </StatusRow>
+      <StatusRow
+        id="security-activity"
+        icon={History}
+        title={tr('account.activity_title')}
+        status={
+          activity.notices > 0 ? (
+            <Badge tone="warning">
+              <CircleAlert size={12} aria-hidden="true" />
+              {tr('account.notices_count', { count: activity.notices })}
+            </Badge>
+          ) : undefined
+        }
+        lines={[]}
+        facts={activity.lines}
+      >
+        <Button
+          size="sm"
+          data-view="activity"
+          onClick={() => {
+            open('activity');
+          }}
+          aria-describedby="security-activity-label"
+        >
+          {tr('account.review')}
+        </Button>
+      </StatusRow>
+      <LockedRows onDelete={onDeleteLocked} />
+    </StatusList>
   );
 };
 
-function renderView(view: View, t: ThemeTokens, user: SessionUser, close: () => void): React.ReactNode {
+function renderView(view: View, t: ThemeTokens, user: SessionUser, close: () => void, activityTitle: string): React.ReactNode {
   switch (view) {
     case 'password': {
       return <ChangePasswordView t={t} user={user} onBack={close} />;
@@ -145,26 +285,35 @@ function renderView(view: View, t: ThemeTokens, user: SessionUser, close: () => 
     case 'two_factor_off': {
       return <TwoFactorView t={t} user={user} mode="off" onBack={close} />;
     }
+    case 'activity': {
+      return (
+        <ViewFrame t={t} title={activityTitle} onBack={close}>
+          <AccountActivity t={t} />
+        </ViewFrame>
+      );
+    }
   }
 }
 
 /**
- * Settings > Account > Security: the password, the recovery key and two-factor sign-in, as plain rows. A button swaps the rows for that action
- * (only one at a time); going back unmounts it, and with it everything it held (a typed password, an opened key, a new recovery key).
- * A section of the Account tab like the others (ui-section): its title is its own element because it takes the focus.
+ * Settings > Security: two-factor sign-in, the recovery key and codes, the password, the account activity and locked old mail, as rows of
+ * one status card with one action each. An action swaps the cards for its view (only one at a time; it slides in from the side it goes to, and back);
+ * going back unmounts it, and with it everything it held (a typed password, an opened key, a new recovery key).
  */
 export const SecuritySection: React.FC<{ t: ThemeTokens }> = ({ t }) => {
   const tr = useT();
   const session = useSession();
   const user = session.data?.user;
   const [view, setView] = React.useState<View | null>(null);
+  const [direction, setDirection] = React.useState<Direction>(null);
+  const [deleting, setDeleting] = React.useState<LockedMail | null>(null);
   const heading = React.useRef<HTMLHeadingElement>(null);
-  const section = React.useRef<HTMLElement>(null);
+  const section = React.useRef<HTMLDivElement>(null);
   const shown = React.useRef<View | null>(null);
 
   // The body of the section changes under the person. Into a view: the heading takes the focus, so a keyboard or a screen reader starts at
-  // the top of it. Back to the rows: the focus returns to the button that opened the view, or to the heading when the row no longer offers it
-  // (after two-factor sign-in was turned on or off, its row has other buttons).
+  // the top of it. Back to the cards: the focus returns to the button that opened the view, or to the heading when the card no longer
+  // offers it (after two-factor sign-in was turned on or off, its card has other buttons).
   React.useEffect(() => {
     const before = shown.current;
     if (before !== view) {
@@ -178,16 +327,24 @@ export const SecuritySection: React.FC<{ t: ThemeTokens }> = ({ t }) => {
   if (user === undefined) {
     return null;
   }
+  const open = (next: View) => {
+    setDirection('forward');
+    setView(next);
+  };
+  const close = () => {
+    setDirection('back');
+    setView(null);
+  };
   return (
-    <section ref={section} aria-labelledby="security-title" className="ui-section">
-      <div className="ui-section-head">
-        <div className="ui-section-heading">
-          <h3 id="security-title" ref={heading} tabIndex={-1} className="ui-section-title st-focus-title">
-            {tr('security.title')}
-          </h3>
-        </div>
+    <SettingsPage titleId="security-title" titleRef={heading} title={tr('security.title')} description={tr('security.description')}>
+      <div ref={section} key={view ?? 'cards'} className="st-push" data-direction={direction ?? undefined}>
+        {view === null ? (
+          <Cards user={user} open={open} onDeleteLocked={setDeleting} />
+        ) : (
+          renderView(view, t, user, close, tr('account.activity_title'))
+        )}
       </div>
-      {view === null ? <Rows user={user} open={setView} /> : renderView(view, t, user, () => setView(null))}
-    </section>
+      {deleting === null ? null : <LockedMailDialog t={t} user={user} mail={deleting} onClose={() => setDeleting(null)} />}
+    </SettingsPage>
   );
 };

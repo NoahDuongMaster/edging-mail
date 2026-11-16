@@ -4,21 +4,29 @@ import type { ThemeTokens } from '../../theme';
 import { applySignedIn } from '../../lib/auth';
 import { finishSecondFactor, startSignIn, abandonSignIn } from '../../lib/crypto/signIn';
 import type { SignInOutcome } from '../../lib/crypto/signIn';
+import { firstInvalid, useFieldFocus } from '../../lib/fieldFocus';
 import { useT } from '../../lib/i18n';
 import { useAction } from '../../lib/useAction';
 import { useCountdown } from '../../lib/useCountdown';
+import { SecretField } from '../PasswordField';
 import { TextField } from '../../ui';
-import { AuthButton, AuthCard, CheckboxRow, ErrorLine, TextButton } from './authUi';
+import { AuthButton, AuthCard, CheckboxRow, ErrorLine, HintedLink, TextButton, TrustLine } from './authUi';
 
 interface SignInScreenProps {
   t: ThemeTokens;
   onForgot: () => void;
 }
 
+/** An address the server can look up: something, an @, something (the server judges the rest). */
+const looksLikeAddress = (text: string): boolean => /^[^\s@]+@[^\s@]+$/.test(text.trim());
+
+const CODE_LENGTH = 6;
+
 /**
  * Address and password, then the code of the authenticator app when the account has one. The password is turned into what the server checks
  * (and the key that opens the private key) in one derivation inside `startSignIn`; it is cleared from this screen's state as soon as the
- * request has been made. "Shared device" keeps the key in memory only (CK-13).
+ * request has been made. "Shared device" keeps the key in memory only (CK-13). Sign in and Verify can always be pressed: a press with a
+ * field missing says so under that field and moves the keyboard there; only a running request or a wait the server asked for disables them.
  */
 export const SignInScreen: React.FC<SignInScreenProps> = ({ t, onForgot }) => {
   const tr = useT();
@@ -30,9 +38,11 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ t, onForgot }) => {
   const [challenge, setChallenge] = React.useState<string | null>(null);
   const [recoveryMode, setRecoveryMode] = React.useState(false);
   const [code, setCode] = React.useState('');
+  const [submitted, setSubmitted] = React.useState(false);
   const wait = useCountdown(action.retryAfter);
   const firstRef = React.useRef<HTMLInputElement | null>(null);
   const codeRef = React.useRef<HTMLInputElement | null>(null);
+  const focusLater = useFieldFocus();
 
   React.useEffect(() => {
     if (challenge === null) {
@@ -47,20 +57,36 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ t, onForgot }) => {
 
   const done = (outcome: SignInOutcome) => {
     if (outcome.kind === 'second_factor') {
+      setSubmitted(false);
       setChallenge(outcome.challenge);
       return;
     }
     applySignedIn(queryClient, outcome.user, outcome.gate);
   };
 
+  const emailError = submitted && !looksLikeAddress(email) ? tr('auth.address_invalid') : undefined;
+  const passwordError = submitted && password === '' ? tr('auth.password_required') : undefined;
+  const codeMissing = recoveryMode ? code.trim() === '' : code.length !== CODE_LENGTH;
+  const codeError = submitted && codeMissing ? tr(recoveryMode ? 'auth.recovery_code_required' : 'twofa.code_required') : undefined;
+
   const submitCredentials = async (event: React.SyntheticEvent) => {
     event.preventDefault();
-    if (action.busy || wait > 0 || email.trim() === '' || password === '') {
+    if (action.busy || wait > 0) {
+      return;
+    }
+    setSubmitted(true);
+    const toFix = firstInvalid([
+      ['signin-email', !looksLikeAddress(email)],
+      ['signin-password', password === '']
+    ]);
+    if (toFix !== undefined) {
+      focusLater(toFix);
       return;
     }
     const outcome = await action.run(() => startSignIn(email, password, { shared }));
     // Whatever the answer, the password has done its job: it does not stay in this screen's state.
     setPassword('');
+    setSubmitted(false);
     if (outcome !== undefined) {
       done(outcome);
     }
@@ -68,12 +94,19 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ t, onForgot }) => {
 
   const submitCode = async (event: React.SyntheticEvent) => {
     event.preventDefault();
-    if (action.busy || challenge === null || code.trim() === '') {
+    if (action.busy || challenge === null) {
+      return;
+    }
+    setSubmitted(true);
+    const toFix = firstInvalid([['signin-code', codeMissing]]);
+    if (toFix !== undefined) {
+      focusLater(toFix);
       return;
     }
     const typed = code.trim();
     const outcome = await action.run(() => finishSecondFactor(challenge, recoveryMode ? { recovery_code: typed } : { code: typed }));
     setCode('');
+    setSubmitted(false);
     if (outcome !== undefined) {
       done(outcome);
     }
@@ -86,6 +119,8 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ t, onForgot }) => {
       <AuthCard
         t={t}
         picker
+        // The password was step 1: the code is the last step of this sign-in (J4-09).
+        step={{ current: 2, total: 2 }}
         title={tr('auth.second_step_title')}
         lead={recoveryMode ? tr('auth.recovery_code_lead') : tr('auth.second_step_lead')}
         onSubmit={(event) => {
@@ -97,19 +132,21 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ t, onForgot }) => {
           ref={codeRef}
           label={recoveryMode ? tr('auth.recovery_code_label') : tr('auth.code_label')}
           hint={recoveryMode ? tr('auth.recovery_code_hint') : undefined}
+          error={codeError}
           mono
-          className={recoveryMode ? undefined : 'au-otp'}
+          className={recoveryMode ? 'au-key-input' : 'au-otp'}
           value={code}
-          onChange={(event) => setCode(recoveryMode ? event.target.value : event.target.value.replaceAll(/\D/g, '').slice(0, 6))}
+          onChange={(event) => setCode(recoveryMode ? event.target.value : event.target.value.replaceAll(/\D/g, '').slice(0, CODE_LENGTH))}
           autoComplete={recoveryMode ? 'off' : 'one-time-code'}
           inputMode={recoveryMode ? 'text' : 'numeric'}
           autoCapitalize="off"
+          autoCorrect="off"
           spellCheck={false}
-          aria-invalid={errorText !== null}
+          aria-invalid={codeError !== undefined || errorText !== null}
           aria-describedby={errorText === null ? undefined : 'signin-error'}
         />
         <ErrorLine t={t} id="signin-error" text={errorText} />
-        <AuthButton t={t} busy={action.busy} disabled={code.trim() === ''} label={tr('auth.verify')} />
+        <AuthButton t={t} busy={action.busy} label={tr('auth.verify')} />
         <div className="au-alt">
           <TextButton
             t={t}
@@ -117,6 +154,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ t, onForgot }) => {
             onClick={() => {
               setRecoveryMode((current) => !current);
               setCode('');
+              setSubmitted(false);
               action.clear();
             }}
           />
@@ -128,6 +166,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ t, onForgot }) => {
               setChallenge(null);
               setCode('');
               setRecoveryMode(false);
+              setSubmitted(false);
               action.clear();
             }}
           />
@@ -140,7 +179,9 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ t, onForgot }) => {
     <AuthCard
       t={t}
       picker
-      title={tr('auth.sign_in')}
+      title={tr('auth.sign_in_title')}
+      pageTitle={tr('auth.sign_in')}
+      server="sign-in"
       onSubmit={(event) => {
         void submitCredentials(event);
       }}
@@ -150,20 +191,22 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ t, onForgot }) => {
         ref={firstRef}
         label={tr('auth.email_label')}
         type="email"
+        error={emailError}
         value={email}
         onChange={(event) => setEmail(event.target.value)}
         autoComplete="username"
         autoCapitalize="off"
+        autoCorrect="off"
         spellCheck={false}
       />
-      <TextField
+      <SecretField
         id="signin-password"
         label={tr('term.password')}
-        type="password"
+        error={passwordError}
         value={password}
         onChange={(event) => setPassword(event.target.value)}
         autoComplete="current-password"
-        aria-invalid={errorText !== null}
+        aria-invalid={passwordError !== undefined || errorText !== null}
         aria-describedby={errorText === null ? undefined : 'signin-error'}
       />
       <ErrorLine t={t} id="signin-error" text={errorText} />
@@ -171,19 +214,13 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ t, onForgot }) => {
         t={t}
         id="signin-shared"
         label={tr('auth.shared_device')}
-        hint={tr('auth.shared_device_hint')}
+        hint={shared ? tr('auth.shared_device_hint') : tr('auth.shared_device_short')}
         checked={shared}
         onChange={setShared}
       />
-      <AuthButton
-        t={t}
-        busy={action.busy}
-        disabled={wait > 0 || email.trim() === '' || password === ''}
-        label={action.busy ? tr('login.signing_in') : tr('auth.sign_in')}
-      />
-      <div className="au-alt">
-        <TextButton t={t} label={tr('auth.forgot_password')} onClick={onForgot} />
-      </div>
+      <AuthButton t={t} busy={action.busy} disabled={wait > 0} label={action.busy ? tr('login.signing_in') : tr('auth.sign_in')} />
+      <HintedLink id="signin-forgot" label={tr('auth.forgot_password')} hint={tr('auth.forgot_hint')} onClick={onForgot} />
+      <TrustLine />
     </AuthCard>
   );
 };

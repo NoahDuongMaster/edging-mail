@@ -6,6 +6,7 @@ import type { SessionUser } from '../../lib/auth';
 import { disableTwoFactor, enrolmentCredentials, newRecoveryCodes } from '../../lib/crypto/account';
 import type { GateCredentials } from '../../lib/crypto/gateCredentials';
 import { useT } from '../../lib/i18n';
+import { Banner } from '../../ui';
 import { RecoveryCodesPanel } from '../auth/RecoveryCodesPanel';
 import { TwoFactorEnrolment } from '../auth/TwoFactorEnrolment';
 import { CredentialForm } from './CredentialForm';
@@ -26,6 +27,8 @@ const TurnOn: React.FC<InnerProps> = ({ t, user, onBack }) => {
   // What the enrolment repeats with its two requests (made from the password just typed): in state only while that screen is open.
   const [credentials, setCredentials] = React.useState<GateCredentials | null>(null);
   const [done, setDone] = React.useState(false);
+  // Three steps for the person (J4-09): the password, the app (QR code and a code), the recovery codes.
+  const [phase, setPhase] = React.useState<'scan' | 'codes'>('scan');
 
   if (done) {
     return (
@@ -36,11 +39,12 @@ const TurnOn: React.FC<InnerProps> = ({ t, user, onBack }) => {
   }
   if (credentials !== null) {
     return (
-      <ViewFrame t={t} title={tr('term.two_factor')} onBack={null}>
+      <ViewFrame t={t} title={tr('term.two_factor')} onBack={null} step={{ current: phase === 'codes' ? 3 : 2, total: 3 }}>
         <TwoFactorEnrolment
           t={t}
           credentials={credentials}
           onCancel={onBack}
+          onPhase={setPhase}
           // The codes at the end are a part of this view, whose title is an h4 (ViewFrame).
           headingLevel={5}
           onDone={() => {
@@ -53,7 +57,9 @@ const TurnOn: React.FC<InnerProps> = ({ t, user, onBack }) => {
     );
   }
   return (
-    <ViewFrame t={t} title={tr('term.two_factor')} onBack={onBack}>
+    <ViewFrame t={t} title={tr('term.two_factor')} onBack={onBack} step={{ current: 1, total: 3 }}>
+      {/* What two-factor sign-in is, once, before the password (the next step explains the app and its code: J4-39). */}
+      <p className="st-lead">{tr('twofa.intro')}</p>
       <CredentialForm
         t={t}
         id="security-on"
@@ -73,15 +79,19 @@ const NewCodes: React.FC<InnerProps> = ({ t, user, onBack }) => {
   const [codes, setCodes] = React.useState<string[] | null>(null);
 
   if (codes !== null) {
+    // J3-41: one heading (the view's, which takes focus when the codes replace the form) and the fact that the old codes stopped working
+    // as a quiet notice under it, not a second heading of the same weight with the sentence between them.
     return (
-      <ViewFrame t={t} title={tr('term.two_factor')} onBack={null}>
-        <p className="st-lead">{tr('security.codes_replace_note')}</p>
-        <RecoveryCodesPanel t={t} codes={codes} onDone={onBack} headingLevel={5} />
+      <ViewFrame t={t} title={tr('security.codes_new_title')} onBack={null}>
+        <Banner tone="info" live={false}>
+          {tr('security.codes_replace_note')}
+        </Banner>
+        <RecoveryCodesPanel t={t} codes={codes} onDone={onBack} showHeading={false} />
       </ViewFrame>
     );
   }
   return (
-    <ViewFrame t={t} title={tr('term.two_factor')} onBack={onBack}>
+    <ViewFrame t={t} title={tr('term.recovery_codes')} onBack={onBack}>
       <CredentialForm
         t={t}
         id="security-codes"

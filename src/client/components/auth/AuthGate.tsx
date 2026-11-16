@@ -8,6 +8,7 @@ import { focusFirstTitle } from '../../lib/screenFocus';
 import { BreakGlassScreen } from './BreakGlassScreen';
 import { ForgotScreen } from './ForgotScreen';
 import { FirstPasswordScreen, KeySetupScreen, TwoFactorGateScreen } from './GateScreens';
+import { clearSignedOutStart, signedOutStart } from './nextScreen';
 import { SetupScreen } from './SetupScreen';
 import { SignInScreen } from './SignInScreen';
 import { UnlockScreen } from './UnlockScreen';
@@ -54,12 +55,20 @@ function useKeyRestore(user: SessionUser | undefined, gateOpen: boolean): Restor
 
 /** Before anyone is signed in: Setup on a fresh deployment, else sign-in, with the forgotten-password flow and break-glass one step away. */
 const SignedOut: React.FC<{ t: ThemeTokens; session: Session }> = ({ t, session }) => {
-  const [view, setView] = React.useState<'sign_in' | 'forgot' | 'break_glass'>('sign_in');
+  // The unlock screen's 'Forgot password' signed the person out to get here: the forgotten-password flow opens with their address.
+  // Read once, at mount: the sign-out remounts these screens, so the wish is there on the first render.
+  const start = React.useMemo(() => signedOutStart(), []);
+  const [view, setView] = React.useState<'sign_in' | 'forgot' | 'break_glass'>(() => start?.view ?? 'sign_in');
+  React.useEffect(() => {
+    clearSignedOutStart();
+  }, []);
   if (session.setup_required === true) {
     return <SetupScreen t={t} session={session} />;
   }
   if (view === 'forgot') {
-    return <ForgotScreen t={t} initialEmail="" onBack={() => setView('sign_in')} onBreakGlass={() => setView('break_glass')} />;
+    return (
+      <ForgotScreen t={t} initialEmail={start?.email ?? ''} onBack={() => setView('sign_in')} onBreakGlass={() => setView('break_glass')} />
+    );
   }
   if (view === 'break_glass') {
     return <BreakGlassScreen t={t} onBack={() => setView('sign_in')} />;

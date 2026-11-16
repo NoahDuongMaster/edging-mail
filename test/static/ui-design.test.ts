@@ -196,9 +196,62 @@ describe('the component library (src/client/ui)', () => {
     }
     const index = read('src', 'client', 'index.css');
     expect(index).toMatch(/@import '\.\/ui\/ui\.css';/);
-    expect(/@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/.exec(index)?.[1]).toMatch(
-      /\.nm-fade-in,\s*\.nm-spin \{\s*animation: none;/
-    );
+    expect(/@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/.exec(index)?.[1]).toMatch(/\.nm-spin \{\s*animation: none;/);
+  });
+
+  it('names no colour and no stacking number: every colour is a token variable, every z-index a --z-* layer', () => {
+    for (const file of [read('src', 'client', 'ui', 'ui.css'), read('src', 'client', 'index.css')]) {
+      const code = file.replaceAll(/\/\*[\s\S]*?\*\//g, '');
+      expect(code).not.toMatch(/#[\da-f]{3,8}\b/i);
+      expect(code).not.toMatch(/\b(?:rgba?|hsla?|oklch)\(/);
+      expect(code).not.toMatch(/:\s*(?:white|black)\b|\s(?:white|black)\s*[;,)]/);
+      expect(code).not.toMatch(/z-index:\s*-?\d/);
+    }
+  });
+
+  it('keeps every line height at 1.25 or more (Vietnamese marks above and below need the room)', () => {
+    for (const file of [read('src', 'client', 'ui', 'ui.css'), read('src', 'client', 'index.css')]) {
+      const unitless = [...file.matchAll(/line-height:\s*([\d.]+);/g)].map((match) => Number(match[1]));
+      expect(unitless.filter((value) => value < 1.25)).toEqual([]);
+    }
+  });
+
+  it('draws the focus ring in one place: 2px of --focus, 2px away, with no transition on it', () => {
+    const index = read('src', 'client', 'index.css');
+    expect(index).toMatch(/:focus-visible \{\s*outline: 2px solid var\(--focus\);\s*outline-offset: 2px;\s*\}/);
+    for (const file of [read('src', 'client', 'ui', 'ui.css'), index]) {
+      expect(file).not.toMatch(/transition:[^;]*outline/);
+    }
+  });
+
+  it('lets the in-app choice (data-motion="reduce") turn motion off as the system setting does, in both stylesheets', () => {
+    for (const file of [read('src', 'client', 'ui', 'ui.css'), read('src', 'client', 'index.css')]) {
+      expect(file).toContain(":root[data-motion='reduce']");
+      expect(file).toContain('@media (prefers-reduced-motion: reduce)');
+    }
+    const index = read('src', 'client', 'index.css');
+    // Distances in motion are multiplied by --motion, which is 0 under reduced motion.
+    expect(index).toMatch(/--motion: 1;/);
+    expect(index).toMatch(/--motion: 0;/);
+    const motion = read('src', 'client', 'ui', 'motion.ts');
+    expect(motion).toContain("dataset.motion === 'reduce'");
+    expect(motion).toContain('(prefers-reduced-motion: reduce)');
+  });
+
+  it('opens the dialog and the popups from @starting-style (no script timing), and closes them on an inert copy (focus moves at once)', () => {
+    const ui = read('src', 'client', 'ui', 'ui.css');
+    const starts = [...ui.matchAll(/@starting-style \{([\s\S]*?)\n\}/g)].map((match) => match[1]).join('\n');
+    expect(starts).toContain('.ui-dialog');
+    expect(starts).toContain('.ui-popover');
+    expect(read('src', 'client', 'ui', 'Dialog.tsx')).toContain("useExitMotion(rootRef, 'dialog')");
+    expect(read('src', 'client', 'ui', 'Popover.tsx')).toContain("useExitMotion(panelRef, 'popup')");
+  });
+
+  it('adds the sliding indicators in the browser only, so the server markup does not change', () => {
+    for (const name of ['Tabs.tsx', 'SegmentedControl.tsx']) {
+      expect(read('src', 'client', 'ui', name), name).toContain('useInBrowser()');
+    }
+    expect(read('src', 'client', 'ui', 'indicator.ts')).toContain('useSyncExternalStore');
   });
 
   it('is 44 px on touch: every size of control goes through the --ui-h-* variables, which become 44px on a phone or a coarse pointer', () => {
@@ -212,5 +265,47 @@ describe('the component library (src/client/ui)', () => {
       ...ui.matchAll(/^\.(ui-(?:btn|input|select|option|menu-item|tab)[\w-]*)[^{:]*\{[^}]*?\n\s+(?:min-)?height: (\d+)px/gm)
     ].map((match) => `${match[1]} ${match[2]}`);
     expect(fixed).toEqual([]);
+  });
+
+  it('draws an invalid field with the keyboard as its red edge and the --focus ring 2px away, for data-invalid and aria-invalid, in ui.css only', () => {
+    const ui = read('src', 'client', 'ui', 'ui.css');
+    // A screen that sets aria-invalid on the input itself gets the red edge too, after the hover rule so a hover does not hide it.
+    expect(ui).toMatch(/\.ui-input:has\(> \.ui-input-el\[aria-invalid='true'\]\) \{\s*border-color: var\(--danger\);\s*\}/);
+    expect(ui.indexOf(".ui-input:has(> .ui-input-el[aria-invalid='true']) {")).toBeGreaterThan(ui.indexOf('.ui-input:hover:not('));
+    const invalidFocus =
+      /\.ui-input:is\(\[data-invalid='true'\], :has\(> \.ui-input-el\[aria-invalid='true'\]\)\):has\(> \.ui-input-el:focus-visible\) \{([^}]*)\}/.exec(
+        ui
+      )?.[1];
+    // The ring of DESIGN 4.2 (2px of --focus, 2px away) round the red edge, with a gap between them.
+    expect(invalidFocus).toMatch(
+      /border-color: var\(--danger\);\s*box-shadow: var\(--field-shadow\);\s*outline: 2px solid var\(--focus\);\s*outline-offset: 2px;/
+    );
+    expect(ui).toMatch(
+      /\.ui-select\[data-invalid='true'\]:focus-visible \{\s*border-color: var\(--danger\);\s*box-shadow: var\(--field-shadow\);\s*outline: 2px solid var\(--focus\);\s*outline-offset: 2px;/
+    );
+    // No danger-coloured ring anywhere: the ring always says where the keyboard is, in --focus.
+    expect(ui).not.toMatch(/0 0 0 \d+px color-mix\(in srgb, var\(--danger\)/);
+    // No area stylesheet draws its own invalid focus ring any more.
+    expect(read('src', 'client', 'components', 'auth', 'auth.css').replaceAll(/\/\*[\s\S]*?\*\//g, '')).not.toMatch(/aria-invalid/);
+  });
+
+  it('gives every button variant a hover and a pressed state of their own, and never a focus look of its own (one ring for all)', () => {
+    const ui = read('src', 'client', 'ui', 'ui.css');
+    const body = (rule: string): string =>
+      ui.includes(rule) ? ui.slice(ui.indexOf(rule) + rule.length, ui.indexOf('}', ui.indexOf(rule))) : '';
+    for (const variant of ['primary', 'secondary', 'ghost', 'danger']) {
+      const hoverRule = `.ui-btn[data-variant='${variant}']:hover:not(:disabled, [aria-busy='true']) {`;
+      const activeRule = `\n.ui-btn[data-variant='${variant}']:active:not(:disabled, [aria-disabled='true']) {`;
+      expect(body(hoverRule), variant).toMatch(/background:/);
+      expect(body(activeRule), variant).toMatch(/background:/);
+      expect(body(activeRule), variant).toMatch(/box-shadow:[^;]*inset|box-shadow: var\(--press-shadow\)/);
+      // Pressed comes after hover, as specific, so a press under the pointer shows.
+      expect(ui.indexOf(activeRule), variant).toBeGreaterThan(ui.indexOf(hoverRule));
+    }
+    // One theme-specific hover rule would be more specific than the pressed rules and hide the press: themes change variables instead.
+    expect(ui).not.toMatch(/:root\[data-theme='dark'\] \.ui-btn\[data-variant='(primary|secondary|ghost|danger)'\]:(hover|active)/);
+    expect(ui).toMatch(/\.ui-btn:active:not\(:disabled, \[aria-disabled='true'\]\) \{\s*translate: 0 calc\(1px \* var\(--motion, 1\)\);/);
+    // The focus ring is index.css's for every variant: no button rule touches the outline.
+    expect(ui).not.toMatch(/\.ui-btn[^{]*:focus(-visible)?[^{]*\{[^}]*outline/);
   });
 });

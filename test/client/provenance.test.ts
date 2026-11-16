@@ -104,10 +104,11 @@ describe('the chip and the line', () => {
   const note = (to: string[], redirect = replyRedirect({ from_address: 'alice@example.com', reply_to: 'attacker@evil.test' })): string =>
     renderToStaticMarkup(createElement(ReplyRedirectNote, { t, redirect, to }));
 
-  it('shows the chip with the plain sentence and no alarm colour', () => {
+  it('shows the chip with its plain words (it opens the sentence and its explanation) and no alarm colour', () => {
     const html = chip();
     expect(html).toContain('data-unverified-sender');
-    expect(html).toContain('Arrived by email; the sender is not verified');
+    expect(html).toContain('Unverified sender');
+    expect(html).toContain('aria-haspopup="dialog"');
     expect(html).not.toMatch(/#B42318|#F97066|#B91C1C|#F87171|role="alert"/i);
   });
 

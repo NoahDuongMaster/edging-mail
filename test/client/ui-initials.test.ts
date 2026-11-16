@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { initialsOf } from '../../src/client/ui/initials';
+import { ownerInitials } from '../../src/client/lib/settings';
+import { initialsOf, isCjk } from '../../src/client/ui/initials';
 
 // The letters of an Avatar.
 
@@ -20,6 +21,21 @@ describe('initialsOf', () => {
     expect(initialsOf('Đỗ Ánh')).toBe('ĐÁ');
     expect(initialsOf('ơn ưu')).toBe('ƠƯ');
     expect(initialsOf('王小明')).toBe('王');
+  });
+  it('gives ONE character for a CJK name, with or without a space (J3-11: two characters do not fit a 32px circle)', () => {
+    expect(initialsOf('李明')).toBe('李');
+    expect(initialsOf('李 明')).toBe('李');
+    expect(initialsOf('山田 太郎')).toBe('山');
+    expect(initialsOf('김 민준')).toBe('김');
+    expect(isCjk(initialsOf('李明'))).toBe(true);
+    expect(isCjk(initialsOf('Li Ming'))).toBe(false);
+    expect(initialsOf('Li Ming')).toBe('LM');
+  });
+  it('makes the header avatar by the same rule (ownerInitials)', () => {
+    const settings = { display_name: '李明', email: 'li.ming@example.com', signature: '' };
+    expect(ownerInitials(settings)).toBe('李');
+    expect(ownerInitials({ ...settings, display_name: '' })).toBe('LM');
+    expect(ownerInitials()).toBe('');
   });
   it('does not cut a character made of two code units in half', () => {
     expect(initialsOf('𠮷野家')).toBe('𠮷');

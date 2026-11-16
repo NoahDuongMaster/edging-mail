@@ -2,22 +2,9 @@ import type { Message } from '../types';
 import { fmt, tr } from './i18n';
 import { SUBJECT_KEYS, isUnreadable } from './mailcrypto/texts';
 
-const AVATAR_HUES = ['#2F5BEA', '#0F766E', '#C2410C', '#15803D', '#6D28D9', '#BE185D', '#475569'];
-
 /** `value || fallback` for optional strings: '' falls through like null and undefined. */
 export function nonEmpty(value: string | null | undefined): string | undefined {
   return value === null || value === '' ? undefined : value;
-}
-
-export function stringHue(seed: string): string {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    // eslint-disable-next-line unicorn/prefer-code-point -- the hue hashes UTF-16 code units; codePointAt changes it for emoji
-    hash = (hash << 5) - hash + seed.charCodeAt(i);
-    // eslint-disable-next-line unicorn/prefer-math-trunc -- `|= 0` wraps to int32 on every step; Math.trunc does not wrap
-    hash |= 0;
-  }
-  return AVATAR_HUES[Math.abs(hash) % AVATAR_HUES.length];
 }
 
 export function initialsOf(name?: string | null, address?: string): string {
@@ -180,10 +167,15 @@ export function formatClock(d: Date): string {
   return fmt.time(d, { hour: 'numeric', minute: '2-digit' });
 }
 
-export function formatRowTime(ts: number): string {
+/**
+ * The time of a list row. `underDayGroup`: the row sits under a heading that already names its day (the list groups by this same time:
+ * "Today", "Yesterday"), so the row says only the clock time instead of repeating the heading; a row grouped by another time (Snoozed is
+ * grouped by the day it comes back) keeps the day word.
+ */
+export function formatRowTime(ts: number, underDayGroup = false): string {
   const d = new Date(ts);
   const g = groupOf(ts);
-  if (g === 'Today') {
+  if (g === 'Today' || (underDayGroup && g === 'Yesterday')) {
     return formatClock(d);
   }
   if (g === 'Yesterday') {
@@ -224,6 +216,24 @@ export function snippetOf(m: Message, limit = 160): string {
     return raw;
   }
   return `${raw.slice(0, limit).trimEnd()}…`;
+}
+
+/**
+ * The preview of a search result (J6-32): when the search matches the text further in than `lead` characters, the preview starts at the
+ * word a few words before the first match ("…with you and Maya, then…"), so the marked word is in view and not cut off by the row's end.
+ * Otherwise (a match near the start, none in the text, a script whose lower case changes the length) it is the plain preview.
+ */
+export function searchSnippetOf(m: Message, query: string, limit = 120, lead = 24): string {
+  const raw = (nonEmpty(m.snippet) ?? nonEmpty(m.body_text) ?? '').replaceAll(/\s+/g, ' ').trim();
+  const folded = raw.toLocaleLowerCase();
+  const at = query.trim() === '' || folded.length !== raw.length ? -1 : folded.indexOf(query.trim().toLocaleLowerCase());
+  if (at <= lead) {
+    return snippetOf(m, limit);
+  }
+  const space = raw.indexOf(' ', at - lead);
+  const from = space === -1 || space >= at ? at : space + 1;
+  const rest = raw.slice(from);
+  return rest.length <= limit ? `…${rest}` : `…${rest.slice(0, limit).trimEnd()}…`;
 }
 
 /** The subject to show: its own text, else `none` (the caller's "(No subject)"); a message the browser could not open shows a short placeholder. */
