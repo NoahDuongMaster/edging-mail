@@ -34,12 +34,17 @@ export const intParam = (value: string | undefined, fallback: number, max: numbe
   return Number.isNaN(parsed) ? fallback : Math.min(max, Math.max(1, parsed));
 };
 
-// The rows of one folder view (a folder, the starred view or a label) of ONE user, narrowed by a search text: the list and
+/** The folder view `all` ("All mail", search across folders): every folder except these two. Rows keep their own `folder`. */
+export const OUTSIDE_ALL_MAIL: Folder[] = ['trash', 'spam'];
+
+// The rows of one folder view (a folder, `all`, the starred view or a label) of ONE user, narrowed by a search text: the list and
 // "mark all as read" use the same one, so the button always means exactly what the list shows.
 export const viewFilter = (userId: string, folder: string, search: string): SQL | undefined => {
   const filters: (SQL | undefined)[] = [ownedBy(userId)];
 
-  if (folder === 'starred') {
+  if (folder === 'all') {
+    filters.push(notInArray(messages.folder, OUTSIDE_ALL_MAIL));
+  } else if (folder === 'starred') {
     filters.push(and(eq(messages.is_starred, 1), ne(messages.folder, 'trash')));
   } else if (folder.startsWith('label:')) {
     // Labels are stored as a JSON array, so the quoted name only matches a whole label.

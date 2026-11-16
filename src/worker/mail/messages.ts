@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { and, asc, count, desc, eq, getTableColumns, inArray, ne, sql } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
 import { currentUser } from '../auth/middleware';
 import { deleteBlobs, MAX_SEARCH_CHARS } from '../content';
 import { getDb } from '../db';
@@ -188,12 +189,13 @@ const SIMPLE_CHANGES = {
 const simpleChange = (action: string) =>
   Object.hasOwn(SIMPLE_CHANGES, action) ? SIMPLE_CHANGES[action as keyof typeof SIMPLE_CHANGES] : undefined;
 
-// Permanent deletion of the user's mails among `ids`, with their attachments and R2 objects. Returns how many mails were deleted.
-async function deleteMessages(env: Env, db: Db, userId: string, ids: string[]): Promise<number> {
+// Permanent deletion of the user's mails among `ids` (and inside `scope` when given), with their attachments and R2 objects. Returns how many
+// mails were deleted.
+async function deleteMessages(env: Env, db: Db, userId: string, ids: string[], scope?: SQL): Promise<number> {
   const owned = await db
     .select({ id: messages.id, r2_key: messages.r2_key })
     .from(messages)
-    .where(and(ownedBy(userId), inArray(messages.id, ids)));
+    .where(and(ownedBy(userId), inArray(messages.id, ids), scope));
   if (owned.length === 0) {
     return 0;
   }
@@ -287,6 +289,63 @@ messageRoutes.post('/messages/batch', async (c) => {
 
     c.executionCtx.waitUntil(broadcast(c.env, userId, { type: 'mail.changed' }));
     return c.json({ success: true, count: changed });
+  } catch (error) {
+    return failed(c, error);
+  }
+});
+
+// Empty Trash / Empty Spam: deletes every mail of the caller in that folder for good, through the same path as the batch `delete` (rows,
+// attachment rows, R2 objects), a chunk at a time. Each chunk costs about five subrequests, so one call stops after EMPTY_MAX_CHUNKS and
+// answers `more: true` when mail is left (a client calls again).
+const EMPTY_FOLDERS = new Set<Folder>(['trash', 'spam']);
+const EMPTY_MAX_CHUNKS = 100;
+
+messageRoutes.post('/messages/empty', async (c) => {
+  try {
+    const userId = currentUser(c).id;
+    const body = await jsonObject<{ folder?: unknown }>(c.req, ['folder']);
+    if (body === null) {
+      return apiError(c, 'invalid_body');
+    }
+    const folder = body.folder;
+    if (typeof folder !== 'string' || !EMPTY_FOLDERS.has(folder as Folder)) {
+      return apiError(c, 'invalid_request', { error: 'folder must be trash or spam' });
+    }
+    const db = getDb(c.env.DB);
+    const inFolder = eq(messages.folder, folder as Folder);
+    let deleted = 0;
+    let more = false;
+    for (let round = 0; ; round += 1) {
+      const chunk = await db
+        .select({ id: messages.id })
+        .from(messages)
+        .where(and(ownedBy(userId), inFolder))
+        .limit(BATCH_CHUNK);
+      if (chunk.length === 0) {
+        break;
+      }
+      if (round === EMPTY_MAX_CHUNKS) {
+        more = true;
+        break;
+      }
+      // The folder is checked again on delete: a mail moved out of the folder meanwhile (Undo in another tab) is kept.
+      const gone = await deleteMessages(
+        c.env,
+        db,
+        userId,
+        chunk.map((row) => row.id),
+        inFolder
+      );
+      deleted += gone;
+      if (gone === 0) {
+        break;
+      }
+    }
+
+    if (deleted > 0) {
+      c.executionCtx.waitUntil(broadcast(c.env, userId, { type: 'mail.changed' }));
+    }
+    return c.json({ success: true, deleted, more });
   } catch (error) {
     return failed(c, error);
   }

@@ -13,7 +13,7 @@ This page documents the contract; the cryptography is in [Security](security.md)
   [setup](#post-apiauthsetup), [break-glass](#post-apiauthrecover), [notices and activity](#notices-and-activity)
 - [Keys](#keys), [Locked old mail](#locked-old-mail)
 - [Mail](#mail): [stats](#get-apistats), [list](#get-apimessages), [read one](#get-apimessagesid), [batch](#post-apimessagesbatch),
-  [mark all read](#post-apimessagesread-all), [labels](#labels), [send](#post-apimessagessend), [internal (end to end)](#post-apimessagesinternal), [downloads](#downloads)
+  [mark all read](#post-apimessagesread-all), [empty Trash or Spam](#post-apimessagesempty), [labels](#labels), [send](#post-apimessagessend), [internal (end to end)](#post-apimessagesinternal), [downloads](#downloads)
 - [Drafts](#drafts) · [Settings](#settings) · [Web Push](#web-push) · [Realtime](#realtime-websocket)
 - [Admin](#admin)
 - [Errors](#errors)
@@ -259,7 +259,7 @@ Role: signed in. `{ "success": true, "stats": { "inbox": { "total": n, "unread":
 
 | Query    | Default | Meaning                                                                                                                                                                                                               |
 | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `folder` | `inbox` | A folder, `starred`, or `label:<name>` (mail carrying that label, outside `trash` and `spam`)                                                                                                                         |
+| `folder` | `inbox` | A folder, `all` (every folder except `trash` and `spam`; each row keeps its own `folder`), `starred`, or `label:<name>` (mail carrying that label, outside `trash` and `spam`)                                        |
 | `q`      | none    | Search text, trimmed and cut to 200 characters; matches the sender's address and name and the recipients' addresses only (the server cannot read subjects or bodies); ASCII case-insensitive, `%` `_` `\` are literal |
 | `page`   | 1       | 1-based, capped at 100000; a non-numeric value takes the default                                                                                                                                                      |
 | `limit`  | 30      | 1 to 100                                                                                                                                                                                                              |
@@ -291,8 +291,15 @@ Body: `{ "action": "<action>", "message_ids": ["…"], "folder"?: "…", "until"
 
 ### `POST /api/messages/read-all`
 
-Body: `{ "folder"?: "inbox", "q"?: "…" }`. Marks every unread mail of that folder view as read, with the same folder, label and search rules as the list, also beyond the pages
-a client has loaded. Answer: `{ "success": true, "count": n }`.
+Body: `{ "folder"?: "inbox", "q"?: "…" }`. Marks every unread mail of that folder view as read, with the same folder, `all`, label and search rules as the list, also beyond
+the pages a client has loaded. Answer: `{ "success": true, "count": n }`.
+
+### `POST /api/messages/empty`
+
+Body: `{ "folder": "trash" | "spam" }`. Empty Trash / Empty Spam: deletes every mail of the caller in that folder for good, exactly like the batch `delete` (the rows, their
+attachment rows and the R2 objects), 80 mails per statement. Answer: `{ "success": true, "deleted": n, "more": false }`. One call deletes at most 8000 mails; `more: true`
+means mail is left and the client calls again. Mail stays in Trash and Spam until it is deleted this way or one by one: nothing is purged by age. `400 invalid_request`
+(`folder must be trash or spam`) for any other folder, `400 invalid_body` for a body that is not a JSON object.
 
 ### Labels
 
