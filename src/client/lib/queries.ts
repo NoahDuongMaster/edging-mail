@@ -14,13 +14,26 @@ import {
 import React from 'react';
 import type { Attachment, FolderStats, Message } from '../types';
 import { apiGet, apiPost } from './api';
+import { filtersKey } from './filters';
 import { getUnlockedKey } from './crypto/keyStore';
 import { openDetail, openListRows } from './mailcrypto/rows';
 import type { DetailRow } from './mailcrypto/rows';
 import { withLoadedMatches } from './mailcrypto/search';
 import { bindMailCache } from './mailcrypto/sync';
 
-export type BatchAction = 'read' | 'unread' | 'star' | 'unstar' | 'trash' | 'archive' | 'restore' | 'move' | 'snooze' | 'delete';
+export type BatchAction =
+  | 'read'
+  | 'unread'
+  | 'star'
+  | 'unstar'
+  | 'trash'
+  | 'archive'
+  | 'restore'
+  | 'move'
+  | 'snooze'
+  | 'delete'
+  /** Spam only: to the Inbox, and the Worker allows the senders (its answer lists the entries it made: `allowedOf`, lib/filters.ts). */
+  | 'not_spam';
 
 export interface MessageDetail {
   message: Message;
@@ -310,13 +323,14 @@ export function useBatchAction(): UseMutationResult<unknown, Error, BatchVariabl
           patchMessages(queryClient, ids, { is_starred: 0 });
           break;
         }
-        // trash, archive, restore, move, snooze and delete all take the mail out of its list
+        // trash, archive, restore, move, snooze, delete and not_spam all take the mail out of its list
         case 'trash':
         case 'archive':
         case 'restore':
         case 'move':
         case 'snooze':
-        case 'delete': {
+        case 'delete':
+        case 'not_spam': {
           removeMessages(queryClient, ids);
           break;
         }
@@ -324,7 +338,13 @@ export function useBatchAction(): UseMutationResult<unknown, Error, BatchVariabl
       return context;
     },
     onError: (_error, _variables, context) => rollback(queryClient, context),
-    onSettled: (_data, error, _variables, context) => settle(queryClient, context, error !== null, true)
+    onSettled: (_data, error, { action }, context) => {
+      settle(queryClient, context, error !== null, true);
+      if (action === 'not_spam' && error === null) {
+        // The senders it allowed are in Settings > Filters now.
+        void queryClient.invalidateQueries({ queryKey: filtersKey });
+      }
+    }
   });
 }
 

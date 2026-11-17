@@ -1,0 +1,49 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=pass header.d=example.net header.s=s1 header.b=aBcDeFgH;
+	dmarc=pass header.from=example.net policy.dmarc=none;
+	spf=pass (mx.cloudflare.net: domain of bounce@example.net designates 192.0.2.10 as permitted sender) smtp.mailfrom=bounce@example.net
+From: Dana Whitfield <dana@example.net>
+To: bob@example.com
+Subject: Invitation: Release planning @ Thu 19 Nov 2026 14:00 - 14:45 (ICT)
+Date: Tue, 17 Nov 2026 09:02:11 +0700
+Message-ID: <invite-9921@example.net>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="cal-mix"
+
+--cal-mix
+Content-Type: multipart/alternative; boundary="cal-alt"
+
+--cal-alt
+Content-Type: text/plain; charset=utf-8
+
+Release planning
+When: Thursday 19 November 2026, 14:00 - 14:45 (Indochina Time)
+Where: Meeting room 3 (or https://meet.example.net/release-planning)
+Who: Dana Whitfield (organizer), Bob, Chen
+
+Please reply to let Dana know if you can come.
+--cal-alt
+Content-Type: text/calendar; charset=utf-8; method=REQUEST
+
+BEGIN:VCALENDAR
+PRODID:-//Example Calendar//EN
+VERSION:2.0
+METHOD:REQUEST
+BEGIN:VEVENT
+UID:release-planning-9921@example.net
+DTSTART:20261119T070000Z
+DTEND:20261119T074500Z
+SUMMARY:Release planning
+LOCATION:Meeting room 3
+ORGANIZER;CN=Dana Whitfield:mailto:dana@example.net
+ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:bob@example.com
+END:VEVENT
+END:VCALENDAR
+--cal-alt--
+--cal-mix
+Content-Type: application/ics; name="invite.ics"
+Content-Disposition: attachment; filename="invite.ics"
+Content-Transfer-Encoding: base64
+
+QkVHSU46VkNBTEVOREFSDQpWRVJTSU9OOjIuMA0KRU5EOlZDQUxFTkRBUg0K
+--cal-mix--

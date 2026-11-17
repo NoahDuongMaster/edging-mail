@@ -50,6 +50,27 @@
       "when": 1794881324404,
       "tag": "0006_revoked_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1794905602907,
+      "tag": "0007_user_avatars",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1794910910982,
+      "tag": "0008_sender_pictures",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1794917350116,
+      "tag": "0009_spam_filter",
+      "breakpoints": true
     }
   ]
 }

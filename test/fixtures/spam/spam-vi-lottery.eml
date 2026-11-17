@@ -1,0 +1,19 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=none;
+	dmarc=none;
+	spf=none (mx.cloudflare.net: no SPF records found for postmaster@qua-tang-vn.example) smtp.mailfrom=postmaster@qua-tang-vn.example
+From: =?UTF-8?B?VHJ1bmcgdMOibSBraHV54bq/biBtw6Np?= <km@qua-tang-vn.example>
+To: bob@example.com
+Subject: =?UTF-8?B?Q0jDmkMgTeG7qk5HISBC4bqhbiDEkcOjIHRyw7puZyB0aMaw4bufbmcgaVBob25lIDE3?=
+Date: Tue, 17 Nov 2026 03:45:00 +0700
+Message-ID: <vn-8891@qua-tang-vn.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: base64
+
+Q2jDumMgbeG7q25nIGLhuqFuIMSRw6MgdHLDum5nIHRoxrDhu59uZyBpUGhvbmUgMTcgdHJvbmcg
+Y2jGsMahbmcgdHLDrG5oIHRyaSDDom4ga2jDoWNoIGjDoG5nIQpC4bqlbSB2w6BvIMSRxrDhu51u
+ZyBk4bqrbiDEkeG7gyBuaOG6rW4gcXXDoCBtaeG7hW4gcGjDrTogaHR0cDovL3F1YS10YW5nLXZu
+LmV4YW1wbGUvbmhhbi1xdWEKTmdvw6BpIHJhLCBow6N5IHRoYW0gZ2lhIGtp4bq/bSB0aeG7gW4g
+b25saW5lIGPDuW5nIGNow7puZyB0w7RpLCB0aHUgbmjhuq1wIDIwIHRyaeG7h3UgbeG7l2kgdGjD
+oW5nLgo=

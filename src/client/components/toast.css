@@ -38,9 +38,13 @@
   font-size: var(--fs-body);
   line-height: var(--lh-body);
   font-weight: 500;
+  /* An address in the words (Not spam names the sender) has no place to break: it breaks where the card ends instead of running out of it. */
+  overflow-wrap: anywhere;
 }
 
 .ui-toast-action.tst-undo {
+  flex: none;
+  white-space: nowrap;
   padding-inline: 10px;
   border-radius: var(--radius-control);
   color: color-mix(in srgb, var(--accent) 50%, var(--bg));
@@ -58,6 +62,34 @@
 .tst-root :is(.tst-undo, .tst-dismiss):focus-visible {
   outline: 2px solid var(--bg);
   outline-offset: -2px;
+}
+
+/* A phone, a long text with an Undo (Toast.tsx `data-stacked`): the icon and the words fill the first row, the Undo and the X sit at the right of
+   a row of their own, so the words keep the card's width instead of what is left beside two buttons. The icon lines up with the first line
+   of the words (their 6px of padding and half the line's extra height). */
+@media (max-width: 480px) {
+  .ui-toast.tst-root[data-stacked='true'] {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 0;
+  }
+  .tst-root[data-stacked='true'] .tst-icon {
+    grid-area: 1 / 1;
+    align-self: start;
+    margin-top: 12px;
+  }
+  .tst-root[data-stacked='true'] .ui-toast-text {
+    grid-area: 1 / 2 / 2 / 4;
+  }
+  .tst-root[data-stacked='true'] .tst-undo {
+    grid-area: 2 / 2;
+    justify-self: end;
+  }
+  .tst-root[data-stacked='true'] .tst-dismiss {
+    grid-area: 2 / 3;
+  }
 }
 
 /* The X: as quiet as the Undo beside it, 32 px on a desktop (24 px is the minimum), 44 px on touch (`nm-tap`). */

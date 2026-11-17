@@ -76,6 +76,11 @@ export const ERRORS = {
   draft_not_found: { status: 404, error: 'Draft not found' },
   not_a_draft: { status: 409, error: 'This id belongs to a message that is not a draft' },
   from_not_allowed: { status: 403, error: 'You can only send from your own address' },
+  // Profile picture: PUT /api/avatar
+  invalid_avatar: { status: 400, error: 'The picture must be a JPEG or WebP image of at most 12000 bytes' },
+  // Spam filter lists: /api/filters
+  invalid_filter: { status: 400, error: 'That is not a valid address or domain for the list' },
+  too_many_filters: { status: 409, error: 'The list has the most entries it can have' },
   // Admin: users, aliases, domains
   invalid_address: { status: 400, error: 'That is not an address this product can host' },
   invalid_hostname: { status: 400, error: 'That is not a valid domain name' },

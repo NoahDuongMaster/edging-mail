@@ -7,10 +7,12 @@ export interface Settings {
   signature: string;
   /** The person's own primary address: their sign-in name and the only From address. Read-only; the server ignores it on save. */
   email: string;
+  /** The spam filter that runs when mail arrives (Settings > Filters): on unless the person turned it off. */
+  spam_filter: boolean;
 }
 
-/** What a save sends: the two fields a person can change. */
-export type SettingsPatch = Partial<Pick<Settings, 'display_name' | 'signature'>>;
+/** What a save sends: the fields a person can change (the profile form sends the first two, the Filters switch the last, each alone). */
+export type SettingsPatch = Partial<Pick<Settings, 'display_name' | 'signature' | 'spam_filter'>>;
 
 export const settingsKey = ['settings'] as const;
 
@@ -36,16 +38,21 @@ export function useSaveSettings(): UseMutationResult<Settings, Error, SettingsPa
   });
 }
 
+/** The name an avatar of the owner is made from: the display name, else the sender address. Empty while the settings load. */
+export function ownerName(settings?: Settings): string {
+  if (settings === undefined) {
+    return '';
+  }
+  const name = settings.display_name.trim();
+  return name === '' ? settings.email.trim() : name;
+}
+
 /**
  * Avatar initials of the owner, by the one rule of every avatar (ui/initials.ts: two Latin initials, one CJK character): the display name,
  * else the sender address, else '?'. Empty while the settings load.
  */
 export function ownerInitials(settings?: Settings): string {
-  if (settings === undefined) {
-    return '';
-  }
-  const name = settings.display_name.trim();
-  return initialsOf(name === '' ? settings.email.trim() : name);
+  return settings === undefined ? '' : initialsOf(ownerName(settings));
 }
 
 /** Plain-text signature block for the editor: a blank line, the '-- ' separator, the signature. '' when none is saved. */

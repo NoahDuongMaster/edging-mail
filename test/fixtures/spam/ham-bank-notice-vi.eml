@@ -1,0 +1,21 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=pass header.d=bank.example.vn header.s=s1 header.b=aBcDeFgH;
+	dmarc=pass header.from=bank.example.vn policy.dmarc=none;
+	spf=pass (mx.cloudflare.net: domain of bounce@bank.example.vn designates 192.0.2.10 as permitted sender) smtp.mailfrom=bounce@bank.example.vn
+From: =?UTF-8?B?TmfDom4gaMOgbmcgVsOtIEThu6U=?= <thongbao@bank.example.vn>
+To: bob@example.com
+Subject: =?UTF-8?B?VGjDtG5nIGLDoW8gZ2lhbyBk4buLY2g6IHTDoGkga2hv4bqjbiAqKio0ODIxIHbhu6thIG5o4bqtbiAyLjUwMC4wMDAgVk5E?=
+Date: Tue, 17 Nov 2026 13:05:52 +0700
+Message-ID: <tb-20261117-130552-4821@bank.example.vn>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: base64
+
+S8OtbmggZ+G7rWkgcXXDvSBraMOhY2gsCgpUw6BpIGtob+G6o24gKioqNDgyMSBj4bunYSBxdcO9
+IGtow6FjaCB24burYSBuaOG6rW4gMi41MDAuMDAwIFZORCBsw7pjIDEzOjA1IG5nw6B5IDE3LzEx
+LzIwMjYuCk7hu5lpIGR1bmc6IE5ndXllbiBWYW4gQSBjaHV54buDbiBraG/huqNuIHRp4buBbiB0
+aHXDqiBuaMOgIHRow6FuZyAxMS4KU+G7kSBkxrAgaGnhu4duIHThuqFpOiAxOC4yNDAuMDAwIFZO
+RC4KCk5nw6JuIGjDoG5nIGtow7RuZyBiYW8gZ2nhu50gecOqdSBj4bqndSBxdcO9IGtow6FjaCBj
+dW5nIGPhuqVwIG3huq10IGto4bqpdSBob+G6t2MgbcOjIE9UUCBxdWEgZW1haWwgaGF5IMSRaeG7
+h24gdGhv4bqhaS4KTeG7jWkgdGjhuq9jIG3huq9jIHhpbiBsacOqbiBo4buHIHThu5VuZyDEkcOg
+aSAxOTAwIDAwMDAuCgpUcsOibiB0cuG7jW5nLApOZ8OibiBow6BuZyBWw60gROG7pQo=

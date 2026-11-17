@@ -6,6 +6,10 @@
  * or a touch screen, above the on-screen keyboard (`--ui-vv-bottom`); a plain row of buttons elsewhere (`dock="always"` docks it everywhere).
  */
 export { ActionBar, PHONE_QUERY, type ActionBarProps } from './ActionBar';
+/**
+ * Avatar: a person's initials on a tint, as a circle or a postage stamp; with `src` (a picture address on this server: never a third party's)
+ * their picture over the initials, which stay as the fallback when it does not load.
+ */
 export { Avatar, type AvatarSize } from './Avatar';
 export { Badge, type BadgeTone } from './Badge';
 export { Banner, type BannerTone } from './Banner';

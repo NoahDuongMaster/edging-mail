@@ -14,7 +14,6 @@ import {
   Paperclip,
   Reply,
   ReplyAll,
-  ShieldAlert,
   Star,
   Tag,
   Trash2,
@@ -36,6 +35,7 @@ import {
   subjectOf
 } from '../lib/mail';
 import { announce } from '../lib/announce';
+import { senderPicture } from '../lib/avatar';
 import { useT, type MessageKey } from '../lib/i18n';
 import { getUnlockedKey } from '../lib/crypto/keyStore';
 import { loadEmbeddedImages } from '../lib/mailcrypto/inline';
@@ -76,6 +76,7 @@ import { MailFrame } from './MailFrame';
 import { SnoozeChip, SnoozeMenu } from './SnoozeMenu';
 import { LabelMenu, LabelPicker } from './reader/LabelMenu';
 import { QuoteNodes } from './reader/QuoteText';
+import { SpamBanner } from './reader/SpamBanner';
 import { ToolButton } from './reader/ToolButton';
 import { phoneBar, type PhoneMoreItem } from './reader/actions';
 import {
@@ -105,8 +106,10 @@ interface MessageViewProps {
   onArchive: (message: Message) => void;
   onTrash: (message: Message) => void;
   onSpam: (message: Message) => void;
-  /** Trash and Spam only: back to the Inbox. */
+  /** Trash only: back to the Inbox. */
   onRestore: (message: Message) => void;
+  /** Spam only, in place of `onRestore`: to the Inbox, and the sender is allowed from now on (the toolbar's and the banner's Not spam). */
+  onNotSpam: (message: Message) => void;
   /** Trash and Spam only: remove the message for good (the owner asks first). */
   onDeleteForever: (message: Message) => void;
   onMarkUnread: (message: Message) => void;
@@ -367,6 +370,7 @@ export const MessageView: React.FC<MessageViewProps> = ({
   onTrash,
   onSpam,
   onRestore,
+  onNotSpam,
   onDeleteForever,
   onMarkUnread,
   onSnooze,
@@ -545,7 +549,7 @@ export const MessageView: React.FC<MessageViewProps> = ({
   const priority = wordPriority(inBin, canSnooze, inSpam);
   const wordKeys: Record<ActionId, MessageKey> = {
     archive: 'action.archive',
-    main: inBin ? 'action.move_to_inbox' : 'action.move_to_trash',
+    main: inSpam ? 'action.not_spam' : inTrash ? 'action.move_to_inbox' : 'action.move_to_trash',
     other: inSpam ? 'action.move_to_trash' : 'action.move_to_spam',
     delete: 'action.delete_forever',
     // J4-18: "Mark unread" beside the envelope (its menus keep "Mark as unread"): short enough to have its words at 1440.
@@ -694,7 +698,10 @@ export const MessageView: React.FC<MessageViewProps> = ({
   const archive: Move = { label: tr('action.archive'), icon: Archive, run: () => onArchive(message) };
   const toTrash: Move = { label: tr('action.move_to_trash'), icon: Trash2, run: () => onTrash(message) };
   const toSpam: Move = { label: tr('action.move_to_spam'), icon: Ban, run: () => onSpam(message) };
-  const toInbox: Move = { label: tr('action.move_to_inbox'), icon: Inbox, run: () => onRestore(message) };
+  // In Spam the way back is Not spam: the Inbox, and the sender allowed (App); Trash keeps the plain Move to Inbox.
+  const toInbox: Move = inSpam
+    ? { label: tr('action.not_spam'), icon: Inbox, run: () => onNotSpam(message) }
+    : { label: tr('action.move_to_inbox'), icon: Inbox, run: () => onRestore(message) };
   const mainMove = inBin ? toInbox : toTrash;
   const otherMove = inSpam ? toTrash : toSpam;
   // Delete forever has the trash can of every other delete (J3-16), in the danger colour and named in words as soon as there is room.
@@ -812,7 +819,11 @@ export const MessageView: React.FC<MessageViewProps> = ({
       {compact ? (
         <>
           {tool(archive, { size: 'md', short: tr('action.archive') })}
-          {tool(mainMove, { size: 'md', short: inBin ? tr('reader.bar_inbox') : tr('reader.bar_trash') })}
+          {tool(mainMove, {
+            size: 'md',
+            short: inSpam ? tr('action.not_spam') : inBin ? tr('reader.bar_inbox') : tr('reader.bar_trash'),
+            className: inSpam ? 'rd-tab-wide' : undefined
+          })}
           {tool({ label: tr('action.reply'), icon: Reply, run: () => onReply(message) }, { size: 'md', short: tr('action.reply') })}
           {fourth === 'delete' ? tool(deleteForever, { size: 'md', danger: true, short: tr('reader.bar_delete') }) : null}
           {fourth === 'snooze' ? snoozeButton({ short: snoozed ? tr('action.unsnooze') : tr('action.snooze') }) : null}
@@ -934,13 +945,21 @@ export const MessageView: React.FC<MessageViewProps> = ({
           </div>
         ) : null}
 
-        {/* The sender block (v3 R3): the sender's stamp (their own tint, the list row's), then two lines: who (name, address) and when
+        {/* The sender block (v3 R3): the sender's stamp (their own tint, the list row's; their own picture in the printed field when the Worker
+            named one), then two lines: who (name, address) and when
             (the date first, always in this one place, J3-21; then the recipients' one disclosure and the quiet trust chips, which never move
             the date). The star is the block's one tool on a desktop (R2: Reply lives at the end of the letter and on its key); a phone has it
             in its top bar. v3 X1: the stamp is the letter's own (56 px, set on slightly askew); v3 P1: it stands alone (the postmark went
             to the letter's corner). */}
         <div className="rd-sender">
-          <Avatar name={sender} size={compact ? 40 : 'xl'} shape="stamp" hue={avatarHue(message.from_address)} className="rd-stamp-tile" />
+          <Avatar
+            name={sender}
+            size={compact ? 40 : 'xl'}
+            shape="stamp"
+            hue={avatarHue(message.from_address)}
+            src={senderPicture(message)}
+            className="rd-stamp-tile"
+          />
           <div className="rd-who">
             <div className="rd-line">
               <span className="rd-from">
@@ -991,16 +1010,9 @@ export const MessageView: React.FC<MessageViewProps> = ({
         </div>
       </header>
 
-      {/* J6-42: a message in Spam says where it is and what to be careful with, quietly, with the way back beside it. */}
-      {inSpam ? (
-        <div className="rd-spam">
-          <ShieldAlert size={16} strokeWidth={1.75} aria-hidden="true" />
-          <p className="rd-spam-text">{tr('reader.spam_notice')}</p>
-          <Button size="sm" leadingIcon={<Inbox size={16} strokeWidth={1.75} aria-hidden="true" />} onClick={toInbox.run}>
-            {tr('action.move_to_inbox')}
-          </Button>
-        </div>
-      ) : null}
+      {/* J6-42, then the spam filter: a message in Spam says why it is there and offers the way back, in ONE quiet banner (a message nobody
+          explains - one the person moved themselves - gets the one-line version). Keyed by the message (and not by the bare id: the mail frame below is keyed by it too, and two siblings with one key leave the old banner in the page), so each opens with its reasons folded. */}
+      {inSpam ? <SpamBanner key={`spam-${message.id}`} message={message} onNotSpam={() => onNotSpam(message)} /> : null}
 
       {isUnreadable(message.mail_state) ? (
         <div data-mail-state={message.mail_state} className="rd-note">

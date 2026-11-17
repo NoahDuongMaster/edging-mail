@@ -1,0 +1,21 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=pass header.d=shop.example.cn header.s=s1 header.b=aBcDeFgH;
+	dmarc=pass header.from=shop.example.cn policy.dmarc=none;
+	spf=pass (mx.cloudflare.net: domain of bounce@shop.example.cn designates 192.0.2.10 as permitted sender) smtp.mailfrom=bounce@shop.example.cn
+From: =?UTF-8?B?56S65L6L5ZWG5Z+O?= <service@shop.example.cn>
+To: bob@example.com
+Subject: =?UTF-8?B?5oKo55qE6K6i5Y2VIDIwMjYxMTE3LTMzODEg5bey5Y+R6LSn?=
+Date: Tue, 17 Nov 2026 15:30:00 +0800
+Message-ID: <ship-3381@shop.example.cn>
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: base64
+
+PGh0bWw+PGJvZHk+CjxwPuaCqOWlve+8jDwvcD4KPHA+5oKo55qE6K6i5Y2VIDxiPjIwMjYxMTE3
+LTMzODE8L2I+IOW3sueUseW/q+mAkuWFrOWPuOaPveaUtu+8jOmihOiuoSAxMSDmnIggMTkg5pel
+6YCB6L6+44CCPC9wPgo8cD7llYblk4HvvJrkv53muKnmna8geCAx77yM56yU6K6w5pysIHggMjwv
+cD4KPHA+5oKo5Y+v5Lul6ZqP5pe25ZyoIDxhIGhyZWY9Imh0dHBzOi8vc2hvcC5leGFtcGxlLmNu
+L29yZGVycy8zMzgxIj7orqLljZXor6bmg4U8L2E+IOS4reafpeeci+eJqea1geS/oeaBr+OAgjwv
+cD4KPHA+5aaC5pyJ5Lu75L2V6Zeu6aKY77yM6K+35Zue5aSN5q2k6YKu5Lu277yM5oiR5Lus5Lya
+5bC95b+r5aSE55CG44CCPC9wPgo8cD7npLrkvovllYbln47lrqLmnI08L3A+CjwvYm9keT48L2h0
+bWw+Cg==

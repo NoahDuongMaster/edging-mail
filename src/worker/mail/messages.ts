@@ -10,7 +10,8 @@ import type { Folder } from '../db/schema';
 import { broadcast } from '../realtime';
 import type { AppEnv, BatchActionPayload, Env } from '../types';
 import { jsonObject, nonEmpty } from '../utils';
-import { intParam, ownedBy, viewFilter, withFromHosted } from './view';
+import { markNotSpam } from './not-spam';
+import { intParam, ownedBy, viewFilter, withFromAvatar, withFromHosted } from './view';
 import { apiError, failed } from '../errors';
 
 export const messageRoutes = new Hono<AppEnv>();
@@ -98,7 +99,7 @@ messageRoutes.get('/messages', async (c) => {
 
     return c.json({
       success: true,
-      messages: await withFromHosted(db, results),
+      messages: await withFromAvatar(db, await withFromHosted(db, results), (work) => c.executionCtx.waitUntil(work)),
       page,
       limit
     });
@@ -159,7 +160,7 @@ messageRoutes.get('/messages/:id', async (c) => {
     // Fetch attachments
     const attachmentRows = await db.select().from(attachments).where(eq(attachments.message_id, id)).orderBy(asc(attachments.created_at));
 
-    const [shown] = await withFromHosted(db, [message]);
+    const [shown] = await withFromAvatar(db, await withFromHosted(db, [message]), (work) => c.executionCtx.waitUntil(work));
     return c.json({
       success: true,
       message: shown,
@@ -170,7 +171,7 @@ messageRoutes.get('/messages/:id', async (c) => {
   }
 });
 
-// Batch Actions (read, unread, star, unstar, trash, archive, restore, move, snooze, delete)
+// Batch Actions (read, unread, star, unstar, trash, archive, restore, move, snooze, delete, not_spam)
 const MIN_SNOOZE_MS = 60 * 1000;
 const MAX_SNOOZE_MS = 366 * 24 * 60 * 60 * 1000;
 // D1 allows 100 bound variables per statement: ids go to it in chunks, next to the owner and the other values.
@@ -228,6 +229,12 @@ messageRoutes.post('/messages/batch', async (c) => {
 
     const now = Date.now();
     const db = getDb(c.env.DB);
+    if (action === 'not_spam') {
+      // Spam to Inbox, the verdict cleared, and an allow entry for each sender (answered with the entries this call created, so a client can undo them).
+      const result = await markNotSpam(db, userId, ids, now);
+      c.executionCtx.waitUntil(broadcast(c.env, userId, { type: 'mail.changed' }));
+      return c.json({ success: true, ...result });
+    }
     const change = simpleChange(action);
     let target: string | undefined;
     let until = 0;

@@ -554,6 +554,43 @@
   color: var(--text3);
 }
 
+/* The profile picture: the face (56px) with its words, and the buttons under them on a narrow card or at the end on a wide one. The words are
+   the rows' own (label, hint), the result of the last change sits under the hint. */
+.st-picture {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'face text'
+    '. control';
+  /* From the top: the result line appears under the help text and grows the row downwards, so the face and the buttons never move. */
+  align-items: start;
+  gap: 12px 16px;
+}
+.st-picture-face {
+  grid-area: face;
+}
+.st-picture > .st-row-text {
+  grid-area: text;
+  flex: none;
+}
+.st-picture > .st-row-control {
+  grid-area: control;
+}
+.st-picture .st-feedback {
+  margin-top: 4px;
+}
+@container st-group (min-width: 521px) {
+  .st-picture {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'face text control';
+    gap: 16px 20px;
+  }
+  /* The buttons stand on the label's line: the middle of a button is the middle of the label's first line. */
+  .st-picture > .st-row-control {
+    margin-top: calc((var(--lh-body) - var(--ui-h-sm)) / 2);
+  }
+}
+
 /* ---------- Appearance: the theme as three cards with a picture of the app ---------- */
 
 /* The section's title already says what the choices are: the legends are for screen readers only. */
@@ -1683,4 +1720,71 @@
   .st-bar {
     top: 5px;
   }
+}
+
+/* ---------- Filters: the sender lists (settings/FilterList.tsx) ---------- */
+
+/* A list is one row of the group, its entries rows of their own: the value on the left, Remove at the end; the group's hairline rule is
+   written again for them (they are not direct children of the card). A narrow card lets a long address wrap, never cut. */
+.st-group > .ui-group > .st-filter-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.st-filter {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 var(--st-row-x);
+}
+.st-filter + .st-filter::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: var(--st-row-x);
+  height: 1px;
+  background: var(--border);
+  pointer-events: none;
+}
+.st-filter-value {
+  min-width: 0;
+  padding-block: 10px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  overflow-wrap: anywhere;
+}
+/* Remove is a quiet text button at the end of its row: its box grows into the row's padding instead of making the row taller. */
+.st-filter > .ui-btn {
+  flex: none;
+  margin-inline-end: -8px;
+}
+/* The add row: the field takes the width, Add stands beside it as tall as the field. A narrow card (a phone) gives the field the whole width,
+   so its placeholder is never cut off, and Add goes under it, at the end. */
+.st-filter-add {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.st-filter-add > .ui-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.st-filter-add > .ui-btn {
+  flex: none;
+  height: var(--ui-h-field);
+}
+@container st-group (max-width: 520px) {
+  .st-filter-add {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .st-filter-add > .ui-btn {
+    align-self: flex-end;
+  }
+}
+.st-filter-problem {
+  align-items: center;
 }

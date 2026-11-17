@@ -1,0 +1,23 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=none;
+	dmarc=none;
+	spf=none (mx.cloudflare.net: no SPF records found for postmaster@inv-docs.example) smtp.mailfrom=postmaster@inv-docs.example
+From: Accounts <billing@inv-docs.example>
+To: bob@example.com
+Subject: Invoice attached
+Date: Tue, 17 Nov 2026 06:40:00 +0000
+Message-ID: <inv-77@inv-docs.example>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="x1"
+
+--x1
+Content-Type: text/plain; charset=utf-8
+
+Please see the attached invoice.
+--x1
+Content-Type: application/octet-stream; name="invoice.pdf.exe"
+Content-Disposition: attachment; filename="invoice.pdf.exe"
+Content-Transfer-Encoding: base64
+
+TVqQAAMAAAAEAAAA//8AALgAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+--x1--

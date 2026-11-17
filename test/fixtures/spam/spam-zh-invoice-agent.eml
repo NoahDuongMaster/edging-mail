@@ -1,0 +1,16 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=none;
+	dmarc=none;
+	spf=none (mx.cloudflare.net: no SPF records found for postmaster@fapiao-guwen.example) smtp.mailfrom=postmaster@fapiao-guwen.example
+From: =?UTF-8?B?6LSi56iO6aG+6Zeu?= <hello@fapiao-guwen.example>
+To: bob@example.com
+Subject: =?UTF-8?B?5Luj5byA5Y+R56WoIOWFqOWbveWQhOWcsCDngrnmlbDkvJjmg6A=?=
+Date: Tue, 17 Nov 2026 14:00:00 +0800
+Message-ID: <zh-4409@fapiao-guwen.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: base64
+
+5Luj5byA5Y+R56Wo77yM5ZCE57G76KGM5Lia5Z2H5Y+v5Yqe55CG77yM54K55pWw5L2O77yM5b2T
+5aSp5Ye656Wo44CCCuaDs+WFvOiBjOi1mumSseeahOaci+WPi+S5n+WPr+S7peWKoOW+ruS/oSBm
+YXBpYW9fODg5Oe+8jOi9u+advui1mumSse+8jOaXpee7k+OAggo=

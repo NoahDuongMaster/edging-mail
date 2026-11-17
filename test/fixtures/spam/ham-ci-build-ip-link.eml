@@ -1,0 +1,20 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=none;
+	dmarc=none;
+	spf=pass (mx.cloudflare.net: domain of ci.example.net designates 198.51.100.4 as permitted sender) smtp.mailfrom=postmaster@ci.example.net
+From: CI <ci@ci.example.net>
+To: bob@example.com
+Subject: [widgets] build #1187 failed on main
+Date: Tue, 17 Nov 2026 14:12:33 +0700
+Message-ID: <build-1187@ci.example.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Build #1187 of widgets (main, commit 9c1f2ab) failed in 4 min 12 s.
+
+Failed step: unit tests (2 failures)
+  - test_empty_config
+  - test_reload_while_writing
+
+Logs: http://10.20.30.40:8080/job/widgets/1187/console
+Artifacts: http://10.20.30.40:8080/job/widgets/1187/artifact/

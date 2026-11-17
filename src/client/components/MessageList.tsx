@@ -29,6 +29,7 @@ import {
   snippetOf,
   subjectOf
 } from '../lib/mail';
+import { senderPicture } from '../lib/avatar';
 import { extendSelection, selectRange, toggleOne } from '../lib/selection';
 import { landRow, returnRow } from '../lib/shellMotion';
 import { SNOOZE_GROUP_ORDER, snoozeGroupOf } from '../lib/snooze';
@@ -544,7 +545,15 @@ const RowButton: React.FC<RowButtonProps> = ({
     >
       <span aria-hidden="true" className="ml-dot" />
       {pick === undefined ? (
-        <Avatar name={avatar} hue={personHue(avatarHue)} shape="stamp" size={compact ? 'lg' : 'md'} className="ml-avatar" />
+        // The sender's own picture (internal mail from a person who has one; never in Drafts or Sent) inside the stamp, over the initials.
+        <Avatar
+          name={avatar}
+          hue={personHue(avatarHue)}
+          shape="stamp"
+          size={compact ? 'lg' : 'md'}
+          src={senderPicture(m)}
+          className="ml-avatar"
+        />
       ) : (
         <span aria-hidden="true" className="ml-pick" data-checked={pick ? 'true' : undefined}>
           {pick ? <Check size={18} strokeWidth={2.25} /> : null}
@@ -678,7 +687,12 @@ const QuickActions: React.FC<QuickActionsProps> = ({ t, message: m, folder, unre
   return (
     <div className="ml-quick">
       {inBin ? (
-        <IconButton label={tr('action.move_to_inbox')} size="sm" tabIndex={-1} onClick={leave(actions.restore)}>
+        <IconButton
+          label={inSpam ? tr('action.not_spam') : tr('action.move_to_inbox')}
+          size="sm"
+          tabIndex={-1}
+          onClick={leave(actions.restore)}
+        >
           <Inbox size={16} strokeWidth={1.75} aria-hidden="true" />
         </IconButton>
       ) : (

@@ -68,7 +68,7 @@ The app lives at `/app`. An optional public landing page at `/`, `/en/` and `/zh
 
 - **One company per deployment.** There is no sign-up, billing or multi-tenant service: an admin creates every account.
 - **Web and HTTP API only.** There is no IMAP, POP3 or SMTP access, so desktop and phone mail apps cannot connect to it.
-- **Not done yet:** spam or virus filtering, attachments in drafts, an address book, shared mailboxes or groups, SSO and passkeys. See
+- **Not done yet:** virus scanning, attachments in drafts, an address book, shared mailboxes or groups, SSO and passkeys. See
   [known limitations](#roadmap-and-known-limitations).
 
 ## Features
@@ -76,6 +76,7 @@ The app lives at `/app`. An optional public landing page at `/`, `/en/` and `/zh
 **Mail**
 
 - Inbox, Sent, Drafts, Snoozed, Starred, Archive, Spam and Trash, plus your own labels.
+- A spam filter that runs when mail arrives, using fixed rules and your own allow and block lists: likely spam goes to Spam (never rejected, no push), with the reasons shown. Nothing is sent to a third party.
 - Reply, reply all and forward. Replies keep `In-Reply-To` and `References` and share a `thread_id` in storage; the list shows single mails, there is no conversation view yet.
 - Search by sender, recipient or subject. Subjects are decrypted and matched in your browser over the mail already loaded; message bodies are not searched.
 - Drafts autosave about 1.5 seconds after you stop typing, encrypted in the browser first. Snooze a mail from one minute to 366 days: it returns to the Inbox, unread, in its original place.
@@ -430,7 +431,7 @@ Known limitations today:
 - **Receiving at the root domain needs Email Routing there.** It takes over the domain's MX records, and the maintainer's own deployment runs this way. Forwarding from another mail provider to a routing subdomain is an option for companies that cannot move their MX records; that forwarding flow has not been run end to end.
 - **Search does not read message bodies,** because they are encrypted. Subjects are decrypted and matched in the browser, over the mail already loaded.
 - **Mail from before an upgrade can survive as plaintext in old copies.** The conversion encrypts it in the live database and in R2 (no plaintext object is left), but a backup you took, D1 Time Travel (30 days on Workers Paid) and the free space of the database file can still hold the plaintext. Only deleting your copies and letting the platform's own copies expire removes it. Mail received after Setup is sealed on arrival.
-- **No spam or virus filtering, no attachments in drafts, no address book, no conversation view.**
+- **No virus scanning, no attachments in drafts, no address book, no conversation view.** The spam filter is rules only and deliberately careful, see [Mail features](docs/mail-features.md#spam-filter).
 - **Very large mails** may fail to store: bodies live in D1, which caps a row at 2 MB. Expected from the documented limit, not tested.
 - **Google Fonts.** The page loads the Geist fonts from Google, so the browser contacts Google when the app opens.
 - Tested in Chromium and Firefox; the cryptography known-answer tests also run in a WebKit engine (WPE); not yet verified on real Safari or iPhone.

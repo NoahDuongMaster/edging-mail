@@ -9,6 +9,9 @@ import { sealMessage } from '../mail/seal';
 import type { Recipient } from '../mail/seal';
 import { errorClass, nonEmpty } from '../utils';
 import { notifyNewMail } from '../notify';
+import { formatAuth, ourAuthResult } from '../spam/auth-results';
+import { classifyArrival } from '../spam/filter';
+import { scanHtml } from '../spam/html-scan';
 
 const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
 const MAX_REFERENCES_LENGTH = 4000;
@@ -79,14 +82,16 @@ export async function parseAndStoreEmail(
   if (text !== undefined) {
     snippet = text.trim().replaceAll(/\s+/g, ' ').slice(0, 180);
   } else if (html !== undefined) {
-    snippet = html
-      .replaceAll(/<[^>]+>/g, ' ')
-      .trim()
-      .replaceAll(/\s+/g, ' ')
-      .slice(0, 180);
+    // The text a reader sees, from the one-pass scanner the spam filter uses: the regex this replaced (`<[^>]+>`) takes quadratic time on a document of unclosed
+    // tags, and one hostile 190 kB mail kept the Worker busy for half a minute.
+    snippet = scanHtml(html).visibleText.slice(0, 180);
   }
 
   const db = getDb(env.DB);
+  // Cloudflare's own SPF/DKIM/DMARC result and the spam filter's verdict, both read from the plaintext that is about to be sealed. A failure of the filter leaves the
+  // mail in the Inbox (it is logged inside); the mail is sealed and stored the same way whichever folder it goes to.
+  const auth = ourAuthResult(parsed.headers);
+  const verdict = await classifyArrival(db, options.ownerId, parsed, fromAddr, auth);
   const attachmentList = parsed.attachments.map((att) => ({
     id: crypto.randomUUID(),
     filename: nonEmpty(att.filename) ?? 'attachment',
@@ -158,7 +163,7 @@ export async function parseAndStoreEmail(
     reply_to: nonEmpty(parsed.replyTo?.[0]?.address) ?? null,
     ...sealed.columns,
     r2_key: rawKey,
-    folder: 'inbox',
+    folder: verdict.spam ? 'spam' : 'inbox',
     is_read: 0,
     is_starred: 0,
     has_attachments: attachmentList.length > 0 ? 1 : 0,
@@ -169,7 +174,11 @@ export async function parseAndStoreEmail(
     in_reply_to: inReplyTo ?? null,
     user_id: options.ownerId,
     // Arrived by email: nothing checks its From address (PX-12).
-    origin: 'smtp'
+    origin: 'smtp',
+    // The verdict is kept only for mail the filter put in Spam, and never holds content: a score and rule ids.
+    spam_score: verdict.spam ? verdict.score : null,
+    spam_reasons: verdict.spam ? JSON.stringify(verdict.reasons) : null,
+    auth: auth === null ? null : formatAuth(auth)
   };
 
   // The row and its attachment rows in one transaction. Filename, type and content id are inside the encrypted meta blob: the columns stay empty.

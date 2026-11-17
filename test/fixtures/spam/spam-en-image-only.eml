@@ -1,0 +1,15 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=none;
+	dmarc=none;
+	spf=none (mx.cloudflare.net: no SPF records found for postmaster@pics-4u.example) smtp.mailfrom=postmaster@pics-4u.example
+From: info@pics-4u.example
+To: bob@example.com
+Subject: Special offer
+Date: Tue, 17 Nov 2026 08:01:12 +0000
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+
+<html><body>
+<a href="http://pics-4u.example/go"><img src="http://pics-4u.example/banner.gif" width="600" height="800"></a>
+<div style="color:#ffffff;background-color:#ffffff;font-size:9px">cheap rates guaranteed approval no fees order today special limited sale free shipping best price cheap rates guaranteed approval no fees order today special limited sale free shipping best price cheap rates guaranteed approval no fees order today special limited sale free shipping best price </div>
+</body></html>

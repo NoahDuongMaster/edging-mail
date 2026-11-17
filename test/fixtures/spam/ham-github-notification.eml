@@ -1,0 +1,40 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=pass header.d=github.com header.s=s1 header.b=aBcDeFgH;
+	dmarc=pass header.from=github.com policy.dmarc=none;
+	spf=pass (mx.cloudflare.net: domain of bounce@github.com designates 192.0.2.10 as permitted sender) smtp.mailfrom=bounce@github.com
+From: octo-dev <notifications@github.com>
+To: example-org/widgets <widgets@noreply.github.com>
+Cc: Bob <bob@example.com>
+Reply-To: example-org/widgets <reply+AAAABBBBCCCCDDDD@reply.github.com>
+Subject: Re: [example-org/widgets] Crash when the config file is empty (#412)
+Date: Tue, 17 Nov 2026 10:41:07 +0700
+Message-ID: <example-org/widgets/issues/412/3512@github.com>
+In-Reply-To: <example-org/widgets/issues/412@github.com>
+References: <example-org/widgets/issues/412@github.com>
+List-ID: example-org/widgets <widgets.example-org.github.com>
+List-Archive: https://github.com/example-org/widgets
+List-Unsubscribe: <mailto:unsub+AAAABBBBCCCCDDDD@reply.github.com>
+X-GitHub-Sender: octo-dev
+X-GitHub-Recipient: bobdev
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="--==_mimepart_6553b3c3_1f4e"
+
+----==_mimepart_6553b3c3_1f4e
+Content-Type: text/plain; charset=UTF-8
+
+I can reproduce this on main. An empty file parses to `null`, and then `config.get` throws.
+
+The fix is a two line guard in `loadConfig`. I opened #413 with a test.
+
+-- 
+Reply to this email directly or view it on GitHub:
+https://github.com/example-org/widgets/issues/412#issuecomment-3512
+You are receiving this because you are subscribed to this thread.
+----==_mimepart_6553b3c3_1f4e
+Content-Type: text/html; charset=UTF-8
+
+<p></p>
+<p>I can reproduce this on main. An empty file parses to <code>null</code>, and then <code>config.get</code> throws.</p>
+<p>The fix is a two line guard in <code>loadConfig</code>. I opened <a class="issue-link" href="https://github.com/example-org/widgets/pull/413">#413</a> with a test.</p>
+<p style="font-size:small;-webkit-text-size-adjust:none;color:#666;">&mdash;<br />Reply to this email directly, <a href="https://github.com/example-org/widgets/issues/412#issuecomment-3512">view it on GitHub</a>, or <a href="https://github.com/notifications/unsubscribe-auth/AAAABBBBCCCC">unsubscribe</a>.<br />You are receiving this because you are subscribed to this thread.<img src="https://github.com/notifications/beacon/AAAABBBB.gif" height="1" width="1" alt="" /></p>
+----==_mimepart_6553b3c3_1f4e--

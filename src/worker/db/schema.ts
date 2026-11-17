@@ -12,6 +12,12 @@ export type UserStatus = 'active' | 'disabled';
 export type AddressKind = 'primary' | 'alias';
 // How a mail came to be in a mailbox (PX-12), set by the Worker and never by a sender.
 export type MessageOrigin = 'smtp' | 'internal';
+// The two picture formats a profile picture can have (no SVG: it can carry script).
+export type AvatarMime = 'image/webp' | 'image/jpeg';
+// The three formats a looked-up sender picture can have (what Gravatar and Libravatar serve; still no SVG).
+export type SenderPictureMime = AvatarMime | 'image/png';
+// An entry of a person's spam-filter lists.
+export type FilterKind = 'allow' | 'block';
 
 // One mailbox owner. `email` is the primary address (sign-in name and From) and mirrors the `addresses` row of kind 'primary'.
 export const users = sqliteTable(
@@ -69,7 +75,9 @@ export const users = sqliteTable(
     language: text('language').$type<Locale>(),
     // A reset of an ADMIN's two-step verification takes effect at this time unless the admin cancels it by signing in (null = none pending).
     reset_2fa_due_at: integer('reset_2fa_due_at'),
-    reset_2fa_by: text('reset_2fa_by')
+    reset_2fa_by: text('reset_2fa_by'),
+    // 1 = mail that arrives by email and looks like spam is delivered to the Spam folder (src/worker/spam); 0 = everything goes to the Inbox and nothing is scanned.
+    spam_filter: integer('spam_filter').notNull().default(1)
   },
   (t) => [
     uniqueIndex('idx_users_key_id').on(t.key_id),
@@ -282,7 +290,14 @@ export const messages = sqliteTable(
     is_e2e: integer('is_e2e').notNull().default(0),
     // 'smtp' = arrived by email: its From address is only what the sender wrote (nothing here checks it). 'internal' = written in a member's browser and
     // sent through this deployment's own route: the From address is the signed-in author. Mail from before this column, and drafts and sent copies, are 'smtp'.
-    origin: text('origin').$type<MessageOrigin>().notNull().default('smtp')
+    origin: text('origin').$type<MessageOrigin>().notNull().default('smtp'),
+    // The spam filter's verdict, set only on a row it delivered to Spam: the score (a whole number, at least the threshold) and the ids of the rules that
+    // added to it, a JSON array of at most six, highest weight first (same style as `labels`). Never any content of the mail. NULL on every other row.
+    spam_score: integer('spam_score'),
+    spam_reasons: text('spam_reasons'),
+    // What Cloudflare Email Routing recorded about the sender, exactly `spf=<r>;dkim=<r>;dmarc=<r>` (r: pass, fail, none, neutral, softfail, temperror, permerror or
+    // policy; a mechanism it did not report is `none`). NULL when the mail carried no result of Cloudflare's (mail written in the app, drafts, older mail).
+    auth: text('auth')
   },
   (t) => [
     // Both are partial: they hold only the rows a background job still has to visit.
@@ -323,7 +338,8 @@ export const attachments = sqliteTable(
 );
 
 // Key/value store. The pre-multi-user identity rows (display_name, signature, default_from, sessions_valid_after) are copied to the first
-// admin at Setup and deleted. Today it holds the organisation's settings: `require_2fa` ('1' | '0', absent = '1') and `default_language`.
+// admin at Setup and deleted. Today it holds the organisation's settings: `require_2fa` ('1' | '0', absent = '1'), `default_language` and
+// `outside_pictures` ('1' = on; absent or '0' = off, the default).
 export const settings = sqliteTable('settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
@@ -360,6 +376,65 @@ export const revokedSessions = sqliteTable(
     expires_at: integer('expires_at').notNull()
   },
   (t) => [index('idx_revoked_sessions_expires_at').on(t.expires_at)]
+);
+
+// A person's profile picture (at most one). It lives in its own table because the session check reads the `users` row on every request and must not
+// drag the image along. `id` is new at every upload: it is the unguessable, immutable name the picture is fetched by (`/api/avatars/<id>`), so a
+// browser can keep it for a year. `data` is the standard base64 of a JPEG or WebP of at most 12000 bytes (the route checks size and magic bytes).
+export const userAvatars = sqliteTable(
+  'user_avatars',
+  {
+    id: text('id').primaryKey(),
+    user_id: text('user_id')
+      .notNull()
+      .unique()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    mime: text('mime').$type<AvatarMime>().notNull(),
+    data: text('data').notNull(),
+    created_at: integer('created_at').notNull()
+  },
+  (t) => [check('user_avatars_mime_check', sql`${t.mime} IN ('image/webp', 'image/jpeg')`)]
+);
+
+// The picture of a sender who is NOT on this deployment, looked up by the Worker (never by the browser) while an admin has the `outside_pictures`
+// setting on (src/worker/pictures.ts). One row per sender address, shared by every person here, so it is addressed by `id` only: an unguessable
+// uuid that changes only when the bytes change (`/api/avatars/<id>`), never by hash or address. The address itself is NOT stored, only its
+// SHA-256 (`address_hash`, which the lookup needs and which is the row's key). `found` 1 = a picture (`mime` and `data`, standard base64, at
+// most 24000 bytes); 0 = none was found or the lookup failed (a marker so the sender is not asked again at once; `mime` and `data` are null).
+// `checked_at` decides when to ask again. Every row is deleted when an admin turns the setting off, and after 90 days unused.
+export const senderPictures = sqliteTable(
+  'sender_pictures',
+  {
+    id: text('id').primaryKey(),
+    address_hash: text('address_hash').notNull().unique(),
+    found: integer('found').notNull(),
+    mime: text('mime').$type<SenderPictureMime>(),
+    data: text('data'),
+    checked_at: integer('checked_at').notNull()
+  },
+  (t) => [
+    check('sender_pictures_mime_check', sql`${t.mime} IN ('image/jpeg', 'image/webp', 'image/png')`),
+    check('sender_pictures_found_check', sql`(${t.found} = 1) = (${t.mime} IS NOT NULL AND ${t.data} IS NOT NULL)`)
+  ]
+);
+
+// A person's own allow and block lists for the spam filter. `value` is lower-case: either `name@host` (that one address) or a bare `host` (that host and every
+// subdomain of it). A block entry sends mail from there to Spam, an allow entry keeps it out (src/worker/spam/lists.ts). At most 500 per person (the route checks).
+export const mailFilters = sqliteTable(
+  'mail_filters',
+  {
+    id: text('id').primaryKey(),
+    user_id: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    kind: text('kind').$type<FilterKind>().notNull(),
+    value: text('value').notNull(),
+    created_at: integer('created_at').notNull()
+  },
+  (t) => [
+    uniqueIndex('mail_filters_user_id_kind_value_unique').on(t.user_id, t.kind, t.value),
+    check('mail_filters_kind_check', sql`${t.kind} IN ('allow', 'block')`)
+  ]
 );
 
 // Web Push (VAPID) key pair: created on first use by src/worker/push.ts, a single row with id 1.

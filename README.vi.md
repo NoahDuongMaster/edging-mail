@@ -70,7 +70,7 @@ Cách một công ty dùng:
 
 - **Mỗi lần triển khai phục vụ một công ty.** Không có đăng ký tự do, thanh toán hay dịch vụ multi-tenant: quản trị viên tạo mọi tài khoản.
 - **Chỉ có web và HTTP API.** Không có truy cập IMAP, POP3 hay SMTP, nên các ứng dụng mail trên máy tính và điện thoại không thể kết nối tới.
-- **Chưa có:** lọc spam hoặc virus, file đính kèm trong thư nháp, sổ địa chỉ, hộp thư dùng chung hoặc nhóm, SSO và passkey. Xem
+- **Chưa có:** quét virus, file đính kèm trong thư nháp, sổ địa chỉ, hộp thư dùng chung hoặc nhóm, SSO và passkey. Xem
   [các hạn chế đã biết](#lộ-trình-và-hạn-chế-đã-biết).
 
 ## Tính năng
@@ -78,6 +78,7 @@ Cách một công ty dùng:
 **Email**
 
 - Inbox, Sent, Drafts, Snoozed, Starred, Archive, Spam và Trash, cùng các nhãn do bạn tự tạo.
+- Bộ lọc spam chạy khi thư đến, dùng các luật cố định cùng danh sách cho phép và danh sách chặn của bạn: thư nghi là spam vào Spam (không bao giờ bị từ chối, không có thông báo đẩy), kèm lý do. Không gửi gì cho bên thứ ba.
 - Trả lời, trả lời tất cả và chuyển tiếp. Thư trả lời giữ nguyên `In-Reply-To` và `References`, đồng thời dùng chung một `thread_id` khi lưu trữ; danh sách hiển thị
   từng thư riêng lẻ, chưa có chế độ xem theo cuộc hội thoại.
 - Tìm kiếm theo người gửi, người nhận hoặc tiêu đề. Tiêu đề được giải mã và so khớp ngay trong trình duyệt, trên số thư đã tải; nội dung thư không được tìm.
@@ -435,7 +436,7 @@ Các hạn chế hiện tại:
   thử từ đầu đến cuối.
 - **Tìm kiếm không đọc nội dung thư**, vì nội dung được mã hóa. Tiêu đề được giải mã và so khớp trong trình duyệt, trên số thư đã tải.
 - **Thư từ trước lần nâng cấp có thể còn tồn tại ở dạng chưa mã hóa trong các bản sao cũ.** Việc chuyển đổi mã hóa thư trong cơ sở dữ liệu đang chạy và trong R2 (không còn đối tượng chưa mã hóa nào), nhưng bản sao lưu bạn đã làm, D1 Time Travel (30 ngày trên Workers Paid) và vùng trống của file cơ sở dữ liệu vẫn có thể còn giữ bản chưa mã hóa. Chỉ có xóa các bản sao của bạn và chờ các bản sao của nền tảng hết hạn mới loại bỏ được nó. Thư nhận sau Setup được mã hóa ngay khi đến.
-- **Không lọc spam hoặc virus, không có file đính kèm trong thư nháp, không có sổ địa chỉ, không có chế độ xem theo cuộc hội thoại.**
+- **Không quét virus, không có file đính kèm trong thư nháp, không có sổ địa chỉ, không có chế độ xem theo cuộc hội thoại.** Bộ lọc spam chỉ dùng luật và cố ý thận trọng, xem [Tính năng thư](docs/mail-features.md#spam-filter).
 - **Email rất lớn** có thể không lưu được: phần nội dung nằm trong D1, vốn giới hạn mỗi dòng tối đa 2 MB. Đây là dự đoán dựa trên giới hạn đã được tài liệu hóa, chưa được kiểm thử.
 - **Google Fonts.** Trang tải font Geist từ Google, nên trình duyệt sẽ kết nối tới Google khi ứng dụng được mở.
 - Đã kiểm thử trên Chromium và Firefox; các bài kiểm thử đáp án biết trước (known-answer test) của phần mã hóa cũng chạy trên một engine WebKit (WPE); chưa được xác minh trên Safari hay iPhone thật.

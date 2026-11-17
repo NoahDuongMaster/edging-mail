@@ -1,0 +1,20 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=none;
+	dmarc=none;
+	spf=none (mx.cloudflare.net: no SPF records found for postmaster@royal-trust.example) smtp.mailfrom=postmaster@royal-trust.example
+From: "Barrister A. Okafor" <okafor.legal@royal-trust.example>
+To: bob@example.com
+Reply-To: okafor.claims@freemail-box.example
+Subject: Urgent business proposal
+Date: Mon, 16 Nov 2026 22:50:05 +0100
+Message-ID: <br-0912@royal-trust.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Dear beneficiary,
+
+I am a lawyer handling the estate of a client who died without a next of kin.
+There are unclaimed funds of 12.5 million dollars in a bank here. I need a
+foreign partner to receive the money by wire transfer. You will keep 30 percent.
+
+Reply to my private address with your details.

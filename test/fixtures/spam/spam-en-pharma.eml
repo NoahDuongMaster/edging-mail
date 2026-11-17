@@ -1,0 +1,17 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=none;
+	dmarc=none;
+	spf=none (mx.cloudflare.net: no SPF records found for postmaster@rx-fast.example) smtp.mailfrom=postmaster@rx-fast.example
+From: "Online Pharmacy" <sales@rx-fast.example>
+To: bob@example.com
+Subject: Cheap meds, no questions
+Date: Tue, 17 Nov 2026 01:02:44 +0000
+Message-ID: <1122334455@rx-fast.example>
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+
+<html><body>
+<p>Order viagra and cialis today. Best prices, discreet shipping, delivered in 3 days.</p>
+<p>Try our online casino too: 200% bonus on your first deposit.</p>
+<p><a href="http://rx-fast.example/order">Open the shop</a></p>
+</body></html>

@@ -1,0 +1,19 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=none;
+	dmarc=none;
+	spf=none (mx.cloudflare.net: no SPF records found for postmaster@example.net) smtp.mailfrom=postmaster@example.net
+From: =?UTF-8?B?TGFuIEFuaA==?= <lananh@example.net>
+To: bob@example.com
+Subject: =?UTF-8?B?Q2hp4buBdSBuYXkgxJFpIGPDoCBwaMOqIG5ow6k/?=
+Date: Tue, 17 Nov 2026 11:55:00 +0700
+Message-ID: <la-5521@example.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+
+Chào Bob,
+
+Chiều nay mình rảnh sau 4 giờ. Bạn có muốn đi cà phê ở quán gần công viên không?
+Mình muốn hỏi bạn về chuyện chuyển nhà. Nếu bạn bận thì để cuối tuần cũng được.
+
+Lan Anh

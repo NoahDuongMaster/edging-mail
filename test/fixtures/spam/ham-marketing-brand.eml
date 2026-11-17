@@ -1,0 +1,56 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=none;
+	dmarc=none;
+	spf=pass (mx.cloudflare.net: domain of mail.acme-outfitters.example designates 198.51.100.4 as permitted sender) smtp.mailfrom=postmaster@mail.acme-outfitters.example
+From: "Acme Outfitters" <offers@mail.acme-outfitters.example>
+To: bob@example.com
+Reply-To: care@acme-outfitters.example
+Subject: Winter sale starts today: up to 40% off boots and jackets
+Date: Tue, 17 Nov 2026 07:00:15 +0700
+Message-ID: <camp-w26-0417.8812@mail.acme-outfitters.example>
+List-Unsubscribe: <https://links.mail.acme-outfitters.example/unsub/3341>
+List-Unsubscribe-Post: List-Unsubscribe=One-Click
+X-Campaign: winter-sale-2026
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+<html><head><meta charset=3D"utf-8"><title>Winter sale</title></head>
+<body style=3D"margin:0;background:#f4f4f4">
+<span style=3D"display:none;font-size:1px;color:#f4f4f4;line-height:1px;max=
+-height:0;max-width:0;opacity:0;overflow:hidden">Up to 40% off boots and ja=
+ckets. Free returns until 31 January.&#8199;&#847;&zwnj;&nbsp;&#8199;&#847;=
+&zwnj;&nbsp;&#8199;&#847;&zwnj;&nbsp;</span>
+<table width=3D"640" align=3D"center" cellpadding=3D"0" cellspacing=3D"0" s=
+tyle=3D"background:#ffffff">
+<tr><td><a href=3D"https://links.mail.acme-outfitters.example/c/1?u=3Dhome"=
+><img src=3D"https://img.acme-outfitters.example/w26/header.jpg" width=3D"6=
+40" alt=3D"Acme Outfitters"></a></td></tr>
+<tr><td><a href=3D"https://links.mail.acme-outfitters.example/c/2?u=3Dboots=
+"><img src=3D"https://img.acme-outfitters.example/w26/boots.jpg" width=3D"6=
+40" alt=3D"Boots, up to 40% off"></a></td></tr>
+<tr><td><a href=3D"https://links.mail.acme-outfitters.example/c/3?u=3Djacke=
+ts"><img src=3D"https://img.acme-outfitters.example/w26/jackets.jpg" width=
+=3D"640" alt=3D"Jackets, up to 40% off"></a></td></tr>
+<tr><td><a href=3D"https://links.mail.acme-outfitters.example/c/4?u=3Dsocks=
+"><img src=3D"https://img.acme-outfitters.example/w26/socks.jpg" width=3D"3=
+20" alt=3D"Socks"></a><a href=3D"https://links.mail.acme-outfitters.example=
+/c/5?u=3Dgloves"><img src=3D"https://img.acme-outfitters.example/w26/gloves=
+.jpg" width=3D"320" alt=3D"Gloves"></a></td></tr>
+<tr><td style=3D"padding:16px;font-family:Arial,sans-serif;font-size:15px">=
+Shop the full sale at <a href=3D"https://links.mail.acme-outfitters.example=
+/c/6?u=3Dsale">www.acme-outfitters.example/sale</a>. Free returns on every =
+order until 31 January.</td></tr>
+<tr><td style=3D"padding:16px;font-family:Arial,sans-serif;font-size:12px;c=
+olor:#777">Follow us:
+<a href=3D"https://links.mail.acme-outfitters.example/s/fb">Facebook</a> |
+<a href=3D"https://links.mail.acme-outfitters.example/s/ig">Instagram</a> |
+<a href=3D"https://links.mail.acme-outfitters.example/s/yt">YouTube</a><br>
+You are receiving this email because you shopped with Acme Outfitters. <a h=
+ref=3D"https://links.mail.acme-outfitters.example/unsub/3341">Unsubscribe</=
+a>.<br>
+Acme Outfitters, 100 Example Street, Springfield</td></tr>
+</table>
+<img src=3D"https://links.mail.acme-outfitters.example/o/3341.gif" width=3D=
+"1" height=3D"1" alt=3D"">
+</body></html>

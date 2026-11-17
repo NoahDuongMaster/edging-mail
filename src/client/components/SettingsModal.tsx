@@ -9,6 +9,7 @@ import {
   Info,
   Keyboard,
   Languages,
+  ListFilter,
   Lock,
   LogOut,
   Mail,
@@ -20,12 +21,13 @@ import {
 import { BRAND_NAME } from '../../shared/i18n';
 import type { ThemeTokens } from '../theme';
 import { useIsAdmin, useLogout, useSession } from '../lib/auth';
+import { ownPicture } from '../lib/avatar';
 import { useDocumentTitle } from '../lib/documentTitle';
 import { useT, type MessageKey } from '../lib/i18n';
 import { useSaveLanguage } from '../lib/language';
 import { useSecretHeld } from '../lib/secretHold';
 import { pushForSignOut, usePushNotifications } from '../lib/push';
-import { useSaveSettings, useSettings, type Settings, type SettingsPatch } from '../lib/settings';
+import { ownerName, useSaveSettings, useSettings, type Settings } from '../lib/settings';
 import {
   ActionBar,
   Avatar,
@@ -46,7 +48,9 @@ import {
 import { LanguagePicker } from './LanguagePicker';
 import { ErrorLine } from './auth/authUi';
 import { DeveloperDocs, DOCS_TABS, type DocsTab } from './settings/DeveloperDocs';
+import { FiltersSection } from './settings/FiltersSection';
 import { DensityGroup, MotionGroup, ShortcutsPreference, UndoSendPreference } from './settings/PreferencesPanel';
+import { ProfilePicture } from './settings/ProfilePicture';
 import { SettingsBar, SettingsViewProvider, type SettingsView } from './settings/SettingsBar';
 import { SettingRow, SettingsGroup, SettingsPage } from './settings/SettingsPage';
 import { SecuritySection } from './security/SecuritySection';
@@ -70,7 +74,7 @@ interface SettingsModalProps {
   initialSection?: SettingsSection;
 }
 
-type AccountSection = 'profile' | 'appearance' | 'mail' | 'language' | 'notifications' | 'keyboard' | 'security';
+type AccountSection = 'profile' | 'appearance' | 'mail' | 'filters' | 'language' | 'notifications' | 'keyboard' | 'security';
 export type SettingsSection = AccountSection | DocsTab;
 
 interface SectionEntry {
@@ -85,6 +89,7 @@ const ACCOUNT_SECTIONS: SectionEntry[] = [
   { id: 'profile', labelKey: 'settings.profile', descriptionKey: 'settings.profile_desc', icon: UserRound },
   { id: 'appearance', labelKey: 'settings.appearance', descriptionKey: 'settings.appearance_desc', icon: Palette },
   { id: 'mail', labelKey: 'settings.mail', descriptionKey: 'settings.mail_desc', icon: Mail },
+  { id: 'filters', labelKey: 'settings.filters', descriptionKey: 'settings.filters_desc', icon: ListFilter },
   { id: 'language', labelKey: 'lang.label', descriptionKey: 'settings.language_desc', icon: Languages },
   { id: 'notifications', labelKey: 'term.notifications', descriptionKey: 'settings.notifications_desc', icon: Bell },
   { id: 'keyboard', labelKey: 'prefs.keyboard_title', descriptionKey: 'settings.keyboard_desc', icon: Keyboard },
@@ -98,7 +103,9 @@ const TABS_ID = 'settings';
 /** The line under the nav that says why its ways out are off while new recovery codes are on screen (J1-27). */
 const HELD_REASON_ID = 'settings-held-reason';
 
-const SETTING_KEYS: (keyof SettingsPatch)[] = ['display_name', 'signature'];
+// The two fields of the profile form (the Filters switch saves on its own).
+type ProfileField = 'display_name' | 'signature';
+const SETTING_KEYS: ProfileField[] = ['display_name', 'signature'];
 
 type Feedback = { type: 'saved' } | { type: 'unchanged' } | { type: 'offline' } | { type: 'error'; text: string } | null;
 
@@ -263,7 +270,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const values = form ?? settings;
   const dirty = form !== null && settings !== undefined && SETTING_KEYS.some((key) => form[key] !== settings[key]);
 
-  const edit = (key: keyof SettingsPatch, value: string) => {
+  const edit = (key: ProfileField, value: string) => {
     if (values === undefined) {
       return;
     }
@@ -355,7 +362,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       {isSaving ? tr('settings.saving') : tr('common.save')}
     </Button>
   );
-  const profile =
+  const profileFields =
     values === undefined ? (
       <SettingsGroup>
         {settingsQuery.isError ? (
@@ -427,6 +434,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         {phone ? <ActionBar>{save}</ActionBar> : null}
       </form>
     );
+
+  // The page: the person's picture first (it has its own buttons and is not saved with the form), then the form.
+  // The initials come from the saved name (the form below may be mid-edit), the session's while the settings load.
+  const savedName = ownerName(settings);
+  const pictureName = savedName !== '' || user === undefined ? savedName : user.display_name === '' ? user.email : user.display_name;
+  const profile = (
+    <>
+      <ProfilePicture name={pictureName} picture={ownPicture(user)} />
+      {profileFields}
+    </>
+  );
 
   const appearance = (
     <>
@@ -546,6 +564,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       case 'mail': {
         return page(entry, mail);
       }
+      case 'filters': {
+        return page(entry, <FiltersSection />);
+      }
       case 'language': {
         return page(entry, language);
       }
@@ -604,7 +625,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <NavFrame pane={pane} openKey={current.id}>
           {user === undefined ? null : (
             <div className="st-identity">
-              <Avatar name={user.display_name === '' ? user.email : user.display_name} size="md" selected />
+              <Avatar name={user.display_name === '' ? user.email : user.display_name} size="md" selected src={ownPicture(user)} />
               <div className="st-identity-text">
                 <span className="st-identity-name">{user.display_name === '' ? user.email : user.display_name}</span>
                 <span className="st-identity-address">{user.email}</span>

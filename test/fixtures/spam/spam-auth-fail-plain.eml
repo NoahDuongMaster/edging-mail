@@ -1,0 +1,13 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=none;
+	dmarc=fail header.from=partner-news.example policy.dmarc=reject;
+	spf=fail (mx.cloudflare.net: domain of bounce@partner-news.example does not designate 203.0.113.9 as permitted sender) smtp.mailfrom=bounce@partner-news.example
+From: Partner News <news@partner-news.example>
+To: bob@example.com
+Subject: Your weekly update
+Date: Tue, 17 Nov 2026 16:00:00 +0000
+Message-ID: <pn-100@partner-news.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Hello, here is your weekly update. Nothing special this week.

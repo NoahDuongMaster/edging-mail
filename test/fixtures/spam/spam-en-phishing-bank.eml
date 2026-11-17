@@ -1,0 +1,16 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=none;
+	dmarc=fail header.from=secure-paypa1.example policy.dmarc=reject;
+	spf=fail (mx.cloudflare.net: domain of bounce@secure-paypa1.example does not designate 203.0.113.9 as permitted sender) smtp.mailfrom=bounce@secure-paypa1.example
+From: "paypal.com" <service@secure-paypa1.example>
+To: bob@example.com
+Subject: Action required: verify your account
+Date: Tue, 17 Nov 2026 04:20:17 +0000
+Message-ID: <aa11bb22@secure-paypa1.example>
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+
+<html><body>
+<p>We noticed unusual activity. Your account will be suspended in 24 hours unless you confirm your password.</p>
+<p><a href="http://secure-paypa1.example/login">https://www.paypal.com/signin</a></p>
+</body></html>

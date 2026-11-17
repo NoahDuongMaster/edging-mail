@@ -45,6 +45,8 @@ export interface ToastState {
   undoHint?: string;
 }
 
+/** Longer than this, a toast with an Undo puts its actions under the words on a phone (about two lines of the words beside the Undo and the X at 390px). */
+const STACK_FROM_CHARS = 28;
 /** How long a toast with nothing to undo stays while nobody points at it or has focus in it. */
 export const TOAST_MS = 6000;
 /** How long a toast with Undo stays (research/02 M3: 8 s for an action; the time is the Undo's window, and it pauses as the others do). */
@@ -381,12 +383,16 @@ export const Toast: React.FC<ToastProps> = ({ toast, onDismiss, raised = false, 
   // J6-35: "Sending..." has not happened yet: the neutral Send glyph; the check is for what is done.
   const Icon = toast.error === true ? CircleAlert : held ? Send : CircleCheck;
   const canAct = toast.undo !== undefined && spent !== toast;
+  // A long text beside an Undo and an X leaves the words a sliver of a phone's width (8 lines at 320px): from this length the actions take a row of
+  // their own under the words (toast.css, phone widths only).
+  const stacked = canAct && toast.text.length > STACK_FROM_CHARS;
   return (
     <div
       ref={setRoot}
       className="ui-toast tst-root"
       data-error={toast.error === true ? 'true' : undefined}
       data-held={held ? 'true' : undefined}
+      data-stacked={stacked ? 'true' : undefined}
       style={{
         // A desktop: 16px inside the list sheet's bottom-left corner (the rail's width, mailbox.css --mb-rail-w, and 16px). A phone centres
         // with auto margins, not a transform: the entrance animates `transform`, which would drop a translateX(-50%) while it runs and make

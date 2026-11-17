@@ -1,0 +1,13 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=none;
+	dmarc=none;
+	spf=none (mx.cloudflare.net: no SPF records found for postmaster@example.com) smtp.mailfrom=postmaster@example.com
+From: Cron Daemon <root@backup.example.net>
+To: bob@example.com
+Subject: Cron <root@backup> /usr/local/bin/nightly-backup
+Date: Tue, 17 Nov 2026 03:00:02 +0700
+Message-ID: <cron-20261117030002@backup.example.net>
+
+nightly-backup: 18432 files, 2.1 GiB copied in 4m12s
+nightly-backup: verified 18432/18432 checksums
+nightly-backup: done

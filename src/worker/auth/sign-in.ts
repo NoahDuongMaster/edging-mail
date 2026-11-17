@@ -4,7 +4,7 @@ import { auditEntry, signInEntry } from '../audit';
 import type { Db } from '../db';
 import { users } from '../db/schema';
 import type { AppEnv } from '../types';
-import { keyBundle, loadPolicy, sessionUser } from './accounts';
+import { avatarIdOf, keyBundle, loadPolicy, sessionUser } from './accounts';
 import type { UserRow } from './accounts';
 import { openGate } from './middleware';
 import { startSession } from './session';
@@ -37,7 +37,7 @@ export async function finishSignIn(
     signInEntry(db, row.id, c.req.raw, true)
   ]);
   await startSession(c, secret, row.id, row.sessions_valid_after, options.stepUp ? now : 0, { shared: options.shared === true });
-  const user = sessionUser(row, await loadPolicy(db), options.stepUp ? now : 0);
+  const user = sessionUser(row, await loadPolicy(db), options.stepUp ? now : 0, await avatarIdOf(db, row.id));
   const keys = keyBundle(row);
   const gate = openGate(user);
   return c.json({ success: true, user, ...(keys === null ? {} : { keys }), ...(gate === undefined ? {} : { gate: gate.code }) });

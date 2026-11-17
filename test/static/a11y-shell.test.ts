@@ -74,9 +74,11 @@ describe('the mailbox shell (App.tsx Mailbox)', () => {
       expect(toast).toContain('returnFocus: undoFocus');
     }
     expect(mailbox).toContain('const undoFocus = isMobile ? messagesRegion : restoredRow;');
-    // Every failure (a request that failed, the reader's and the compose's problems, Empty Trash, Select all's pages) is an error toast; none
-    // is a plain timed one.
-    expect(mailbox.match(/error: true/g)).toHaveLength(13);
+    // Not spam (Spam's way back) has its own Undo toast, shown once the answer names who was allowed: it too hands focus back to the row.
+    expect(mailbox).toMatch(/setToast\(\{ text: notSpamText\(tr, 1, allowed\), undo, returnFocus: undoFocus \}\)/);
+    // Every failure (a request that failed, the reader's and the compose's problems, Empty Trash, Select all's pages, an Undo of Not spam that
+    // could not take the allowed senders away again) is an error toast; none is a plain timed one.
+    expect(mailbox.match(/error: true/g)).toHaveLength(14);
     expect(mailbox).not.toMatch(/setToast\(\{ text \}\)/);
     expect(mailbox).toContain('fallbackFocus={messagesRegion}');
   });

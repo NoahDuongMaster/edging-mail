@@ -1,11 +1,13 @@
 import { and, inArray, lt, or, sql } from 'drizzle-orm';
 import { getDb } from './db';
 import { errorClass } from './utils';
-import { auditLog, recoveryTickets, revokedSessions, twoFactorChallenges, userSignIns } from './db/schema';
+import { auditLog, recoveryTickets, revokedSessions, senderPictures, twoFactorChallenges, userSignIns } from './db/schema';
 import type { Env } from './types';
 
 // Sign-in history is kept for 90 days and at most 50 rows per person; sign-in events leave the audit log after the same 90 days
-// (every other audit entry stays); the ended sign-ins of single devices (`revoked_sessions`) go when their cookie could no longer work. Run by the cron once an hour, not every minute.
+// (every other audit entry stays); the ended sign-ins of single devices (`revoked_sessions`) go when their cookie could no longer work; the pictures of
+// outside senders (`sender_pictures`) go after 90 days without a lookup (one still shown is looked up again after 30 days, so only an unused one gets
+// this old). Run by the cron once an hour, not every minute.
 const RETAIN_MS = 90 * 24 * 60 * 60 * 1000;
 const KEEP_PER_USER = 50;
 const TICKET_RETAIN_MS = 24 * 60 * 60 * 1000;
@@ -30,6 +32,8 @@ export async function pruneActivity(env: Env): Promise<void> {
       db.delete(twoFactorChallenges).where(lt(twoFactorChallenges.expires_at, Date.now())),
       // A device that signed out stays revoked until its cookie could not have worked anyway (ninety days after its sign-in).
       db.delete(revokedSessions).where(lt(revokedSessions.expires_at, Date.now())),
+      // A picture of an outside sender (or the marker that there is none) that nobody has needed for 90 days.
+      db.delete(senderPictures).where(lt(senderPictures.checked_at, cutoff)),
       // PB-8: a forgot-password ticket lives ten minutes; a used or expired one (it keeps the requester's address) is dropped after a day.
       db
         .delete(recoveryTickets)

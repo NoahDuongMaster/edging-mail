@@ -92,6 +92,8 @@
   --ui-hue-bg: 18%;
   --ui-hue-fg: 72%;
   --ui-avatar-ring: var(--border);
+  /* The hairline just inside the edge of a picture (Avatar `src`): a picture with a pale edge keeps its shape on the page in both themes. */
+  --ui-photo-ring: color-mix(in srgb, var(--text) 14%, transparent);
   /* The stamp avatar (shape="stamp"): its paper, the hairline that draws its perforated edge, and the small shade under it. */
   --ui-stamp-paper: color-mix(in srgb, var(--star) 5%, var(--surface));
   --ui-stamp-paper-hue: 0%;
@@ -278,6 +280,7 @@
   background: var(--accent);
   color: var(--on-accent);
   box-shadow:
+    inset 0 0 0 1px var(--ui-primary-ring, transparent),
     inset 0 1px 0 color-mix(in srgb, var(--on-accent) 22%, transparent),
     0 1px 2px var(--ui-glow),
     0 6px 14px -6px var(--ui-glow);
@@ -341,6 +344,7 @@
   .ui-btn[data-variant='primary']:hover:not(:disabled, [aria-busy='true']) {
     background: var(--accent-hover);
     box-shadow:
+      inset 0 0 0 1px var(--ui-primary-ring, transparent),
       inset 0 1px 0 color-mix(in srgb, var(--on-accent) 24%, transparent),
       0 2px 4px var(--ui-glow),
       0 9px 20px -6px var(--ui-glow);
@@ -377,7 +381,9 @@
 }
 .ui-btn[data-variant='primary']:active:not(:disabled, [aria-disabled='true']) {
   background: color-mix(in srgb, var(--accent-hover) 82%, var(--ui-shade));
-  box-shadow: inset 0 1px 3px color-mix(in srgb, var(--ui-shade) 45%, transparent);
+  box-shadow:
+    inset 0 0 0 1px var(--ui-primary-ring, transparent),
+    inset 0 1px 3px color-mix(in srgb, var(--ui-shade) 45%, transparent);
 }
 .ui-btn[data-variant='secondary']:active:not(:disabled, [aria-disabled='true']) {
   background: var(--ui-sunk);
@@ -1899,6 +1905,38 @@ input[type='search']::-webkit-search-decoration {
 }
 .ui-avatar[data-shape='stamp'][data-script='cjk'] {
   font-size: calc(var(--ui-avatar-size) * 0.42);
+}
+
+/* A picture (Avatar `src`): an <img> over the initials, cut to the tile's own shape (the circle clips it; a stamp's picture sits exactly in its
+   printed field, the teeth and the paper stay around it). The initials stay underneath until the picture has loaded (`data-image="loaded"`
+   hides their fill) and for good when it fails (the img is gone then), so a slow or missing picture never leaves a hole. The hairline is an outline
+   drawn over the picture, inside its edge (it follows the radius). */
+.ui-avatar[data-image] {
+  position: relative;
+}
+.ui-avatar[data-image]:not([data-shape='stamp']) {
+  overflow: hidden;
+}
+.ui-avatar-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+  outline: 1px solid var(--ui-photo-ring);
+  outline-offset: -1px;
+}
+.ui-avatar[data-shape='stamp'] > .ui-avatar-img {
+  --ui-stamp-field: calc(var(--ui-stamp-hole) * 2 + 1px);
+  inset: var(--ui-stamp-field) auto auto var(--ui-stamp-field);
+  width: calc(100% - var(--ui-stamp-field) * 2);
+  height: calc(100% - var(--ui-stamp-field) * 2);
+  border-radius: 2px;
+}
+/* Not `color: transparent`: a stamp's perforation mask is painted in currentColor, so a transparent colour would take the paper away with the letters. */
+.ui-avatar[data-image='loaded'] {
+  -webkit-text-fill-color: transparent;
 }
 
 /* A key cap: the button's fill with its soft ring and a deeper bottom edge. */

@@ -1,0 +1,23 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=pass header.d=bookings.skyway-air.example header.s=s1 header.b=aBcDeFgH;
+	dmarc=pass header.from=bookings.skyway-air.example policy.dmarc=none;
+	spf=pass (mx.cloudflare.net: domain of bounce@bookings.skyway-air.example designates 192.0.2.10 as permitted sender) smtp.mailfrom=bounce@bookings.skyway-air.example
+From: Skyway Air <bookings@bookings.skyway-air.example>
+To: bob@example.com
+Subject: Your trip to Da Nang: itinerary and e-ticket
+Date: Sat, 14 Nov 2026 19:22:10 +0700
+Message-ID: <itin.SK7731@bookings.skyway-air.example>
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+
+<html><body style="font-family:Arial">
+<table width="600" cellpadding="6" border="0">
+<tr><td colspan="2"><img src="https://static.skyway-air.example/logo.png" alt="Skyway Air" width="140"></td></tr>
+<tr><td colspan="2"><h2>Your trip to Da Nang</h2><p>Booking reference: <b>SK7731</b></p></td></tr>
+<tr><td>Outbound</td><td>Fri 20 Nov 2026 &middot; SGN 07:35 &rarr; DAD 08:55 &middot; flight SK 212</td></tr>
+<tr><td>Return</td><td>Sun 22 Nov 2026 &middot; DAD 18:10 &rarr; SGN 19:30 &middot; flight SK 215</td></tr>
+<tr><td>Passenger</td><td>Bob Example</td></tr>
+<tr><td colspan="2">Check in online from 24 hours before departure at <a href="https://bookings.skyway-air.example/checkin/SK7731">bookings.skyway-air.example/checkin</a>. Bring a photo ID to the airport.</td></tr>
+<tr><td colspan="2"><a href="https://bookings.skyway-air.example/manage/SK7731"><img src="https://static.skyway-air.example/manage-button.png" alt="Manage booking" width="180"></a></td></tr>
+</table>
+</body></html>

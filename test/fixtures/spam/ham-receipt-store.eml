@@ -1,0 +1,50 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=pass header.d=shop.acme-outfitters.example header.s=s1 header.b=aBcDeFgH;
+	dmarc=pass header.from=shop.acme-outfitters.example policy.dmarc=none;
+	spf=pass (mx.cloudflare.net: domain of bounce@shop.acme-outfitters.example designates 192.0.2.10 as permitted sender) smtp.mailfrom=bounce@shop.acme-outfitters.example
+Received: from out.shop.acme-outfitters.example (out.shop.acme-outfitters.example [192.0.2.10])
+	by mx.example.com with ESMTPS id 1a2b3c; Tue, 17 Nov 2026 08:12:41 +0700
+From: Acme Outfitters <orders@shop.acme-outfitters.example>
+To: Bob <bob@example.com>
+Subject: Your Acme Outfitters order #A-48213 is confirmed
+Date: Tue, 17 Nov 2026 08:12:38 +0700
+Message-ID: <20261117081238.48213.1@shop.acme-outfitters.example>
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="=_alt_48213"
+
+--=_alt_48213
+Content-Type: text/plain; charset=utf-8
+
+Thanks for your order, Bob.
+
+Order #A-48213
+1 x Trail jacket (blue, M)      89.00
+1 x Merino socks, 3 pack        24.00
+Shipping                          4.50
+Total                           117.50 USD
+
+Paid with card ending 4242. We will email you when it ships.
+View your order: https://shop.acme-outfitters.example/orders/A-48213
+
+Acme Outfitters, 100 Example Street, Springfield
+--=_alt_48213
+Content-Type: text/html; charset=utf-8
+
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Your order is confirmed</title>
+<style>body{font-family:Arial,sans-serif;color:#222}td{padding:4px 8px}</style></head>
+<body>
+<h2>Thanks for your order, Bob.</h2>
+<p>Order <b>#A-48213</b></p>
+<table>
+<tr><td>1 &times; Trail jacket (blue, M)</td><td>89.00</td></tr>
+<tr><td>1 &times; Merino socks, 3 pack</td><td>24.00</td></tr>
+<tr><td>Shipping</td><td>4.50</td></tr>
+<tr><td><b>Total</b></td><td><b>117.50 USD</b></td></tr>
+</table>
+<p>Paid with card ending 4242. We will email you when it ships.</p>
+<p><a href="https://shop.acme-outfitters.example/orders/A-48213">View your order</a></p>
+<p style="color:#666;font-size:12px">Acme Outfitters, 100 Example Street, Springfield</p>
+<img src="https://shop.acme-outfitters.example/pixel.gif?o=A-48213" width="1" height="1" alt="">
+</body></html>
+--=_alt_48213--

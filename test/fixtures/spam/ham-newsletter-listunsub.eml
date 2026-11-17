@@ -1,0 +1,50 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=pass header.d=news.northwind-weekly.example header.s=s1 header.b=aBcDeFgH;
+	dmarc=pass header.from=news.northwind-weekly.example policy.dmarc=none;
+	spf=pass (mx.cloudflare.net: domain of bounce@news.northwind-weekly.example designates 192.0.2.10 as permitted sender) smtp.mailfrom=bounce@news.northwind-weekly.example
+From: Northwind Weekly <digest@news.northwind-weekly.example>
+To: bob@example.com
+Reply-To: editors@northwind-weekly.example
+Subject: This week: five tools that saved us time
+Date: Mon, 16 Nov 2026 06:00:02 +0000
+Message-ID: <digest-2026-46@news.northwind-weekly.example>
+List-Unsubscribe: <https://news.northwind-weekly.example/u/8f3a2c>, <mailto:unsubscribe+8f3a2c@news.northwind-weekly.example>
+List-Unsubscribe-Post: List-Unsubscribe=One-Click
+Precedence: bulk
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="nw-boundary"
+
+--nw-boundary
+Content-Type: text/plain; charset=utf-8
+
+Northwind Weekly - issue 46
+
+1. A command line tool for renaming files in bulk
+   https://click.news.northwind-weekly.example/r/1?u=tool-rename
+2. A free-to-use diagramming library
+   https://click.news.northwind-weekly.example/r/2?u=diagram
+3. Why we moved our wiki into plain Markdown
+   https://click.news.northwind-weekly.example/r/3?u=markdown
+
+You are receiving this because you signed up at northwind-weekly.example.
+Unsubscribe: https://news.northwind-weekly.example/u/8f3a2c
+--nw-boundary
+Content-Type: text/html; charset=utf-8
+
+<html><body style="margin:0;padding:0">
+<div style="display:none;max-height:0;overflow:hidden">Five tools that saved us time this week, and one that did not.</div>
+<table width="600" align="center"><tr><td>
+<h1 style="font-family:Georgia,serif">Northwind Weekly <small>issue 46</small></h1>
+<h3><a href="https://click.news.northwind-weekly.example/r/1?u=tool-rename">A command line tool for renaming files in bulk</a></h3>
+<p>Rename a folder of photos in one line. No account, no upload.</p>
+<h3><a href="https://click.news.northwind-weekly.example/r/2?u=diagram">A free-to-use diagramming library</a></h3>
+<p>Boxes and arrows from plain text, with a tidy default style.</p>
+<h3><a href="https://click.news.northwind-weekly.example/r/3?u=markdown">Why we moved our wiki into plain Markdown</a></h3>
+<p>Three years in, here is what we would do again and what we would not.</p>
+<hr>
+<p style="font-size:12px;color:#777">You are receiving this because you signed up at <a href="https://northwind-weekly.example">northwind-weekly.example</a>.
+<a href="https://news.northwind-weekly.example/u/8f3a2c">Unsubscribe</a> &middot; <a href="https://northwind-weekly.example/privacy">Privacy</a></p>
+<img src="https://click.news.northwind-weekly.example/o/8f3a2c.gif" width="1" height="1" alt="">
+</td></tr></table>
+</body></html>
+--nw-boundary--

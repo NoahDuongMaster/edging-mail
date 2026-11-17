@@ -16,12 +16,17 @@ export function useSaveLanguage(): UseMutationResult<unknown, Error, Locale> {
 
 export interface OrgSettings {
   success: true;
-  settings: { default_language: string; require_2fa: boolean };
+  settings: {
+    default_language: string;
+    require_2fa: boolean;
+    /** Whether the server may look up the pictures of senders from outside (Gravatar, then Libravatar). Off until an admin turns it on. */
+    outside_pictures: boolean;
+  };
 }
 
 export const orgSettingsKey = ['admin', 'org-settings'] as const;
 
-/** Admin: the organisation's settings (today the default language). */
+/** Admin: the organisation's settings (the default language, the two-factor rule, the pictures of outside senders). */
 export function useOrgSettings(): UseQueryResult<OrgSettings> {
   return useQuery({
     queryKey: orgSettingsKey,
@@ -36,6 +41,23 @@ export function useSaveDefaultLanguage(): UseMutationResult<unknown, Error, Loca
     mutationFn: (default_language: Locale) => apiPut('/api/admin/settings', { default_language }, 'fail.default_language_save'),
     onSuccess: () =>
       Promise.all([queryClient.invalidateQueries({ queryKey: sessionKey }), queryClient.invalidateQueries({ queryKey: orgSettingsKey })])
+  });
+}
+
+/**
+ * `PUT /api/admin/settings` with the one field: turns the server's lookup of outside senders' pictures on or off. The server asks for no
+ * fresh authenticator code and no typed confirmation, and turning it off deletes what it had kept.
+ */
+export function putOutsidePictures(outside_pictures: boolean): Promise<unknown> {
+  return apiPut('/api/admin/settings', { outside_pictures }, 'fail.outside_pictures_save');
+}
+
+/** Admin: the switch of the pictures of outside senders. The settings are read again before the mutation is done, so the switch shows what the server has. */
+export function useSaveOutsidePictures(): UseMutationResult<unknown, Error, boolean> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: putOutsidePictures,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: orgSettingsKey })
   });
 }
 

@@ -1,0 +1,17 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=none;
+	dmarc=none;
+	spf=none (mx.cloudflare.net: no SPF records found for postmaster@bet-asia.example) smtp.mailfrom=postmaster@bet-asia.example
+From: =?UTF-8?B?5r6z6Zeo5aix5LmQ?= <vip@bet-asia.example>
+To: bob@example.com
+Subject: =?UTF-8?B?5oGt5Zac5oKo5Lit5aWWIDg4OCDlhYPnuqLljIU=?=
+Date: Tue, 17 Nov 2026 12:00:00 +0800
+Message-ID: <zh-7712@bet-asia.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: base64
+
+5oGt5Zac5oKo5Lit5aWW77yBODg4IOWFg+e6ouWMheW3suWtmOWFpeaCqOeahOi0puaIt+OAggrm
+iJHku6zmmK/mvrPpl6jmnIDlpKfnmoTljZrlvanlubPlj7DvvIzmj5DkvpvlnKjnur/otYzljZrj
+gIHnnJ/kurrlqLHkuZDjgIHnmb7lrrbkuZDvvIzpppblrZjpgIEgMTAwJeOAggror7fngrnlh7vp
+ooblj5bvvJpodHRwOi8vYmV0LWFzaWEuZXhhbXBsZS92aXAK

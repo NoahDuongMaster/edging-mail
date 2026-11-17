@@ -1,0 +1,23 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=none;
+	dmarc=none;
+	spf=none (mx.cloudflare.net: no SPF records found for postmaster@remit-now.example) smtp.mailfrom=postmaster@remit-now.example
+From: Finance Desk <finance@remit-now.example>
+To: bob@example.com
+Subject: PAYMENT ADVICE - WIRE TRANSFER CONFIRMATION
+Date: Tue, 17 Nov 2026 17:00:00 +0000
+Message-ID: <pa-900@remit-now.example>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="m1"
+
+--m1
+Content-Type: text/plain; charset=utf-8
+
+The wire transfer is confirmed. Open the attachment and enable editing to see the details.
+--m1
+Content-Type: application/vnd.ms-excel.sheet.macroEnabled.12; name="payment-advice.xlsm"
+Content-Disposition: attachment; filename="payment-advice.xlsm"
+Content-Transfer-Encoding: base64
+
+UEsDBBQABgAIAAAAIQAAAAAAAAAAAAAAAAAAAAAA
+--m1--

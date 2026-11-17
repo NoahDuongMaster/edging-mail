@@ -1,0 +1,19 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=pass header.d=mail.lensbook.example header.s=s1 header.b=aBcDeFgH;
+	dmarc=pass header.from=mail.lensbook.example policy.dmarc=none;
+	spf=pass (mx.cloudflare.net: domain of bounce@mail.lensbook.example designates 192.0.2.10 as permitted sender) smtp.mailfrom=bounce@mail.lensbook.example
+From: Lensbook <hello@mail.lensbook.example>
+To: bob@example.com
+Subject: November in pictures
+Date: Sun, 15 Nov 2026 08:00:00 +0000
+Message-ID: <nov26@mail.lensbook.example>
+List-Unsubscribe: <https://mail.lensbook.example/unsub/77>
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+
+<html><body>
+<a href="https://mail.lensbook.example/p/1"><img src="https://cdn.lensbook.example/nov/1.jpg" width="600" alt="Morning fog over the river"></a>
+<a href="https://mail.lensbook.example/p/2"><img src="https://cdn.lensbook.example/nov/2.jpg" width="600" alt="A market at dawn"></a>
+<a href="https://mail.lensbook.example/p/3"><img src="https://cdn.lensbook.example/nov/3.jpg" width="600" alt="Harbour lights"></a>
+<p style="font-size:12px;color:#888">You are receiving Lensbook monthly because you joined in 2024. <a href="https://mail.lensbook.example/unsub/77">Unsubscribe</a>.</p>
+</body></html>

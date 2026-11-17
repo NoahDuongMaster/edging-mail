@@ -1,0 +1,33 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=fail header.d=gmail.example header.s=20230601 header.b=zZ9yXw;
+	dmarc=fail header.from=gmail.example policy.dmarc=none;
+	spf=pass (mx.cloudflare.net: domain of ideas-bounces@lists.example.org designates 198.51.100.77 as permitted sender) smtp.mailfrom=ideas-bounces@lists.example.org
+From: Priya Raman <priya.raman@gmail.example>
+To: python-ideas-style@lists.example.org
+Reply-To: python-ideas-style@lists.example.org
+Subject: Re: [ideas] A shorter spelling for optional chaining?
+Date: Mon, 16 Nov 2026 21:15:30 +0530
+Message-ID: <CAK3t9e+q1@mail.gmail.example>
+In-Reply-To: <8ab12c@lists.example.org>
+References: <5d2e9f@lists.example.org> <8ab12c@lists.example.org>
+List-Id: Ideas list <ideas.lists.example.org>
+List-Post: <mailto:python-ideas-style@lists.example.org>
+List-Unsubscribe: <https://lists.example.org/mailman/options/ideas>
+Sender: ideas-bounces@lists.example.org
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+On Mon, Nov 16, 2026 at 7:02 PM Tomas wrote:
+> What about `a?.b` for attribute access that returns None when `a` is None?
+
+I like the idea, but I think the spelling matters less than the rules for
+chains. If `a?.b.c` short-circuits the whole chain, then it is easy to explain;
+if only `b` is guarded, people will be surprised when `.c` raises.
+
+A small table of examples in the PEP draft would help a lot.
+
+Priya
+
+_______________________________________________
+ideas mailing list -- ideas@lists.example.org
+To unsubscribe send an email to ideas-leave@lists.example.org

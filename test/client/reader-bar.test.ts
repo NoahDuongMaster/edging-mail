@@ -75,6 +75,7 @@ function render(
         onTrash: noop,
         onSpam: noop,
         onRestore: noop,
+        onNotSpam: noop,
         onDeleteForever: noop,
         onMarkUnread: noop,
         onSnooze: noop,
@@ -120,6 +121,7 @@ const ARCHIVE = en['action.archive'];
 const SPAM = en['action.move_to_spam'];
 const TRASH = en['action.move_to_trash'];
 const INBOX = en['action.move_to_inbox'];
+const NOT_SPAM = en['action.not_spam'];
 const DELETE = en['action.delete_forever'];
 const UNREAD = en['action.mark_unread'];
 const SNOOZE = en['action.snooze'];
@@ -155,9 +157,13 @@ describe('the desktop toolbar', () => {
     expect(bar.match(/role="separator"/g)).toHaveLength(2);
   });
 
-  it('has them in Spam too, without the Spam button; Move to Trash only with its words (J4-32)', () => {
-    // The server render has no width to measure: no words, so no bare trash can beside the red one of Delete forever.
-    expect(toolbar(render(message({ folder: 'spam' })))).toEqual([INBOX, ARCHIVE, UNREAD, LABEL, DELETE, NEWER, OLDER]);
+  it('has them in Spam too, without the Spam button; Move to Trash only with its words (J4-32); there Not spam takes the place of Move to Inbox', () => {
+    // The server render has no width to measure: no words, so no bare trash can beside the red one of Delete forever. Not spam is the way back
+    // (the Inbox, and the sender is allowed): the same place, so the bar is the same 7 buttons; only Trash keeps the plain Move to Inbox.
+    expect(toolbar(render(message({ folder: 'spam' })))).toEqual([NOT_SPAM, ARCHIVE, UNREAD, LABEL, DELETE, NEWER, OLDER]);
+    expect(toolbar(render(message({ folder: 'spam' })))).not.toContain(INBOX);
+    expect(toolbar(render(message({ folder: 'trash' })))).toContain(INBOX);
+    expect(toolbar(render(message({ folder: 'trash' })))).not.toContain(NOT_SPAM);
   });
 
   it('has no Snooze for a draft or sent mail', () => {
@@ -206,9 +212,9 @@ describe('the phone toolbars', () => {
     expect(render(null, { compact: true, loadFailed: true })).toContain(en['reader.load_failed']);
   });
 
-  it('has Move to Inbox and Delete forever in Trash and Spam (no Snooze), and Mark as unread where nothing can be snoozed', () => {
+  it('has Move to Inbox (Not spam in Spam) and Delete forever in Trash and Spam (no Snooze), and Mark as unread where nothing can be snoozed', () => {
     expect(toolbars(render(message({ folder: 'trash' }), { compact: true }))[1].buttons).toEqual([ARCHIVE, INBOX, REPLY, DELETE, MORE]);
-    expect(toolbars(render(message({ folder: 'spam' }), { compact: true }))[1].buttons).toEqual([ARCHIVE, INBOX, REPLY, DELETE, MORE]);
+    expect(toolbars(render(message({ folder: 'spam' }), { compact: true }))[1].buttons).toEqual([ARCHIVE, NOT_SPAM, REPLY, DELETE, MORE]);
     expect(toolbars(render(message({ folder: 'sent' }), { compact: true }))[1].buttons).toEqual([ARCHIVE, TRASH, REPLY, UNREAD, MORE]);
   });
 

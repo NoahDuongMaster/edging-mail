@@ -100,10 +100,12 @@ describe('the desktop selection bar', () => {
     expect(named(done, tr('action.mark_read'))).toBe(false);
   });
 
-  it('in Trash and Spam: Move to Inbox and Delete forever instead of Archive and Move to Trash, no Snooze and no labels', () => {
+  it('in Trash and Spam: the way back (Move to Inbox; Not spam in Spam) and Delete forever instead of Archive and Move to Trash, no Snooze and no labels', () => {
     for (const folder of ['trash', 'spam']) {
       const bin = render({ folder });
-      expect(named(bin, tr('action.move_to_inbox')), folder).toBe(true);
+      // Spam's way back is Not spam (the Inbox, and the senders are allowed); only Trash keeps the plain Move to Inbox.
+      expect(named(bin, tr(folder === 'spam' ? 'action.not_spam' : 'action.move_to_inbox')), folder).toBe(true);
+      expect(named(bin, tr(folder === 'spam' ? 'action.move_to_inbox' : 'action.not_spam')), folder).toBe(false);
       expect(named(bin, tr('action.delete_forever')), folder).toBe(true);
       expect(named(bin, tr('action.archive')), folder).toBe(false);
       expect(named(bin, tr('reader.add_label')), folder).toBe(false);

@@ -154,20 +154,25 @@ More in [Realtime, Web Push and PWA](pwa-and-push.md).
 
 ## Settings in the app and the console
 
-**Settings** (in the app) stores three values per person on their user row. They need no redeploy.
+**Settings** (in the app) stores four values per person on their user row, and each person's spam-filter lists in their own table. They need no redeploy.
 
 | Key            | Limit                                                          | Fallback                                     |
 | -------------- | -------------------------------------------------------------- | -------------------------------------------- |
 | `display_name` | one line, at most 100 characters                               | empty: the `From` header is the bare address |
 | `signature`    | at most 2000 characters                                        | empty                                        |
 | `language`     | one of the app's languages (today `en`, `vi`, `zh-CN`) or none | the organisation's default language          |
+| `spam_filter`  | on or off                                                      | on: likely spam goes to the Spam folder      |
+
+The spam filter has nothing to configure for the deployment: it needs no key, no binding and no variable, and it calls nothing outside the Worker (see [Mail features](mail-features.md#spam-filter)). The person's allow and block lists are kept
+in D1 (`mail_filters`) and edited in **Settings**.
 
 The sender of a mail is always the signed-in person's own primary address (and display name); a request that names another `From` address is refused. The address must
 belong to a domain onboarded in Email Sending.
 
 The **admin console** (`/api/admin`, admins only) holds the rest, in D1: the list of mail domains (with a DNS check that reports whether a domain is ready to receive and
 to send), the accounts and their aliases, the organisation's `require_2fa` switch (on by default; an admin can relax it for members with a typed confirmation and a
-second-factor check) and the default language (set at Setup, changeable later), and the audit log. See the [API reference](api.md#admin).
+second-factor check), the default language (set at Setup, changeable later), the `outside_pictures` switch (off by default; when an admin turns it on, the Worker looks up the pictures of
+people who write from outside on Gravatar and Libravatar, see [Profile pictures](security.md#profile-pictures); there is nothing to configure and no key), and the audit log. See the [API reference](api.md#admin).
 
 ## `wrangler.jsonc` reference
 

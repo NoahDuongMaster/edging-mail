@@ -122,7 +122,7 @@ export function SelectionSummary({
             {bin ? (
               <>
                 <Button variant="primary" leadingIcon={<Inbox {...ICON} />} onClick={actions.restore}>
-                  {tr('action.move_to_inbox')}
+                  {folder === 'spam' ? tr('action.not_spam') : tr('action.move_to_inbox')}
                 </Button>
                 <Button variant="danger" leadingIcon={<MailX {...ICON} />} onClick={actions.deleteForever}>
                   {tr('action.delete_forever')}

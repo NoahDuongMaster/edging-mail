@@ -187,7 +187,9 @@ setupRoutes.post('/setup', async (c) => {
     admin_password_upgrade_required: 0,
     language,
     reset_2fa_due_at: null,
-    reset_2fa_by: null
+    reset_2fa_by: null,
+    // The spam filter is on for a new account.
+    spam_filter: 1
   };
   const domainNames = [...new Set([primary.domain, ...aliases.map((alias) => alias.domain)])];
 
@@ -231,7 +233,7 @@ setupRoutes.post('/setup', async (c) => {
   if (created === undefined) {
     return c.json({ success: true, user: null });
   }
-  const user = sessionUser(created, await loadPolicy(db), 0);
+  const user = sessionUser(created, await loadPolicy(db), 0, null);
   return c.json({ success: true, user, keys: keyBundle(created), gate: openGate(user)?.code ?? null });
 });
 

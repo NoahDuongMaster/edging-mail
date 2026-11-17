@@ -296,7 +296,13 @@ export function SelectionBar({
   const targets = MOVE_TARGETS.filter((target) => target !== folder);
   const icon = phone ? SHEET_ICON : ICON;
   const firstAction: SimpleAction = bin
-    ? { id: 'restore', label: tr('action.move_to_inbox'), icon: <Inbox {...icon} />, run: actions.restore }
+    ? {
+        id: 'restore',
+        // In Spam the way back is Not spam: the Inbox, and the senders are allowed (App's `restore` decides by the folder).
+        label: folder === 'spam' ? tr('action.not_spam') : tr('action.move_to_inbox'),
+        icon: <Inbox {...icon} />,
+        run: actions.restore
+      }
     : { id: 'archive', label: tr('action.archive'), icon: <Archive {...icon} />, run: actions.archive };
   const secondAction: SimpleAction = bin
     ? { id: 'delete', label: tr('action.delete_forever'), icon: <MailX {...icon} />, run: actions.deleteForever, danger: true }

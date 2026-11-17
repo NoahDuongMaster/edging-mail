@@ -145,6 +145,7 @@ const USER: SessionUser = {
   id: 'u1',
   email: 'dana@example.com',
   display_name: 'Dana',
+  avatar: null,
   role: 'member',
   must_change_password: false,
   has_keys: true,

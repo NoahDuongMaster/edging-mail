@@ -8,7 +8,7 @@ import { closeSockets } from '../realtime';
 import { securityEvent } from '../security';
 import type { AppEnv } from '../types';
 import { errorClass, jsonObject } from '../utils';
-import { keyBundle, loadPolicy, sessionUser, userById } from './accounts';
+import { avatarIdOf, keyBundle, loadPolicy, sessionUser, userById } from './accounts';
 import { appliedGuard, isRecord, keySetColumns, parseKeySet, parseWrap, updateKeyMaterial } from './keys';
 import { currentUser } from './middleware';
 import { createVerifier, isAuthValue, KDF_VERSION, verifyAuth } from '../../shared/crypto/server';
@@ -148,7 +148,11 @@ credentialRoutes.post('/change-password', async (c) => {
     c.executionCtx.waitUntil(rewrapPending(c.env, row.id));
   }
   const fresh = (await userById(db, row.id)) ?? row;
-  return c.json({ success: true, user: sessionUser(fresh, await loadPolicy(db), 0), keys: keyBundle(fresh) });
+  return c.json({
+    success: true,
+    user: sessionUser(fresh, await loadPolicy(db), 0, await avatarIdOf(db, fresh.id)),
+    keys: keyBundle(fresh)
+  });
 });
 
 // "Sign out other devices": ends every other session of the caller (a lost phone, a computer left signed in) and keeps this one. Same shape as a

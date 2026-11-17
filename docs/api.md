@@ -1,7 +1,7 @@
 # HTTP API reference
 
 The Worker serves a JSON API under `/api`. The React app is its only intended client, but the API is plain HTTP and can be scripted. Everything here is read from
-`src/worker/` (`index.ts`, `errors.ts`, `auth/`, `admin/`, `mail/`, `drafts.ts`, `push.ts`, `realtime.ts`).
+`src/worker/` (`index.ts`, `errors.ts`, `auth/`, `admin/`, `mail/`, `spam/`, `drafts.ts`, `avatars.ts`, `pictures.ts`, `picture-lookup.ts`, `push.ts`, `realtime.ts`).
 
 Mail and keys are **encrypted by the browser's keys**: the API stores and serves ciphertext and wrapped keys, never a password, a recovery key or an unwrapped private key.
 This page documents the contract; the cryptography is in [Security](security.md).
@@ -14,7 +14,7 @@ This page documents the contract; the cryptography is in [Security](security.md)
 - [Keys](#keys), [Locked old mail](#locked-old-mail)
 - [Mail](#mail): [stats](#get-apistats), [list](#get-apimessages), [read one](#get-apimessagesid), [batch](#post-apimessagesbatch),
   [mark all read](#post-apimessagesread-all), [empty Trash or Spam](#post-apimessagesempty), [labels](#labels), [send](#post-apimessagessend), [internal (end to end)](#post-apimessagesinternal), [downloads](#downloads)
-- [Drafts](#drafts) · [Settings](#settings) · [Web Push](#web-push) · [Realtime](#realtime-websocket)
+- [Drafts](#drafts) · [Settings](#settings) · [Spam filter](#spam-filter) · [Profile picture](#profile-picture) · [Web Push](#web-push) · [Realtime](#realtime-websocket)
 - [Admin](#admin)
 - [Errors](#errors)
 
@@ -24,7 +24,7 @@ This page documents the contract; the cryptography is in [Security](security.md)
 - Every JSON answer has `success: boolean`. A failure is `{ "success": false, "error": "<English text>", "code": "<stable code>" }` with a 4xx/5xx status. The `code` is the
   contract: it never changes, the English `error` may be reworded or made more specific, and the app shows its own translated text for each `code`. Every failure has a
   code (see [Errors](#errors)). Exceptions: `GET /api/health` has no `success` field, and the two download routes answer errors as plain text.
-- JSON answers carry `Cache-Control: no-store`.
+- JSON answers carry `Cache-Control: no-store`. The one answer that is not JSON and not `no-store` is a profile picture (`GET /api/avatars/:id`, see [Profile picture](#profile-picture)).
 - **Roles.** _public_: no cookie needed. _signed in_: the session cookie (`__Host-edging_session` over https, `edging_session` over plain http in local development) of an account that has no open gate. _admin_: signed in, role `admin`, with no
   pending administrator-password change. A route marked _step-up_ also needs a second-factor check from the last five minutes (a sign-in with 2FA counts).
 - **Gates.** While an account has an open gate, every route answers `403 { "code": "<gate>" }` except the gate's own endpoints, `GET /api/auth/session` and
@@ -83,7 +83,7 @@ Always `200`. Signed in: `{ "success": true, "authenticated": true, "configured"
 value) and, when set, `default_from` and `default_display_name`. `configured` is false when sign-in cannot work (a secret is unusable).
 
 `SessionUser`: `id`, `email` (the primary address), `display_name`, `role`, `must_change_password`, `has_keys`, `totp_enabled`, `require_2fa`, `two_factor_reset_due_at`
-(a reset of this admin's 2FA takes effect then; `null` = none pending), `language`, `admin_password_upgrade_required`, `step_up_at`.
+(a reset of this admin's 2FA takes effect then; `null` = none pending), `language`, `admin_password_upgrade_required`, `step_up_at`, `avatar` (the id of the caller's profile picture, `null` when there is none; see [Profile picture](#profile-picture)).
 
 ### `POST /api/auth/login`
 
@@ -247,15 +247,24 @@ the caller's own messages (any folder, drafts too) sealed to that key; `delete_r
 
 Row shapes used below:
 
-- **Message** (a row of `messages`, in a list and in the detail answer, with two more fields): `origin` (`smtp` for mail that arrived by email, whose `From` address is only what its
+- **Message** (a row of `messages`, in a list and in the detail answer, with three more fields): `origin` (`smtp` for mail that arrived by email, whose `From` address is only what its
   sender wrote; `internal` for mail written in the app and sent through `POST /api/messages/internal`, whose `From` address is the signed-in author; set by the Worker, never by a
   sender; mail from before the field and drafts are `smtp`) and `from_hosted` (a boolean, not stored: whether the `From` address is on a domain of this deployment, worked out when the
-  message is read). A message with `origin: "smtp"` and `from_hosted: true` claims to come from somebody here but did not come through the app. Fields: `id`, `message_id`, `thread_id`, `from_address`, `from_name`, `to_address`, `cc`, `bcc`, `reply_to`, `labels` (a JSON array stored as text),
+  message is read). A message with `origin: "smtp"` and `from_hosted: true` claims to come from somebody here but did not come through the app. `from_avatar` (`string | null`, not stored: the id of a picture of the sender,
+  worked out when the message is read). With `origin: "internal"` it is the [profile picture](#profile-picture) of the person whose primary address is the `From` address
+  (lower-cased, trimmed), when they have one. With `origin: "smtp"` and `from_hosted: false` it is the picture of an outside sender, only while an admin has the
+  [`outside_pictures` setting](#admin) on, and only once the Worker has found one (the first read of a new sender is `null` and the lookup runs after the answer, so the next read has it).
+  With `origin: "smtp"` and `from_hosted: true` it is always `null`, also when the address belongs to a person here with a picture, because that address is only what the sender wrote. Fields: `id`, `message_id`, `thread_id`, `from_address`, `from_name`, `to_address`, `cc`, `bcc`, `reply_to`, `labels` (a JSON array stored as text),
   `is_read` (0/1), `is_starred` (0/1), `has_attachments` (0/1), `size`, `created_at`, `updated_at`, `references_header`, `in_reply_to`, `snoozed_until`, `folder`, and the content:
   - **EM1 rows** (`enc_fmt: 1`, every row written since the upgrade): `summary_blob` (the encrypted subject and snippet), `body_blob` (the encrypted bodies), `wrapped_cek` (the
     content key sealed to the owner's key), `key_id`, `wrap_kind` (`user`, or `server` while the owner has no keys yet), `is_e2e` (`1` for mail sent end to end between people on this deployment; `0` for everything else). `subject`, `snippet`, `body_text` and
     `body_html` are `null`. The browser opens the blobs with the private key.
   - **Legacy rows** (`enc_fmt: 0`, mail from before the upgrade that the cron has not converted yet): plaintext `subject`, `snippet`, `body_text`, `body_html`.
+  - **Spam filter fields** (three more columns of the row, returned by the list and the detail answer as they are; see [Spam filter](#spam-filter)): `spam_score` (`integer | null`: the score of a mail
+    the filter put in Spam, `null` for every mail it did not judge as spam; it stays when the person moves the mail out of Spam), `spam_reasons` (`string | null`: a JSON array of at most six rule ids as text, like `labels`, biggest first, for example `"[\"spam_phrases\",\"auth_failed\"]"`; set
+    only together with `spam_score`; ids only, never any of the mail's content) and `auth` (`string | null`: the result Cloudflare recorded when the mail arrived, exactly
+    `spf=<r>;dkim=<r>;dmarc=<r>` with `r` one of `pass`, `fail`, `none`, `neutral`, `softfail`, `temperror`, `permerror`, `policy`, a mechanism it did not report written as `none`; `null` for mail with no result
+    of ours, such as mail written in the app and mail that arrived before the Worker read these results). A moved or restored mail keeps its `auth`, `spam_score` and `spam_reasons`, whichever way it moves (`not_spam` included).
 - **Attachment** (a row of `attachments`): `id`, `message_id`, `filename` (empty for EM1 rows), `mime_type`, `size`, `content_id`, `is_inline`, `created_at`, `meta_blob` (the
   encrypted file name, type and content id).
 - **Folders:** `inbox`, `sent`, `drafts`, `snoozed`, `archive`, `spam`, `trash`. `starred` is a view (mail with `is_starred = 1` that is not in `trash`).
@@ -297,10 +306,20 @@ Body: `{ "action": "<action>", "message_ids": ["…"], "folder"?: "…", "until"
 | `move`              | Move to `folder`: one of `inbox`, `archive`, `trash`, `spam`, `sent`, `drafts` |
 | `snooze`            | Move to `snoozed` until `until`; drafts and Sent mail are left alone           |
 | `delete`            | Delete the rows, their attachment rows and the R2 objects (permanent)          |
+| `not_spam`          | Move the caller's mail that is in Spam to the Inbox, see below                 |
 
-`count` is the number of ids sent, except for `snooze`, where it is the number of mails actually snoozed. Failures are `400 invalid_body` / `invalid_request` with the reason in
+`count` is the number of ids sent, except for `snooze`, where it is the number of mails actually snoozed, and for `not_spam`, where it is the number of mails that were in Spam. Failures are `400 invalid_body` / `invalid_request` with the reason in
 `error` (`message_ids array is required`, `Valid folder is required for move`, `Use the snooze action to snooze mail`, `until must be between 1 minute and 1 year from now`,
 `Invalid action`). D1 allows 100 bound parameters per statement, so the Worker works through the ids in chunks; send at most 100 ids per call.
+
+**`not_spam`** ("this is not spam"): takes the same body as the other actions (`message_ids` only; `folder` and `until` are not read). It acts on the caller's mail that is **in Spam** (an id that is in another folder,
+that is somebody else's or that does not exist is left alone and not counted). Each such mail moves to `inbox` (`snoozed_until` is cleared); its `spam_score`, `spam_reasons` and `auth` stay. For each
+**distinct sender address** of those mails (lower-case) that is not on a domain this deployment hosts and is a valid entry, an `allow` entry is added to the caller's [list](#spam-filter) unless the caller
+already has it. A sender on a hosted domain is never allow-listed: that would let anybody who writes one of our addresses in `From` in. The answer is
+`{ "success": true, "count": n, "allowed": [ { "id": "<entry id>", "value": "<address>" } ], "unblocked": [ "<address>" ] }`, where `allowed` holds only the entries this call **created** (an entry the caller already had, a hosted sender and an
+address that cannot be an entry are not in it; when the list is full the mails still move and the entries that do not fit are left out). An address is not left on both lists: when the caller has a
+`block` entry for exactly that address, it is deleted and the address is in `unblocked` (a `block` of the whole host stays: the address entry is the more specific and wins). To undo, move the mails back with `move` to `spam`, delete each entry of
+`allowed` with `DELETE /api/filters/:id`, and add each address of `unblocked` again as a `block` entry with `POST /api/filters`.
 
 ### `POST /api/messages/read-all`
 
@@ -448,18 +467,75 @@ is read), and the app's own client sends a length. Planned: per-route caps after
 
 Role: signed in. The settings are the caller's own.
 
-`GET /api/settings` → `{ "success": true, "settings": { "display_name": "", "signature": "", "email": "<primary address>", "language": "vi" | "en" | "zh-CN" | null } }`.
+`GET /api/settings` → `{ "success": true, "settings": { "display_name": "", "signature": "", "email": "<primary address>", "language": "vi" | "en" | "zh-CN" | null, "spam_filter": true } }`.
 
-`POST /api/settings` takes a partial object of `display_name`, `signature` and `language` and answers `{ "success": true, "settings": <effective values> }`. The primary address is
+`POST /api/settings` takes a partial object of `display_name`, `signature`, `language` and `spam_filter` and answers `{ "success": true, "settings": <effective values> }`. The primary address is
 read-only (it is the sign-in name and the only sender).
 
-| Key            | Rule                                                                                                                                |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `display_name` | String, trimmed, one line, at most 100 characters                                                                                   |
-| `signature`    | String, kept as typed, at most 2000 characters                                                                                      |
-| `language`     | `vi`, `en`, `zh-CN`, or `null` (use the organisation default); it also decides the language of the push notices sent to this person |
+| Key            | Rule                                                                                                                                                                                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `display_name` | String, trimmed, one line, at most 100 characters                                                                                                                                                                                                             |
+| `signature`    | String, kept as typed, at most 2000 characters                                                                                                                                                                                                                |
+| `language`     | `vi`, `en`, `zh-CN`, or `null` (use the organisation default); it also decides the language of the push notices sent to this person                                                                                                                           |
+| `spam_filter`  | Boolean (`true` or `false`, not `0`/`1` and not a string). `true` (the default, also for people who were here before the filter): mail that arrives by email and looks like spam is put in Spam. `false`: nothing is scanned and everything goes to the Inbox |
 
 Errors: `400 invalid_body` for an unknown key, `400 invalid_language` for a language that is not offered, `400 invalid_request` with the rule that failed for the other keys.
+
+## Spam filter
+
+Role: signed in. Mail that arrives by email is judged once, when it arrives, by rules in the Worker (see [Spam filter](mail-features.md#spam-filter)); a mail the rules call spam is delivered to the `spam` folder
+with `spam_score` and `spam_reasons` on its row, and is never rejected. Nothing here is a route that judges mail: the routes below keep the person's own **lists** and their switch (`spam_filter` in [Settings](#settings)).
+Mail written in the app (`origin: "internal"`) never passes through the filter.
+
+An **entry** is `{ "id", "kind", "value", "created_at" }`: `kind` is `allow` or `block`; `value` is lower-case, either `name@host` (that address only) or a bare `host`, which matches that host **and its subdomains** (`example.com`
+matches `news.example.com` and not `notexample.com`). When more than one entry covers a sender the most specific wins (an address over a host, a longer host over a shorter one); at the same specificity the newer entry wins, and `block`
+wins a tie. A `block` entry makes the mail spam (reason `block_listed`) whatever it says; an `allow` entry keeps it out of Spam.
+
+| Route                     | Body                                                  | Answer                                                                                                                   |
+| ------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/filters`        |                                                       | `{ "success": true, "filters": [ Entry… ] }`, the caller's entries, oldest first                                         |
+| `POST /api/filters`       | `{ "kind": "allow" \| "block", "value": "<string>" }` | `{ "success": true, "filter": Entry }`; an entry that exists is answered with that entry and `200`, not as an error      |
+| `DELETE /api/filters/:id` |                                                       | `{ "success": true }`; `404 not_found` for an id that is not the caller's, with the same body as one that does not exist |
+
+`POST /api/filters` takes exactly `kind` and `value` (`400 invalid_body` for anything else). The `value` is trimmed and lower-cased, and must be a plain `name@host` or a bare host (an ASCII host name, at least two labels,
+no IP address, no `*`, no scheme, no path, no display name) of at most 255 characters; anything else is `400 invalid_filter`, also for a `kind` other than `allow` or `block`. A person has at most 500 entries: the 501st is
+`409 too_many_filters` (adding one that already exists still answers `200`). Another person's entries are never listed, matched or deleted.
+
+The rule ids that can appear in `spam_reasons` are listed in [Spam filter](mail-features.md#spam-filter). The realtime event for a mail that went to Spam is `mail.changed` only (see [Realtime](#realtime-websocket)).
+
+## Profile picture
+
+Role: signed in. A person has at most one picture: a JPEG or WebP of at most 12000 bytes, which the browser crops and scales before it sends it. It is stored in the database
+(`user_avatars`) and served by this Worker only. The same route serves the pictures of outside senders (below); those are looked up by the Worker, never by the browser, and only while an
+admin has turned the setting on.
+
+| Route                  | Answer                                                                                                                               |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `PUT /api/avatar`      | `{ "success": true, "avatar": "<id>" }`: sets the caller's picture, replacing the one they had                                       |
+| `DELETE /api/avatar`   | `{ "success": true, "avatar": null }`: removes it; also when there was none                                                          |
+| `GET /api/avatars/:id` | The image bytes (`image/webp`, `image/jpeg` or, for an outside sender, `image/png`); `404 not_found` for an id that names no picture |
+
+`PUT /api/avatar` takes `{ "mime": "image/webp" | "image/jpeg", "data": "<base64>" }` and nothing else (`400 invalid_body` for any other field or a body that is not an object).
+`data` is standard base64 with padding in its one canonical spelling (no line breaks, no URL-safe alphabet) of 1 to 12000 bytes, and the bytes must be the declared type: a JPEG starts
+`FF D8 FF`, a WebP is `RIFF`, four size bytes and `WEBP`. Anything else is `400 invalid_avatar` (another type such as SVG or PNG, bad base64, an empty picture, 12001 bytes). 12000 bytes are 16000
+base64 characters, which fits the 16 KiB cut of a JSON body; a body over it is `413 payload_too_large`. The `id` is a new lower-case UUID at every upload (also for the same image), and the
+previous picture is gone.
+
+`GET /api/avatars/:id` answers `Content-Type` of the stored type, `Cache-Control: private, max-age=31536000, immutable`, `X-Content-Type-Options: nosniff`,
+`Content-Security-Policy: default-src 'none'; sandbox`, `Cross-Origin-Resource-Policy: same-origin` and `Content-Disposition: inline`. An id never names other bytes, so a browser may keep the
+picture for a year; a new picture has a new id. An `:id` that is not a lower-case UUID answers like an unknown one (`404 not_found`, the same body). Ids are the only way to a picture: nothing lists
+them and they cannot be guessed. A person learns an id from their own `avatar` in [`SessionUser`](#get-apiauthsession) or from the `from_avatar` of a [message](#mail) they received, and any signed-in
+person who has an id can fetch the picture.
+
+**Pictures of outside senders.** While the organisation setting `outside_pictures` is on (an admin turns it on in [Admin](#admin); it is off by default), a message with `origin: "smtp"` whose
+`From` address is not on a hosted domain (`from_hosted: false`), is a plain `local@domain` **and whose `auth` says `dmarc=pass`** gets its picture looked up by the Worker (a message with `auth` `null`
+or with any other DMARC result is not looked up and has `from_avatar: null`, because a picture of a claimed address must not decorate mail that was not shown to come from it): first Gravatar, then Libravatar's central server,
+with a GET that carries the SHA-256 of the lower-cased, trimmed address and nothing else (no cookie, no `Referer`, no language header). A reply is kept only when it is a 200 with
+`image/jpeg`, `image/webp` or `image/png`, bytes that match that type, and at most 24000 bytes. The answer is kept in `sender_pictures` under a hash of the address (the address is not stored) and an
+`id`, and `from_avatar` carries that `id`. The `id` changes only when the picture changes, and every `from_avatar` of a sender is the same `id` for every person here. A sender without a picture is
+asked about again after 7 days, a picture after 30 days (it is shown while it is looked up again), and a lookup that failed for a reason that may pass (network, timeout, 5xx, 429) after one hour.
+The lookup never delays an answer. Turning the setting off deletes every kept picture at once, so their ids answer `404 not_found`; a kept picture nobody has needed for 90 days is deleted by the
+hourly job. Mail with `from_hosted: true` never gets one.
 
 ## Web Push
 
@@ -496,7 +572,8 @@ On connect the server sends `{"type":"hello"}`. Send the text `ping` to get `pon
 { "type": "mail.changed" }
 ```
 
-`mail.new` is sent when an inbound mail is stored for the caller; it carries no subject and no snippet. `mail.changed` follows a send, a draft save or delete, a batch action, a label
+`mail.new` is sent when an inbound mail is stored in the caller's Inbox; it carries no subject and no snippet. A mail the spam filter put in Spam sends `mail.changed` instead and no `mail.new` (and no push), so the
+folder counts and the open list refresh without naming the sender. `mail.changed` also follows a send, a draft save or delete, a batch action, a label
 change, "mark all as read" and a snoozed mail returning to the inbox. A revocation of the account's sessions closes its sockets with close code **4401** (`session ended`: the
 browser must lock and wipe its key), except when the change renewed the caller's own session in the same answer (`change-password`, `2fa/enroll/confirm`, `2fa/disable`,
 `2fa/recovery-codes`): then every socket of the person closes with **4402** (`session renewed`). The browser that made the change keeps its key and reconnects once with the new
@@ -521,7 +598,7 @@ opened (`POST /api/admin/users/:id/reissue`); the admin's browser derives it and
 | `POST /api/admin/users/:id/cancel-2fa-reset`                        | admin                              | Cancel the pending reset of an admin's two-step verification (any admin)           |
 | `DELETE /api/admin/users/:id`                                       | admin, step-up                     | Delete the account and everything of it                                            |
 | `GET`, `POST /api/admin/domains`, `DELETE …/:id`, `GET …/:id/check` | admin                              | Mail domains and the DNS check                                                     |
-| `GET`, `PUT /api/admin/settings`                                    | admin (step-up to relax 2FA)       | The organisation's `require_2fa` and `default_language`                            |
+| `GET`, `PUT /api/admin/settings`                                    | admin (step-up to relax 2FA)       | The organisation's `require_2fa`, `default_language` and `outside_pictures`        |
 | `GET /api/admin/health`                                             | admin                              | Secrets present (`ok`/`missing`, never values), rows still plaintext, pending mail |
 | `GET /api/admin/audit`                                              | admin                              | The audit log, newest first                                                        |
 
@@ -560,12 +637,15 @@ Every admin answer also carries `success: true`; the shapes below leave it out. 
 "note" }, "sending": { "ready", "records": [ { "type", "name", "purpose": "bounce" | "spf" | "dkim" | "dmarc", "found", "required" } ], "note" } }`, from DNS-over-HTTPS lookups. A domain whose MX
   points to another provider is "receiving not ready" with those hosts listed. A domain that publishes the RFC 7505 null MX (`0 .`: it accepts no mail) is `null_mx`; that record
   is in `mx` with an empty `host`, and no note names it as a host. A failed lookup is `502 dns_lookup_failed`, never reported as ready or not ready.
-- `GET /api/admin/settings` → `{ "settings": { "require_2fa": bool, "default_language": "…" } }`. `PUT /api/admin/settings` `{ "require_2fa"?, "default_language"?, "confirm"? }`: turning `require_2fa` **off** needs the
+- `GET /api/admin/settings` → `{ "settings": { "require_2fa": bool, "default_language": "…", "outside_pictures": bool } }`. `PUT /api/admin/settings`
+  `{ "require_2fa"?, "default_language"?, "outside_pictures"?, "confirm"? }`: turning `require_2fa` **off** needs the
   step-up and the admin's own address as `confirm`, is audited and alerts the other admins; it never turns off anybody's enrolled 2FA. Turning it on gates every open session at
-  once. `400 invalid_language`, `400 confirm_mismatch`, `403 step_up_required`.
+  once. `outside_pictures` (off by default) lets the Worker look up pictures of outside senders ([Profile picture](#profile-picture)); it needs no step-up and no confirmation, because it relaxes no
+  security control. It is audited (`settings.outside_pictures`, `detail` `{ "from", "to" }`) only when the value changes, and a `PUT` that sets it to `false` also deletes every picture kept for
+  outside senders. `400 invalid_request` (`outside_pictures must be true or false`) for a value that is not a boolean, `400 invalid_language`, `400 confirm_mismatch`, `403 step_up_required`.
 - `GET /api/admin/health` → `{ "health": { "data_key": "ok" | "missing", "jwt_secret": "ok" | "missing", "setup_key": "ok" | "missing", "plaintext_rows": n, "pending_rows": n } }`.
 - `GET /api/admin/audit?limit=&cursor=` → `{ "entries": [ { "id", "at", "actor_email", "action", "target", "detail" } ], "next_cursor": <id> | null }`. `action` is a code, for example `setup`, `break_glass`, `sign_in`, `sign_in_failed`, `user.create`, `user.rename`, `user.role_change`, `user.disable`, `user.enable`,
-  `user.delete`, `user.first_sign_in`, `alias.add`, `alias.remove`, `domain.add`, `domain.remove`, `settings.require_2fa`, `settings.default_language`, `temp_password_reissued`,
+  `user.delete`, `user.first_sign_in`, `alias.add`, `alias.remove`, `domain.add`, `domain.remove`, `settings.require_2fa`, `settings.default_language`, `settings.outside_pictures`, `temp_password_reissued`,
   `temp_password_expired`, `2fa_reset`, `2fa_reset_requested`, `recovery_started`, `password_recovered`, `password_change`, `recovery_code_used`, `recovery_codes_regenerated`
   (sign-in entries older than the retention period are pruned by the cron); `detail` holds codes and values only.
 
@@ -622,6 +702,9 @@ takes its code. Some routes replace the English text with a more specific reason
 | `draft_not_found`                 | 404    | Draft not found                                                                                                                           |
 | `not_a_draft`                     | 409    | This id belongs to a message that is not a draft                                                                                          |
 | `from_not_allowed`                | 403    | You can only send from your own address                                                                                                   |
+| `invalid_avatar`                  | 400    | The picture must be a JPEG or WebP image of at most 12000 bytes                                                                           |
+| `invalid_filter`                  | 400    | That is not a valid address or domain for the list                                                                                        |
+| `too_many_filters`                | 409    | The list has the most entries it can have                                                                                                 |
 | `invalid_address`                 | 400    | That is not an address this product can host                                                                                              |
 | `invalid_hostname`                | 400    | That is not a valid domain name                                                                                                           |
 | `domain_not_configured`           | 400    | Add the domain first                                                                                                                      |

@@ -19,6 +19,7 @@ const USER: SessionUser = {
   id: 'u1',
   email: 'dana@example.com',
   display_name: 'Dana',
+  avatar: null,
   role: 'admin',
   must_change_password: false,
   has_keys: true,
@@ -44,7 +45,7 @@ function render(options: { role?: SessionUser['role']; dark?: boolean; section?:
   const client = new QueryClient();
   const user: SessionUser = { ...USER, role: options.role ?? 'admin' };
   client.setQueryData<Session>(sessionKey, { authenticated: true, user, gate: null });
-  client.setQueryData(settingsKey, { display_name: 'Dana', signature: 'Dana', email: user.email });
+  client.setQueryData(settingsKey, { display_name: 'Dana', signature: 'Dana', email: user.email, spam_filter: true });
   client.setQueryData(activityKey, {
     activity: [{ at: Date.UTC(2026, 10, 2, 9, 30), ip: '192.0.2.1', user_agent: null, ok: false, kind: 'sign_in' }],
     notices: []
@@ -69,7 +70,7 @@ function render(options: { role?: SessionUser['role']; dark?: boolean; section?:
 const tagOf = (html: string, id: string): string => new RegExp(String.raw`<[a-z0-9]+\b[^>]*\bid="${id}"[^>]*>`).exec(html)?.[0] ?? '';
 const tabs = (html: string): string[] => html.match(/<button\b[^>]*role="tab"[^>]*>/g) ?? [];
 const radios = (html: string): string[] => html.match(/<input\b[^>]*type="radio"[^>]*>/g) ?? [];
-const ACCOUNT_IDS = ['profile', 'appearance', 'mail', 'language', 'notifications', 'keyboard', 'security'].map(
+const ACCOUNT_IDS = ['profile', 'appearance', 'mail', 'filters', 'language', 'notifications', 'keyboard', 'security'].map(
   (id) => `settings-tab-${id}`
 );
 const DOCS_IDS = ['architecture', 'deployment', 'routing'].map((id) => `settings-tab-${id}`);
@@ -88,7 +89,7 @@ describe('the Settings dialog', () => {
     expect(html).toContain(`<h2 id="${titleId}" class="ui-dialog-title">Settings</h2>`);
   });
 
-  it('shows an admin the ten sections as one vertical tab list in the nav (the toolbar slot), Profile first and selected, then the admin console as a button, not a tab', () => {
+  it('shows an admin the eleven sections as one vertical tab list in the nav (the toolbar slot), Profile first and selected, then the admin console as a button, not a tab', () => {
     const html = render();
     // The nav sits between the title and the content: the glide capsule of the open row (decorative), who is signed in, the tab list (Up
     // and Down move), then its foot.
@@ -119,7 +120,7 @@ describe('the Settings dialog', () => {
     expect(html).not.toContain('st-page-desc');
   });
 
-  it('shows a member the seven sections of the account: no technical sections and no admin console', () => {
+  it('shows a member the eight sections of the account: no technical sections and no admin console', () => {
     const html = render({ role: 'member' });
     expect(tabs(html).map((tag) => /id="([^"]+)"/.exec(tag)?.[1])).toEqual(ACCOUNT_IDS);
     expect(html).not.toContain('ui-tab-group');

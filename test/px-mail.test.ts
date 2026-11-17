@@ -6,6 +6,10 @@ import { withFromHosted } from '../src/worker/mail/view';
 import { call, createUser, db, deliverMail, must, rawMail, signIn } from './helpers';
 import { internalBody } from './internal-helpers';
 
+// Cloudflare's result for a mail whose From domain vouched for it. Without it, a mail that claims a hosted domain goes to Spam (see test/spam-filter.test.ts); these tests are
+// about the `origin` and `from_hosted` fields, so their mail is delivered as authenticated.
+const PASSED = 'Authentication-Results: mx.cloudflare.net; dkim=pass; dmarc=pass; spf=pass\r\n';
+
 // crypto-review.md section 22: PX-10 (the key lookup and a disabled account), PX-11 (a disabled account still receives mail) and PX-12 (where a mail
 // came from: `origin` and `from_hosted`).
 
@@ -56,7 +60,7 @@ describe('where a mail came from (PX-12)', () => {
     const alice = await createUser('alice@example.com');
     const bob = await createUser('bob@example.com');
     const bobCookie = await signIn(bob);
-    await deliverMail('bob@example.com', rawMail({ from: 'alice@example.com', to: 'bob@example.com', subject: 'by email' }));
+    await deliverMail('bob@example.com', PASSED + rawMail({ from: 'alice@example.com', to: 'bob@example.com', subject: 'by email' }));
     const sent = await call('/api/messages/internal', {
       cookie: await signIn(alice),
       body: await internalBody(alice, { to: [bob] }, { subject: 'in the app', text: 'hello' })
@@ -79,11 +83,11 @@ describe('where a mail came from (PX-12)', () => {
     const cookie = await signIn(bob);
     await deliverMail(
       'bob@example.com',
-      rawMail({ from: 'ceo@example.com', to: 'bob@example.com', subject: 'pay this invoice', messageId: '<a1@evil.test>' })
+      PASSED + rawMail({ from: 'ceo@example.com', to: 'bob@example.com', subject: 'pay this invoice', messageId: '<a1@evil.test>' })
     );
     await deliverMail(
       'bob@example.com',
-      rawMail({ from: 'someone@evil.test', to: 'bob@example.com', subject: 'hello', messageId: '<a2@evil.test>' })
+      PASSED + rawMail({ from: 'someone@evil.test', to: 'bob@example.com', subject: 'hello', messageId: '<a2@evil.test>' })
     );
     const flags = async (): Promise<[string, boolean][]> =>
       (await list(cookie)).json.messages

@@ -49,6 +49,8 @@ export interface SessionUser {
   two_factor_reset_due_at: number | null;
   /** The person's saved language (null = the organisation default). */
   language: Locale | null;
+  /** The id of the person's profile picture (fetched from `GET /api/avatars/:id`), null when they have none. */
+  avatar: string | null;
   /** Promoted to admin and not yet through the admin-length password change: no console until then. */
   admin_password_upgrade_required: boolean;
   /** Epoch ms of the last second-factor check of THIS session (0 = none). Step-up actions need it within five minutes. */
@@ -78,7 +80,10 @@ type OptionalColumns =
   | 'summary_blob'
   | 'body_blob'
   | 'is_e2e'
-  | 'origin';
+  | 'origin'
+  | 'spam_score'
+  | 'spam_reasons'
+  | 'auth';
 export type Message = Omit<MessageRow, OptionalColumns> & Partial<Pick<MessageRow, OptionalColumns>>;
 
 export type Attachment = Omit<typeof attachments.$inferSelect, 'meta_blob'> & Partial<Pick<typeof attachments.$inferSelect, 'meta_blob'>>;
@@ -107,7 +112,7 @@ export interface SendEmailPayload {
 
 export interface BatchActionPayload {
   message_ids?: string[];
-  action: 'read' | 'unread' | 'star' | 'unstar' | 'trash' | 'archive' | 'restore' | 'move' | 'snooze' | 'delete';
+  action: 'read' | 'unread' | 'star' | 'unstar' | 'trash' | 'archive' | 'restore' | 'move' | 'snooze' | 'delete' | 'not_spam';
   folder?: 'inbox' | 'sent' | 'drafts' | 'snoozed' | 'archive' | 'spam' | 'trash';
   /** Snooze only: when the mail returns to the inbox (epoch ms). */
   until?: number;

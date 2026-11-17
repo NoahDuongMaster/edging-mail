@@ -14,6 +14,8 @@ claims below is the project's fixed wording: the README, the landing pages and t
 - [Brute-force protection and CPU cost](#brute-force-protection-and-cpu-cost)
 - [Cross-site requests](#cross-site-requests)
 - [Mail content](#mail-content)
+- [Spam filter and the authentication result](#spam-filter-and-the-authentication-result)
+- [Profile pictures](#profile-pictures)
 - [Response headers](#response-headers)
 - [Push notifications](#push-notifications)
 - [Secrets and logs](#secrets-and-logs)
@@ -164,7 +166,8 @@ person who has already enrolled.
 ## What admins can and cannot do
 
 Admins can create accounts (with a temporary password), add and remove domains and alias addresses, change roles and display names, disable and delete accounts,
-reset two-step verification, relax or restore the 2FA requirement, set the default language, and read the audit log. Deleting an account removes every row and every
+reset two-step verification, relax or restore the 2FA requirement, set the default language, turn on the lookup of pictures of outside senders (off by default, see
+[Profile pictures](#profile-pictures)), and read the audit log. Deleting an account removes every row and every
 file of that person; creating the same address again makes a new person with an empty mailbox and new keys (people who write to them are told their key changed).
 
 - There is **no route under `/api/admin`** that sets, resets or returns a password, a key or a recovery key. The only credential an admin route receives is the
@@ -245,7 +248,8 @@ Mail is untrusted, so the reader never runs it as part of the app.
 - Attachments and raw `.eml` downloads are always served as downloads: opaque `application/octet-stream`, `X-Content-Type-Options: nosniff`,
   `Content-Security-Policy: default-src 'none'; sandbox`, `Cache-Control: private, no-store`. They are stored encrypted; the browser decrypts them. Stored object
   names are random ids and carry no file name, type or address, and objects have no custom metadata.
-- Nothing is scanned for malware or phishing. Treat attachments like any other download.
+- Attachments are not scanned for malware. The [spam filter](#spam-filter-and-the-authentication-result) looks at attachment **names** and at the wording and links of a mail when it arrives, and puts likely spam in the
+  Spam folder, but it is not a virus scanner and not a phishing defence. Treat attachments like any other download.
 
 ## Mail that claims one of your own addresses
 
@@ -259,14 +263,84 @@ What this version does about it:
   rejects at SMTP a message that fails the DMARC policy published by the domain it claims (stage 2 of the inbound flow on the "Email lifecycle" page, before rule matching and
   before a Worker sees the message), and rejects a message that neither passes SPF nor carries a valid DKIM signature. That protection
   exists only for domains that publish a policy. **Not verified on a real deployment (UNVERIFIED here):** this project had no real Email Routing route to test it on, so what happens to a forged message for a domain
-  with `p=reject` is Cloudflare's statement, not something these tests show. Cloudflare's documentation also says the authentication results can be read by a Worker; this version
-  does not use them.
+  with `p=reject` is Cloudflare's statement, not something these tests show. Cloudflare's documentation also says the authentication results can be read by a Worker; the
+  [spam filter](#spam-filter-and-the-authentication-result) reads them and stores the compact result on each row.
 - Every message has an `origin`: `smtp` for mail that arrived by email, `internal` for mail written in the app and sent through this deployment's own end-to-end route, where the
   `From` address is the signed-in author. The Worker sets it; a sender cannot. The message list and the message JSON also carry `from_hosted`: whether the `From` address is on a
   domain this deployment hosts, worked out when the message is read. The app uses the two together: a message with `origin: "smtp"` and `from_hosted: true` claims to be from
   somebody here but did not come through the app, and is shown with a plain notice, and a reply that would go to a `Reply-To` different from the sender shows that address.
 - A message from a hosted address that did not arrive the app's way is exactly the case to treat with care, however it looks. The end-to-end badge (`is_e2e`) is the other signal:
-  only mail written in the app and sealed in the sender's browser has it.
+  only mail written in the app and sealed in the sender's browser has it. The spam filter also treats such a message as spam unless Cloudflare recorded that DMARC passed for it (rule `spoofs_own_domain`,
+  +5, which is the threshold by itself), and the Not spam action never allow-lists such an address.
+
+## Spam filter and the authentication result
+
+Mail that arrives by email goes through a filter in the Worker, once, at arrival; the rules are in [Mail features](mail-features.md#spam-filter). This is what matters for security.
+
+- **Only Cloudflare's authentication result is trusted.** Cloudflare Email Routing writes an `Authentication-Results` header with the server name `mx.cloudflare.net` on top of the message (SPF, DKIM, DMARC;
+  as Cloudflare documents it for Email Routing). Any other `Authentication-Results` header was written by the sender or a server on the way and is ignored, and a sender can write one with our name too. So the
+  Worker reads **the first** `Authentication-Results` header of the message and uses it only if its server name is `mx.cloudflare.net`: if the first header is not ours, the result is treated as absent, even when a
+  header of ours sits below it. The headers are taken from the parsed message (`postal-mime`), which keeps every header in the order of the message, top first, and keeps repeated headers apart; the `Headers` object of the
+  event joins repeated headers into one and would lose that order. **Not verified on a real deployment (UNVERIFIED here):** that Cloudflare really places its header first on every route, and that it does so when the
+  sender's own message already carries one, is Cloudflare's statement and what the code assumes; the tests build messages the way the documentation describes.
+- **Reading it is cheap and cannot throw.** The header is cut to a fixed length, read in one pass (no pattern that can backtrack), and every value it does not know becomes `none`. A result inside a comment or a
+  quoted string is not read. A huge, repeated or unterminated header costs a few milliseconds and yields `none`.
+- **What is stored.** `auth` on the row, exactly `spf=<r>;dkim=<r>;dmarc=<r>` (`r` one of `pass`, `fail`, `none`, `neutral`, `softfail`, `temperror`, `permerror`, `policy`), or null when there is no result of ours.
+  A spam row also gets `spam_score` and `spam_reasons`, which are rule ids and a number: **no word of the mail, no address and no link is stored for the verdict.** The mail itself is sealed exactly as any other mail.
+- **The filter reads plaintext, once.** At arrival the Worker holds the plaintext for a moment before it seals the mail; the filter reads the subject, the text
+  and HTML parts, the sender fields and the attachment names there. After sealing the server cannot read the mail, so the verdict is never reworked later, and nothing in the filter keeps content or learns from
+  it (no statistical model, no word counts). A person's lists hold addresses and hosts that the person typed or that came from the sender of a mail they marked as not spam.
+- **No third party.** The filter makes no network call: no DNS blocklist, no URL or domain reputation, no machine-learning service. The rules are deterministic code and the person's own lists.
+- **Nothing is rejected.** A spam verdict only chooses the folder. A false positive is always recoverable (Not spam, or a move to the Inbox), and a failure of the filter delivers the mail to the Inbox and logs only the class of
+  the error. No push is sent for a spam mail.
+- **Hostile input is bounded.** Mail is attacker-written, so every scan has a limit: at most 200000 characters of text and of HTML are read (the wording check looks at the first 20000), the HTML is read by a single-pass
+  scanner that only moves forward (no HTML library and no pattern with nested repeats, which can take exponential time), at most 1000 links and 200 distinct hosts are looked at, nesting is capped at 64 levels, at most 100 attachment names of 255 characters,
+  and a header or a name is cut before it is read. The tests run a 190 kB mail made of unterminated tags, hidden elements, repeated anchors and repeated phrases through the real `email()` handler and require
+  that it is stored in a moment. (The same scanner replaced a pattern that built the snippet of an HTML-only mail and took quadratic time on such a document.)
+- **A forged `From` on a hosted domain is judged hard.** Mail from an address on a domain this deployment hosts, whose DMARC did not pass (or that has no result), scores 5 and goes to Spam, even when the person has
+  written to that address. The **Not spam** action never creates an allow entry for a hosted address.
+- **Limits.** The filter is not a security boundary: a determined sender can write a mail the rules do not catch, and Cloudflare's result is only as strong as the sender's domain's own SPF, DKIM and DMARC records.
+  Accounts with no SPF, DKIM or DMARC records cannot be told apart from forgeries by this filter's authentication rules alone.
+
+## Profile pictures
+
+- A person's picture is a JPEG or WebP of at most 12000 bytes, stored in the database and served from the app's own origin. Nothing is looked up anywhere else for it. The Worker
+  accepts only JPEG and WebP from a person, checks the first bytes against the declared type and the size, and refuses everything else, so there is no SVG (which can carry script).
+  Every picture the app serves, a person's own or an outside sender's, comes with `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'; sandbox`,
+  `Cross-Origin-Resource-Policy: same-origin` and `Content-Disposition: inline`.
+- A picture is fetched by an id that is new at every upload (and, for an outside sender, new whenever the picture changes). Only a signed-in person can fetch one, nothing lists the ids, and a person
+  learns one only from their own account or from a message they received. The picture of a deleted account is deleted with it.
+- Mail written in the app (`origin: "internal"`, whose `From` address is the signed-in author) shows the author's own picture. Mail that arrived by email never shows the picture of a person
+  here, even when its `From` address belongs to one: that address is only what the sender wrote, and a picture on it would help somebody pose as that person (see the section above).
+
+**Pictures of outside senders.** This is the one place where the Worker asks a third party about the people who write to you. It is **off by default**: one switch for the whole
+organisation (`outside_pictures`), turned on or off only by an admin, and audited as `settings.outside_pictures`. While it is off nothing is looked up, nothing is kept, and a mail from
+outside shows initials.
+
+- **What is sent, and from where.** With the switch on, the **Worker** (never the browser) looks up the picture of a sender whose mail arrived by email from an address that is not on a domain this
+  deployment hosts and that is a plain `local@domain`. The request is a GET whose URL holds the SHA-256 of the lower-cased, trimmed address and nothing else, with the user agent `edging-mail`: no
+  cookie, no `Referer`, no language header, and not the address itself. A hash of an address is still not a secret: whoever holds a list of addresses can hash them and compare, so a provider that
+  knows an address can tell that it wrote to someone here, and roughly when its mail was first shown.
+- **To whom.** Gravatar (`gravatar.com`) first, asked for pictures rated `pg`, and Libravatar's central server (`seccdn.libravatar.org`) when Gravatar has none. The list is fixed in the code. In a
+  check of the real answers, Libravatar's server fetched the picture from Gravatar on its own side (a redirect to a path of its own host), so a hash can reach Gravatar through it as well.
+- **When.** The first time an address is seen in mail that a person lists or opens after the switch was turned on, and again after 30 days for a sender with a picture, after 7 days for one with none, and
+  after an hour when the lookup failed for a reason that may pass (network error, timeout, 429, 5xx). The lookup runs after the page has been answered and never makes it wait, so the picture shows
+  from the next time the mail is read. At most 10 lookups per request, three at a time, 5 seconds for each request.
+- **What is accepted.** Only a 200 answer with `image/jpeg`, `image/webp` or `image/png`, bytes that start like that type, and at most 24000 bytes (a longer body is cut off, not read to its
+  end). The Worker follows at most two redirects itself, and only to https hosts of the two providers (`gravatar.com` and its subdomains, `seccdn.libravatar.org`, `cdn.libravatar.org`). Anything
+  else is treated as no picture. The picture is shown by this app as an image from its own origin; the page never contacts either provider, and its content security policy is not changed for this.
+- **What is kept.** In `sender_pictures`: the SHA-256 of the address (not the address), the picture or a marker that there is none, the time of the last lookup, and the id. One row per sender,
+  shared by everybody here, which is why it is named only by a random id and never by the hash. Turning the switch off deletes every row in the same change, and a row not looked up for 90 days is
+  deleted by the hourly job. A browser may keep a picture it already received for up to a year (the same cache header as any picture) until its site data is cleared. The Worker logs a failed
+  lookup by the kind of error only, never an address or a hash.
+- **Why no Libravatar federation.** Libravatar's federation finds a sender's pictures through a DNS record on the sender's own domain. That would let a sender's domain choose which host this Worker
+  calls whenever its mail is shown: a tracking pixel the sender controls, and a way to make the Worker call hosts of the sender's choice. Only the fixed list above is used. BIMI is not used either.
+- **How far to trust it.** A picture on outside mail is exactly as unverified as its `From` address: whoever controls an address at Gravatar controls its picture, and anyone can write any `From`.
+  So an outside picture is looked up and shown **only for mail whose `auth` says `dmarc=pass`**, that is, mail for which Cloudflare recorded that the `From` domain vouches for the message (see
+  [the spam filter and the authentication result](#spam-filter-and-the-authentication-result)). A row with no result of ours (`auth` null) or with any other DMARC result gets no outside picture and no lookup:
+  the picture Gravatar holds for a claimed address must not decorate a mail whose `From` was not authenticated, and an address that was never confirmed must not be sent to a provider. An outside picture is also never shown for an
+  address on a hosted domain (a picture of a person here must not decorate mail that did not come through the app), and the notices about unverified senders (the caution chip, the `Reply-To` line, the
+  end-to-end badge that only app-written mail has) are unchanged. A DMARC pass proves that the domain of the address sent the mail, not that the person behind the address is who the picture shows, so a picture is not a sign that a mail is genuine.
 
 ## Response headers
 
@@ -359,7 +433,10 @@ What this version does about it:
   length and a blocklist; it cannot make a bad password good.
 - The server sees metadata (addresses, times, sizes, folders, attachment counts and sizes) and cannot search subject or body text. Platform backups (for example D1 Time Travel)
   can hold the encrypted copy of deleted mail for a while.
-- No spam or virus filtering of inbound mail (everything lands in the Inbox; Spam is a folder you move mail into).
+- With the lookup of pictures of outside senders turned on, Gravatar and Libravatar receive a hash of each outside sender's address the first time its mail is shown (see
+  [Profile pictures](#profile-pictures)). It is off by default.
+- The spam filter is deliberately conservative and generic (see [Mail features](mail-features.md#spam-filter)): expect spam in the Inbox and, rarely, good mail in Spam. Its wording lists cover English, Vietnamese and
+  Chinese. There is no virus scanning of inbound mail.
 - The page loads the Geist fonts from Google Fonts (`index.html`), so the visitor's browser contacts Google when the app opens. Self-hosting the font files would remove that.
 - "Non-extractable" means not readable by JavaScript, nothing more. While you are signed in, the browser keeps your unlocked key in IndexedDB as a non-extractable key, and
   a forensic copy of an unlocked profile (a stolen laptop, a disk image) can still contain that key until the browser data is cleared. Signing out wipes the stored key

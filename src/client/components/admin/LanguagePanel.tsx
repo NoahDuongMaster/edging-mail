@@ -6,13 +6,15 @@ import { announce } from '../../lib/announce';
 import { LANGUAGE_NAMES, LOCALES, useT } from '../../lib/i18n';
 import { useOrgSettings, useSaveDefaultLanguage } from '../../lib/language';
 import { Select } from '../../ui';
+import { OutsidePictures } from './OutsidePictures';
 import { TwoFactorPolicy } from './TwoFactorPolicy';
 import { ErrorText, Group, PageHead, Row } from './adminUi';
 
 /**
  * The organisation's settings, as a page of Settings has them: grouped cards of rows. The default language (what the sign-in screens and
  * anyone who has not chosen a language see; saved as soon as it is chosen) is a row with its list on the right; whether everyone must use
- * two-step sign-in is a card of its own (TwoFactorPolicy).
+ * two-step sign-in is a card of its own (TwoFactorPolicy), and so is whether the server looks up the pictures of senders from outside
+ * (OutsidePictures).
  */
 export const LanguagePanel: React.FC<{ t: ThemeTokens }> = () => {
   const tr = useT();
@@ -66,6 +68,7 @@ export const LanguagePanel: React.FC<{ t: ThemeTokens }> = () => {
           ) : null}
         </Group>
         <TwoFactorPolicy required={settings.data?.settings.require_2fa} />
+        <OutsidePictures enabled={settings.data?.settings.outside_pictures} />
       </div>
     </div>
   );

@@ -31,7 +31,8 @@ const check = async (cookie: string, name = 'example.com') => {
 
 const put = (cookie: string, body: Record<string, unknown>) => call('/api/admin/settings', { method: 'PUT', cookie, body });
 
-const read = (cookie: string) => call<{ settings: { require_2fa: boolean; default_language: string } }>('/api/admin/settings', { cookie });
+const read = (cookie: string) =>
+  call<{ settings: { require_2fa: boolean; default_language: string; outside_pictures: boolean } }>('/api/admin/settings', { cookie });
 
 describe('domains', () => {
   it('adds, lists with the number of addresses on each, and removes only a domain no address uses', async () => {
@@ -142,7 +143,7 @@ describe('settings: the organisation policy', () => {
     const { cookie } = await adminSession();
     const other = await createUser('second@example.com', { role: 'admin' });
     await db().delete(settings).where(eq(settings.key, 'require_2fa'));
-    expect((await read(cookie)).json.settings).toEqual({ require_2fa: true, default_language: 'en' });
+    expect((await read(cookie)).json.settings).toEqual({ require_2fa: true, default_language: 'en', outside_pictures: false });
     expect((await put(cookie, { require_2fa: false })).json).toMatchObject({ code: 'confirm_mismatch' });
     expect((await put(cookie, { require_2fa: false, confirm: 'nobody@example.com' })).json).toMatchObject({ code: 'confirm_mismatch' });
     expect((await read(cookie)).json.settings.require_2fa).toBe(true);

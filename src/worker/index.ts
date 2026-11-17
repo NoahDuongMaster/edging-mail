@@ -7,12 +7,14 @@ import { apiError, codeFor, withErrorCodes } from './errors';
 import { getDb } from './db';
 import { HTTPException } from 'hono/http-exception';
 import { authenticate, authRoutes, keyRoutes, requireAdmin } from './auth';
+import { avatarRoutes } from './avatars';
 import { capBody } from './body-cap';
 import { draftRoutes } from './drafts';
 import { encryptLegacyMail } from './encrypt-job';
 import { receiveEmail } from './inbound';
 import { purgeLockedMail } from './locked-job';
 import { pruneActivity } from './maintenance';
+import { filterRoutes } from './mail/filters';
 import { messageRoutes } from './mail/messages';
 import { rewrapPending } from './mail/pending';
 import { internalRoutes } from './mail/internal';
@@ -134,6 +136,11 @@ app.route('/api', messageRoutes);
 app.route('/api', transferRoutes);
 app.route('/api', internalRoutes);
 app.route('/api', settingsRoutes);
+// The person's allow and block lists for the spam filter.
+app.route('/api', filterRoutes);
+
+// Profile pictures: a person's own (PUT, DELETE) and any picture by its id (GET). See avatars.ts.
+app.route('/api', avatarRoutes);
 
 // Cloudflare Worker Export with both fetch (Web API/UI) and email (Cloudflare Email Routing)
 export default {

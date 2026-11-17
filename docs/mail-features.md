@@ -111,7 +111,8 @@ The request, the answer and the codes are in the [API reference](api.md#post-api
 - **Opening a mail.** `GET /api/messages/:id` marks the mail read. `GET /api/messages/:id?peek=1` returns the same JSON without marking it: the client uses it to
   refresh a mail that is already open, so a mail the cron has just woken stays unread until it is really opened.
 - **Who a mail claims to be from.** Every row of the list and the opened mail carry `origin` (`smtp` for mail that arrived by email, `internal` for mail sent between
-  people of this deployment) and `from_hosted` (the From address is on a domain this deployment hosts). A mail with `origin: smtp` and `from_hosted: true` shows a caution
+  people of this deployment) and `from_hosted` (the From address is on a domain this deployment hosts), plus `from_avatar` (a picture of the sender: the profile picture of the author for `origin: internal`; for mail that arrived by email, the picture of an outside sender
+  from Gravatar or Libravatar, only when an admin has turned that on and only for an address that is not on a hosted domain, so a mail whose From is a person here never shows a picture). A mail with `origin: smtp` and `from_hosted: true` shows a caution
   chip, "Unverified sender", whose popover explains it in plain words and offers **Move to Spam**: anyone on the internet can write a colleague's address in From,
   and nothing in the app can check it. When the
   mail has a `Reply-To` other than the sender, the reply window says in one line where the answer goes, for as long as that address is in To.
@@ -125,7 +126,84 @@ The request, the answer and the codes are in the [API reference](api.md#post-api
 - **Empty Trash and Spam.** `POST /api/messages/empty` with `{ "folder": "trash" }` or `"spam"` deletes every mail of that folder for good (rows, attachment
   rows and R2 objects); one call stops after about 8000 mails and answers `more: true`, and the app calls again until it is done. Nothing is deleted on its own:
   mail stays in Trash and Spam until you delete it.
-- **Inbound.** Everything Email Routing hands to the Worker lands in the Inbox. There is no spam filter: the Spam folder only holds mail you moved there.
+- **Inbound.** Everything Email Routing hands to the Worker is stored; most of it lands in the Inbox, and mail the [spam filter](#spam-filter) judges to be spam lands in Spam. Nothing is rejected for looking like spam.
+
+## Spam filter
+
+A small filter in the Worker decides, when a mail **arrives by email**, whether it goes to the Inbox or to Spam. It is deliberately careful: a good mail in Spam costs a person more than a spam mail in the Inbox,
+so it only moves a mail when several signs add up, and it can always be undone.
+
+**What it does.**
+
+- It runs once per mail, in the Worker, at the moment the mail arrives. That is the only moment the server can read the mail: right after, it is encrypted for its owner and the server cannot open it again. So the
+  verdict cannot be reworked later, and it is never worked out again for a mail that is already stored.
+- A mail judged to be spam is **delivered to the Spam folder**. It is never rejected or dropped, it is stored and encrypted exactly like any other mail, and it gets **no push notification**. (An open app still hears
+  a `mail.changed` event, so the Spam folder and its count refresh; the event names no sender and no subject.)
+- Mail written in the app and sent end to end (`origin: "internal"`) never passes through the filter. Mail that arrives before Setup (no owner yet) is not scanned either.
+- If the filter itself fails, the mail goes to the Inbox and the Worker logs the class of the error (no address, no content). A problem in the filter can never lose or reject a mail.
+- Each person can turn it off in **Settings** (`spam_filter`, on by default, also for people who were here before the filter). With it off nothing is scanned and everything goes to the Inbox.
+
+**What it reads.** The sender's address and display name, `Reply-To`, the subject, the text and HTML of the body (the first 200000 characters of each; the wording check looks at the first 20000), the names of the
+attachments (not their content), whether `Message-ID` and `Date` are present, and the authentication result Cloudflare recorded. Nothing leaves the Worker: no blocklist service, no link or domain reputation, no
+machine-learning service, no counter that learns from what a person receives. The verdict is the sum of the rules below and the person's own lists, so every verdict can be explained.
+
+**What it stores.** On a spam row: `spam_score` and `spam_reasons`, which is a list of rule ids (at most six, the biggest first) and **never any content** of the mail. A mail that is not spam stores neither. On every
+mail that arrived by email and carried a result of Cloudflare's: `auth`, which is `spf=<r>;dkim=<r>;dmarc=<r>` and nothing else. The app shows a sentence for each rule id.
+
+**The score.** Each rule adds (or takes away) a number of points once per mail, and a mail with **5 points or more** is spam. A score of 4 is not.
+
+| Rule id                 | Points  | It applies when                                                                                                                                                                                                                                                                                                  |
+| ----------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `spoofs_own_domain`     | +5      | The `From` address is on a domain this deployment hosts and DMARC did not pass (somebody posing as one of us)                                                                                                                                                                                                    |
+| `risky_attachment`      | +7      | A file name ending in `.exe`, `.scr`, `.com`, `.bat`, `.cmd`, `.js`, `.jse`, `.vbs`, `.vbe`, `.wsf`, `.jar`, `.msi`, `.lnk`, `.iso`, `.img`, `.hta`, `.ps1` or `.dll`, or a double extension such as `.pdf.exe`                                                                                                  |
+| `auth_failed`           | +3      | Cloudflare recorded that DMARC failed                                                                                                                                                                                                                                                                            |
+| `auth_missing_pass`     | +3      | Cloudflare recorded a result and none of SPF, DKIM and DMARC passed                                                                                                                                                                                                                                              |
+| `display_name_mismatch` | +3      | The display name holds an address or a web address of a host other than the `From` host (`"paypal.com" <x@other.example>`)                                                                                                                                                                                       |
+| `link_text_mismatch`    | +3      | A link whose visible text is a web address or domain but whose target is another site                                                                                                                                                                                                                            |
+| `phishing_phrases`      | +3      | Account-threat wording ("verify your account", "your account will be suspended") together with a link; also in Vietnamese and Chinese                                                                                                                                                                            |
+| `spam_phrases`          | +2 each | A classic spam phrase ("you have won", "claim your prize", "wire transfer", "viagra", "bạn đã trúng thưởng", "恭喜您中奖" …) in the subject or the first 20000 characters of the body; each distinct phrase counts once, at most +6 for the rule. English, Vietnamese (also written without accents) and Chinese |
+| `link_ip_address`       | +2      | A link to a bare IP address                                                                                                                                                                                                                                                                                      |
+| `hidden_text`           | +2      | At least 150 characters of text hidden with `display:none`, `visibility:hidden`, a font size of zero, or a text colour equal to the background                                                                                                                                                                   |
+| `image_only`            | +2      | HTML with an image and fewer than 20 characters of visible text                                                                                                                                                                                                                                                  |
+| `html_attachment`       | +2      | A `.html`, `.htm` or `.shtml` attachment                                                                                                                                                                                                                                                                         |
+| `macro_attachment`      | +2      | A `.docm`, `.xlsm`, `.pptm` or `.xlam` attachment                                                                                                                                                                                                                                                                |
+| `link_shortener`        | +1      | A link through `bit.ly`, `tinyurl.com`, `goo.gl`, `ow.ly`, `is.gd`, `cutt.ly`, `rb.gy`, `t.ly`, `shorturl.at` or `rebrand.ly` (`t.co` is not one)                                                                                                                                                                |
+| `many_links`            | +1      | More than 15 different link hosts                                                                                                                                                                                                                                                                                |
+| `reply_to_differs`      | +1      | `Reply-To` names a host unrelated to the `From` host (the same host, a subdomain either way, or another host of the same domain are related)                                                                                                                                                                     |
+| `shouting_subject`      | +1      | A subject of at least 10 letters of which over 80% are upper case                                                                                                                                                                                                                                                |
+| `no_message_id`         | +1      | No `Message-ID` header                                                                                                                                                                                                                                                                                           |
+| `no_date`               | +1      | No `Date` header                                                                                                                                                                                                                                                                                                 |
+| `no_subject`            | +1      | No subject                                                                                                                                                                                                                                                                                                       |
+| `auth_passed`           | −2      | Cloudflare recorded that DMARC passed (it only takes points away and is never a reason)                                                                                                                                                                                                                          |
+
+All the weights and the threshold are in one table at the top of `src/worker/spam/rules.ts`. Mail that carries no result of Cloudflare's (it did not come through Email Routing, or the header was not there)
+triggers none of the authentication rules except `spoofs_own_domain`. A mail's reasons are the rules that added points, biggest first, at most six; a block entry shows as `block_listed`.
+
+**Before the rules: the person's own lists and history.** In this order:
+
+1. A **block** entry that covers the sender: spam (`block_listed`, score 5), whatever the mail says.
+2. An **allow** entry that covers the sender: not spam, the rules are not run.
+3. Otherwise the rules run. If they call it spam, the mail is **still not spam** when the person has written to that sender before (a mail of theirs in **Sent** has the address in `To` or `Cc`, an exact match), or when it
+   answers one of their own mails (its `In-Reply-To` or one of the last `References` is the `Message-ID` of a mail they have that is not in Spam or Trash). The exception: a mail that claims a hosted domain
+   without passing DMARC is spam even then, because an address a person wrote to is exactly what a forger would use.
+
+An entry is either `name@host` (that address) or a bare `host`, which covers that host and its subdomains (`example.com` covers `news.example.com`, never `notexample.com`). The most specific entry wins when several
+cover a sender (an address over a host, a longer host over a shorter one), then the newer one, then block over allow. A person has at most 500 entries. They are managed in **Settings**; the routes are in the
+[API reference](api.md#spam-filter).
+
+**Not spam.** The **Not spam** action on a mail in Spam (`POST /api/messages/batch` with `not_spam`) moves it to the Inbox (its score and reasons stay, so an Undo still says why), and adds an **allow** entry for its sender so that the next mail from
+there is not judged again (if you had blocked that exact address, the block entry goes: one address is not on both lists; a block of its whole domain stays, and the address entry wins over it). It never adds an entry for a sender on a domain this deployment hosts: that would let anybody who writes one of our addresses in `From` in. The answer lists the entries it created and the addresses it unblocked so the app
+can offer **Undo**, which moves the mail back to Spam, deletes those entries and blocks those addresses again. To keep a sender out, block them; to keep a sender in, allow them or press Not spam once.
+
+**Pictures of senders.** A mail's `auth` also decides whether an [outside sender's picture](security.md#profile-pictures) is shown: only for mail whose `auth` says `dmarc=pass`.
+
+**Limits to know about.**
+
+- The rules are generic and conservative. Expect some spam in the Inbox, and sometimes a good mail in Spam; both are one click to fix. A mailing-list post, which the list re-sends, can fail DMARC and ends one
+  point under the line with nothing else against it, and a mail that quotes spam can collect phrases; allow the list or press Not spam.
+- The wording lists are in English, Vietnamese and Chinese. Mail in other languages is judged by the other rules.
+- A mail is judged once. Changing a list or the setting does not move mail that is already stored.
+- Mail arriving by email carries Cloudflare's result only when Email Routing wrote it. See [Security](security.md#spam-filter-and-the-authentication-result).
 
 ## Drafts
 

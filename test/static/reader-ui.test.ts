@@ -127,9 +127,9 @@ describe('the reader stylesheet', () => {
     );
     // The date and the recipients are two facts: a quiet dot between them, with empty alternative text (not read out).
     expect(cssCode).toMatch(/\.rd-meta > \.rd-date::after \{\s*content: '\\00B7' \/ '';/);
-    // v3 R3, X1: the sender is a stamp in their own tint (avatarHue: the list row's tint), 56 px (40 on a phone), cancelled by the postmark.
+    // v3 R3, X1: the sender is a stamp in their own tint (avatarHue: the list row's tint), 56 px (40 on a phone), cancelled by the postmark; with the sender's own picture (`src`) when the Worker named one.
     expect(view).toMatch(
-      /<Avatar\s+name=\{sender\}\s+size=\{compact \? 40 : 'xl'\}\s+shape="stamp"\s+hue=\{avatarHue\(message\.from_address\)\}\s+className="rd-stamp-tile"\s+\/>/
+      /<Avatar\s+name=\{sender\}\s+size=\{compact \? 40 : 'xl'\}\s+shape="stamp"\s+hue=\{avatarHue\(message\.from_address\)\}\s+src=\{senderPicture\(message\)\}\s+className="rd-stamp-tile"\s+\/>/
     );
     expect(cssCode).toMatch(/\.rd-tools \{[^}]*min-height: 56px;\s*margin: 0 calc\(\(16px - var\(--ui-h-sm\)\) \/ 2\) 0 0;/);
     // The trust chips go to a line of their own when line 2 is short, so the date never moves for them (J3-21).
@@ -196,9 +196,13 @@ describe('round-3 fixes of the reader (R3)', () => {
     expect(view).toMatch(/const layout = compact \? null : alignedLayout\(pane\.width, pane\.coarse, widths\);/);
   });
 
-  it('says a message is in Spam, with Move to Inbox, and makes Reply secondary there and for an unverified sender (J6-42)', () => {
-    expect(view).toMatch(/\{inSpam \? \(\s*<div className="rd-spam">/);
-    expect(view).toContain("tr('reader.spam_notice')");
+  it('says why a message is in Spam in one banner with Not spam, and makes Reply secondary there and for an unverified sender (J6-42)', () => {
+    // The key is not the bare id: the mail frame below is keyed by it, and two siblings with one key leave the old banner in the page.
+    expect(view).toMatch(/<SpamBanner key=\{`spam-\$\{message\.id\}`\}/);
+    expect(view).toContain('message={message} onNotSpam={() => onNotSpam(message)} /> : null}');
+    // The old notice with its own Move to Inbox is gone: one banner, one way back.
+    expect(view).not.toContain('reader.spam_notice');
+    expect(view).not.toContain('className="rd-spam"');
     expect(view).toContain("variant={index === 0 && !inSpam && !unverified ? 'primary' : 'secondary'}");
   });
 

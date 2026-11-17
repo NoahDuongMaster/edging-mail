@@ -44,10 +44,13 @@ import { ApiError, apiPost } from './lib/api';
 import { announce } from './lib/announce';
 import { useBackStack } from './lib/backStack';
 import { useSession } from './lib/auth';
+import { ownPicture } from './lib/avatar';
 import { useDocumentTitle } from './lib/documentTitle';
 import { DraftOpenError, fetchDraft } from './lib/drafts';
+import { allowedOf, unblockedOf, useAddFilter, useRemoveFilter, type AllowedEntry } from './lib/filters';
 import { trapTab } from './lib/focusTrap';
 import { fmt, useT, type TFunction } from './lib/i18n';
+import { notSpamText, notSpamUndo, type NotSpamUndo } from './lib/notSpam';
 import {
   useBatchAction,
   useLabels,
@@ -60,13 +63,14 @@ import {
 } from './lib/queries';
 import { useRealtime } from './lib/realtime';
 import { usePrefs } from './lib/prefs';
-import { ownerInitials, useSettings } from './lib/settings';
+import { ownerInitials, ownerName, useSettings } from './lib/settings';
 import { SELECTION_SHORTCUTS, SHOW_SHORTCUTS_EVENT, shortcutOf, type TriageShortcut } from './lib/shortcuts';
 import { chunks, extendSelection, keepListed, pageState, toggleAll, toggleOne } from './lib/selection';
 import { canResnooze, formatSnoozeUntil } from './lib/snooze';
 import { RETURN_SLIDE_DELAY_MS, enterPane, flyAway, flyBack, homeRef, leaveDrawer, leavePane, type PhonePane } from './lib/shellMotion';
 import { useCountdown } from './lib/useCountdown';
 import {
+  Avatar,
   Button,
   EmptyState,
   FlightTrail,
@@ -79,7 +83,7 @@ import {
   type FlyHomeOptions,
   type HomingKind
 } from './ui';
-import { initialsOf, isCjk } from './ui/initials';
+import { initialsOf } from './ui/initials';
 import type { Attachment, FolderStats, Message } from './types';
 import './components/mailbox.css';
 
@@ -263,8 +267,33 @@ const QUOTED_DATE: Intl.DateTimeFormatOptions = {
   minute: '2-digit'
 };
 
-/** The owner's round avatar in the phone's app bar: the one way into Settings there (account, appearance, notifications, sign out). The button is 44px around the same 32px face. Its name starts with the letters it shows (2.5.3: a voice user says what they see). */
-function AccountButton({ initials, onClick }: { initials: string; onClick: () => void }) {
+/** The owner's face in the account buttons: their picture over the initials, or a person icon while the settings load (not an empty circle). */
+function OwnerFace({ name, initials, picture }: { name: string; initials: string; picture: string | undefined }) {
+  return initials === '' ? (
+    <span aria-hidden="true" className="ui-avatar" data-size="md">
+      <User size={16} strokeWidth={1.75} />
+    </span>
+  ) : (
+    <Avatar name={name} size="md" src={picture} />
+  );
+}
+
+/**
+ * The owner's round avatar in the phone's app bar: the one way into Settings there (account, appearance, notifications, sign out). The
+ * button is 44px around the same 32px face. Its name starts with the letters it shows, whether or not a picture covers them (2.5.3: a
+ * voice user says what they see).
+ */
+function AccountButton({
+  name,
+  initials,
+  picture,
+  onClick
+}: {
+  name: string;
+  initials: string;
+  picture: string | undefined;
+  onClick: () => void;
+}) {
   const tr = useT();
   return (
     <IconButton
@@ -273,10 +302,7 @@ function AccountButton({ initials, onClick }: { initials: string; onClick: () =>
       data-account-button=""
       onClick={onClick}
     >
-      <span aria-hidden="true" className="ui-avatar" data-size="md" data-script={isCjk(initials) ? 'cjk' : undefined}>
-        {/* No initials while the settings load (or failed to): a person icon instead of an empty circle. */}
-        {initials === '' ? <User size={16} strokeWidth={1.75} /> : initials}
-      </span>
+      <OwnerFace name={name} initials={initials} picture={picture} />
     </IconButton>
   );
 }
@@ -285,14 +311,24 @@ function AccountButton({ initials, onClick }: { initials: string; onClick: () =>
  * The account at the foot of the desktop rail (DESIGN-v3 4.1): the owner's avatar, name and address; the one way into Settings on a desktop
  * (the same button as the phone's avatar: `data-account-button`). Its name is what it shows, then what it opens (2.5.3).
  */
-function AccountRow({ initials, name, address, onClick }: { initials: string; name: string; address: string; onClick: () => void }) {
+function AccountRow({
+  initials,
+  picture,
+  name,
+  address,
+  onClick
+}: {
+  initials: string;
+  picture: string | undefined;
+  name: string;
+  address: string;
+  onClick: () => void;
+}) {
   const tr = useT();
   const shown = name === '' ? address : name;
   return (
     <button type="button" className="mb-account-row" data-account-button="" onClick={onClick}>
-      <span aria-hidden="true" className="ui-avatar" data-size="md" data-script={isCjk(initials) ? 'cjk' : undefined}>
-        {initials === '' ? <User size={16} strokeWidth={1.75} /> : initials}
-      </span>
+      <OwnerFace name={shown} initials={initials} picture={picture} />
       <span className="mb-account-text">
         <span className="mb-account-name">{shown === '' ? tr('app.account_settings') : shown}</span>
         {name === '' || address === '' ? null : <span className="mb-account-addr">{address}</span>}
@@ -527,6 +563,8 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
   // Identity comes from the server settings; nothing about the owner is hard-coded in the client.
   const settings = useSettings().data;
   const initials = ownerInitials(settings);
+  // The owner's own picture (the session knows its id): it shows in the account buttons; the initials stay under it.
+  const picture = ownPicture(useSession().data?.user);
   // This device's choices: single-key shortcuts can be turned off in Settings (WCAG 2.1.4).
   const singleKeys = usePrefs().shortcuts;
 
@@ -798,14 +836,18 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
   const { mutateAsync: runBatch } = useBatchAction();
   const { mutateAsync: runMarkAllRead, isPending: markingAllRead } = useMarkAllRead();
   const { mutateAsync: runUpdateLabels } = useUpdateLabels();
+  const { mutateAsync: removeFilter } = useRemoveFilter();
+  const { mutateAsync: addFilter } = useAddFilter();
 
+  // `onAnswer` sees the server's answer of a request that succeeded (Not spam reads the entries it allowed from it).
   const batch = React.useCallback(
-    async (action: BatchAction, ids: string[], extra?: { folder?: string; until?: number }) => {
+    async (action: BatchAction, ids: string[], extra?: { folder?: string; until?: number }, onAnswer?: (answer: unknown) => void) => {
       if (ids.length === 0) {
         return false;
       }
       try {
-        await runBatch({ action, ids, ...extra });
+        const answer = await runBatch({ action, ids, ...extra });
+        onAnswer?.(answer);
         return true;
       } catch (error) {
         console.error('Batch action failed', error);
@@ -921,8 +963,11 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
   // promise, then moves focus to `undoFocus`: the restored row (the open one) on a desktop, the list on a phone (which opens nothing).
   // The reader opens the restored mail when its row slides back in (J2-15): the list redraws with the row first, its slide starts about
   // 100 ms later (lib/shellMotion returnRow), and the reader swaps then, so it never shows a mail that has no row.
-  const undoFor = (message: Message) => async (): Promise<void> => {
+  const undoFor = (message: Message, after?: () => Promise<void>) => async (): Promise<void> => {
     const ok = await putBack(message);
+    if (ok) {
+      await after?.();
+    }
     await refreshMessages({ keepSelection: true });
     if (ok) {
       flyBackHome(message);
@@ -979,14 +1024,61 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
     }
   };
 
+  // Undo of Not spam, after the messages are back in Spam: the entries that allowed their senders are deleted again and the blocks the action
+  // removed are made again. If that fails the person is told where the lists are (Settings > Filters), as nothing else would show them.
+  const restoreLists = async (plan: Pick<NotSpamUndo, 'remove' | 'block'>): Promise<void> => {
+    try {
+      for (const id of plan.remove) {
+        await removeFilter(id);
+      }
+      for (const value of plan.block) {
+        await addFilter({ kind: 'block', value });
+      }
+    } catch (error) {
+      console.error('Putting the sender lists back failed', error);
+      setToast({ text: tr('toast.not_spam_undo_partial'), error: true });
+    }
+  };
+
+  // Spam only. Not spam is the batch action `not_spam`: the message goes to the Inbox and the Worker allows its sender. What the toast says
+  // depends on the answer (a sender of a domain this server hosts is never listed), so it comes once the answer is in, with the row's exit
+  // (J2-19); Undo puts the message back in Spam and then deletes the entries the answer named.
+  const notSpamMessage = async (message: Message, origin: FlightOrigin = 'row') => {
+    if (leaving.current.has(message.id)) {
+      return;
+    }
+    sendHome(message, 'inbox', flightFrom(message, origin), kindOf('inbox'));
+    const allowed: AllowedEntry[] = [];
+    const unblocked: string[] = [];
+    const request = leaveMessage(message, () =>
+      batch('not_spam', [message.id], undefined, (answer) => {
+        allowed.push(...allowedOf(answer));
+        unblocked.push(...unblockedOf(answer));
+      })
+    );
+    const undo = undoFor(message, () => restoreLists(notSpamUndo([message.id], allowed, unblocked)));
+    void Promise.all([rowsGone([message.id]), request]).then(([, ok]) => {
+      if (ok === true) {
+        setToast({ text: notSpamText(tr, 1, allowed), undo, returnFocus: undoFocus });
+      }
+    });
+    if ((await request) === false) {
+      void refreshMessages();
+    }
+  };
+
   // Trash and Spam only. Move to Inbox can be undone (the mail goes back to the folder it came from); Delete forever cannot, which is
-  // why the toolbar asks first (confirmDelete) and the toast has no Undo.
+  // why the toolbar asks first (confirmDelete) and the toast has no Undo. In Spam the way back is Not spam (it allows the sender too).
   const restoreOrDelete = async (message: Message, action: 'restore' | 'delete', origin: FlightOrigin = 'row') => {
     if (action === 'delete') {
       // Deleted forever is not a journey: its row only fades (M1).
       fading.current.add(message.id);
     }
     if (action === 'restore') {
+      if (message.folder === 'spam') {
+        await notSpamMessage(message, origin);
+        return;
+      }
       // As the other moves: the toast with the row's exit (J2-19), and its flight home to the Inbox. Delete forever flies nowhere.
       await moveMessage(message, 'inbox', origin);
       return;
@@ -1158,9 +1250,14 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
     quietClear.current = true;
     setChecked(NO_SELECTION);
   }, []);
-  const runChunks = async (action: BatchAction, ids: string[], extra?: { folder?: string; until?: number }): Promise<boolean> => {
+  const runChunks = async (
+    action: BatchAction,
+    ids: string[],
+    extra?: { folder?: string; until?: number },
+    onAnswer?: (answer: unknown) => void
+  ): Promise<boolean> => {
     for (const part of chunks(ids)) {
-      if (!(await batch(action, part, extra))) {
+      if (!(await batch(action, part, extra, onAnswer))) {
         return false;
       }
     }
@@ -1199,7 +1296,9 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
     await refreshMessages({ keepSelection: true });
   };
   // Move (or snooze: `until`) every ticked mail: they leave the list at once, ONE toast says how many, its Undo puts them all back.
-  const bulkMove = (target: string, until?: Date) => {
+  // `notSpam` (Spam only, to the Inbox): the batch action that also allows their senders; its toast waits for the answer, its Undo also deletes
+  // the entries the answer named (as for one message).
+  const bulkMove = (target: string, until?: Date, notSpam = false) => {
     const rows = selectedRows;
     const ids = rows.map((m) => m.id);
     if (ids.length === 0) {
@@ -1222,8 +1321,17 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
     for (const id of ids) {
       leaving.current.add(id);
     }
+    const allowed: AllowedEntry[] = [];
+    const unblocked: string[] = [];
     const request = (
-      until === undefined ? runChunks('move', ids, { folder: target }) : runChunks('snooze', ids, { until: until.getTime() })
+      notSpam
+        ? runChunks('not_spam', ids, undefined, (answer) => {
+            allowed.push(...allowedOf(answer));
+            unblocked.push(...unblockedOf(answer));
+          })
+        : until === undefined
+          ? runChunks('move', ids, { folder: target })
+          : runChunks('snooze', ids, { until: until.getTime() })
     ).finally(() => {
       for (const id of ids) {
         leaving.current.delete(id);
@@ -1231,20 +1339,30 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
     });
     // J2-20: the toast comes once the rows have left the list (their exit has started), and not at all when the request failed first.
     let failed = false;
-    void rowsGone(ids).then(() => {
-      if (failed) {
+    void rowsGone(ids).then(async () => {
+      // Not spam says who is allowed, which only the answer knows: its toast waits for it.
+      if (failed || (notSpam && !(await request))) {
         return;
       }
       setToast({
-        text:
-          until !== undefined
+        text: notSpam
+          ? notSpamText(tr, ids.length, allowed)
+          : until !== undefined
             ? tr('toast.snoozed_until', { when: formatSnoozeUntil(until.getTime()) })
             : target === 'archive'
               ? tr('toast.batch_archived', { count: ids.length })
               : tr('toast.batch_moved', { count: ids.length, folder: folderName(target) }),
         undo: async () => {
           if (await request) {
-            await putBackAll(rows);
+            if (notSpam) {
+              const plan = notSpamUndo(ids, allowed, unblocked);
+              if (await runChunks(plan.move.action, plan.move.ids, { folder: plan.move.folder })) {
+                await restoreLists(plan);
+              }
+              await refreshMessages({ keepSelection: true });
+            } else {
+              await putBackAll(rows);
+            }
             flyBackHome(first, ids.length);
           }
         },
@@ -1334,7 +1452,8 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
   const selectionActions: SelectionActions = {
     archive: () => bulkMove('archive'),
     trash: () => bulkMove('trash'),
-    restore: () => bulkMove('inbox'),
+    // In Spam the first action is Not spam (the bar names it so): the Inbox, and the senders are allowed.
+    restore: () => (folder === 'spam' ? bulkMove('inbox', undefined, true) : bulkMove('inbox')),
     deleteForever: () => setConfirmBulkDelete(selectedRows),
     read: () => bulkFlag('read'),
     unread: () => bulkFlag('unread'),
@@ -2041,6 +2160,7 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
     <>
       <AccountRow
         initials={initials}
+        picture={picture}
         name={settings?.display_name.trim() ?? ''}
         address={settings?.email ?? ''}
         onClick={() => openSettings()}
@@ -2133,6 +2253,9 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
       }}
       onRestore={(m) => {
         void restoreOrDelete(m, 'restore', 'reader');
+      }}
+      onNotSpam={(m) => {
+        void notSpamMessage(m, 'reader');
       }}
       onDeleteForever={setConfirmDelete}
       onMarkUnread={(m) => {
@@ -2256,7 +2379,7 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
                       <CheckCheck size={18} strokeWidth={1.75} aria-hidden="true" />
                     </IconButton>
                   ) : null}
-                  <AccountButton initials={initials} onClick={() => openSettings()} />
+                  <AccountButton name={ownerName(settings)} initials={initials} picture={picture} onClick={() => openSettings()} />
                 </div>
               )}
               {/* Account notices and locked mail are the top of the list's scroller on a phone (MessageList `notices`): they scroll away

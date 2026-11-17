@@ -7,7 +7,7 @@ import { closeSockets } from '../realtime';
 import type { AppEnv } from '../types';
 import { appName, errorClass, jsonObject } from '../utils';
 import { isAuthValue, sealData, toBase64Url } from '../../shared/crypto/server';
-import { loadPolicy, sessionUser, userById } from './accounts';
+import { avatarIdOf, loadPolicy, sessionUser, userById } from './accounts';
 import { currentUser } from './middleware';
 import { dataKeysOf } from './secrets';
 import { parseFactor, replaceRecoveryCodes, stamped, verifyFactor } from './second-factor';
@@ -99,7 +99,11 @@ twoFactorRoutes.post('/2fa/enroll/confirm', async (c) => {
   await closeSockets(c.env, row.id, { renewed: true });
   await startSession(c, secret, row.id, now, now);
   const fresh = (await userById(db, row.id)) ?? row;
-  return c.json({ success: true, recovery_codes: codes, user: sessionUser(fresh, await loadPolicy(db), now) });
+  return c.json({
+    success: true,
+    recovery_codes: codes,
+    user: sessionUser(fresh, await loadPolicy(db), now, await avatarIdOf(db, fresh.id))
+  });
 });
 
 // Members only, and not while the organisation requires it: an admin can never switch it off.
@@ -158,7 +162,7 @@ twoFactorRoutes.post('/2fa/disable', async (c) => {
   await closeSockets(c.env, row.id, { renewed: true });
   await startSession(c, secret, row.id, now);
   const fresh = (await userById(db, row.id)) ?? row;
-  return c.json({ success: true, user: sessionUser(fresh, policy, 0) });
+  return c.json({ success: true, user: sessionUser(fresh, policy, 0, await avatarIdOf(db, fresh.id)) });
 });
 
 twoFactorRoutes.post('/2fa/recovery-codes', async (c) => {

@@ -215,7 +215,10 @@ export async function lookupSession(request: Request, env: Env): Promise<FoundSe
       .select({
         ...getTableColumns(users),
         require_2fa: sql<number>`COALESCE((SELECT value FROM settings WHERE key = 'require_2fa'), '1') != '0'`,
-        sid_revoked: sql<number>`EXISTS (SELECT 1 FROM revoked_sessions WHERE sid = ${sid})`
+        sid_revoked: sql<number>`EXISTS (SELECT 1 FROM revoked_sessions WHERE sid = ${sid})`,
+        // Only the id: the picture sits in its own table so this query, which runs on every request, never loads the image. `users.id` is written out
+        // because Drizzle leaves the table name off a column it renders inside a one-table select, and the subquery would read its own `id`.
+        avatar: sql<string | null>`(SELECT a.id FROM user_avatars AS a WHERE a.user_id = users.id)`
       })
       .from(users)
       .where(eq(users.id, claims.uid))
@@ -229,7 +232,7 @@ export async function lookupSession(request: Request, env: Env): Promise<FoundSe
       return null;
     }
     const stepUp = typeof claims.su === 'number' && claims.su > row.sessions_valid_after ? claims.su : 0;
-    return { user: sessionUser(row, { require_2fa: row.require_2fa === 1 }, stepUp), claims };
+    return { user: sessionUser(row, { require_2fa: row.require_2fa === 1 }, stepUp, row.avatar), claims };
   } catch (error) {
     console.error('[edging-mail] Session check failed:', errorClass(error));
     return 'unavailable';

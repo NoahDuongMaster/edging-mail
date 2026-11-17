@@ -1,0 +1,14 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=pass header.d=example.com header.s=s1 header.b=aBcDeFgH;
+	dmarc=pass header.from=example.com policy.dmarc=none;
+	spf=pass (mx.cloudflare.net: domain of bounce@example.com designates 192.0.2.10 as permitted sender) smtp.mailfrom=bounce@example.com
+From: Carol Nguyen <carol@example.com>
+To: bob@example.com
+Subject: Slides for Thursday
+Date: Tue, 17 Nov 2026 16:20:00 +0700
+Message-ID: <cn-3321@example.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Hi Bob, the slides are in the shared folder. Can you check the numbers on page 4 before Thursday?
+Thanks, Carol

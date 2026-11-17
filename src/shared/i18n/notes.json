@@ -55,6 +55,11 @@
     "context": "Button that opens a list of folders (in the row menu of a message and in the bar of a selection): moves the message or messages to the folder chosen.",
     "security": false
   },
+  "action.not_spam": {
+    "context": "Button in a message in the Spam folder (reader toolbar, the banner above the letter, the selection bar, a row's action): moves the message to the Inbox AND stops mail from that sender going to Spam. Short; on a phone it is the word under the icon of the bottom bar (up to two short lines).",
+    "security": false,
+    "max": 20
+  },
   "action.select": {
     "context": "Button in the row menu of a message: ticks it and starts a selection, so several messages can be archived, moved or labelled at once.",
     "security": false
@@ -231,6 +236,34 @@
   },
   "admin.people_desc_short": {
     "context": "Short form of admin.people_desc on phones and desktop: the one line under the People page title; the whole text is in the InfoTip at the end of that line.",
+    "security": false
+  },
+  "admin.pictures_desc": {
+    "context": "Admin Settings, card 'Pictures of outside senders': the one plain sentence under the card title. Gravatar and Libravatar are two public picture services (proper names, keep them). An outside sender is a person who writes to this server's people from another server. A hash is a one-way fingerprint of the address, not the address itself.",
+    "security": false
+  },
+  "admin.pictures_switch": {
+    "context": "Admin Settings, card 'Pictures of outside senders': label of the switch that lets the server look up the picture of people who write from outside. Outside = not on this server's own domains.",
+    "security": false
+  },
+  "admin.pictures_tip_kept": {
+    "context": "Admin Settings, card 'Pictures of outside senders', InfoTip line: what the server keeps (the picture, or the fact that there is none) and for how long. 'Turning this off' = turning the switch off; 'it' = what was kept.",
+    "security": false
+  },
+  "admin.pictures_tip_later": {
+    "context": "Admin Settings, card 'Pictures of outside senders', InfoTip line: a sender seen for the first time has no picture yet; the list shows the sender's initials until a later refresh.",
+    "security": false
+  },
+  "admin.pictures_tip_sent": {
+    "context": "Admin Settings, card 'Pictures of outside senders', InfoTip line: what leaves the server (only a hash of the sender's address, sent by the server and never by a browser), for which senders (only those outside this server's own domains) and that nothing is sent while the switch is off. 'This' = the switch.",
+    "security": false
+  },
+  "admin.pictures_tip_unverified": {
+    "context": "Admin Settings, card 'Pictures of outside senders', InfoTip line: a picture found for outside mail is as unverified as its From address (anyone can write another person's address). 'From' is the sender field of an email.",
+    "security": false
+  },
+  "admin.pictures_title": {
+    "context": "Admin Settings: title of the card with the switch for pictures of outside senders (people who write to this server from other servers).",
     "security": false
   },
   "admin.policy_confirm_label": {
@@ -561,6 +594,10 @@
   },
   "audit.action.settings.default_language": {
     "context": "Audit log row: an admin changed the default language of the organisation.",
+    "security": false
+  },
+  "audit.action.settings.outside_pictures": {
+    "context": "Audit log row: an admin turned the lookup of pictures of outside senders (Gravatar, Libravatar) on or off. The row's details say from what to what.",
     "security": false
   },
   "audit.action.settings.require_2fa": {
@@ -897,6 +934,18 @@
     "context": "Button: submits the code of the second sign-in step.",
     "security": true,
     "max": 20
+  },
+  "avatar.cannot_read": {
+    "context": "Settings > Profile > Profile picture: red line when the chosen file cannot be decoded or made small enough.",
+    "security": false
+  },
+  "avatar.not_image": {
+    "context": "Settings > Profile > Profile picture: red line when the chosen file is not an image (checked before it is read).",
+    "security": false
+  },
+  "avatar.too_large": {
+    "context": "Settings > Profile > Profile picture: red line when the chosen file is over 10 MB (checked before it is read). MB is megabytes.",
+    "security": false
   },
   "breakglass.address": {
     "context": "Label of the admin email address field.",
@@ -1993,8 +2042,16 @@
     "context": "Error shown when the server answers with code \"invalid_address\" (HTTP 400; the API's English is: That is not an address this product can host)",
     "security": false
   },
+  "err.invalid_avatar": {
+    "context": "Error shown when the server answers with code \"invalid_avatar\" (HTTP 400; the API's English is: The picture must be a JPEG or WebP image of at most 12000 bytes)",
+    "security": false
+  },
   "err.invalid_body": {
     "context": "Error shown when the server answers with code \"invalid_body\" (HTTP 400; the API's English is: A JSON object body with only the documented fields is required)",
+    "security": false
+  },
+  "err.invalid_filter": {
+    "context": "Error shown when the server answers with code \"invalid_filter\" (HTTP 400; the API's English is: A filter must be an address like name@host or a bare host name). Shown under the field that adds a sender.",
     "security": false
   },
   "err.invalid_hostname": {
@@ -2138,6 +2195,10 @@
     "context": "Error shown when the server answers with code \"too_many_attempts\" (HTTP 429; the API's English is: Too many attempts. Try again later.)",
     "security": true
   },
+  "err.too_many_filters": {
+    "context": "Error shown when the server answers with code \"too_many_filters\" (HTTP 409; the API's English is: The sender lists hold at most 500 entries).",
+    "security": false
+  },
   "err.too_many_lookups": {
     "context": "Error shown when the server answers with code \"too_many_lookups\" (HTTP 429; the API's English is: Too many lookups. Try again later.)",
     "security": true
@@ -2206,6 +2267,14 @@
     "context": "Fallback error when the audit log request fails without a reason.",
     "security": false
   },
+  "fail.avatar_remove": {
+    "context": "Settings > Profile > Profile picture: fallback red line when removing the picture failed and the server gave no reason.",
+    "security": false
+  },
+  "fail.avatar_save": {
+    "context": "Settings > Profile > Profile picture: fallback red line when sending the new picture failed and the server gave no reason.",
+    "security": false
+  },
   "fail.break_glass": {
     "context": "Fallback error when the break-glass request failed and the server gave no reason.",
     "security": true
@@ -2244,6 +2313,18 @@
   },
   "fail.drafts_save": {
     "context": "Fallback error text when a draft cannot be saved.",
+    "security": false
+  },
+  "fail.filter_add": {
+    "context": "Settings > Filters: fallback error text when adding a sender to a list fails and the server gave no reason.",
+    "security": false
+  },
+  "fail.filter_remove": {
+    "context": "Settings > Filters: fallback error text when removing a sender from a list fails and the server gave no reason.",
+    "security": false
+  },
+  "fail.filters_load": {
+    "context": "Settings > Filters: shown (with a Try again button) when the lists of allowed and blocked senders cannot be loaded; also the fallback of the request.",
     "security": false
   },
   "fail.forgot_complete": {
@@ -2307,6 +2388,10 @@
   },
   "fail.org_settings_load": {
     "context": "Error in the admin console when the organisation's settings (default language) cannot be loaded",
+    "security": false
+  },
+  "fail.outside_pictures_save": {
+    "context": "Error when the switch for the pictures of outside senders could not be saved.",
     "security": false
   },
   "fail.password_change": {
@@ -2468,6 +2553,62 @@
   "fail.users_reset_two_factor": {
     "context": "Fallback error when resetting a person's two-factor sign-in fails without a reason.",
     "security": true
+  },
+  "filters.add_allow_label": {
+    "context": "Settings > Filters: label (read by screen readers; the field shows only its placeholder) of the field that adds an allowed sender.",
+    "security": false
+  },
+  "filters.add_block_label": {
+    "context": "Settings > Filters: label (read by screen readers) of the field that adds a blocked sender.",
+    "security": false
+  },
+  "filters.add_placeholder": {
+    "context": "Settings > Filters: placeholder of the field that adds a sender to a list: an address, or a bare domain that covers its subdomains. Keep the sample address as it is.",
+    "security": false
+  },
+  "filters.added": {
+    "context": "Settings > Filters: said to screen readers after a sender was added to a list. {value} = the address or domain.",
+    "security": false
+  },
+  "filters.allow_desc": {
+    "context": "Settings > Filters: one line under the title of the allowed senders list.",
+    "security": false
+  },
+  "filters.allow_empty": {
+    "context": "Settings > Filters: the empty state of the allowed senders list, one sentence. 'Not spam' = the button of the Spam folder (action.not_spam).",
+    "security": false
+  },
+  "filters.allow_title": {
+    "context": "Settings > Filters: quiet title over the list of senders whose mail never goes to Spam.",
+    "security": false
+  },
+  "filters.block_desc": {
+    "context": "Settings > Filters: one line under the title of the blocked senders list.",
+    "security": false
+  },
+  "filters.block_empty": {
+    "context": "Settings > Filters: the empty state of the blocked senders list.",
+    "security": false
+  },
+  "filters.block_title": {
+    "context": "Settings > Filters: quiet title over the list of senders whose mail always goes to Spam.",
+    "security": false
+  },
+  "filters.remove_named": {
+    "context": "Settings > Filters: accessible name of the Remove button of one list row (its visible text is common.remove); must start with the visible word. {value} = the address or domain.",
+    "security": false
+  },
+  "filters.removed": {
+    "context": "Settings > Filters: said to screen readers after a sender was removed from a list. {value} = the address or domain.",
+    "security": false
+  },
+  "filters.switch": {
+    "context": "Settings > Filters: label of the one switch that turns the spam filter on or off. 'Spam' (second) = the Spam folder.",
+    "security": false
+  },
+  "filters.switch_hint": {
+    "context": "Settings > Filters: the one visible line under the switch. Must keep the promise that nothing is deleted or rejected.",
+    "security": false
   },
   "forgot.admin_link": {
     "context": "Button: link on the forgot page for an ADMIN who lost both the password and the recovery key; opens the break-glass screen.",
@@ -3505,10 +3646,6 @@
     "security": false,
     "max": 28
   },
-  "reader.spam_notice": {
-    "context": "Quiet one-line notice under the header of a message opened in the Spam folder, beside a Move to Inbox button",
-    "security": false
-  },
   "reader.to_cc_line": {
     "context": "Reader sender block, grey line when the message also has copy recipients: {to} and {cc} are addresses or lists of addresses.",
     "security": false
@@ -3963,6 +4100,15 @@
     "context": "Settings, Account tab: placeholder of the Display name field.",
     "security": false
   },
+  "settings.filters": {
+    "context": "Settings > nav entry and page title of the section about the spam filter and the person's allowed and blocked senders. Short: one word.",
+    "security": false,
+    "max": 16
+  },
+  "settings.filters_desc": {
+    "context": "Settings > Filters: what the section is for, in the InfoTip after its title (and under the phone's section bar).",
+    "security": false
+  },
   "settings.held_reason": {
     "context": "Settings nav, under the disabled Admin console and Sign out while new recovery codes are on screen: why those are off (the dialog stays open until the codes are saved).",
     "security": true
@@ -3997,6 +4143,33 @@
   },
   "settings.notifications_desc": {
     "context": "Settings > Notifications: one line under the page title.",
+    "security": false
+  },
+  "settings.picture": {
+    "context": "Settings > Profile: label of the row where the person sets their own picture (the round or stamp face shown next to their name).",
+    "security": false,
+    "max": 28
+  },
+  "settings.picture_add": {
+    "context": "Button in Settings > Profile that opens the file chooser, shown while the person has no picture yet.",
+    "security": false,
+    "max": 18
+  },
+  "settings.picture_change": {
+    "context": "Button in Settings > Profile that opens the file chooser to replace the current picture.",
+    "security": false,
+    "max": 18
+  },
+  "settings.picture_help": {
+    "context": "Settings > Profile > Profile picture: the one help line. \"It\" is the person's OWN picture. Only people on this server see it, on the mail the person sends them, and the picture is never sent anywhere outside the server. (Pictures of people who write from outside are a different thing: an admin switch in the admin console.)",
+    "security": false
+  },
+  "settings.picture_removed": {
+    "context": "Settings > Profile > Profile picture: green confirmation (also read out) after the picture was removed.",
+    "security": false
+  },
+  "settings.picture_saved": {
+    "context": "Settings > Profile > Profile picture: green confirmation (also read out) after a new picture was saved.",
     "security": false
   },
   "settings.profile": {
@@ -4333,6 +4506,112 @@
     "security": false,
     "max": 12
   },
+  "spam.moved_by_you": {
+    "context": "Reader, the one-line banner above a message in Spam that has no recorded reasons (the person moved it there, or it is older than the filter), beside the Not spam button.",
+    "security": false
+  },
+  "spam.reason.auth_failed": {
+    "context": "Reader, the banner above a message in Spam ('Why is this in Spam?'): one plain reason the filter put the message there, as one short line in a list. Read by non-technical people: no jargon (never DMARC, SPF, DKIM, header, domain names of protocols). Meaning: the sender's own domain says the message did not come from them (a forged sender). 'site' = the domain, said the way a non-technical person says it.",
+    "security": false
+  },
+  "spam.reason.auth_missing_pass": {
+    "context": "Reader, the banner above a message in Spam ('Why is this in Spam?'): one plain reason the filter put the message there, as one short line in a list. Read by non-technical people: no jargon (never DMARC, SPF, DKIM, header, domain names of protocols). Meaning: nothing proves who the sender is (the sender's domain gave no proof).",
+    "security": false
+  },
+  "spam.reason.block_listed": {
+    "context": "Reader, the banner above a message in Spam ('Why is this in Spam?'): one plain reason the filter put the message there, as one short line in a list. Read by non-technical people: no jargon (never DMARC, SPF, DKIM, header, domain names of protocols). Meaning: the sender is on the person's own blocked list (Settings > Filters).",
+    "security": false
+  },
+  "spam.reason.display_name_mismatch": {
+    "context": "Reader, the banner above a message in Spam ('Why is this in Spam?'): one plain reason the filter put the message there, as one short line in a list. Read by non-technical people: no jargon (never DMARC, SPF, DKIM, header, domain names of protocols). Meaning: the name part of the sender line contains another email address than the one the message really came from.",
+    "security": false
+  },
+  "spam.reason.hidden_text": {
+    "context": "Reader, the banner above a message in Spam ('Why is this in Spam?'): one plain reason the filter put the message there, as one short line in a list. Read by non-technical people: no jargon (never DMARC, SPF, DKIM, header, domain names of protocols). Meaning: the message holds text made invisible to the reader (tiny or same-colour text).",
+    "security": false
+  },
+  "spam.reason.html_attachment": {
+    "context": "Reader, the banner above a message in Spam ('Why is this in Spam?'): one plain reason the filter put the message there, as one short line in a list. Read by non-technical people: no jargon (never DMARC, SPF, DKIM, header, domain names of protocols). Meaning: an .html file is attached (it can imitate a sign-in page).",
+    "security": false
+  },
+  "spam.reason.image_only": {
+    "context": "Reader, the banner above a message in Spam ('Why is this in Spam?'): one plain reason the filter put the message there, as one short line in a list. Read by non-technical people: no jargon (never DMARC, SPF, DKIM, header, domain names of protocols). Meaning: the message is mostly one image.",
+    "security": false
+  },
+  "spam.reason.link_ip_address": {
+    "context": "Reader, the banner above a message in Spam ('Why is this in Spam?'): one plain reason the filter put the message there, as one short line in a list. Read by non-technical people: no jargon (never DMARC, SPF, DKIM, header, domain names of protocols). Meaning: a link goes to a bare IP address such as 192.0.2.1 instead of a site name.",
+    "security": false
+  },
+  "spam.reason.link_shortener": {
+    "context": "Reader, the banner above a message in Spam ('Why is this in Spam?'): one plain reason the filter put the message there, as one short line in a list. Read by non-technical people: no jargon (never DMARC, SPF, DKIM, header, domain names of protocols). Meaning: a link uses a link-shortening service, so the real destination is not visible.",
+    "security": false
+  },
+  "spam.reason.link_text_mismatch": {
+    "context": "Reader, the banner above a message in Spam ('Why is this in Spam?'): one plain reason the filter put the message there, as one short line in a list. Read by non-technical people: no jargon (never DMARC, SPF, DKIM, header, domain names of protocols). Meaning: the words of a link name one site while the link goes to a different one.",
+    "security": false
+  },
+  "spam.reason.macro_attachment": {
+    "context": "Reader, the banner above a message in Spam ('Why is this in Spam?'): one plain reason the filter put the message there, as one short line in a list. Read by non-technical people: no jargon (never DMARC, SPF, DKIM, header, domain names of protocols). Meaning: a Word, Excel or PowerPoint file with macros is attached. Office stays in English.",
+    "security": false
+  },
+  "spam.reason.many_links": {
+    "context": "Reader, the banner above a message in Spam ('Why is this in Spam?'): one plain reason the filter put the message there, as one short line in a list. Read by non-technical people: no jargon (never DMARC, SPF, DKIM, header, domain names of protocols). Meaning: far more links than a normal message.",
+    "security": false
+  },
+  "spam.reason.no_date": {
+    "context": "Reader, the banner above a message in Spam ('Why is this in Spam?'): one plain reason the filter put the message there, as one short line in a list. Read by non-technical people: no jargon (never DMARC, SPF, DKIM, header, domain names of protocols). Meaning: the date header is missing.",
+    "security": false
+  },
+  "spam.reason.no_message_id": {
+    "context": "Reader, the banner above a message in Spam ('Why is this in Spam?'): one plain reason the filter put the message there, as one short line in a list. Read by non-technical people: no jargon (never DMARC, SPF, DKIM, header, domain names of protocols). Meaning: the Message-ID header is missing; say 'hidden ID', not 'header'.",
+    "security": false
+  },
+  "spam.reason.no_subject": {
+    "context": "Reader, the banner above a message in Spam ('Why is this in Spam?'): one plain reason the filter put the message there, as one short line in a list. Read by non-technical people: no jargon (never DMARC, SPF, DKIM, header, domain names of protocols). Meaning: the subject is missing.",
+    "security": false
+  },
+  "spam.reason.other": {
+    "context": "Reader, the banner above a message in Spam: the line for any reason this version of the app has no sentence for (a newer filter rule), and for a message the filter scored without a readable reason. Plain words, no jargon.",
+    "security": false
+  },
+  "spam.reason.phishing_phrases": {
+    "context": "Reader, the banner above a message in Spam ('Why is this in Spam?'): one plain reason the filter put the message there, as one short line in a list. Read by non-technical people: no jargon (never DMARC, SPF, DKIM, header, domain names of protocols). Meaning: the text sounds like a scam that tries to get someone to sign in or confirm an account.",
+    "security": false
+  },
+  "spam.reason.reply_to_differs": {
+    "context": "Reader, the banner above a message in Spam ('Why is this in Spam?'): one plain reason the filter put the message there, as one short line in a list. Read by non-technical people: no jargon (never DMARC, SPF, DKIM, header, domain names of protocols). Meaning: the Reply-To address is on another domain than the sender's.",
+    "security": false
+  },
+  "spam.reason.risky_attachment": {
+    "context": "Reader, the banner above a message in Spam ('Why is this in Spam?'): one plain reason the filter put the message there, as one short line in a list. Read by non-technical people: no jargon (never DMARC, SPF, DKIM, header, domain names of protocols). Meaning: an executable or script file is attached (.exe, .scr, .js ...).",
+    "security": false
+  },
+  "spam.reason.shouting_subject": {
+    "context": "Reader, the banner above a message in Spam ('Why is this in Spam?'): one plain reason the filter put the message there, as one short line in a list. Read by non-technical people: no jargon (never DMARC, SPF, DKIM, header, domain names of protocols). Meaning: the subject is written in all capitals.",
+    "security": false
+  },
+  "spam.reason.spam_phrases": {
+    "context": "Reader, the banner above a message in Spam ('Why is this in Spam?'): one plain reason the filter put the message there, as one short line in a list. Read by non-technical people: no jargon (never DMARC, SPF, DKIM, header, domain names of protocols). Meaning: the text contains phrases common in junk mail (prizes, urgent offers).",
+    "security": false
+  },
+  "spam.reason.spoofs_own_domain": {
+    "context": "Reader, the banner above a message in Spam ('Why is this in Spam?'): one plain reason the filter put the message there, as one short line in a list. Read by non-technical people: no jargon (never DMARC, SPF, DKIM, header, domain names of protocols). Meaning: the sender address is on a domain this server hosts for the person, but the message did not come through it. 'domain' = the part after the @.",
+    "security": false
+  },
+  "spam.see_all": {
+    "context": "Button (a text disclosure) in the Spam banner when the filter gave more than three reasons: shows the rest of them in place.",
+    "security": false,
+    "max": 20
+  },
+  "spam.see_fewer": {
+    "context": "Button (the same text disclosure, open) in the Spam banner: hides the extra reasons again.",
+    "security": false,
+    "max": 20
+  },
+  "spam.why_title": {
+    "context": "Reader, bold title of the banner above a message in Spam; the reasons are listed under it. A question, not a button.",
+    "security": false
+  },
   "time.yesterday": {
     "context": "Time cell of a message-list row received yesterday (the group headings of the list are list.group_*)",
     "security": false,
@@ -4397,6 +4676,18 @@
   },
   "toast.moved_to_trash": {
     "context": "Toast after a message was moved to Trash (has an Undo button)",
+    "security": false
+  },
+  "toast.not_spam": {
+    "context": "Toast with Undo after one message was marked Not spam. {sender} = the email address (or domain) that is now allowed.",
+    "security": false
+  },
+  "toast.not_spam_many": {
+    "context": "Toast with Undo after Not spam allowed two or more senders at once (the selection bar). {count} = how many senders (always 2 or more).",
+    "security": false
+  },
+  "toast.not_spam_undo_partial": {
+    "context": "Failure toast after Undo of Not spam: the messages went back to Spam but putting the sender lists back (deleting the allowed senders, blocking the unblocked ones again) failed. 'Settings' and 'Filters' are the names of the Settings dialog and its Filters section (settings.filters).",
     "security": false
   },
   "toast.snoozed_until": {

@@ -1,0 +1,17 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=none;
+	dmarc=fail header.from=icloud-verify.example policy.dmarc=reject;
+	spf=fail (mx.cloudflare.net: domain of bounce@icloud-verify.example does not designate 203.0.113.9 as permitted sender) smtp.mailfrom=bounce@icloud-verify.example
+From: "support@icloud.com" <noreply@icloud-verify.example>
+To: bob@example.com
+Subject: =?UTF-8?B?6aqM6K+B5oKo55qE6LSm5oi3?=
+Date: Tue, 17 Nov 2026 13:30:00 +0800
+Message-ID: <zh-1180@icloud-verify.example>
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: base64
+
+PGh0bWw+PGJvZHk+CjxwPuaCqOeahOi0puaIt+W3suiiq+WGu+e7k++8jOivt+WcqCAyNCDlsI/m
+l7blhoXpqozor4HmgqjnmoTotKbmiLfvvIzlkKbliJnlsIbmsLjkuYXlhbPpl63jgII8L3A+Cjxw
+PjxhIGhyZWY9Imh0dHA6Ly9pY2xvdWQtdmVyaWZ5LmV4YW1wbGUvdW5sb2NrIj5odHRwczovL3d3
+dy5pY2xvdWQuY29tL3VubG9jazwvYT48L3A+CjwvYm9keT48L2h0bWw+Cg==

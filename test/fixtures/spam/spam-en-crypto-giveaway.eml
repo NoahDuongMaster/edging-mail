@@ -1,0 +1,15 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=none;
+	dmarc=none;
+	spf=none (mx.cloudflare.net: no SPF records found for postmaster@btc-boost.example) smtp.mailfrom=postmaster@btc-boost.example
+From: BTC Boost <team@btc-boost.example>
+To: bob@example.com
+Subject: Crypto giveaway for the first 500 wallets
+Date: Tue, 17 Nov 2026 05:31:50 +0000
+Message-ID: <cg-5521@btc-boost.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Join our crypto giveaway! Send 0.1 BTC and double your bitcoin in one hour.
+Start here: http://185.199.110.42/giveaway
+Or here: https://bit.ly/3xYzAbC

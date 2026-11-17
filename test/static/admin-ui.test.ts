@@ -392,4 +392,61 @@ describe('the admin console on a phone (DESIGN-v4m)', () => {
     expect(read('PersonHeader.tsx')).toMatch(/className=\{shown === true \? 'ad-muted' : 'ui-visually-hidden'\}/);
     expect(read('UserDialog.tsx')).toMatch(/shown=\{!user\.two_factor\}/);
   });
+
+  it('puts the details of the outside-pictures switch in the InfoTip after the card title, and the one plain sentence under it', () => {
+    expect(read('OutsidePictures.tsx')).toMatch(
+      /title=\{tr\('admin\.pictures_title'\)\}\s+description=\{tr\('admin\.pictures_desc'\)\}\s+info=\{tipLines\(\[\s+tr\('admin\.pictures_tip_sent'\),\s+tr\('admin\.pictures_tip_kept'\),\s+tr\('admin\.pictures_tip_unverified'\),\s+tr\('admin\.pictures_tip_later'\)\s+\]\)\}/
+    );
+  });
+});
+
+// The pictures of outside senders: one organisation switch that takes effect at once. The Worker asks for neither a fresh authenticator
+// code nor a typed confirmation for it, so the card has no question, no step-up and no field; its wait and its words follow the other settings.
+describe('the switch for the pictures of outside senders', () => {
+  const source = read('OutsidePictures.tsx');
+  const body = code('OutsidePictures.tsx');
+  const hook = readFileSync(path.join(ROOT, 'src', 'client', 'lib', 'language.ts'), 'utf8');
+
+  it('is the ui Switch in the Group card of the other settings, saved at once, with no question, step-up or field (the Worker asks for none)', () => {
+    expect(body).toMatch(/<Group\b/);
+    expect(body).toMatch(/<Switch\s+id=\{SWITCH_ID\}\s+label=\{tr\('admin\.pictures_switch'\)\}/);
+    expect(body).toMatch(/className="ad-switch"/);
+    expect(body).not.toMatch(/ConfirmDialog|ModalFrame|Dialog\b|useAdminAction|useStepUp|StepUp|TextField|<form|<input|<Button\b/);
+    expect(body).not.toMatch(/useState|confirm/i);
+    // A switch that is turned off while the request runs drops the keyboard's place: it takes the focus back only if it had it when pressed.
+    expect(body).toMatch(/hadFocus\.current = document\.activeElement\?\.id === SWITCH_ID;/);
+    expect(body).toMatch(
+      /if \(!isPending && hadFocus\.current\) \{\s*hadFocus\.current = false;\s*document\.querySelector<HTMLElement>\(`#\$\{SWITCH_ID\}`\)\?\.focus\(\{ preventScroll: true \}\);/
+    );
+    // One press, one request with the new state: the switch's own value, nothing typed.
+    expect(body).toMatch(
+      /onChange=\{\(next\) => \{[^}]*save\.mutate\(next, \{ onSuccess: \(\) => announce\(tr\('settings\.saved'\)\) \}\);/
+    );
+    expect(body).not.toMatch(/mutate\(\{|mutate\(\)/);
+  });
+
+  it('shows what the server has: on only for true, waits (cannot be pressed) while unread or saving', () => {
+    expect(body).toContain('checked={enabled === true}');
+    expect(body).toContain('disabled={enabled === undefined || save.isPending}');
+    expect(source).toMatch(/enabled: boolean \| undefined/);
+    expect(read('LanguagePanel.tsx')).toMatch(/<OutsidePictures enabled=\{settings\.data\?\.settings\.outside_pictures\} \/>/);
+  });
+
+  it("says its result through lib/announce and in words on the card; a failure is an alert in the offline-aware words, never the browser's text", () => {
+    expect(body).toMatch(/announce\(tr\('settings\.saved'\)\)/);
+    expect(body).toMatch(/\{save\.isError \? <ErrorText>\{adminErrorText\(save\.error\)\}<\/ErrorText> : null\}/);
+    expect(body).not.toMatch(/aria-live|role="status"|role="alert"|\.message\b/);
+    expect(hook).toMatch(/apiPut\('\/api\/admin\/settings', \{ outside_pictures \}, 'fail\.outside_pictures_save'\)/);
+    // The settings are read again before the mutation ends, so the switch never settles on a state the server does not have.
+    expect(hook).toMatch(
+      /mutationFn: putOutsidePictures,\s+onSuccess: \(\) => queryClient\.invalidateQueries\(\{ queryKey: orgSettingsKey \}\)/
+    );
+    // The card makes no request of its own to anywhere else, and names no third-party address.
+    expect(body).not.toMatch(/\bfetch\(|https?:\/\//);
+  });
+
+  it('is its own file, short, with the settings page still under 300 lines', () => {
+    expect(source.split('\n').length).toBeLessThanOrEqual(300);
+    expect(read('LanguagePanel.tsx').split('\n').length).toBeLessThanOrEqual(300);
+  });
 });

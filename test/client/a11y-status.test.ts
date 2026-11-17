@@ -121,6 +121,15 @@ describe('the Toast markup', () => {
     expect(html.indexOf('ui-toast-action')).toBeLessThan(html.indexOf('tst-dismiss'));
   });
 
+  it('stacks the Undo and the X under the words (data-stacked, a phone row in toast.css) only for a long text with an Undo', () => {
+    const long = 'Moved to Inbox. Mail from someone@example.com will not go to Spam.';
+    expect(render({ text: long, undo: noop })).toContain('data-stacked="true"');
+    expect(render({ text: 'Archived', undo: noop })).not.toContain('data-stacked');
+    // nothing to put on a row of its own: the words beside the X stay one row
+    expect(render({ text: long })).not.toContain('data-stacked');
+    expect(render({ text: long, error: true })).not.toContain('data-stacked');
+  });
+
   it('keeps a failure until it is dismissed: no countdown bar, no Undo, marked as an error', () => {
     const html = render({ text: 'Could not refresh', error: true });
     expect(html).toContain('data-error="true"');

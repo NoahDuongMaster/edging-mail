@@ -24,6 +24,7 @@ const JWK_LABELS = new Set(["importKey('pkcs8'|'jwk')"]);
 // PA-5 (crypto-review.md 13.2): an ALLOW-LIST of the crypto.subtle methods each module of ours may call. A new use fails until it is reviewed
 // and added here. Decrypt exists only where the server opens what it sealed for itself (data-key.ts, under DATA_KEY); ECDH (deriveBits in
 // push.ts) is the Web Push one with a key made for the message; ECDSA sign is the VAPID signature; HMAC is tokens, TOTP and the setup-key check.
+// picture-lookup.ts has `digest` only: the plain SHA-256 of a sender's address, the name Gravatar and Libravatar know it by (no key, nothing secret).
 // Every other module of ours may not touch crypto.subtle at all.
 const SUBTLE_ALLOWED = new Map([
   ['src/shared/crypto/blob.ts', ['encrypt']],
@@ -35,6 +36,7 @@ const SUBTLE_ALLOWED = new Map([
   ['src/worker/auth/setup.ts', ['generateKey', 'sign', 'verify']],
   ['src/worker/auth/tokens.ts', ['importKey', 'sign', 'verify']],
   ['src/worker/auth/totp.ts', ['importKey', 'sign']],
+  ['src/worker/picture-lookup.ts', ['digest']],
   ['src/worker/push.ts', ['deriveBits', 'encrypt', 'exportKey', 'generateKey', 'importKey', 'sign']]
 ]);
 // importKey and unwrapKey take their format as a literal, so a scan can see what is imported.

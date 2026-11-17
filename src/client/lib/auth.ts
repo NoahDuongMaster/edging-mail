@@ -16,6 +16,8 @@ export interface SessionUser {
   id: string;
   email: string;
   display_name: string;
+  /** The id of the person's profile picture (`avatarUrl` in lib/avatar.ts makes the address from it), null while they have none. */
+  avatar: string | null;
   role: 'member' | 'admin';
   /** Still on the temporary password an admin made. */
   must_change_password: boolean;

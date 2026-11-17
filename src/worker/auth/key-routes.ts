@@ -8,7 +8,7 @@ import { rewrapPending } from '../mail/pending';
 import type { AppEnv } from '../types';
 import { errorClass, jsonObject } from '../utils';
 import { createSecretVerifier, decodeAuth, isAuthValue } from '../../shared/crypto/server';
-import { keyBundle, loadPolicy, sessionUser, userById } from './accounts';
+import { avatarIdOf, keyBundle, loadPolicy, sessionUser, userById } from './accounts';
 import type { UserRow } from './accounts';
 import { appliedGuard, keySetColumns, parseKeySet, parseWrap, updateKeyMaterial } from './keys';
 import { lookupKeys } from './lookup';
@@ -28,7 +28,8 @@ keyRoutes.route('/', lockedRoutes);
 
 const MAX_LOOKUP = 50;
 
-const userViewOf = async (db: ReturnType<typeof getDb>, row: UserRow) => sessionUser(row, await loadPolicy(db), 0);
+const userViewOf = async (db: ReturnType<typeof getDb>, row: UserRow) =>
+  sessionUser(row, await loadPolicy(db), 0, await avatarIdOf(db, row.id));
 
 keyRoutes.get('/me', async (c) => {
   try {

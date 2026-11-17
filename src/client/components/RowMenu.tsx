@@ -280,7 +280,7 @@ export const RowMenu: React.FC<RowMenuProps> = ({
         inBin
           ? {
               id: 'restore',
-              label: tr('action.move_to_inbox'),
+              label: folder === 'spam' ? tr('action.not_spam') : tr('action.move_to_inbox'),
               ...keyed('archive'),
               icon: <Inbox {...icon} />,
               run: () => actions.restore(m),

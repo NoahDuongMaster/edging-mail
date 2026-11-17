@@ -1,6 +1,6 @@
 import { eq, sql } from 'drizzle-orm';
 import type { BatchQuery, Db } from '../db';
-import { revokedSessions, settings, users } from '../db/schema';
+import { revokedSessions, settings, userAvatars, users } from '../db/schema';
 import { isLocale } from '../../shared/i18n/languages';
 import type { Locale } from '../../shared/i18n/languages';
 import type { SessionUser } from '../types';
@@ -48,8 +48,17 @@ export async function loadDefaultLanguage(db: Db): Promise<Locale> {
   return isLocale(row?.value) ? row.value : 'en';
 }
 
-/** The account as the API shows it to its owner (and as the gates read it). `stepUpAt`: the last second-factor check of this session. */
-export const sessionUser = (row: UserRow, policy: Policy, stepUpAt: number): SessionUser => ({
+/** The id of a person's profile picture, null when they have none. The image itself is never read here (it has its own table and route). */
+export async function avatarIdOf(db: Db, userId: string): Promise<string | null> {
+  const row = await db.select({ id: userAvatars.id }).from(userAvatars).where(eq(userAvatars.user_id, userId)).get();
+  return row?.id ?? null;
+}
+
+/**
+ * The account as the API shows it to its owner (and as the gates read it). `stepUpAt`: the last second-factor check of this session. `avatar`: the
+ * id of the picture (`avatarIdOf`; the session check reads it in the same query as the row, a new account has none).
+ */
+export const sessionUser = (row: UserRow, policy: Policy, stepUpAt: number, avatar: string | null): SessionUser => ({
   id: row.id,
   email: row.email,
   display_name: row.display_name,
@@ -60,6 +69,7 @@ export const sessionUser = (row: UserRow, policy: Policy, stepUpAt: number): Ses
   require_2fa: policy.require_2fa,
   admin_password_upgrade_required: row.admin_password_upgrade_required === 1,
   language: row.language,
+  avatar,
   two_factor_reset_due_at: row.reset_2fa_due_at,
   step_up_at: stepUpAt
 });

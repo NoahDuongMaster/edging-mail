@@ -1,0 +1,29 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=none;
+	dmarc=none;
+	spf=none (mx.cloudflare.net: no SPF records found for postmaster@supplies.example.org) smtp.mailfrom=postmaster@supplies.example.org
+From: Accounts <accounts@supplies.example.org>
+To: bob@example.com
+Subject: Invoice INV-2026-0188 from Example Supplies
+Date: Mon, 16 Nov 2026 16:10:00 +0000
+Message-ID: <inv-0188@supplies.example.org>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="inv"
+
+--inv
+Content-Type: text/plain; charset=utf-8
+
+Hello Bob,
+
+Please find attached invoice INV-2026-0188 for 640.00 USD, due on 30 November 2026.
+Payment details are at the bottom of the invoice. You can pay by bank transfer or by card.
+
+Kind regards,
+Example Supplies - Accounts
+--inv
+Content-Type: application/pdf; name="INV-2026-0188.pdf"
+Content-Disposition: attachment; filename="INV-2026-0188.pdf"
+Content-Transfer-Encoding: base64
+
+JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyA+PgplbmRvYmoKdHJhaWxlcgo8PCAvUm9vdCAxIDAgUiA+PgolJUVPRgo=
+--inv--

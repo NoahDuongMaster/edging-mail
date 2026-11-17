@@ -32,7 +32,7 @@ describe('initialsOf', () => {
     expect(initialsOf('Li Ming')).toBe('LM');
   });
   it('makes the header avatar by the same rule (ownerInitials)', () => {
-    const settings = { display_name: '李明', email: 'li.ming@example.com', signature: '' };
+    const settings = { display_name: '李明', email: 'li.ming@example.com', signature: '', spam_filter: true };
     expect(ownerInitials(settings)).toBe('李');
     expect(ownerInitials({ ...settings, display_name: '' })).toBe('LM');
     expect(ownerInitials()).toBe('');

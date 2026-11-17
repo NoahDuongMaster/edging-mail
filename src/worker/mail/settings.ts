@@ -12,16 +12,18 @@ import { errorClass, jsonObject } from '../utils';
 
 export const settingsRoutes = new Hono<AppEnv>();
 
-// Settings are the signed-in person's own: display name, signature and language (stored on the user row), plus their primary address, which is
-// read-only (it is the sign-in name and the only From address; an admin cannot change it here either). `language` is one of the app's languages
-// or null (no choice: the organisation's default applies); it also decides the language of the push notices sent to this person.
-const FIELDS = ['display_name', 'signature', 'language'];
+// Settings are the signed-in person's own: display name, signature, language and the spam filter switch (stored on the user row), plus their primary address,
+// which is read-only (it is the sign-in name and the only From address; an admin cannot change it here either). `language` is one of the app's languages
+// or null (no choice: the organisation's default applies); it also decides the language of the push notices sent to this person. `spam_filter` is a boolean
+// (stored as 1 or 0): on, mail that arrives by email and looks like spam is delivered to the Spam folder.
+const FIELDS = ['display_name', 'signature', 'language', 'spam_filter'];
 const LANGUAGE_REASON = `language must be ${LOCALES.join(', ')} or null`;
 
 interface Update {
   display_name?: string;
   signature?: string;
   language?: Language | null;
+  spam_filter?: 0 | 1;
 }
 
 // Returns the validated update, or the reason it was rejected.
@@ -46,15 +48,29 @@ function parseSettingsUpdate(body: Record<string, unknown>): Update | string {
     }
     update.language = body.language;
   }
+  if (body.spam_filter !== undefined) {
+    if (typeof body.spam_filter !== 'boolean') {
+      return 'spam_filter must be true or false';
+    }
+    update.spam_filter = body.spam_filter ? 1 : 0;
+  }
   return update;
 }
 
-const readSettings = (db: ReturnType<typeof getDb>, userId: string) =>
-  db
-    .select({ display_name: users.display_name, signature: users.signature, email: users.email, language: users.language })
+async function readSettings(db: ReturnType<typeof getDb>, userId: string) {
+  const row = await db
+    .select({
+      display_name: users.display_name,
+      signature: users.signature,
+      email: users.email,
+      language: users.language,
+      spam_filter: users.spam_filter
+    })
     .from(users)
     .where(eq(users.id, userId))
     .get();
+  return row === undefined ? undefined : { ...row, spam_filter: row.spam_filter === 1 };
+}
 
 settingsRoutes.get('/settings', async (c) => {
   try {

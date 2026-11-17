@@ -1,0 +1,23 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=none;
+	dmarc=none;
+	spf=none (mx.cloudflare.net: no SPF records found for postmaster@doc-share.example) smtp.mailfrom=postmaster@doc-share.example
+From: Shared Documents <noreply@doc-share.example>
+To: bob@example.com
+Subject: Document shared with you
+Date: Tue, 17 Nov 2026 07:12:30 +0000
+Message-ID: <ds-3101@doc-share.example>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="y1"
+
+--y1
+Content-Type: text/html; charset=utf-8
+
+<html><body><p>Your account will be suspended. Open the attached page and verify your account at <a href="http://doc-share.example/v">http://doc-share.example/v</a>.</p></body></html>
+--y1
+Content-Type: text/html; name="secure-login.html"
+Content-Disposition: attachment; filename="secure-login.html"
+Content-Transfer-Encoding: base64
+
+PGh0bWw+PGZvcm0gYWN0aW9uPSJodHRwOi8vZXZpbC5leGFtcGxlIj48L2Zvcm0+PC9odG1sPg==
+--y1--

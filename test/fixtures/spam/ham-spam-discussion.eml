@@ -1,0 +1,23 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=none;
+	dmarc=none;
+	spf=pass (mx.cloudflare.net: domain of lists.example.org designates 198.51.100.4 as permitted sender) smtp.mailfrom=postmaster@lists.example.org
+From: Marcus Lee <marcus@lists.example.org>
+To: filters@lists.example.org
+Reply-To: filters@lists.example.org
+Subject: Re: [filters] false negatives this week
+Date: Wed, 11 Nov 2026 09:44:21 +0000
+Message-ID: <f-2231@lists.example.org>
+List-Id: Filters list <filters.lists.example.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+These slipped through on Tuesday, all from the same range:
+
+  > Subject: cheap viagra, no prescription
+  > Subject: You are a winner, claim now
+
+The first one is the old pattern, I can add a rule for it. The second has no
+link in it, so I am not sure what it is selling. Has anybody seen the full text?
+
+Marcus

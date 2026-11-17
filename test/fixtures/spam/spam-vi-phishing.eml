@@ -1,0 +1,18 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=none;
+	dmarc=fail header.from=vietcom-bank-secure.example policy.dmarc=reject;
+	spf=fail (mx.cloudflare.net: domain of bounce@vietcom-bank-secure.example does not designate 203.0.113.9 as permitted sender) smtp.mailfrom=bounce@vietcom-bank-secure.example
+From: =?UTF-8?B?SOG7lyB0cuG7oyBraMOhY2ggaMOgbmc=?= <support@vietcom-bank-secure.example>
+To: bob@example.com
+Subject: =?UTF-8?B?VGjDtG5nIGLDoW8ga2jhuqluOiB4w6FjIG1pbmggdMOgaSBraG/huqNuIGPhu6dhIGLhuqFu?=
+Date: Tue, 17 Nov 2026 10:02:00 +0700
+Message-ID: <vcb-9021@vietcom-bank-secure.example>
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: base64
+
+PGh0bWw+PGJvZHk+CjxwPlTDoGkga2hv4bqjbiBj4bunYSBi4bqhbiBz4bq9IGLhu4sga2jDs2Eg
+dHJvbmcgMjQgZ2nhu50gbuG6v3UgYuG6oW4ga2jDtG5nIHjDoWMgbWluaCB0w6BpIGtob+G6o24u
+PC9wPgo8cD48YSBocmVmPSJodHRwOi8vdmlldGNvbS1iYW5rLXNlY3VyZS5leGFtcGxlL2Rhbmct
+bmhhcCI+aHR0cHM6Ly93d3cudmlldGNvbWJhbmsuY29tLnZuL2RhbmctbmhhcDwvYT48L3A+Cjwv
+Ym9keT48L2h0bWw+Cg==

@@ -1,0 +1,19 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=pass header.d=accounts.paperplane.example header.s=s1 header.b=aBcDeFgH;
+	dmarc=pass header.from=accounts.paperplane.example policy.dmarc=none;
+	spf=pass (mx.cloudflare.net: domain of bounce@accounts.paperplane.example designates 192.0.2.10 as permitted sender) smtp.mailfrom=bounce@accounts.paperplane.example
+From: Paperplane Security <security@accounts.paperplane.example>
+To: bob@example.com
+Subject: New sign-in to your Paperplane account
+Date: Tue, 17 Nov 2026 12:44:03 +0700
+Message-ID: <sec.19c3d@accounts.paperplane.example>
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+
+<html><body>
+<p>Hi Bob,</p>
+<p>We noticed an unusual sign-in to your account from a new device.</p>
+<p>Time: 17 Nov 2026, 12:41 (ICT)<br>Device: Firefox on Linux<br>Place: Ho Chi Minh City, Vietnam</p>
+<p>If this was you, no action is needed. If not, <a href="https://accounts.paperplane.example/security/review">review your account activity</a> and change your password.</p>
+<p>The Paperplane team</p>
+</body></html>

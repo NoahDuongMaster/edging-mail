@@ -44,12 +44,18 @@ describe('the Settings dialog and its sections', () => {
     }
   });
 
-  it('have one bare <input> only: the hidden copy of the address for the password manager; every other field is a ui TextField', () => {
+  it('have two bare <input>s only: the hidden copy of the address for the password manager and the hidden file field of the profile picture; every other field is a ui TextField', () => {
     const inputs = sources.flatMap((file) =>
       [...withoutComments(read(file)).matchAll(/<input\b[^>]*>/g)].map((match) => `${path.basename(file)} ${match[0]}`)
     );
-    expect(inputs).toHaveLength(1);
-    expect(inputs[0]).toMatch(/^ChangePasswordView\.tsx <input\s+type="text"\s+name="username"/);
+    expect(inputs).toHaveLength(2);
+    expect(inputs.find((input) => input.startsWith('ChangePasswordView.tsx'))).toMatch(
+      /^ChangePasswordView\.tsx <input\s+type="text"\s+name="username"/
+    );
+    // The picture's field is opened by a ui Button (never shown itself) and takes images only.
+    expect(inputs.find((input) => input.startsWith('ProfilePicture.tsx'))).toMatch(
+      /^ProfilePicture\.tsx <input\s+ref=\{fileRef\}\s+type="file"\s+accept="image\/\*"\s+hidden\s/
+    );
   });
 
   it('is the ui Dialog at the lg size, rendered in place: no portal, so the C-7 render test sees every button', () => {

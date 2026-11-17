@@ -1,0 +1,14 @@
+Authentication-Results: mx.cloudflare.net;
+	dkim=none;
+	dmarc=none;
+	spf=none (mx.cloudflare.net: no SPF records found for postmaster@vay-nhanh-24h.example) smtp.mailfrom=postmaster@vay-nhanh-24h.example
+From: Tu van vay <hotro@vay-nhanh-24h.example>
+To: bob@example.com
+Subject: Can tien gap? Giai ngan trong 30 phut
+Date: Tue, 17 Nov 2026 09:15:00 +0700
+Message-ID: <vay-221@vay-nhanh-24h.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Cho vay nhanh khong can the chap, chi can CMND. Lai suat thap, giai ngan trong 30 phut.
+Dau tu sinh loi: gop von 10 trieu nhan lai moi ngay. Lien he Zalo 09xx xxx xxx.

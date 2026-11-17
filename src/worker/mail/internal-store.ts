@@ -115,8 +115,12 @@ function rowOf(
     snoozed_until: null,
     user_id: ownerId,
     is_e2e: mail.e2e ? 1 : 0,
-    // Arrived through this deployment's own route: the From address is the signed-in author (PX-12).
-    origin: 'internal'
+    // Arrived through this deployment's own route: the From address is the signed-in author (PX-12). Such mail never passes the spam filter and has no
+    // authentication result of Cloudflare's.
+    origin: 'internal',
+    spam_score: null,
+    spam_reasons: null,
+    auth: null
   };
 }
 

@@ -179,6 +179,11 @@
   width: 100%;
   max-width: none;
 }
+/* Spam's Not spam has the longest words of the bar (vi "Không phải thư rác"): its slot takes more of the row (up to the cap above), so they
+   still break in two whole lines instead of an ellipsis; the other four give up a few pixels. */
+.rd-bar.nm-bar > .rd-tab.rd-tab-wide {
+  flex-grow: 1.45;
+}
 /* No side padding on the slot itself (it would add to a flex basis of 0 and make the plain buttons wider than the wrapped ones): the word keeps
    its own 4 px. Every slot is as tall as the bar and starts at its top, so the icons share one row and the first lines of the words one
    baseline when a word takes two lines (J4-33). */
@@ -968,29 +973,36 @@ button.rd-rcpt {
 
 /* ---------- Body ---------- */
 
-/* J6-42: a message in Spam says so under its header, quietly (a soft card of the raised tone, no edge, a caution icon, the text colour of a
-   hint), with the way back beside it; it wraps under the words on a narrow column. */
-.rd-spam {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
+/* A message in Spam: ONE quiet info Banner under its header (reader/SpamBanner.tsx): why it is there as a short plain list, and Not spam, the
+   way back. The Banner's own layout puts the button beside the text from 480px and under it below that. */
+.rd-spam.ui-banner {
   margin: -8px 0 28px;
-  padding: 8px 8px 8px 14px;
-  border-radius: var(--radius-card);
-  background: var(--raised);
-  color: var(--text2);
 }
-.rd-spam > svg {
-  flex: none;
-  color: var(--warning);
+/* Dark: the tinted fill is 1.35:1 from the page and the airmail blue button 2.6:1 from the fill, so each gets an edge of the info text colour, a
+   mix that is 3.3:1 against the page (the banner) and 5.0:1 against the fill (the button; ui.css `--ui-primary-ring`, kept through hover and press). */
+:root[data-theme='dark'] .rd-spam.ui-banner {
+  --ui-primary-ring: color-mix(in srgb, var(--accent-text) 70%, var(--accent));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-text) 45%, var(--accent-soft));
 }
-.rd-spam-text {
-  flex: 1 1 14em;
-  min-width: 0;
-  margin: 0;
-  font-size: var(--fs-secondary);
-  line-height: var(--lh-secondary);
+.rd-why {
+  margin: 4px 0 0;
+  padding-inline-start: 18px;
+  list-style: disc;
+}
+/* The bullets are quiet dots: the reasons are the words, not the discs; a little air keeps one reason apart from the next when it wraps. */
+.rd-why li::marker {
+  color: var(--text3);
+}
+.rd-why li + li {
+  margin-top: 2px;
+}
+.rd-why-more {
+  margin: 4px 0 0;
+  padding-inline-start: 18px;
+}
+/* The reasons that open below the first three continue the same list: the same gap between one and the next. */
+.ui-collapse .rd-why {
+  margin-top: 2px;
 }
 .rd-note {
   max-width: 70ch;
