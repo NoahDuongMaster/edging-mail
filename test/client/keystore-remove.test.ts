@@ -4,7 +4,7 @@ import { tr } from '../../src/client/lib/i18n';
 import { getUnlockedKey, indexedDbBackend, keepKey, setKeyBackend, sweepKeys, wipeKeys } from '../../src/client/lib/crypto/keyStore';
 
 // CK-18: the stored key is deleted through IndexedDB, and the list of users that may have one (`em-key-users`) loses a user only when the database
-// really was deleted. A failed or blocked delete keeps the entry, so the next start finds the user again. workerd has no IndexedDB: both it and
+// really was deleted. A failed or blocked delete keeps the entry, so the next start finds the user again. Node has no IndexedDB: both it and
 // `window.localStorage` are stand-ins here, and each database name answers with the event the test chose.
 
 const INDEX_KEY = 'em-key-users';

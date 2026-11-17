@@ -1,6 +1,28 @@
 import { env } from 'cloudflare:workers';
 import { applyD1Migrations } from 'cloudflare:test';
-import { beforeAll, beforeEach } from 'vitest';
+import { afterEach, beforeAll, beforeEach, vi } from 'vitest';
+import type * as Throttle from '../src/worker/auth/throttle';
+import type { Db } from '../src/worker/db';
+import { floor } from './floor';
+
+// The pause after a refused sign-in is skipped unless the test sets `floor.real` (test/floor.ts). The failure is still recorded, so the
+// counters, locks and audit rows behave exactly as in production; only the sleep is gone.
+vi.mock('../src/worker/auth/throttle', async (importOriginal) => {
+  const real = await importOriginal<typeof Throttle>();
+  // Read at call time through an import: vi.mock is hoisted above this file's own imports.
+  const { floor: switchboard } = await import('./floor');
+  return {
+    ...real,
+    failureDelay: async (db: Db, startedAt: number): Promise<void> => {
+      await (switchboard.real ? real.failureDelay(db, startedAt) : real.recordGlobalFailure(db));
+    },
+    holdFloor: (startedAt: number): Promise<void> => (switchboard.real ? real.holdFloor(startedAt) : Promise.resolve())
+  };
+});
+
+afterEach(() => {
+  floor.real = false;
+});
 
 // Every test file starts with all migrations applied (idempotent: applied ones are skipped).
 beforeAll(async () => {

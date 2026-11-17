@@ -17,17 +17,20 @@ import {
   wrapPrivateKey
 } from '../src/shared/crypto/client';
 import {
-  createSecretVerifier,
-  createVerifier,
+  decodeAuth,
   decodeCanonical,
+  KDF_VERSION,
   loadDataKeys,
   newCek,
   parsePublicKey,
   sealCek,
   sealData,
   sealField,
-  toBase64Url as bytesToBase64Url
+  toBase64Url as bytesToBase64Url,
+  VERIFIER_BYTES,
+  VERIFIER_SALT_BYTES
 } from '../src/shared/crypto/server';
+import type { SecretVerifier } from '../src/shared/crypto/server';
 import { hotp, newTotpSecret, stepOf } from '../src/worker/auth/totp';
 import type { Env } from '../src/worker/types';
 
@@ -155,6 +158,19 @@ export const testDataKeys = async () => {
 export const fakeWrap = (): string => bytesToBase64Url(Uint8Array.from([1, ...crypto.getRandomValues(new Uint8Array(167))]));
 
 /**
+ * The verifier of a fixture user. Production derives it with 100,000 PBKDF2 rounds (about 40 ms, twice per user: password and recovery
+ * key), and the Worker checks a credential with the round count stored in the row, so a fixture stores ONE round: sign-in and the
+ * recovery proof still run the real routes and compare the real derivation, only the cost of guessing is gone. Flows that create a
+ * verifier through a route (Setup, change password, key setup, admin reissue) still store the production count.
+ */
+async function fixtureVerifier(secret: Uint8Array<ArrayBuffer>): Promise<SecretVerifier> {
+  const salt = crypto.getRandomValues(new Uint8Array(VERIFIER_SALT_BYTES));
+  const key = await crypto.subtle.importKey('raw', secret, 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: 1 }, key, VERIFIER_BYTES * 8);
+  return { verifier: bytesToBase64Url(new Uint8Array(bits)), salt: bytesToBase64Url(salt), iterations: 1 };
+}
+
+/**
  * A user row (and its primary address) straight in D1: no sign-in is involved. By default the user is READY: a key pair with both wraps,
  * and, for an admin, two-step verification enrolled (the organisation policy row, written once, does not require it of members).
  * `keys: false` / `totp` leave the matching gate open.
@@ -188,9 +204,10 @@ export async function createUser(
   ]);
   const recoveryKey = pair === null ? null : generateRecoveryKey();
   const recoveryAuth = recoveryKey === null ? null : await deriveRecoveryAuth(recoveryKey);
-  const recoveryVerifier = recoveryAuth === null ? null : await createSecretVerifier(recoveryAuth.raw);
+  const recoveryVerifier = recoveryAuth === null ? null : await fixtureVerifier(recoveryAuth.raw);
   const wrapped = (key: CryptoKey): Promise<Uint8Array<ArrayBuffer>> | undefined =>
     pair === null ? undefined : wrapPrivateKey(key, pair.privateKey, email, pair.publicKey.keyId);
+  const passwordVerifier = await fixtureVerifier(must(decodeAuth(auth), 'the credential of the fixture user'));
   const totpSecret = (options.totp ?? options.role === 'admin') ? newTotpSecret() : null;
   await db()
     .insert(users)
@@ -198,7 +215,10 @@ export async function createUser(
       id,
       email,
       display_name: options.display_name ?? '',
-      ...(await createVerifier(auth)),
+      auth_verifier: passwordVerifier.verifier,
+      auth_salt: passwordVerifier.salt,
+      auth_iterations: passwordVerifier.iterations,
+      kdf_version: KDF_VERSION,
       role: options.role ?? 'member',
       status: options.status ?? 'active',
       must_change_password: options.mustChange === true ? 1 : 0,

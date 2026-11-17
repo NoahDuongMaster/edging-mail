@@ -1,12 +1,18 @@
 import { env } from 'cloudflare:workers';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { sleep, WRONG_CREDENTIAL_DELAY_MS } from '../src/worker/auth/throttle';
 import { auditLog } from '../src/worker/db/schema';
+import { floor } from './floor';
 import { authFor, call, createUser, db } from './helpers';
 import type { Answer, CallOptions } from './helpers';
 
 // The floor of the sign-in endpoint: every refusal takes at least WRONG_CREDENTIAL_DELAY_MS, whichever branch made it, and a known address is not
 // slower than an unknown one.
+
+// Everything here measures the real pause (test/setup.ts removes it elsewhere).
+beforeEach(() => {
+  floor.real = true;
+});
 
 const FLOOR = WRONG_CREDENTIAL_DELAY_MS;
 const COARSE = 20; // the clock and the timers of the test runtime are not exact

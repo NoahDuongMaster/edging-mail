@@ -5,7 +5,7 @@ import type { SessionLanguage } from '../../src/client/lib/i18n';
 import { languageToAdopt } from '../../src/client/lib/language';
 
 // The language of the screen before the first render (`initLanguage`) and once the session is known (`useLanguageSync`), against a stand-in
-// window, navigator and document (the tests run in workerd: none of them exists). The order is spec 20.1: the account language, then `?lang=`,
+// window, navigator and document (the tests run in Node: none of them exists). The order is spec 20.1: the account language, then `?lang=`,
 // then the device choice, then the browser, then the organisation default, then English.
 
 // The hook is called outside React: an effect runs at once, which is all `useLanguageSync` needs from React.

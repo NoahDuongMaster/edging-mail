@@ -5,9 +5,24 @@ import { defineConfig } from 'vitest/config';
 // drizzle/ applied, real R2 and the real MailHub Durable Object. Nothing here reads .dev.vars or .env: there is deliberately no
 // wrangler config file (wrangler loads .dev.vars from the directory of the config it is given), every binding is declared below,
 // and the secrets are fixed test values. No network is needed: tests that reach for DNS or a push service stub `fetch`.
-// Two projects: everything runs in workerd, except test/static, which reads the source tree (there is no file system in workerd) and runs in Node.
+//
+// Three projects, split by what a file needs:
+// - worker: the Worker and its bindings, in workerd.
+// - node: files that only read source text or render client code to a string (no database to reset between tests).
+// - node-isolated: files that replace a module for the whole file (`vi.mock`), which needs a fresh module graph.
+//
+// Speed: `isolate: false` keeps one runner per pool slot for the whole run. With the default, every file started its own Miniflare (about
+// two seconds each) and its own Node thread. Each slot has its own Miniflare, so its own in-memory D1, R2 and
+// Durable Objects: files running side by side cannot see each other's rows, and each file still starts from an empty database
+// (test/setup.ts), and `test/cleanup.ts` resets what a file may leave in the runner.
+//
+// test/i18n/wiring.test.ts renders the Worker's pages, so it stays a worker test.
+const NODE_FILES = ['test/static/**/*.test.ts', 'test/client/**/*.test.ts', 'test/i18n/!(wiring).test.ts'];
+const ISOLATED_FILES = ['test/client/language-init.test.ts'];
+
 export default defineConfig(async () => ({
   test: {
+    maxWorkers: 3,
     projects: [
       {
         plugins: [
@@ -39,16 +54,27 @@ export default defineConfig(async () => ({
         ],
         test: {
           name: 'worker',
+          // Every test file is a worker test unless NODE_FILES takes it, so a new file can never fall out of the run.
           include: ['test/**/*.test.ts'],
-          exclude: ['test/static/**'],
-          setupFiles: ['./test/setup.ts'],
-          // Each file starts from an empty database (test/setup.ts); one worker keeps the suite deterministic and light on RAM.
-          fileParallelism: false,
+          exclude: NODE_FILES,
+          setupFiles: ['./test/cleanup.ts', './test/setup.ts'],
+          isolate: false,
           testTimeout: 30_000
         }
       },
       {
-        test: { name: 'static', environment: 'node', include: ['test/static/**/*.test.ts'] }
+        test: {
+          name: 'node',
+          environment: 'node',
+          pool: 'threads',
+          isolate: false,
+          setupFiles: ['./test/cleanup.ts'],
+          include: NODE_FILES,
+          exclude: ISOLATED_FILES
+        }
+      },
+      {
+        test: { name: 'node-isolated', environment: 'node', pool: 'threads', include: ISOLATED_FILES }
       }
     ]
   }

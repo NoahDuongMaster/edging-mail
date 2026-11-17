@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { auditLog, recoveryCodes, recoveryTickets, userSecurityEvents, userSignIns, users } from '../src/worker/db/schema';
 import { WRONG_CREDENTIAL_DELAY_MS } from '../src/worker/auth/throttle';
+import { floor } from './floor';
 import {
   authFor,
   call,
@@ -103,6 +104,7 @@ describe('verify: the recovery key (and the code) prove possession, and nothing 
       ['an account that has no keys', verifyBody({ email: keyless.email, recoveryAuth: plain.recoveryAuth })],
       ['an alias instead of the primary address', verifyBody({ email: 'sales@example.com', recoveryAuth: aliased.recoveryAuth })]
     ];
+    floor.real = true; // this test measures the delay
     const answers: string[] = [];
     for (const [name, body] of cases) {
       const started = Date.now();
@@ -113,9 +115,11 @@ describe('verify: the recovery key (and the code) prove possession, and nothing 
       answers.push(answer.text);
     }
     // and when the right key AND the right code meet a spent second-factor budget (PB-1b): the two failures above plus three more make five
+    floor.real = false;
     for (const extra of [0, 1, 2]) {
       await verify(verifyBody(guarded, { code: '000000' }), `198.51.100.${40 + extra}`);
     }
+    floor.real = true;
     const spentAt = Date.now();
     const spent = await verify(verifyBody(guarded, { code: await totpCode(guarded) }), '198.51.100.50');
     expect(spent.status, 'a right key and a right code with the budget spent').toBe(401);
@@ -223,12 +227,14 @@ describe('verify: throttled in its own key spaces, with an escalating lock (FG-2
     for (let attempt = 1; attempt <= 5; attempt += 1) {
       expect((await verify(wrong, '198.51.100.50')).status, `attempt ${attempt}`).toBe(401);
     }
+    floor.real = true; // the clock below can only tell a lock from a failure delay when the delay is real
     const started = Date.now();
     const locked = await verify(verifyBody(user), '198.51.100.50');
     expect(locked.status).toBe(429);
     expect(Number(locked.headers.get('Retry-After'))).toBeGreaterThan(0);
     // refused before any key derivation: no failure delay, no work
     expect(Date.now() - started).toBeLessThan(WRONG_CREDENTIAL_DELAY_MS);
+    floor.real = false;
     // another client with the right key still gets in: the per-account counter is the FIXED one (ten attempts, then 15 minutes), so it cannot be
     // used to keep the owner out (PB-1); an unknown address is counted like a known one and locks at the same attempt, so the lock tells nothing
     const ghost = { email: 'ghost@example.com', recovery_auth: 'BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ', kdf: 1 };

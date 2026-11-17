@@ -182,13 +182,26 @@ npm test    # vitest run
 ```
 
 `npm test` needs no `.dev.vars`, no `.wrangler` state, no `dist/client`, no Cloudflare account and no network (tests that reach for DNS or a push service
-stub `fetch`). It has two projects, set up in `vitest.config.ts`:
+stub `fetch`). It has three projects, set up in `vitest.config.ts`:
 
 - **`worker`** runs the real Worker (`src/worker/index.ts`) inside workerd with a real D1 database that has every migration of `drizzle/` applied, real R2 and the real
   `MailHub` Durable Object (`@cloudflare/vitest-plugin`). There is deliberately no wrangler config file in the test setup, because Wrangler loads `.dev.vars` from the
   folder of the config it is given; every binding and the secrets (fixed test values) are declared in `vitest.config.ts`. Every test starts from an empty database and
-  bucket (`test/setup.ts`), and files run one after the other, so tests never depend on each other.
-- **`static`** (`test/static/`) runs in Node because it reads the source tree: the error-code registry against the client catalogue, and similar consistency checks.
+  bucket (`test/setup.ts`), so tests never depend on each other. Every test file is a worker test unless the `node` project takes it.
+- **`node`** runs in Node what needs no Worker: `test/static/` (reads the source tree: the error-code registry against the client catalogue, and similar consistency checks),
+  `test/client/` (client code rendered to a string or run against stand-in browser globals) and the i18n catalogue tests.
+- **`node-isolated`** is the one client test that replaces a module for the whole file (`vi.mock`), which needs a fresh module graph.
+
+Files run three at a time. The `worker` and `node` projects reuse one runner for many files (`isolate: false`), so Miniflare starts once per runner and not once per file, and
+each runner has its own in-memory D1, R2 and Durable Objects: files running side by side never see each other's rows. `test/cleanup.ts` puts fake timers, stubbed globals and
+spies back after every file. A new test that replaces a module with `vi.mock` goes in `ISOLATED_FILES`.
+
+Two things in the test setup are faster than production on purpose, and a test that depends on either says so:
+
+- **The pause after a refused sign-in** (400 ms, 3 s more under attack) is skipped by `test/setup.ts`; the failure is still recorded. A test that measures the pause sets
+  `floor.real = true` (`test/floor.ts`) and gets the production behaviour back until the end of that test.
+- **The verifiers of users made by `createUser`** (`test/helpers.ts`) use one PBKDF2 round instead of 100,000, because the Worker checks a credential with the round count stored
+  in the row. Verifiers made through a route (Setup, change password, key setup, a temporary password) keep the production count.
 
 Run one file with `npx vitest run --project worker test/auth.test.ts`. `test/helpers.ts` has the helpers (create a user with keys, sign in, call the API, fake a push
 service). The route tables are tested: `test/gate.test.ts` fails for a route nobody classified as public or private, and `test/admin-p1.test.ts` fails for an admin route
@@ -196,7 +209,7 @@ that accepts a password or a key. `test/crypto/` holds the known-answer tests ag
 `test/docs-api.test.ts` fails when a route or an error code is missing from `docs/api.md` (or documented but not there), `test/static/docs-config.test.ts` when a binding or variable of
 `Env` is missing from `docs/configuration.md`, and `test/static/notice.test.ts` when a runtime dependency is missing from `NOTICE` or its version or licence differs from `package-lock.json`.
 
-A full run takes about five to seven minutes and a lot of memory (workerd and the TypeScript checker together); run it on its own. `npm run check` is the other half of the gate.
+A full run takes under a minute on a four-core machine (it took about nine before the setup above) and a fair amount of memory (three workerd processes); do not run it next to `npm run check`. `npm run check` is the other half of the gate.
 
 ## Known-answer tests in a browser
 

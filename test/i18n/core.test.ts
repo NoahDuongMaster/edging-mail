@@ -194,7 +194,7 @@ describe('the store', () => {
 
   it('puts the language of the screen on <html lang> after its catalogue is loaded (L2)', async () => {
     const page = { lang: 'en' };
-    // The tests run in workerd, which has no `document`: a stand-in with the one property the store sets.
+    // The tests run in Node, which has no `document`: a stand-in with the one property the store sets.
     Object.defineProperty(globalThis, 'document', { value: { documentElement: page }, configurable: true });
     try {
       await setLocale('vi');

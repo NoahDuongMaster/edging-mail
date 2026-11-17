@@ -15,7 +15,7 @@ import {
 } from '../../src/client/lib/crypto/keyStore';
 import type { KeyBackend, StoredKey } from '../../src/client/lib/crypto/keyStore';
 
-// The key store with an in-memory backend (workerd has no IndexedDB): where a key is kept, for how long, and when it is destroyed (CK-13).
+// The key store with an in-memory backend (Node has no IndexedDB): where a key is kept, for how long, and when it is destroyed (CK-13).
 
 function memoryBackend(): KeyBackend & { records: Map<string, StoredKey> } {
   const records = new Map<string, StoredKey>();

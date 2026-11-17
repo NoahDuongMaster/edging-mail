@@ -13,6 +13,7 @@ import {
   userSignIns,
   users
 } from '../src/worker/db/schema';
+import { floor } from './floor';
 import { addMessage, authFor, call, cookieOf, createUser, db, DEFAULT_PASSWORD, enrollTotp, fakeWrap, setupKeys, signIn } from './helpers';
 import type { Answer } from './helpers';
 
@@ -230,6 +231,7 @@ describe('sign-in (AC4, AC5, AC9)', () => {
   });
 
   it('answers an unknown address and a wrong credential identically, with the same delay', async () => {
+    floor.real = true; // this test measures the delay
     const user = await createUser('alex@example.com');
     const unknown = await timedWrongLogin('nobody@example.com');
     const wrong = await timedWrongLogin(user.email);

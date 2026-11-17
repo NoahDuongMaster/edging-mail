@@ -13,7 +13,7 @@ import {
 } from '../../src/client/lib/prefs';
 
 // The preferences of this device (lib/prefs.ts): what is read when nothing is stored or the stored text is damaged, what a change writes,
-// and the `data-motion` attribute the reduced-motion CSS and ui/motion.ts read. localStorage and <html> are stand-ins (no DOM in workerd).
+// and the `data-motion` attribute the reduced-motion CSS and ui/motion.ts read. localStorage and <html> are stand-ins (no DOM in Node).
 
 class MemoryStorage {
   readonly items = new Map<string, string>();
