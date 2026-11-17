@@ -151,11 +151,14 @@ describe('the screens before the mailbox', () => {
     ]) {
       expect(code(path.join(AUTH, name)), name).toMatch(/<SecretField\b/);
     }
-    // The one-time code: the browser and the phone offer the code from a message or an app, and a phone opens the number pad.
+    // The one-time code: the browser and the phone offer the code from a message or an app, and a phone opens the number pad. Both
+    // screens ask for it with the six boxes of ui CodeField, whose one input carries those attributes.
     for (const name of ['SignInScreen.tsx', 'TwoFactorEnrolment.tsx']) {
-      expect(code(path.join(AUTH, name)), name).toMatch(/autoComplete=\{?[^\n]*'one-time-code'|autoComplete="one-time-code"/);
-      expect(code(path.join(AUTH, name)), name).toMatch(/inputMode=\{?[^\n]*'numeric'|inputMode="numeric"/);
+      expect(code(path.join(AUTH, name)), name).toMatch(/<CodeField\b/);
     }
+    const codeField = code(path.join(AUTH, '..', '..', 'ui', 'CodeField.tsx'));
+    expect(codeField).toMatch(/autoComplete="one-time-code"/);
+    expect(codeField).toMatch(/inputMode="numeric"/);
     // Nothing on these screens blocks paste.
     for (const file of sources) {
       expect(code(file), path.basename(file)).not.toMatch(/onPaste/);

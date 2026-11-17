@@ -9,7 +9,7 @@ import { useT } from '../../lib/i18n';
 import { useAction } from '../../lib/useAction';
 import { useCountdown } from '../../lib/useCountdown';
 import { SecretField } from '../PasswordField';
-import { TextField } from '../../ui';
+import { CodeField, TextField } from '../../ui';
 import { AuthActions, AuthButton, AuthCard, CheckboxRow, ErrorLine, HintedLink, TextButton, TrustLine, useAuthPhone } from './authUi';
 
 interface SignInScreenProps {
@@ -137,24 +137,39 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ t, onForgot }) => {
           void submitCode(event);
         }}
       >
-        <TextField
-          id="signin-code"
-          ref={codeRef}
-          label={recoveryMode ? tr('auth.recovery_code_label') : tr('auth.code_label')}
-          hint={recoveryMode ? tr('auth.recovery_code_hint') : undefined}
-          error={codeError}
-          mono
-          className={recoveryMode ? 'au-key-input' : 'au-otp'}
-          value={code}
-          onChange={(event) => setCode(recoveryMode ? event.target.value : event.target.value.replaceAll(/\D/g, '').slice(0, CODE_LENGTH))}
-          autoComplete={recoveryMode ? 'off' : 'one-time-code'}
-          inputMode={recoveryMode ? 'text' : 'numeric'}
-          autoCapitalize="off"
-          autoCorrect="off"
-          spellCheck={false}
-          aria-invalid={codeError !== undefined || errorText !== null}
-          aria-describedby={errorText === null ? undefined : 'signin-error'}
-        />
+        {recoveryMode ? (
+          <TextField
+            id="signin-code"
+            ref={codeRef}
+            label={tr('auth.recovery_code_label')}
+            hint={tr('auth.recovery_code_hint')}
+            error={codeError}
+            mono
+            className="au-key-input"
+            value={code}
+            onChange={(event) => setCode(event.target.value)}
+            autoComplete="off"
+            inputMode="text"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+            aria-invalid={codeError !== undefined || errorText !== null}
+            aria-describedby={errorText === null ? undefined : 'signin-error'}
+          />
+        ) : (
+          // The app's six digits in six boxes (ui CodeField: one input underneath, so the phone's code autofill and paste work).
+          <CodeField
+            id="signin-code"
+            ref={codeRef}
+            label={tr('auth.code_label')}
+            error={codeError}
+            length={CODE_LENGTH}
+            value={code}
+            onChange={setCode}
+            aria-invalid={codeError !== undefined || errorText !== null}
+            aria-describedby={errorText === null ? undefined : 'signin-error'}
+          />
+        )}
         <ErrorLine t={t} id="signin-error" text={errorText} />
         <AuthActions
           after={

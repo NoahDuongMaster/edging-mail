@@ -1691,12 +1691,6 @@ th[aria-sort] > .ad-sort {
   border-radius: 50%;
   background: var(--text3);
 }
-/* The six digits of the authenticator code. */
-.ui-input-el.ad-otp {
-  font-size: calc(var(--ui-field-size) + 4px);
-  letter-spacing: 0.3em;
-  text-align: center;
-}
 
 @media (min-width: 641px) and (max-width: 900px) {
   .ad-console {

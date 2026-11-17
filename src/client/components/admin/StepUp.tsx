@@ -3,7 +3,7 @@ import type { ThemeTokens } from '../../theme';
 import { apiPost } from '../../lib/api';
 import { adminErrorText, isStepUpRequired } from '../../lib/admin/types';
 import { useT } from '../../lib/i18n';
-import { Button, TextField } from '../../ui';
+import { Button, CodeField } from '../../ui';
 import { ErrorText, ModalFrame } from './adminUi';
 
 /** The admin closed the code prompt instead of answering it: the action is simply not done, and that is not an error to show. */
@@ -95,18 +95,14 @@ const StepUpDialog: React.FC<{ t: ThemeTokens; onDone: () => void; onCancel: () 
       >
         <p className="ad-muted">{tr('admin.step_up_body_short')}</p>
         <div className="ad-field-group">
-          <TextField
+          <CodeField
             id="step-up-code"
             label={tr('admin.step_up_code')}
             data-autofocus
-            mono
-            className="ad-otp"
-            inputMode="numeric"
-            autoComplete="one-time-code"
             value={code}
-            // No maxLength: it would cut a pasted "123 456" before the spaces are dropped.
-            onChange={(e) => {
-              setCode(e.target.value.replaceAll(/\D/g, '').slice(0, 6));
+            // CodeField keeps the digits only (a pasted "123 456" too), six at most.
+            onChange={(digits) => {
+              setCode(digits);
               setError(null);
             }}
             aria-invalid={error !== null}

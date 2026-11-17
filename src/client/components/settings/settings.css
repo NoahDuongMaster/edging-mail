@@ -995,9 +995,6 @@
 .st-dialog-form .ui-input:has(> .ui-input-el[aria-invalid='true']) {
   border-color: var(--danger);
 }
-.ui-input-el.st-code {
-  letter-spacing: 0.2em;
-}
 .ui-input-el.st-key {
   letter-spacing: 0.04em;
 }

@@ -857,6 +857,147 @@ input[type='search']::-webkit-search-decoration {
     outline-offset: 2px;
   }
 }
+
+/* ---------- CodeField: a one-time code in boxes ---------- */
+
+/* Six boxes in a row (a wider gap after the third, where the authenticator app prints its space), as wide as the form allows up to 56px
+   each: 6 x 56 + 6 x 8 = 384px, and 40px boxes on a 320px phone. Each box has the field's own look (surface, 1px --control edge at 3:1,
+   the inset shade); the digits are 22px (24px on touch) tabular figures. The real input lies over the row, invisible, and takes every
+   tap; the box that takes the next digit carries the focus edge and halo of a field while the input has focus, with a blinking caret
+   (a steady one under reduced motion). */
+.ui-otp {
+  --ui-otp-h: 52px;
+  --ui-otp-size: 22px;
+  position: relative;
+  width: 100%;
+  max-width: 384px;
+}
+@media (max-width: 640px), (pointer: coarse) {
+  .ui-otp {
+    --ui-otp-h: 56px;
+    --ui-otp-size: 24px;
+  }
+}
+.ui-otp-slots {
+  display: flex;
+  gap: 8px;
+}
+.ui-otp-slot {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  max-width: 56px;
+  height: var(--ui-otp-h);
+  background: var(--surface);
+  border: 1px solid var(--control);
+  border-radius: var(--radius-control);
+  box-shadow: var(--field-shadow);
+  color: var(--text);
+  font-size: var(--ui-otp-size);
+  font-weight: 600;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+  transition:
+    border-color var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard),
+    background-color var(--dur-fast) var(--ease-standard);
+}
+.ui-otp-slot[data-split='true'] {
+  margin-inline-end: 8px;
+}
+.ui-otp-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  caret-color: transparent;
+  /* The field size (16px on touch): a phone does not zoom into the field when it takes focus. */
+  font-size: var(--ui-field-size);
+  cursor: text;
+  appearance: none;
+}
+/* The input is invisible; its focus is drawn on the box that takes the next digit, never as a frame round the whole row (index.css
+   gives every :focus-visible an outline). */
+.ui-otp-input:focus,
+.ui-otp-input:focus-visible {
+  outline: none;
+}
+.ui-otp-input::selection {
+  background: transparent;
+}
+/* The browser's autofill paints its own fill on the input: it must never cover the boxes. */
+.ui-otp-input:-webkit-autofill {
+  -webkit-text-fill-color: transparent;
+  transition:
+    background-color 0s 600000s,
+    color 0s 600000s;
+}
+.ui-otp-input:disabled {
+  cursor: not-allowed;
+}
+@media (hover: hover) {
+  .ui-otp:hover:not([data-disabled='true'], [data-invalid='true'], [data-focused='true']) .ui-otp-slot {
+    border-color: var(--ui-field-hover);
+  }
+}
+.ui-otp[data-focused='true'] .ui-otp-slot[data-next='true'] {
+  border-color: var(--focus);
+  box-shadow:
+    0 0 0 1px var(--focus),
+    0 0 0 4px var(--ui-halo);
+}
+.ui-otp[data-invalid='true'] .ui-otp-slot {
+  border-color: var(--danger);
+}
+/* The whole code selected (Ctrl+A): every box takes the selection tint and the focus edge (no single next box), so it is plain that
+   the next key replaces all of it. */
+.ui-otp[data-selected='true'] .ui-otp-slot,
+.ui-otp[data-selected='true'] .ui-otp-slot[data-next='true'] {
+  background: var(--ui-halo);
+  border-color: var(--focus);
+  box-shadow: none;
+}
+.ui-otp[data-selected='true'] .ui-otp-caret {
+  display: none;
+}
+/* Invalid with the keyboard in it: the red edges stay (what is wrong) and the next box takes the --focus ring 2px away (where you are). */
+.ui-otp[data-invalid='true'][data-focused='true'] .ui-otp-slot[data-next='true'] {
+  border-color: var(--danger);
+  box-shadow: var(--field-shadow);
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.ui-otp[data-disabled='true'] .ui-otp-slot {
+  background: var(--raised);
+  border-color: var(--border-strong);
+  box-shadow: none;
+  color: var(--text2);
+}
+.ui-otp-caret {
+  display: none;
+  width: 2px;
+  height: calc(var(--ui-otp-size) + 4px);
+  border-radius: 1px;
+  background: var(--text);
+}
+.ui-otp[data-focused='true'] .ui-otp-caret {
+  display: block;
+  animation: ui-otp-blink 1.1s steps(1, end) infinite;
+}
+@keyframes ui-otp-blink {
+  50% {
+    opacity: 0;
+  }
+}
 .ui-select:focus-visible {
   outline: none;
   border-color: var(--focus);
@@ -3094,12 +3235,14 @@ html:has(.ui-actionbar[data-docked='true']) {
   .ui-disclosure-chevron,
   .ui-collapse,
   .ui-card,
+  .ui-otp-slot,
   .ui-infotip,
   .ui-phonebar {
     transition: none;
   }
   .ui-skeleton,
-  .ui-copy-tick {
+  .ui-copy-tick,
+  .ui-otp[data-focused='true'] .ui-otp-caret {
     animation: none;
   }
   .ui-empty-art,
@@ -3129,7 +3272,10 @@ html:has(.ui-actionbar[data-docked='true']) {
 :root[data-motion='reduce'] :is(.ui-ink, .ui-seg-thumb, .ui-disclosure-chevron, .ui-collapse, .ui-card, .ui-infotip, .ui-phonebar) {
   transition: none;
 }
-:root[data-motion='reduce'] :is(.ui-skeleton, .ui-copy-tick) {
+:root[data-motion='reduce'] .ui-otp-slot {
+  transition: none;
+}
+:root[data-motion='reduce'] :is(.ui-skeleton, .ui-copy-tick, .ui-otp[data-focused='true'] .ui-otp-caret) {
   animation: none;
 }
 :root[data-motion='reduce'] :is(.ui-empty-art, .ui-empty-art[data-idle='true']) {

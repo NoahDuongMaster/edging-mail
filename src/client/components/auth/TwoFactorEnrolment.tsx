@@ -8,7 +8,7 @@ import { qrMatrix } from '../../lib/crypto/qr';
 import type { QrMatrix } from '../../lib/crypto/qr';
 import { useT } from '../../lib/i18n';
 import { useAction } from '../../lib/useAction';
-import { CopyButton, SecretBox, Spinner, TextField, useMediaMatch } from '../../ui';
+import { CodeField, CopyButton, SecretBox, Spinner, useMediaMatch } from '../../ui';
 import { AuthActions, AuthButton, ErrorLine, TextButton, TipLine } from './authUi';
 import { RecoveryCodesPanel } from './RecoveryCodesPanel';
 
@@ -251,26 +251,19 @@ export const TwoFactorEnrolment: React.FC<TwoFactorEnrolmentProps> = ({ t, crede
             noValidate
             className="au-stack au-part"
           >
-            <TextField
+            <CodeField
               id="twofa-code"
               ref={input}
               label={tr('twofa.code_label')}
               hint={tr('twofa.code_hint')}
               error={codeError}
-              mono
-              className="au-otp-large"
               value={code}
-              onChange={(event) => {
-                setCode(sixDigits(event.target.value));
+              onChange={(digits) => {
+                setCode(sixDigits(digits));
                 if (confirm.error !== null) {
                   confirm.clear();
                 }
               }}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              autoCapitalize="off"
-              autoCorrect="off"
-              spellCheck={false}
               aria-invalid={codeError !== undefined || confirm.error !== null}
               aria-describedby={confirm.error === null ? undefined : 'twofa-code-error-server'}
             />

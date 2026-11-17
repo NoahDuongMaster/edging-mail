@@ -14,6 +14,11 @@ export { Card, Section } from './Card';
 export { Checkbox, type CheckboxProps } from './Checkbox';
 export { Chip, type ChipColors, type ChipProps } from './Chip';
 export { CodeBlock } from './CodeBlock';
+/**
+ * CodeField: a one-time code as a row of boxes, one digit each (an authenticator app's six digits); one real input underneath, so
+ * autofill, paste and screen readers treat it as one field. Controlled: `value` + `onChange(digits)`.
+ */
+export { CodeField, type CodeFieldProps } from './CodeField';
 export { CopyButton, type CopyButtonProps, type CopyResult } from './CopyButton';
 export { Dialog, type DialogProps } from './Dialog';
 /** Disclosure: the button that shows or hides a region; DisclosurePanel: that region, whose height opens with it (grid rows). */

@@ -2,7 +2,7 @@ import React from 'react';
 import { ChevronLeft, CircleAlert, CircleCheck, type LucideIcon } from 'lucide-react';
 import type { ThemeTokens } from '../../theme';
 import { useT } from '../../lib/i18n';
-import { ActionBar, Banner, Button, Card, InfoTip, TextField } from '../../ui';
+import { ActionBar, Banner, Button, Card, CodeField, InfoTip } from '../../ui';
 import { SecretField } from '../PasswordField';
 import { AuthButton, AuthSteps, ErrorLine, type AuthStep } from '../auth/authUi';
 import { sixDigits } from '../auth/TwoFactorEnrolment';
@@ -270,19 +270,12 @@ export const CodeInput: React.FC<{
   const tr = useT();
   return (
     <WithError t={t} id={id} error={error}>
-      <TextField
+      <CodeField
         id={id}
         label={tr('twofa.code_label')}
         hint={tr('twofa.code_hint')}
-        mono
-        className="st-code"
         value={value}
-        onChange={(event) => onChange(sixDigits(event.target.value))}
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        autoCapitalize="off"
-        autoCorrect="off"
-        spellCheck={false}
+        onChange={(digits) => onChange(sixDigits(digits))}
         aria-invalid={invalid || showsError(error)}
         aria-describedby={describedIds(id, undefined, error)}
       />
