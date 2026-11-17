@@ -11,7 +11,7 @@ import { usePasswordCheck } from '../../lib/password/usePasswordCheck';
 import { useAction } from '../../lib/useAction';
 import { useCountdown } from '../../lib/useCountdown';
 import { PasswordField, SecretField } from '../PasswordField';
-import { TextField } from '../../ui';
+import { CodeField, TextField } from '../../ui';
 import { AuthActions, AuthButton, AuthCard, ErrorLine, TextButton, TipLine, useAuthPhone } from './authUi';
 import { RecoveryKeyPanel } from './RecoveryKeyPanel';
 
@@ -58,6 +58,9 @@ function useKeyProblem(text: string): string | null {
   return judged && verdict?.text === text ? verdict.problem : null;
 }
 
+/** The digits of an authenticator app's code. */
+const APP_CODE_LENGTH = 6;
+
 /** An address the server can look up: something, an @, something (the server judges the rest). */
 const looksLikeAddress = (text: string): boolean => /^[^\s@]+@[^\s@]+$/.test(text.trim());
 
@@ -73,6 +76,10 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
   const [email, setEmail] = React.useState(initialEmail);
   const [recoveryText, setRecoveryText] = React.useState('');
   const [factor, setFactor] = React.useState('');
+  // The second factor, for an account with two-factor sign-in: the app's six digits in six boxes (as on sign-in), or a recovery code.
+  const [factorMode, setFactorMode] = React.useState<'app' | 'recovery'>('app');
+  // The code is optional (only an account with two-factor sign-in needs it), but a part of one is never sent.
+  const factorPartial = factorMode === 'app' && factor !== '' && factor.length !== APP_CODE_LENGTH;
   const [password, setPassword] = React.useState('');
   const [repeat, setRepeat] = React.useState('');
   // The opened private key with its ticket, and the new recovery key: held only by this screen, zeroed when replaced and when it goes.
@@ -115,7 +122,8 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
     setSubmitted(true);
     const toFix = firstInvalid([
       ['forgot-email', !looksLikeAddress(email)],
-      ['forgot-key', recoveryText.trim() === '' || keyProblem !== null]
+      ['forgot-key', recoveryText.trim() === '' || keyProblem !== null],
+      ['forgot-code', factorPartial]
     ]);
     if (toFix !== undefined) {
       focusLater(toFix);
@@ -247,6 +255,7 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
 
   const emailError = submitted && !looksLikeAddress(email) ? tr('auth.address_invalid') : undefined;
   const keyError = keyProblem ?? (submitted && recoveryText.trim() === '' ? tr('forgot.key_required') : null);
+  const factorError = submitted && factorPartial ? tr('twofa.code_required') : undefined;
   const errorText = action.error !== null && wait > 0 ? `${action.error} ${tr('auth.try_again_in', { seconds: wait })}` : action.error;
   return (
     <AuthCard
@@ -288,18 +297,44 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
         spellCheck={false}
         translate="no"
       />
-      <TextField
-        id="forgot-code"
-        label={tr('forgot.code_label')}
-        hint={tr('forgot.code_hint')}
-        mono
-        value={factor}
-        onChange={(event) => setFactor(event.target.value)}
-        autoComplete="one-time-code"
-        autoCapitalize="off"
-        autoCorrect="off"
-        spellCheck={false}
-      />
+      {factorMode === 'app' ? (
+        // The app's six digits in six boxes, like on sign-in (ui CodeField: one input underneath, so the phone's code autofill and paste work).
+        <CodeField
+          id="forgot-code"
+          label={tr('forgot.code_label')}
+          hint={tr('forgot.code_hint')}
+          error={factorError}
+          value={factor}
+          onChange={setFactor}
+        />
+      ) : (
+        <TextField
+          id="forgot-code"
+          label={tr('auth.recovery_code_label')}
+          hint={tr('forgot.code_hint')}
+          mono
+          className="au-key-input"
+          value={factor}
+          onChange={(event) => setFactor(event.target.value)}
+          autoComplete="off"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
+          translate="no"
+        />
+      )}
+      {/* The switch belongs to the field above it, so it sits right under it (on sign-in the code is the only field, by the button). */}
+      <div className="au-alt au-field-alt">
+        <TextButton
+          t={t}
+          label={factorMode === 'app' ? tr('auth.use_recovery_code') : tr('auth.use_app_code')}
+          onClick={() => {
+            setFactorMode((current) => (current === 'app' ? 'recovery' : 'app'));
+            setFactor('');
+            focusLater('forgot-code');
+          }}
+        />
+      </div>
       <ErrorLine t={t} id="forgot-error" text={errorText} />
       <AuthActions
         after={

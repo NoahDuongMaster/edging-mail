@@ -860,8 +860,9 @@ input[type='search']::-webkit-search-decoration {
 
 /* ---------- CodeField: a one-time code in boxes ---------- */
 
-/* Six boxes in a row (a wider gap after the third, where the authenticator app prints its space), as wide as the form allows up to 56px
-   each: 6 x 56 + 6 x 8 = 384px, and 40px boxes on a 320px phone. Each box has the field's own look (surface, 1px --control edge at 3:1,
+/* Six boxes in a row (a wider gap after the third, where the authenticator app prints its space), as wide as the form allows up to 400px
+   (the width of a sign-in field, so the row ends where the field and the button under it end; 6 x 58.67 + 48 of gaps), 52px boxes on a
+   390px phone and 40px on a 320px one. Each box has the field's own look (surface, 1px --control edge at 3:1,
    the inset shade); the digits are 22px (24px on touch) tabular figures. The real input lies over the row, invisible, and takes every
    tap; the box that takes the next digit carries the focus edge and halo of a field while the input has focus, with a blinking caret
    (a steady one under reduced motion). */
@@ -870,7 +871,7 @@ input[type='search']::-webkit-search-decoration {
   --ui-otp-size: 22px;
   position: relative;
   width: 100%;
-  max-width: 384px;
+  max-width: 400px;
 }
 @media (max-width: 640px), (pointer: coarse) {
   .ui-otp {
@@ -888,7 +889,7 @@ input[type='search']::-webkit-search-decoration {
   align-items: center;
   justify-content: center;
   min-width: 0;
-  max-width: 56px;
+  max-width: 60px;
   height: var(--ui-otp-h);
   background: var(--surface);
   border: 1px solid var(--control);

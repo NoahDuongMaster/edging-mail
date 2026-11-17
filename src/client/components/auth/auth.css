@@ -1017,6 +1017,15 @@ html:has(.au-page) {
   gap: 0 12px;
   margin-top: -8px;
 }
+/* A switch that belongs to the field above it (Forgot password: the app's code or a recovery code) sits right under that field, its words on
+   the field's edge (the 18px padding of the text button taken back), not centred like the ways out under the main button. */
+.au-alt.au-field-alt {
+  justify-content: flex-start;
+  margin-top: -20px;
+}
+.au-alt.au-field-alt > .ui-btn:first-child {
+  margin-inline-start: -18px;
+}
 /* The links' 44px boxes are taller than their words: the form ends that much closer under them, so the bottom edge is not loose. */
 .au-card > .au-alt:last-child {
   margin-bottom: -10px;

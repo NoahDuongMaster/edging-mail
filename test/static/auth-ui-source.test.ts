@@ -151,9 +151,9 @@ describe('the screens before the mailbox', () => {
     ]) {
       expect(code(path.join(AUTH, name)), name).toMatch(/<SecretField\b/);
     }
-    // The one-time code: the browser and the phone offer the code from a message or an app, and a phone opens the number pad. Both
-    // screens ask for it with the six boxes of ui CodeField, whose one input carries those attributes.
-    for (const name of ['SignInScreen.tsx', 'TwoFactorEnrolment.tsx']) {
+    // The one-time code: the browser and the phone offer the code from a message or an app, and a phone opens the number pad. Every
+    // screen asks for it with the six boxes of ui CodeField, whose one input carries those attributes.
+    for (const name of ['SignInScreen.tsx', 'TwoFactorEnrolment.tsx', 'ForgotScreen.tsx']) {
       expect(code(path.join(AUTH, name)), name).toMatch(/<CodeField\b/);
     }
     const codeField = code(path.join(AUTH, '..', '..', 'ui', 'CodeField.tsx'));
