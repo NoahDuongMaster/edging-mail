@@ -108,7 +108,7 @@ and folder, how many attachments it has and their sizes, and the addresses of dr
 - **Revocation.** Signing out, changing the password, disabling an account, changing a role, resetting two-step verification and recovering a password each store a
   `sessions_valid_after` time that invalidates every older cookie on every device and closes the open WebSockets. **Signing out is per device:** every cookie carries a random `sid`, sign-out puts that `sid` on a
   deny list (`revoked_sessions`, one indexed lookup in the same query as the account check, rows dropped by the cron once the cookie could no longer work) and closes only the sockets opened with it, so signing out on
-  the computer does not sign out the phone. A cookie from before this has no `sid` and its sign-out still ends every device. To end every other device (a lost phone), change the password. The check reads the account on every request; if
+  the computer does not sign out the phone. A cookie from before this has no `sid` and its sign-out still ends every device. To end every other device (a lost phone), use Settings > Security > Other devices (`POST /api/auth/sign-out-others`: the password, then every other cookie is revoked through `sessions_valid_after` and this device gets a new one) or change the password. The check reads the account on every request; if
   the database cannot be read the request is refused with `503` and grants nothing (it is not a `401`: the browser is not told its session ended, so it keeps its key and
   its screen, and the next request after the database is back works).
 - **How long this browser keeps the key.** The stored key (IndexedDB, personal devices only) is deleted at the next start when it was not used for seven days (every start

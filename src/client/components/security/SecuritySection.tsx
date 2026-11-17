@@ -1,5 +1,5 @@
 import React from 'react';
-import { CircleAlert, History, KeyRound, ListOrdered, Lock, LockKeyhole, ShieldCheck } from 'lucide-react';
+import { CircleAlert, History, KeyRound, ListOrdered, Lock, LockKeyhole, MonitorSmartphone, ShieldCheck } from 'lucide-react';
 import type { ThemeTokens } from '../../theme';
 import { describeDevice, describeKind, formatWhen, useAccountActivity } from '../../lib/activity';
 import { useSession } from '../../lib/auth';
@@ -11,13 +11,14 @@ import { AccountActivity } from '../AccountActivity';
 import { SettingsPage } from '../settings/SettingsPage';
 import { ChangePasswordView } from './ChangePasswordView';
 import { LockedMailDialog } from './LockedMailDialog';
+import { OtherDevicesView } from './OtherDevicesView';
 import { RecoveryKeyView } from './RecoveryKeyView';
 import { keyTestedAt } from './keyTested';
 import { StatusList, StatusRow, StatusWord, ViewFrame } from './securityUi';
 import { TwoFactorView } from './TwoFactorView';
 import '../settings/settings.css';
 
-type View = 'password' | 'key_test' | 'key_new' | 'two_factor_on' | 'two_factor_codes' | 'two_factor_off' | 'activity';
+type View = 'password' | 'devices' | 'key_test' | 'key_new' | 'two_factor_on' | 'two_factor_codes' | 'two_factor_off' | 'activity';
 
 /** Which way the content moved last: into a view (forward) or back to the cards. Null until the first move (no motion on arrival). */
 type Direction = 'forward' | 'back' | null;
@@ -225,6 +226,17 @@ const Cards: React.FC<CardsProps> = ({ user, open, onDeleteLocked }) => {
           {tr('security.change_password')}
         </Button>
       </StatusRow>
+      <StatusRow id="security-devices" icon={MonitorSmartphone} title={tr('security.devices_title')} lines={[tr('security.devices_hint')]}>
+        <Button
+          size="sm"
+          data-view="devices"
+          onClick={() => {
+            open('devices');
+          }}
+        >
+          {tr('security.devices_action')}
+        </Button>
+      </StatusRow>
       <StatusRow
         id="security-activity"
         icon={History}
@@ -258,6 +270,9 @@ function renderView(view: View, t: ThemeTokens, user: SessionUser, close: () => 
   switch (view) {
     case 'password': {
       return <ChangePasswordView t={t} user={user} onBack={close} />;
+    }
+    case 'devices': {
+      return <OtherDevicesView t={t} user={user} onBack={close} />;
     }
     case 'key_test': {
       return <RecoveryKeyView t={t} user={user} mode="test" onBack={close} />;

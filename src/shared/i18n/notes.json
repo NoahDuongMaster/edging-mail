@@ -543,6 +543,10 @@
     "context": "Audit log row: someone started a password recovery with a recovery key.",
     "security": true
   },
+  "audit.action.sessions_revoked": {
+    "context": "Audit log row: the person signed out their other devices (every other session of the account ended; the device they used stays signed in).",
+    "security": true
+  },
   "audit.action.settings.default_language": {
     "context": "Audit log row: an admin changed the default language of the organisation.",
     "security": false
@@ -2385,6 +2389,10 @@
     "context": "Fallback error when signing out fails: the keys on this device are removed anyway, but the server may not have ended the session",
     "security": true
   },
+  "fail.sign_out_others": {
+    "context": "Fallback error when signing out the other devices failed and the server gave no reason.",
+    "security": true
+  },
   "fail.step_up": {
     "context": "Fallback text when checking the authenticator code (step-up before replacing the recovery key) fails and the server gave no reason.",
     "security": true
@@ -3633,6 +3641,28 @@
   },
   "security.description": {
     "context": "Settings > Security: one line under the page title.",
+    "security": true
+  },
+  "security.devices_action": {
+    "context": "Button: Security card 'Other devices' (opens the form) and the submit button of that form. Signs out every other browser and phone of the account; this device stays signed in.",
+    "security": true,
+    "max": 28
+  },
+  "security.devices_done": {
+    "context": "Success message in Settings > Security after the other devices were signed out, with a Back button under it. This device stays signed in. Plain sentence, no question mark.",
+    "security": true,
+    "max": 90
+  },
+  "security.devices_hint": {
+    "context": "Settings > Security, card 'Other devices': the line under the title.",
+    "security": true
+  },
+  "security.devices_lead": {
+    "context": "Lead line of the 'Sign out other devices' form, above the password field.",
+    "security": true
+  },
+  "security.devices_title": {
+    "context": "Settings > Security: title of the card that signs out the other devices, and the heading of its form.",
     "security": true
   },
   "security.key_new_action": {

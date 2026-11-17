@@ -64,6 +64,7 @@ curl -s -b jar http://localhost:8787/api/stats
 | `POST /api/auth/login`                                                                   | public               | Exchange address + `auth` for a session (or for a second-step challenge) |
 | `POST /api/auth/login/2fa`                                                               | public               | Finish a sign-in with a code or a recovery code                          |
 | `POST /api/auth/logout`                                                                  | public               | Clear the cookie and end this device's session                           |
+| `POST /api/auth/sign-out-others`                                                         | signed in            | End every other session of the account, keep this one                    |
 | `POST /api/auth/change-password`                                                         | signed in (any gate) | Choose a new password                                                    |
 | `POST /api/auth/step-up`                                                                 | signed in            | Record a second-factor check on this session                             |
 | `POST /api/auth/2fa/enroll/start`, `…/confirm`                                           | signed in (any gate) | Enrol two-step verification                                              |
@@ -123,9 +124,16 @@ one account have a budget of their own (also used by step-up and enrolment): ten
 
 Role: public. Always clears the cookie. For a signed-in caller it also ends THIS device's session (the `sid` of its cookie goes on a deny list in `revoked_sessions` until the cookie could no longer
 work) and closes the WebSockets that were opened with that cookie; the person's other devices stay signed in. A cookie from before sign-out became per device carries no `sid`: it still revokes
-every session of the account (`sessions_valid_after`) and closes all of its WebSockets, and the next sign-in has a `sid`. To end every device on purpose, change the password. The body is optional;
+every session of the account (`sessions_valid_after`) and closes all of its WebSockets, and the next sign-in has a `sid`. To end every other device on purpose, use `POST /api/auth/sign-out-others` or change the password. The body is optional;
 `{ "push_endpoint"?: "<the browser's Web Push endpoint>" }` deletes that one push subscription of the caller in the same batch as the revocation (never another person's, and an unknown or
 over-long value is ignored: signing out always works). The client sends it so that a device that cannot reach the push service is not left behind after sign-out.
+
+### `POST /api/auth/sign-out-others`
+
+Role: signed in (not while a gate is open). Body: `{ "current_auth" }`, the `auth` value of the caller's password, and nothing else. The password is checked and throttled like every
+password confirmation (`403 wrong_password`, `429 too_many_attempts`, `503 unavailable`). On success every cookie issued before now stops working (`sessions_valid_after`), the open
+WebSockets of the person close with **4402** (`session renewed`: this browser reconnects with the new cookie and keeps its key, the others are refused and wipe theirs), the caller gets a fresh
+cookie (a shared-device session stays one) and the audit log gets `sessions_revoked`. Answer: `{ "success": true }`. Settings > Security > Other devices calls it.
 
 ### `POST /api/auth/change-password`
 

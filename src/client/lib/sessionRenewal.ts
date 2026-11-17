@@ -1,4 +1,4 @@
-// Some requests make the Worker end EVERY session of the person and, in the same answer, issue the caller a new cookie: change password, new
+// Some requests make the Worker end EVERY session of the person and, in the same answer, issue the caller a new cookie: change password, sign out other devices, new
 // recovery codes, two-factor turned on or off. The private key does not change (at most its wrap does), so the session of THIS device carries on
 // and keeps its key. What comes with the change looks like a lost session (the open sockets close, a request that went out with the old cookie
 // answers 401), and it is not one while the request runs and for a few seconds after it succeeded. During that time those signs only make the
@@ -10,6 +10,7 @@ export const SESSION_RENEWED_CLOSE = 4402;
 /** The requests that renew the caller's session. */
 export const RENEWAL_PATHS: ReadonlySet<string> = new Set([
   '/api/auth/change-password',
+  '/api/auth/sign-out-others',
   '/api/auth/2fa/enroll/confirm',
   '/api/auth/2fa/disable',
   '/api/auth/2fa/recovery-codes'

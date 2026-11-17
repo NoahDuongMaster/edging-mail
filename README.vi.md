@@ -117,7 +117,7 @@ Cách một công ty dùng:
 - Đăng nhập hai lớp bằng ứng dụng xác thực (TOTP) kèm mã khôi phục chỉ dùng được một lần, mặc định bắt buộc với mọi người.
 - Mọi API route, trừ `/api/health` và `/api/auth/*`, đều cần cookie phiên đã ký. Thiếu secret hoặc secret sai định dạng thì đăng nhập bị tắt chứ không bị hạ mức bảo
   mật.
-- Giới hạn tốc độ chống brute-force khi đăng nhập, theo từng địa chỉ client và từng tài khoản; đăng xuất chỉ kết thúc phiên của thiết bị đó (đổi mật khẩu sẽ kết thúc mọi phiên khác).
+- Giới hạn tốc độ chống brute-force khi đăng nhập, theo từng địa chỉ client và từng tài khoản; đăng xuất chỉ kết thúc phiên của thiết bị đó (Settings > Security > Other devices, hoặc đổi mật khẩu, sẽ kết thúc mọi phiên khác).
 - Chỉ chấp nhận same-origin: request cross-site và WebSocket handshake cross-origin đều bị từ chối, và không có CORS header nào.
 - Email HTML được hiển thị trong frame sandbox, ảnh từ xa bị chặn cho đến khi bạn yêu cầu hiển thị; file đính kèm chỉ được phục vụ dưới dạng tải xuống.
 

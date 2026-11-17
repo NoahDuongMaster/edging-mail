@@ -150,3 +150,44 @@ credentialRoutes.post('/change-password', async (c) => {
   const fresh = (await userById(db, row.id)) ?? row;
   return c.json({ success: true, user: sessionUser(fresh, await loadPolicy(db), 0), keys: keyBundle(fresh) });
 });
+
+// "Sign out other devices": ends every other session of the caller (a lost phone, a computer left signed in) and keeps this one. Same shape as a
+// password change without the password change: the current password is required (a stolen cookie alone must not lock the owner out of the
+// other devices), every cookie issued before now is revoked, the person's sockets close with "renewed" (this browser keeps its key and
+// reconnects, the others are refused and wipe theirs) and this device gets a fresh cookie.
+credentialRoutes.post('/sign-out-others', async (c) => {
+  const startedAt = Date.now();
+  const secret = signingSecret(c.env);
+  if (secret === undefined) {
+    return apiError(c, 'not_configured');
+  }
+  const body = await jsonObject<{ current_auth?: unknown }>(c.req, ['current_auth']);
+  if (body === null) {
+    return apiError(c, 'invalid_body');
+  }
+  if (!isAuthValue(body.current_auth)) {
+    return apiError(c, 'invalid_request', { error: 'current_auth is required' });
+  }
+  const db = getDb(c.env.DB);
+  const row = await userById(db, currentUser(c).id);
+  if (row === undefined) {
+    return apiError(c, 'unauthorized');
+  }
+  const refused = await confirmCurrentAuth(c, db, row, body.current_auth, startedAt);
+  if (refused !== null) {
+    return refused;
+  }
+  const now = Date.now();
+  try {
+    await db.batch([
+      db.update(users).set({ sessions_valid_after: now, updated_at: now }).where(eq(users.id, row.id)),
+      auditEntry(db, { id: row.id, email: row.email }, 'sessions_revoked', row.email)
+    ]);
+  } catch (error) {
+    console.error('[edging-mail] Sign-out of other devices failed:', errorClass(error));
+    return apiError(c, 'server_error', { error: 'The other devices could not be signed out' });
+  }
+  await closeSockets(c.env, row.id, { renewed: true });
+  await startSession(c, secret, row.id, now);
+  return c.json({ success: true });
+});

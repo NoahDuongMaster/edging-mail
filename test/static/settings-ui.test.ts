@@ -192,6 +192,7 @@ describe('the Settings dialog and its sections', () => {
       'key_new',
       'two_factor_codes',
       'password',
+      'devices',
       'activity'
     ]);
     expect(opened.every((match) => match[1] === match[2])).toBe(true);

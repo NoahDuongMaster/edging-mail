@@ -32,11 +32,12 @@ describe('closeSockets(..., { renewed })', () => {
     expect(renewedRoutes('await closeSockets(env, id);', 'f.ts')).toEqual([]);
   });
 
-  it('is passed by exactly change-password, 2fa/enroll/confirm, 2fa/disable and 2fa/recovery-codes', () => {
+  it('is passed by exactly change-password, sign-out-others, 2fa/enroll/confirm, 2fa/disable and 2fa/recovery-codes', () => {
     const found = walk(WORKER).flatMap((file) => renewedRoutes(readFileSync(file, 'utf8'), path.basename(file)));
     expect(found.toSorted()).toEqual(
       [
         'credentials.ts: POST /change-password',
+        'credentials.ts: POST /sign-out-others',
         'two-factor.ts: POST /2fa/disable',
         'two-factor.ts: POST /2fa/enroll/confirm',
         'two-factor.ts: POST /2fa/recovery-codes'

@@ -13,7 +13,7 @@ import { apiPost } from '../api';
 import type { SessionUser } from '../auth';
 import { ADMIN_MIN_LENGTH, passwordLength } from '../password/policy';
 import { KeysOpenError } from './errors';
-import { changePasswordBody, lockedDeleteBody, newRecoveryKeyBody, stepUpBody, twoFactorBody } from './requests';
+import { changePasswordBody, lockedDeleteBody, newRecoveryKeyBody, signOutOthersBody, stepUpBody, twoFactorBody } from './requests';
 import { fetchMyKeys } from './unlock';
 import type { KeyBundle } from './unlock';
 import type { RecoveryKeyDraft } from './recoveryDraft';
@@ -103,6 +103,15 @@ export async function changePassword(user: Pick<SessionUser, 'email'>, currentPa
     ),
     'fail.password_change'
   );
+}
+
+/**
+ * "Sign out other devices": the password becomes `auth` here and nothing else of it is sent. The server ends every other session and gives this
+ * device a fresh cookie, so this browser keeps its key and its screen (the request counts as a renewal, `RENEWAL_PATHS`).
+ */
+export async function signOutOtherDevices(user: Pick<SessionUser, 'email'>, password: string): Promise<void> {
+  const { auth } = await deriveCredentials(password, user.email);
+  await apiPost('/api/auth/sign-out-others', signOutOthersBody(auth), 'fail.sign_out_others');
 }
 
 /** What "Create a new recovery key" holds between the password and the last request: the opened private key, only inside this object. */

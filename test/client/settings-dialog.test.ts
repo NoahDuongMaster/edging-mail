@@ -196,7 +196,14 @@ describe('the Settings dialog', () => {
 
   it('shows Security as status cards with one action each, and the latest sign-in on the activity card', () => {
     const html = render({ section: 'security' });
-    for (const id of ['security-two-factor', 'security-key', 'security-codes', 'security-password', 'security-activity']) {
+    for (const id of [
+      'security-two-factor',
+      'security-key',
+      'security-codes',
+      'security-password',
+      'security-devices',
+      'security-activity'
+    ]) {
       expect(tagOf(html, `${id}-label`), id).toMatch(/^<h4 [^>]*class="st-status-title"/);
     }
     expect(tagOf(html, 'security-title')).toMatch(/^<h3 [^>]*tabindex="-1"/i);
@@ -204,6 +211,8 @@ describe('the Settings dialog', () => {
     expect(html).toContain('Admin accounts always need two-factor sign-in');
     expect(html).not.toContain('data-view="two_factor_off"');
     expect(html).toMatch(/<button\b[^>]*data-view="activity"[^>]*>Review<\/button>/);
+    // Signing out the other devices is one more card with one action (its form asks for the password).
+    expect(html).toMatch(/<button\b[^>]*data-view="devices"[^>]*>Sign out other devices<\/button>/);
     expect(html).toContain('Sign-in failed · ');
   });
 

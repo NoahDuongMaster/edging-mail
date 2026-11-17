@@ -24,6 +24,7 @@ import {
   newRecoveryKeyBody,
   secondStepBody,
   setupBody,
+  signOutOthersBody,
   stepUpBody,
   twoFactorBody
 } from '../../src/client/lib/crypto/requests';
@@ -170,6 +171,7 @@ describe('request bodies never carry a secret', () => {
       'wrapped_private_key_recovery'
     ]);
     expect(Object.keys(enrollStartBody('a'))).toEqual(['current_auth']);
+    expect(Object.keys(signOutOthersBody('a'))).toEqual(['current_auth']);
     expect(Object.keys(twoFactorBody('a', '1')).toSorted()).toEqual(['code', 'current_auth']);
     expect(Object.keys(stepUpBody('1'))).toEqual(['code']);
     // Locked old mail: Delete carries the password's `auth` and the key id; Cancel needs the session only.

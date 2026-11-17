@@ -182,6 +182,9 @@ export const breakGlassBody = (setupKey: string, email: string, newAuth: string,
 
 export const enrollStartBody = (currentAuth: string): { current_auth: string } => ({ current_auth: currentAuth });
 
+/** "Sign out other devices": the password's `auth`, nothing else. */
+export const signOutOthersBody = (currentAuth: string): { current_auth: string } => ({ current_auth: currentAuth });
+
 /** Confirm an enrolment, disable two-factor, or make new recovery codes: all take the password's `auth` and one six-digit code. */
 export const twoFactorBody = (currentAuth: string, code: string): { current_auth: string; code: string } => ({
   current_auth: currentAuth,
