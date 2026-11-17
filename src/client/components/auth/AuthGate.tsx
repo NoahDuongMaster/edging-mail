@@ -1,8 +1,8 @@
 import React from 'react';
 import type { ThemeTokens } from '../../theme';
 import type { Session, SessionUser } from '../../lib/auth';
-import { fetchMyKeys } from '../../lib/crypto/unlock';
-import { restoreKey, sweepKeys } from '../../lib/crypto/keyStore';
+import { restoreStoredKey } from '../../lib/crypto/restoreStored';
+import { sweepKeys } from '../../lib/crypto/keyStore';
 import { useUnlockedKey } from '../../lib/crypto/useUnlockedKey';
 import { focusFirstTitle } from '../../lib/screenFocus';
 import { BreakGlassScreen } from './BreakGlassScreen';
@@ -31,14 +31,7 @@ function useKeyRestore(user: SessionUser | undefined, gateOpen: boolean): Restor
     }
     const run = { cancelled: false };
     void (async () => {
-      try {
-        const { keys } = await fetchMyKeys();
-        if (keys !== null) {
-          await restoreKey(userId, keys);
-        }
-      } catch {
-        // The server could not be reached: the unlock screen takes over and asks for the password.
-      }
+      await restoreStoredKey(userId, { cancelled: () => run.cancelled });
       if (!run.cancelled) {
         setChecked(userId);
       }

@@ -51,16 +51,20 @@ export function whenRenewalEnds(callback: () => void): void {
 /** The close code of the Worker's socket for a session that ended (sign-out elsewhere, a reset, an admin's change). */
 export const AUTH_FAILURE_CLOSE = 4401;
 
+/** The close code for a socket whose cookie ran out: this device may hold a renewed one (a session in use is renewed by its requests). */
+export const SESSION_EXPIRED_CLOSE = 4403;
+
 /** What a closed socket asks of the app: nothing, the session check, or the keys wiped first and then the check. */
 export type CloseResponse = 'none' | 'check' | 'wipe_and_check';
 
 /**
  * A 4401 means the session ended: no key may outlive it (CK-13). A 4402 means the person's sessions were renewed, by this device or another:
- * the session check says whether THIS device still has a good cookie. While this device is itself renewing its session (a password change,
- * new recovery codes) both are only a reason to ask the check, never to wipe.
+ * the session check says whether THIS device still has a good cookie. A 4403 means the cookie of that socket ran out, which says nothing about the
+ * cookie of this device (its requests renewed it): the check settles it, and a session that really is over wipes the keys there. While this device is
+ * itself renewing its session (a password change, new recovery codes) a 4401 is only a reason to ask the check, never to wipe.
  */
 export function responseToClose(code: number, ownRenewal: boolean): CloseResponse {
-  if (code === SESSION_RENEWED_CLOSE) {
+  if (code === SESSION_RENEWED_CLOSE || code === SESSION_EXPIRED_CLOSE) {
     return 'check';
   }
   if (code === AUTH_FAILURE_CLOSE) {

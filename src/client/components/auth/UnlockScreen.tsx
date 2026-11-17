@@ -13,7 +13,7 @@ import { AuthButton, AuthCard, CheckboxRow, ErrorLine, HintedLink, TextButton, T
 import { openForgotNext } from './nextScreen';
 
 /**
- * The session is valid but this browser holds no key: the page was reloaded after a "shared device" sign-in, the stored key was older than
+ * The session is valid but this browser holds no key: the page was reloaded after a "shared device" sign-in, the stored key was not used for
  * seven days, or it was wiped. The password opens the keys here, in the browser; nothing is sent to the server except the request for the
  * (already public to this session) wrapped keys. Unlock can always be pressed: an empty password is said under the field. 'Forgot password'
  * signs out and opens the forgotten-password flow (it needs the recovery key), as on the sign-in screen.

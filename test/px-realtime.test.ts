@@ -8,7 +8,7 @@ import { call, cookieOf, createUser, must, ORIGIN, testEnv } from './helpers';
 import type { TestUser } from './helpers';
 
 // crypto-review.md PX-8: an open WebSocket does not outlive the session behind it. The Worker tells the hub when the session's cookie ends, the hub
-// stores that with the socket, closes it with 4401 from an alarm at that time, and never sends it an event after it.
+// stores that with the socket, closes it with 4403 from an alarm at that time, and never sends it an event after it.
 
 afterEach(() => {
   vi.useRealTimers();
@@ -70,7 +70,7 @@ const login = (user: TestUser, shared: boolean) =>
   call('/api/auth/login', { body: { email: user.email, auth: user.auth, kdf: 1, ...(shared ? { shared: true } : {}) } });
 
 describe('a socket ends with its session (PX-8)', () => {
-  it('is closed with 4401 when the cookie it came with expires, without any event or request to wake it', async () => {
+  it('is closed with 4403 when the cookie it came with expires, without any event or request to wake it', async () => {
     const user = await createUser('alex@example.com');
     const tab = await openTab(await shortCookie(user, 2));
     const code = await Promise.race([
@@ -81,7 +81,7 @@ describe('a socket ends with its session (PX-8)', () => {
         }, 8000);
       })
     ]);
-    expect(code).toBe(4401);
+    expect(code).toBe(4403);
   });
 
   it('takes the end from the cookie, whatever header the caller sent', async () => {
@@ -97,7 +97,7 @@ describe('a socket ends with its session (PX-8)', () => {
           }, 8000);
         })
       ])
-    ).toBe(4401);
+    ).toBe(4403);
   });
 
   it('stores twelve hours for a shared device and fourteen days for a normal one, and arms the alarm for the earliest', async () => {
@@ -123,7 +123,7 @@ describe('a socket ends with its session (PX-8)', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(Date.now() + 13 * HOUR);
     expect(await runDurableObjectAlarm(hubOf(user))).toBe(true);
-    expect(await shared.closed).toBe(4401);
+    expect(await shared.closed).toBe(4403);
     const alarm = await runInDurableObject(hubOf(user), (_instance, state) => state.storage.getAlarm());
     expect(alarm).toBeGreaterThan(Date.now() + 13 * 24 * HOUR - 13 * HOUR);
     const stillOpen = await Promise.race([normal.closed, Promise.resolve(-1)]);
@@ -136,7 +136,7 @@ describe('a socket ends with its session (PX-8)', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(Date.now() + 13 * HOUR);
     await broadcast(testEnv(), user.id, { type: 'mail.changed' });
-    expect(await tab.closed).toBe(4401);
+    expect(await tab.closed).toBe(4403);
     expect(tab.events.map((event) => event.type)).toEqual(['hello']);
   });
 

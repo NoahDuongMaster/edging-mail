@@ -347,6 +347,21 @@ export const pushSubscriptions = sqliteTable(
   (t) => [index('idx_push_subscriptions_user_id').on(t.user_id)]
 );
 
+// Sessions that ended on ONE device (sign-out): the `sid` of its cookie. A cookie whose sid is listed here is revoked, the person's other cookies
+// are not (a revocation of every device is `users.sessions_valid_after`). `expires_at` (epoch ms) is the latest the cookie could have worked
+// anyway (ninety days after its sign-in): the cron drops the row then.
+export const revokedSessions = sqliteTable(
+  'revoked_sessions',
+  {
+    sid: text('sid').primaryKey(),
+    user_id: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    expires_at: integer('expires_at').notNull()
+  },
+  (t) => [index('idx_revoked_sessions_expires_at').on(t.expires_at)]
+);
+
 // Web Push (VAPID) key pair: created on first use by src/worker/push.ts, a single row with id 1.
 // The private half is sealed under DATA_KEY (base64url of `version || kid || iv || ciphertext`), so a copy of the database alone cannot sign pushes.
 export const pushKeys = sqliteTable('push_keys', {

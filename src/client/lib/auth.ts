@@ -165,7 +165,7 @@ async function bestEffort<T>(step: () => Promise<T>): Promise<T | null> {
 
 /**
  * What a sign-out does with this browser's push subscription (CK-16). The endpoint goes WITH the logout request and the Worker deletes that one
- * subscription in the same batch that ends the sessions, so a device that cannot reach the push service is not left behind; the browser's own
+ * subscription in the same batch that ends the session, so a device that cannot reach the push service is not left behind; the browser's own
  * unsubscribe comes after the answer (it needs no session).
  */
 export interface SignOutPush {
@@ -202,7 +202,7 @@ export interface LogoutOptions {
 }
 
 /**
- * Sign-out: wipes the keys, ends every session of the person on the server, then clears the caches here. When the request fails the person
+ * Sign-out: wipes the keys, ends this device's session on the server (the person's other devices stay signed in), then clears the caches here. When the request fails the person
  * may still be signed in on the server: the failure is shown and, with no key on this device, the app asks for the password again.
  */
 export function useLogout(options: LogoutOptions = {}): UseMutationResult<unknown, Error, void> {

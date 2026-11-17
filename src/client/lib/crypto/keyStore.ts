@@ -6,12 +6,16 @@ import { tr } from '../i18n';
 // to decrypt but cannot read it out. Two places:
 //   - memory: the key in use. Gone with the page.
 //   - IndexedDB, ONE database per user id, unless the person ticked "shared device" at sign-in (then memory only). The record carries
-//     `storedAt`; the app deletes it at the next start when it is older than seven days (shorter than the 14-day cookie), when there is no
+//     `storedAt`, the last time the key was used (sign-in, app start, or the app being open: `refreshStoredKey`); the app deletes it at the next
+//     start when that is more than seven days ago (shorter than the 14-day cookie), when there is no
 //     valid session for that user, and on sign-out, on any 401 of an authenticated route, on an auth-failure close of the live socket and
 //     when another account signs in. Nothing decrypted is ever written down: lists, readers and search data live in memory only.
 
-/** A stored key is not used after this long: the person unlocks with the password again. */
+/** A stored key unused for this long is not used: the person unlocks with the password again. Every use renews it (`refreshStoredKey`). */
 export const KEY_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** `storedAt` is written again when it is this old (one write an hour at most, not one per request). */
+const STORED_AT_REFRESH_MS = 60 * 60 * 1000;
 
 export interface UnlockedKey {
   userId: string;
@@ -132,6 +136,8 @@ export const indexedDbBackend: KeyBackend = {
 
 let backend: KeyBackend = indexedDbBackend;
 let unlocked: UnlockedKey | null = null;
+/** When this page last wrote `storedAt` (0: not yet): lets `refreshStoredKey` return without touching IndexedDB. */
+let storedAtWritten = 0;
 const listeners = new Set<() => void>();
 const wipeHandlers = new Set<() => void>();
 
@@ -170,12 +176,14 @@ export async function keepKey(userId: string, pair: CryptoKeyPair, publicKey: Pu
   unlocked = { userId, pair, publicKey, keyId: publicKey.keyId, persisted: options.persist };
   if (options.persist) {
     try {
+      const storedAt = Date.now();
       await backend.write(userId, {
         privateKey: pair.privateKey,
         publicKey: toBase64Url(publicKey.spki),
         keyId: publicKey.keyId,
-        storedAt: Date.now()
+        storedAt
       });
+      storedAtWritten = storedAt;
     } catch {
       // IndexedDB refused (a private window, a full disk): the key still works for this visit and the next start unlocks with the password.
     }
@@ -228,10 +236,35 @@ export async function restoreKey(userId: string, server: { public_key: string; k
       persisted: true
     };
     notify();
+    await refreshStoredKey(now);
     return 'restored';
   } catch {
     await backend.remove(userId);
     return 'none';
+  }
+}
+
+/**
+ * The stored key was just used: writes `storedAt` again when it is more than an hour old, so a key that is in use never reaches the seven-day
+ * limit and the person is asked for the password only after a week away. Cheap to call often (a page that wrote it within the hour returns
+ * at once). Never creates a record: a key that was wiped meanwhile stays wiped.
+ */
+export async function refreshStoredKey(now = Date.now()): Promise<void> {
+  const current = unlocked;
+  if (current === null || !current.persisted || now - storedAtWritten < STORED_AT_REFRESH_MS) {
+    return;
+  }
+  try {
+    const record = await backend.read(current.userId);
+    if (record === null || unlocked !== current) {
+      return;
+    }
+    if (now - record.storedAt >= STORED_AT_REFRESH_MS) {
+      await backend.write(current.userId, { ...record, storedAt: now });
+    }
+    storedAtWritten = now;
+  } catch {
+    // Storage refused: the stored key keeps its old time, and at worst the next start asks for the password.
   }
 }
 
@@ -263,6 +296,7 @@ export async function sweepKeys(currentUserId: string | null, now = Date.now()):
 /** Sign-out, a 401, an auth-failure close of the live socket, an account switch: the key leaves memory and every stored copy is deleted. */
 export async function wipeKeys(): Promise<void> {
   unlocked = null;
+  storedAtWritten = 0;
   for (const handler of wipeHandlers) {
     handler();
   }

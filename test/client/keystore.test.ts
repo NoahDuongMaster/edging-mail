@@ -7,6 +7,7 @@ import {
   getUnlockedKey,
   keepKey,
   onKeysWiped,
+  refreshStoredKey,
   restoreKey,
   sweepKeys,
   setKeyBackend,
@@ -111,6 +112,45 @@ describe('the key store', () => {
     expect(await restoreKey('user-a', { public_key: toBase64Url(keys.publicKey.spki), key_id: keys.publicKey.keyId })).toBe('none');
     expect(backend.records.has('user-a')).toBe(false);
     expect(getUnlockedKey()).toBeNull();
+  });
+
+  it('counts a restore as a use: the stored time moves up, so a key in daily use never ages out', async () => {
+    const keys = await realKeys('a@example.com');
+    const storedAt = Date.now() - 6 * 24 * 60 * 60 * 1000;
+    backend.records.set('user-a', {
+      privateKey: keys.pair.privateKey,
+      publicKey: toBase64Url(keys.publicKey.spki),
+      keyId: keys.publicKey.keyId,
+      storedAt
+    });
+    expect(await restoreKey('user-a', { public_key: toBase64Url(keys.publicKey.spki), key_id: keys.publicKey.keyId })).toBe('restored');
+    expect(backend.records.get('user-a')?.storedAt).toBeGreaterThan(storedAt + 5 * 24 * 60 * 60 * 1000);
+    // Seven days after the first restore the key is still good, because it was used in between.
+    const later = Date.now() + 6 * 24 * 60 * 60 * 1000;
+    await sweepKeys('user-a', later);
+    expect(backend.records.has('user-a')).toBe(true);
+  });
+
+  it('refreshes the stored time of the key in use at most once an hour, and never brings back a wiped key', async () => {
+    const keys = await realKeys('a@example.com');
+    await keepKey('user-a', keys.pair, keys.publicKey, { persist: true });
+    const written = backend.records.get('user-a')?.storedAt ?? 0;
+    const hour = 60 * 60 * 1000;
+    await refreshStoredKey(written + hour / 2);
+    expect(backend.records.get('user-a')?.storedAt).toBe(written);
+    await refreshStoredKey(written + hour + 1);
+    expect(backend.records.get('user-a')?.storedAt).toBe(written + hour + 1);
+    // Another tab (or a sign-out) removed the record while this page still held the key in memory: a refresh does not write it back.
+    backend.records.delete('user-a');
+    await refreshStoredKey(written + 3 * hour);
+    expect(backend.records.has('user-a')).toBe(false);
+  });
+
+  it('does not store anything for a shared-device key when it refreshes', async () => {
+    const keys = await realKeys('a@example.com');
+    await keepKey('user-a', keys.pair, keys.publicKey, { persist: false });
+    await refreshStoredKey(Date.now() + 24 * 60 * 60 * 1000);
+    expect(backend.records.size).toBe(0);
   });
 
   it('deletes a stored key that is no longer the key the server holds (a recovery changed it)', async () => {

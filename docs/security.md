@@ -95,7 +95,7 @@ and folder, how many attachments it has and their sizes, and the addresses of dr
 ## Accounts, sessions and gates
 
 - Every `/api/*` route needs a valid session, except `GET /api/health`, sign-in, setup, break-glass and the forgot-password pair.
-- The session cookie is `__Host-edging_session` over https: `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure`, no `Domain`, valid for 14 days (a shared device: no
+- The session cookie is `__Host-edging_session` over https: `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure`, no `Domain`, valid for 14 days after its last renewal (a request that finds it more than a day old gets a new cookie with the same issue time, so a device in use stays signed in, up to 90 days after the sign-in; a shared device: no
   expiry in the browser and twelve hours on the server), and it carries only the account id, the issue time and the time of the last second-factor check. The `__Host-`
   prefix makes the browser refuse the cookie unless it is host-only and Secure, so a page on a sibling subdomain cannot plant a cookie of the same name for the parent
   domain. Over plain http (local development only) the name is `edging_session`, because the prefix needs Secure. Each scheme reads only its own name: over https a cookie
@@ -103,11 +103,17 @@ and folder, how many attachments it has and their sizes, and the addresses of dr
   remove such a leftover cookie when the browser sends one. The cookie is signed with a key derived from `JWT_SECRET` (the two-step challenge uses a separate key derived
   from the same secret). Changing `JWT_SECRET` signs everybody out. `APP_PASSWORD` is not part of it.
 - **An open WebSocket ends with its session.** The Worker tells the person's Durable Object when the session behind a socket ends (the expiry of its cookie: 14 days, or
-  twelve hours on a shared device) and the object closes the socket then, with code `4401`, from an alarm; it also never sends an event to a socket past that time. A
+  twelve hours on a shared device) and the object closes the socket then, with code `4403` (the browser asks the session check, which wipes the key when the session really ended, and reconnects with its renewed cookie), from an alarm; it also never sends an event to a socket past that time. A
   revocation closes the sockets at once, as before.
 - **Revocation.** Signing out, changing the password, disabling an account, changing a role, resetting two-step verification and recovering a password each store a
-  `sessions_valid_after` time that invalidates every older cookie on every device and closes the open WebSockets. The check reads the account on every request; if
-  the database cannot be read the request is treated as signed out.
+  `sessions_valid_after` time that invalidates every older cookie on every device and closes the open WebSockets. **Signing out is per device:** every cookie carries a random `sid`, sign-out puts that `sid` on a
+  deny list (`revoked_sessions`, one indexed lookup in the same query as the account check, rows dropped by the cron once the cookie could no longer work) and closes only the sockets opened with it, so signing out on
+  the computer does not sign out the phone. A cookie from before this has no `sid` and its sign-out still ends every device. To end every other device (a lost phone), change the password. The check reads the account on every request; if
+  the database cannot be read the request is refused with `503` and grants nothing (it is not a `401`: the browser is not told its session ended, so it keeps its key and
+  its screen, and the next request after the database is back works).
+- **How long this browser keeps the key.** The stored key (IndexedDB, personal devices only) is deleted at the next start when it was not used for seven days (every start
+  and every hour the app is open count as use), when no session is valid for that person, and on sign-out. A person who opens the app at least once a week is asked for
+  the password only after a sign-out or a revoked session.
 - **Gates.** A signed-in account may be limited to one task until it is done: choose a new password (a temporary one), set up keys and the recovery key, enrol
   two-step verification. While a gate is open only that gate's endpoints, `GET /api/auth/session` and sign-out answer; everything else is `403` with the gate's
   code. The order on a first sign-in is exactly that. The gates are evaluated on every request from the database, so a policy change reaches sessions that are already
@@ -340,7 +346,7 @@ What this version does about it:
   reveals nothing. A Cloudflare rate-limiting rule on `/api/auth/*` keeps the attempts that renew it down.
 - A disabled account still receives mail: it is delivered, sealed to the person's key or held under `DATA_KEY`, and waits until the account is enabled again. The key lookup does not
   offer a disabled person (it answers like an address nobody owns, so it does not list who is disabled), but the end-to-end route does not look at the status of a recipient.
-- Signing out ends the sessions of every device of the person, but deletes only the Web Push subscription of the browser that signed out (the app names it). The other devices'
+- Signing out ends the session of that device, and deletes only the Web Push subscription of the browser that signed out (the app names it). The other devices'
   subscriptions stay until the push service answers 404 or 410, so a signed-out device can still receive a notification (the sender's name, no subject, no body) until then.
 - Known and left alone: two compare-and-set batches that run in the very same millisecond can write the audit row of the loser twice (no state is ever wrong), and the parser of a
   wrapped key accepts a size range a little wider than the one real size.

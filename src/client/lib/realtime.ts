@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { askSession, sessionKey } from './auth';
-import { wipeKeysInBackground } from './crypto/keyStore';
+import { refreshStoredKey, wipeKeysInBackground } from './crypto/keyStore';
 import { queryKeys } from './queries';
 import { confirmSession, handleSocketClose, SESSION_RENEWED_CLOSE } from './sessionRenewal';
 
@@ -96,6 +96,8 @@ export function useRealtime(enabled: boolean): RealtimeStatus {
       if (socket?.readyState !== WebSocket.OPEN) {
         return;
       }
+      // The app is open: the stored key counts as used, so a key in daily use never ages out (at most one write an hour).
+      void refreshStoredKey();
       socket.send('ping');
       // A connection that went half-open (phone changed network) never answers, and closing it would wait for the peer too.
       pongTimer ??= window.setTimeout(() => {
@@ -146,8 +148,9 @@ export function useRealtime(enabled: boolean): RealtimeStatus {
         }
         lost();
         // The Worker closes a socket whose session ended with 4401 (sign-out elsewhere, a reset): no key may outlive it (CK-13). It closes
-        // them with 4402 when the person's sessions were renewed (a password change, new recovery codes). The session check then says whether
-        // the cookie of this device is still good (the unlock screen asks for the password) or gone.
+        // them with 4402 when the person's sessions were renewed (a password change, new recovery codes), and with 4403 when the cookie the socket
+        // was opened with ran out (this device may hold a renewed one). The session check then says whether the cookie of this device is
+        // still good (the unlock screen asks for the password) or gone.
         handleSocketClose(event.code, {
           wipeKeys: wipeKeysInBackground,
           // A check that cannot be answered is asked again for 30 s, then the keys are wiped and the app locks (SR-1).
@@ -180,6 +183,7 @@ export function useRealtime(enabled: boolean): RealtimeStatus {
       if (document.visibilityState !== 'visible') {
         return;
       }
+      void refreshStoredKey();
       catchUp();
       if (socket === null) {
         reconnectNow();

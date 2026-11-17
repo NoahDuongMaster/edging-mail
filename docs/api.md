@@ -63,7 +63,7 @@ curl -s -b jar http://localhost:8787/api/stats
 | `GET /api/auth/session`                                                                  | public               | Who is signed in, the open gate, the languages, the setup state          |
 | `POST /api/auth/login`                                                                   | public               | Exchange address + `auth` for a session (or for a second-step challenge) |
 | `POST /api/auth/login/2fa`                                                               | public               | Finish a sign-in with a code or a recovery code                          |
-| `POST /api/auth/logout`                                                                  | public               | Clear the cookie and revoke every session of the account                 |
+| `POST /api/auth/logout`                                                                  | public               | Clear the cookie and end this device's session                           |
 | `POST /api/auth/change-password`                                                         | signed in (any gate) | Choose a new password                                                    |
 | `POST /api/auth/step-up`                                                                 | signed in            | Record a second-factor check on this session                             |
 | `POST /api/auth/2fa/enroll/start`, `…/confirm`                                           | signed in (any gate) | Enrol two-step verification                                              |
@@ -90,21 +90,24 @@ Role: public. Body: `{ "email": "<primary address>", "auth": "<43 characters>", 
 session cookie then has no `Max-Age` (it goes when the browser session ends) and the server ends the session after twelve hours whatever the browser does; the flag rides in the
 signed challenge to the second step, and renewing the session (password change, two-step changes, step-up) keeps it. Anything but a boolean is `400 invalid_request`.
 
-| Status | Body                                                                                             | When                                                                                                            |
-| ------ | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| 200    | `{ "success": true, "user": SessionUser, "keys"?: KeyBundle, "gate"?: "<code>" }` + `Set-Cookie` | Right credential, no second factor on the account                                                               |
-| 200    | `{ "success": true, "two_factor_required": true, "challenge": "<token>" }`, no cookie            | Right credential, the account has two-step verification: finish with `login/2fa`                                |
-| 401    | `wrong_credentials`                                                                              | Unknown address, wrong credential or an expired temporary password: the same answer and the same delay (400 ms) |
-| 403    | `account_disabled`                                                                               | Only after a right credential                                                                                   |
-| 403    | `two_factor_broken`                                                                              | The account's TOTP secret cannot be opened (the server secret changed)                                          |
-| 429    | `too_many_attempts` + `retry_after` + `Retry-After`                                              | The client or the account is locked, see [security](security.md#brute-force-protection-and-cpu-cost)            |
-| 503    | `not_configured` / `unavailable`                                                                 | A secret is unusable / the throttle store cannot be read                                                        |
+| Status | Body                                                                                             | When                                                                                                                                                 |
+| ------ | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 200    | `{ "success": true, "user": SessionUser, "keys"?: KeyBundle, "gate"?: "<code>" }` + `Set-Cookie` | Right credential, no second factor on the account                                                                                                    |
+| 200    | `{ "success": true, "two_factor_required": true, "challenge": "<token>" }`, no cookie            | Right credential, the account has two-step verification: finish with `login/2fa`                                                                     |
+| 401    | `wrong_credentials`                                                                              | Unknown address, wrong credential or an expired temporary password: the same answer and the same delay (400 ms)                                      |
+| 403    | `account_disabled`                                                                               | Only after a right credential                                                                                                                        |
+| 403    | `two_factor_broken`                                                                              | The account's TOTP secret cannot be opened (the server secret changed)                                                                               |
+| 429    | `too_many_attempts` + `retry_after` + `Retry-After`                                              | The client or the account is locked, see [security](security.md#brute-force-protection-and-cpu-cost)                                                 |
+| 503    | `not_configured` / `unavailable`                                                                 | A secret is unusable / the throttle store or, on a private route, the session lookup cannot be read (not a 401: the session is not known to be over) |
 
 Every answer of this route with a status of 400 or more takes at least 400 ms, whichever check refused it (so the time of a refusal tells nothing). A success is not held.
 
 `KeyBundle`: `public_key`, `key_id`, `wrapped_private_key_pw`, `keys_version`, and, when they exist, `wrapped_private_key_recovery` and `recovery_set_at`. It is absent (or `null`) for an
 account without keys. The cookie is `__Host-edging_session=…; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=1209600` (14 days) over https and
-`edging_session=…; HttpOnly; SameSite=Lax; Path=/; Max-Age=1209600` over plain http (local development: the `__Host-` prefix needs `Secure`). Each scheme reads only its own name; a
+`edging_session=…; HttpOnly; SameSite=Lax; Path=/; Max-Age=1209600` over plain http (local development: the `__Host-` prefix needs `Secure`). A session in use is renewed: any
+authenticated request that finds the cookie more than a day old (and that does not set a session cookie itself) answers with a new one, `Max-Age` 14 days, the same issue time and
+the same second-factor mark, so only a device that stays away for 14 days is signed out; the renewals stop 90 days after the sign-in, and a shared-device cookie is never renewed.
+Each scheme reads only its own name; a
 cookie called `edging_session` over https is never read, so the first request after an upgrade from an earlier version is signed out. Sign-in and sign-out also clear such a leftover
 cookie when the request carries one.
 
@@ -118,7 +121,9 @@ one account have a budget of their own (also used by step-up and enrolment): ten
 
 ### `POST /api/auth/logout`
 
-Role: public. Always clears the cookie. For a signed-in caller it also revokes every session of the account on every device and closes its WebSockets. The body is optional;
+Role: public. Always clears the cookie. For a signed-in caller it also ends THIS device's session (the `sid` of its cookie goes on a deny list in `revoked_sessions` until the cookie could no longer
+work) and closes the WebSockets that were opened with that cookie; the person's other devices stay signed in. A cookie from before sign-out became per device carries no `sid`: it still revokes
+every session of the account (`sessions_valid_after`) and closes all of its WebSockets, and the next sign-in has a `sid`. To end every device on purpose, change the password. The body is optional;
 `{ "push_endpoint"?: "<the browser's Web Push endpoint>" }` deletes that one push subscription of the caller in the same batch as the revocation (never another person's, and an unknown or
 over-long value is ignored: signing out always works). The client sends it so that a device that cannot reach the push service is not left behind after sign-out.
 
@@ -473,7 +478,8 @@ Role: signed in. `GET /api/ws` with `Upgrade: websocket`. A request without the 
 (two loopback hosts, as in local development, are also accepted), otherwise `403`. Each person has their own Durable Object, so a socket receives only its own events.
 
 A socket lasts as long as the session it was opened with: the Worker tells the person's Durable Object when that session's cookie ends (14 days, or twelve hours for a shared device),
-and the object closes the socket then with close code **4401** and sends it nothing after that time. A connection the object was not told an end for is refused.
+and the object closes the socket then with close code **4403** (`session expired`) and sends it nothing after that time. The cookie of the browser may be newer than the one the
+socket was opened with (its requests renew it), so the browser answers a 4403 with the session check and a new socket, not with a wipe: the check wipes the key when the session is really over. A connection the object was not told an end for is refused.
 
 On connect the server sends `{"type":"hello"}`. Send the text `ping` to get `pong`. Events:
 

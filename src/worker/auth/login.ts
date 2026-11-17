@@ -7,12 +7,12 @@ import { pushSubscriptions, settings, userSignIns } from '../db/schema';
 import { closeSockets } from '../realtime';
 import type { AppEnv, Env } from '../types';
 import { errorClass, jsonObject, nonEmpty } from '../utils';
-import { hasUsers, loadDefaultLanguage, revokeSessions, tempPasswordExpired, userByEmail } from './accounts';
+import { hasUsers, loadDefaultLanguage, revokeSession, revokeSessions, tempPasswordExpired, userByEmail } from './accounts';
 import { currentUser, openGate } from './middleware';
 import { dummyVerify, fromBase64Url, isAuthValue, KDF_VERSION, openData, verifyAuth } from '../../shared/crypto/server';
 import { issueChallenge, loginSecondStepRoutes } from './login-second-step';
 import { dataKeysOf, missingSecrets, signInConfigured } from './secrets';
-import { endSession, sessionIsShared, signingSecret } from './session';
+import { endSession, SESSION_MAX_SECONDS, sessionIsShared, sessionTokenInfo, signingSecret } from './session';
 import { finishSignIn } from './sign-in';
 import {
   ACCOUNT_POLICY,
@@ -209,21 +209,26 @@ loginRoutes.post('/login', async (c) => {
   return answer;
 });
 
-// Revokes every session of this user, on all devices, and closes their open WebSockets. Idempotent; signed out it only clears the cookie
-// (anyone could otherwise sign the owner out).
+// Signs this DEVICE out: its cookie (the sid) is revoked and the sockets opened with it are closed; the person's other devices stay signed in.
+// A cookie from before sign-out became per device has no sid and still revokes every session of the person (the next sign-in has one).
+// Idempotent; signed out it only clears the cookie (anyone could otherwise sign the owner out).
 // The browser may add `push_endpoint` (its own Web Push endpoint): that one subscription of the caller is deleted in the same batch, so a device
 // that can no longer reach the push service is not left behind (CK-16). Anything else in the body, or a bad value, is ignored: signing out must work.
 loginRoutes.post('/logout', async (c) => {
   endSession(c);
   const user = c.get('user');
   if (user !== null) {
+    const info = await sessionTokenInfo(c.req.raw, c.env);
+    const sid = info?.sid;
     try {
       const db = getDb(c.env.DB);
       const body = await c.req.json<unknown>().catch(() => null);
       const named = typeof body === 'object' && body !== null ? (body as { push_endpoint?: unknown }).push_endpoint : undefined;
       const endpoint = typeof named === 'string' && named !== '' && named.length <= MAX_PUSH_ENDPOINT_CHARS ? named : undefined;
       await runBatch(db, [
-        revokeSessions(db, user.id, Date.now()),
+        sid === undefined
+          ? revokeSessions(db, user.id, Date.now())
+          : revokeSession(db, user.id, sid, Date.now() + SESSION_MAX_SECONDS * 1000),
         ...(endpoint === undefined
           ? []
           : [db.delete(pushSubscriptions).where(and(eq(pushSubscriptions.endpoint, endpoint), eq(pushSubscriptions.user_id, user.id)))])
@@ -232,7 +237,7 @@ loginRoutes.post('/logout', async (c) => {
       console.error('[edging-mail] Sign-out could not revoke sessions:', errorClass(error));
       return apiError(c, 'server_error', { error: 'Could not sign out on the server' });
     }
-    await closeSockets(c.env, user.id);
+    await closeSockets(c.env, user.id, sid === undefined ? {} : { sid });
   }
   return c.json({ success: true });
 });

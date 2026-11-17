@@ -1,24 +1,35 @@
 import { DurableObject } from 'cloudflare:workers';
 import { Hono } from 'hono';
 import { currentUser } from './auth/middleware';
-import { sessionEndsAt } from './auth/session';
+import { sessionTokenInfo } from './auth/session';
 import type { AppEnv, Env } from './types';
 import { apiError } from './errors';
 import { errorClass } from './utils';
 
 // WebSocket close codes the Worker uses (4000-4999 are for applications). 4401: the session ended, so the browser must lock and wipe its key.
 // 4402: the user's sessions were revoked by a change that renewed the caller's own session in the same answer; reconnect once with the new cookie.
+// 4403: the cookie this socket was opened with ran out. A session in use is renewed by its API calls, so the browser may hold a newer cookie:
+// it asks the session check (which wipes the key when the session really is over) and reconnects.
 export const CLOSE_SESSION_ENDED = 4401;
 export const CLOSE_SESSION_RENEWED = 4402;
+export const CLOSE_SESSION_EXPIRED = 4403;
 
 // The Worker tells the hub when the session behind a socket ends (epoch ms, from the cookie's own expiry) in this header; a socket is closed with
-// 4401 at that time, from an alarm, and is never sent an event after it (PX-8). A connection without it is refused: fail closed.
+// 4403 at that time, from an alarm, and is never sent an event after it (PX-8). A connection without it is refused: fail closed.
 const SESSION_END_HEADER = 'X-Session-End';
+// And which sign-in the cookie came from (its `sid`, absent for a cookie from before sign-out became per device), so that signing out on one device
+// closes the sockets of that device and no other.
+const SESSION_ID_HEADER = 'X-Session-Id';
 
 /** The end of the session behind a socket, as stored with it when it was accepted; 0 (already over) for one that has none. */
 const endOf = (socket: WebSocket): number => {
   const stored = socket.deserializeAttachment() as { end?: unknown } | null;
   return typeof stored?.end === 'number' ? stored.end : 0;
+};
+
+const sidOf = (socket: WebSocket): string | undefined => {
+  const stored = socket.deserializeAttachment() as { sid?: unknown } | null;
+  return typeof stored?.sid === 'string' ? stored.sid : undefined;
 };
 
 export type MailEvent =
@@ -51,7 +62,8 @@ export class MailHub extends DurableObject<Env> {
         return new Response(null, { status: 401 });
       }
       const { 0: client, 1: server } = new WebSocketPair();
-      server.serializeAttachment({ end });
+      const sid = request.headers.get(SESSION_ID_HEADER);
+      server.serializeAttachment({ end, ...(sid === null || sid === '' ? {} : { sid }) });
       this.ctx.acceptWebSocket(server);
       await this.wakeAtOrBefore(end);
       server.send(JSON.stringify({ type: 'hello' }));
@@ -65,7 +77,7 @@ export class MailHub extends DurableObject<Env> {
       for (const socket of this.ctx.getWebSockets()) {
         if (endOf(socket) <= now) {
           // The session behind it is over (the alarm has not run yet, or never was armed): nothing more is sent to it.
-          this.closeQuietly(socket, CLOSE_SESSION_ENDED, 'session expired');
+          this.closeQuietly(socket, CLOSE_SESSION_EXPIRED, 'session expired');
           continue;
         }
         // One broken socket must not stop the others from getting the event.
@@ -80,12 +92,15 @@ export class MailHub extends DurableObject<Env> {
       return Response.json({ success: true, delivered });
     }
 
-    // The user's sessions were revoked (sign out, password change or reset, disable, role change, delete): end every socket. A change that
+    // One device signed out (`?sid=`): only the sockets that were opened with that sign-in end, the person's other devices keep theirs.
+    // The user's sessions were revoked (password change or reset, disable, role change, delete): end every socket. A change that
     // renews the caller's own session in the same answer (password, two-step verification) closes with 4402 instead of 4401, so that
     // browser keeps its key and reconnects with the new cookie; the sockets of other devices reconnect with a revoked cookie and are refused.
     if (request.method === 'POST' && new URL(request.url).pathname === '/close') {
-      const renewed = new URL(request.url).searchParams.get('reason') === 'renewed';
-      const sockets = this.ctx.getWebSockets();
+      const { searchParams } = new URL(request.url);
+      const renewed = searchParams.get('reason') === 'renewed';
+      const sid = searchParams.get('sid');
+      const sockets = this.ctx.getWebSockets().filter((socket) => sid === null || sidOf(socket) === sid);
       for (const socket of sockets) {
         this.closeQuietly(socket, renewed ? CLOSE_SESSION_RENEWED : CLOSE_SESSION_ENDED, renewed ? 'session renewed' : 'session ended');
       }
@@ -102,7 +117,7 @@ export class MailHub extends DurableObject<Env> {
     for (const socket of this.ctx.getWebSockets()) {
       const end = endOf(socket);
       if (end <= now) {
-        this.closeQuietly(socket, CLOSE_SESSION_ENDED, 'session expired');
+        this.closeQuietly(socket, CLOSE_SESSION_EXPIRED, 'session expired');
       } else {
         next = Math.min(next ?? end, end);
       }
@@ -155,12 +170,17 @@ realtimeRoutes.get('/ws', async (c): Promise<Response> => {
     });
   }
   // The session ends when its cookie does (PX-8): the hub is told when, and closes the socket then. Anything a caller sent under that header is replaced.
-  const end = await sessionEndsAt(c.req.raw, c.env);
-  if (end === undefined) {
+  const session = await sessionTokenInfo(c.req.raw, c.env);
+  if (session === undefined) {
     return apiError(c, 'unauthorized');
   }
   const headers = new Headers(c.req.raw.headers);
-  headers.set(SESSION_END_HEADER, String(end));
+  headers.set(SESSION_END_HEADER, String(session.end));
+  if (session.sid === undefined) {
+    headers.delete(SESSION_ID_HEADER);
+  } else {
+    headers.set(SESSION_ID_HEADER, session.sid);
+  }
   return hub(c.env, currentUser(c).id).fetch(new Request(c.req.raw, { headers }));
 });
 
@@ -176,10 +196,20 @@ export async function broadcast(env: Env, userId: string, event: MailEvent): Pro
   }
 }
 
-/** Closes every open WebSocket of a user, after their sessions were revoked. Never throws. `renewed`: the caller's own session was renewed too. */
-export async function closeSockets(env: Env, userId: string, options: { renewed?: boolean } = {}): Promise<void> {
+/**
+ * Closes every open WebSocket of a user, after their sessions were revoked. Never throws. `renewed`: the caller's own session was renewed too.
+ * `sid`: only the sockets opened with that sign-in (one device signed out).
+ */
+export async function closeSockets(env: Env, userId: string, options: { renewed?: boolean; sid?: string } = {}): Promise<void> {
+  const query = new URLSearchParams();
+  if (options.renewed === true) {
+    query.set('reason', 'renewed');
+  }
+  if (options.sid !== undefined) {
+    query.set('sid', options.sid);
+  }
   try {
-    await hub(env, userId).fetch(`https://mail-hub/close${options.renewed === true ? '?reason=renewed' : ''}`, { method: 'POST' });
+    await hub(env, userId).fetch(`https://mail-hub/close${query.size === 0 ? '' : `?${query.toString()}`}`, { method: 'POST' });
   } catch (error) {
     console.error('[edging-mail] realtime: closing sockets failed:', errorClass(error));
   }

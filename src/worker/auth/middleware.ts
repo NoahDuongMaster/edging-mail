@@ -1,7 +1,7 @@
 import type { MiddlewareHandler } from 'hono';
 import type { AppEnv, SessionUser } from '../types';
 import { apiError } from '../errors';
-import { verifiedUser } from './session';
+import { lookupSession, renewSessionCookie } from './session';
 
 // Gates: states in which a signed-in account may do ONE thing and nothing else. The first gate that applies wins, and while it is open
 // only its own endpoints, GET /api/auth/session and POST /api/auth/logout answer; every other /api route answers
@@ -53,7 +53,7 @@ const OPTIONAL = new Set(['/api/auth/session', '/api/auth/logout']);
 
 /**
  * Registered above every route so that a route added later is private by default: puts `user` on the context, answers 401 without a
- * real session (see verifiedUser) and 403 while a gate is open. The `/api/admin` role check is `requireAdmin`.
+ * real session (see lookupSession) and 403 while a gate is open, 503 while the session cannot be checked (D1 down). The `/api/admin` role check is `requireAdmin`.
  */
 export const authenticate: MiddlewareHandler<AppEnv> = async (c, next) => {
   const path = c.req.path;
@@ -62,20 +62,30 @@ export const authenticate: MiddlewareHandler<AppEnv> = async (c, next) => {
     await next();
     return;
   }
-  const user = await verifiedUser(c.req.raw, c.env);
+  const found = await lookupSession(c.req.raw, c.env);
+  if (found === 'unavailable') {
+    // D1 could not be read: nothing is known about this cookie. A 401 would sign the person out and wipe their key on this device.
+    return apiError(c, 'unavailable');
+  }
+  const user = found?.user ?? null;
   c.set('user', user);
-  if (user === null) {
+  if (found === null) {
     if (OPTIONAL.has(path)) {
       await next();
       return;
     }
     return apiError(c, 'unauthorized');
   }
-  const gate = openGate(user);
+  const gate = openGate(found.user);
   if (gate !== undefined && !ALWAYS_OPEN.has(`${c.req.method} ${path}`) && !gate.endpoints.includes(`${c.req.method} ${path}`)) {
     return c.json({ success: false, error: gate.code, code: gate.code }, 403);
   }
   await next();
+  // After the route: one that started or ended a session has written its own cookie, which a renewal must not overwrite. Not for the socket:
+  // its 101 answer is not rewritten (the next API request renews).
+  if (path !== '/api/ws') {
+    await renewSessionCookie(c, found.claims);
+  }
 };
 
 /**

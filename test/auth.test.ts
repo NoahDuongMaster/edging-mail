@@ -498,7 +498,7 @@ describe('forced password change, change password, sign out (AC6, AC7, AC8)', ()
     expect((await call('/api/auth/login', { body: { email: user.email, auth: user.auth, kdf: 1 } })).status).toBe(200);
   });
 
-  it('signs out every device of this user and nobody else (AC8)', async () => {
+  it('signs out this device of this user and no other, and nobody else (AC8)', async () => {
     const alex = await createUser('alex@example.com');
     const blake = await createUser('blake@example.com');
     const alexPhone = await signIn(alex);
@@ -508,11 +508,12 @@ describe('forced password change, change password, sign out (AC6, AC7, AC8)', ()
     expect(out.status).toBe(200);
     expect(out.headers.get('Set-Cookie') ?? '').toMatch(/__Host-edging_session=;|Max-Age=0|Expires=/i);
     expect((await call('/api/stats', { cookie: alexPhone })).status).toBe(401);
-    expect((await call('/api/stats', { cookie: alexLaptop })).status).toBe(401);
+    expect((await call('/api/stats', { cookie: alexLaptop })).status).toBe(200);
     expect((await call('/api/stats', { cookie: blakeCookie })).status).toBe(200);
     // Idempotent, and harmless when signed out.
     expect((await call('/api/auth/logout', { body: {} })).status).toBe(200);
     expect((await call('/api/auth/logout', { cookie: alexPhone, body: {} })).status).toBe(200);
+    expect((await call('/api/stats', { cookie: alexLaptop })).status).toBe(200);
     expect((await call('/api/stats', { cookie: blakeCookie })).status).toBe(200);
   });
 

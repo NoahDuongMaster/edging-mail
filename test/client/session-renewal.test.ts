@@ -10,6 +10,7 @@ import { unlockWithPassword } from '../../src/client/lib/crypto/unlock';
 import {
   AUTH_FAILURE_CLOSE,
   RENEWAL_PATHS,
+  SESSION_EXPIRED_CLOSE,
   SESSION_RENEWED_CLOSE,
   handleSocketClose,
   renewalInProgress,
@@ -130,6 +131,8 @@ describe('what a closed socket asks of the app', () => {
     [SESSION_RENEWED_CLOSE, true, 'check'],
     [AUTH_FAILURE_CLOSE, false, 'wipe_and_check'],
     [AUTH_FAILURE_CLOSE, true, 'check'],
+    [SESSION_EXPIRED_CLOSE, false, 'check'],
+    [SESSION_EXPIRED_CLOSE, true, 'check'],
     [1000, false, 'none'],
     [1006, true, 'none']
   ] as const)('code %i, renewing %s: %s', (code, renewing, expected) => {

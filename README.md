@@ -111,7 +111,7 @@ The app lives at `/app`. An optional public landing page at `/`, `/en/` and `/zh
 - Every person gets a recovery key at first sign-in. Someone who forgets their password sets a new one themselves with that key; no admin can reset another person's password.
 - Two-factor sign-in with an authenticator app (TOTP) and single-use recovery codes, required for everyone by default.
 - Every API route except `/api/health` and `/api/auth/*` needs a signed session cookie. A missing or malformed secret turns sign-in off instead of weakening it.
-- Brute-force throttling on sign-in, per client address and per account, and signing out revokes that person's sessions on every device.
+- Brute-force throttling on sign-in, per client address and per account, and signing out ends the session of that device (changing the password ends every other one).
 - Same-origin only: cross-site requests and cross-origin WebSocket handshakes are refused, and there are no CORS headers.
 - HTML mail renders in a sandboxed frame with remote images blocked until you ask; attachments are served as downloads only.
 

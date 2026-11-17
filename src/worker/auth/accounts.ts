@@ -1,6 +1,6 @@
 import { eq, sql } from 'drizzle-orm';
 import type { BatchQuery, Db } from '../db';
-import { settings, users } from '../db/schema';
+import { revokedSessions, settings, users } from '../db/schema';
 import { isLocale } from '../../shared/i18n/languages';
 import type { Locale } from '../../shared/i18n/languages';
 import type { SessionUser } from '../types';
@@ -83,3 +83,10 @@ export const keyBundle = (row: UserRow): Record<string, string | number> | null 
  */
 export const revokeSessions = (db: Db, userId: string, now: number): BatchQuery =>
   db.update(users).set({ sessions_valid_after: now }).where(eq(users.id, userId));
+
+/**
+ * Revokes ONE session of a user (one device signed out): the cookie with this `sid` stops working, the person's other cookies keep working.
+ * `expiresAt`: when that cookie could no longer work anyway, after which the row is not needed (the cron drops it).
+ */
+export const revokeSession = (db: Db, userId: string, sid: string, expiresAt: number): BatchQuery =>
+  db.insert(revokedSessions).values({ sid, user_id: userId, expires_at: expiresAt }).onConflictDoNothing();

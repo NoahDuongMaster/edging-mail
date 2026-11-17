@@ -17,6 +17,7 @@ const TABLES = [
   'audit_log',
   'user_sign_ins',
   'login_attempts',
+  'revoked_sessions',
   'push_subscriptions',
   'push_keys',
   'attachments',

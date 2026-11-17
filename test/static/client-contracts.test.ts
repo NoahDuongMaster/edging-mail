@@ -3,16 +3,17 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { CONTROL_HEIGHT } from '../../src/shared/design/tokens';
-import { AUTH_FAILURE_CLOSE, SESSION_RENEWED_CLOSE } from '../../src/client/lib/sessionRenewal';
+import { AUTH_FAILURE_CLOSE, SESSION_EXPIRED_CLOSE, SESSION_RENEWED_CLOSE } from '../../src/client/lib/sessionRenewal';
 import { ROOT, clientFiles } from './helpers/scan';
 
 // Two promises of the browser code that nothing else would notice breaking. Reads the sources, so it runs in Node.
 
 describe('the client and the Worker agree', () => {
-  it('on the close codes of the live socket: 4401 session ended, 4402 session renewed', () => {
+  it('on the close codes of the live socket: 4401 session ended, 4402 session renewed, 4403 cookie ran out', () => {
     const worker = readFileSync(path.join(ROOT, 'src', 'worker', 'realtime.ts'), 'utf8');
     expect(Number(/CLOSE_SESSION_ENDED = (\d+)/.exec(worker)?.[1])).toBe(AUTH_FAILURE_CLOSE);
     expect(Number(/CLOSE_SESSION_RENEWED = (\d+)/.exec(worker)?.[1])).toBe(SESSION_RENEWED_CLOSE);
+    expect(Number(/CLOSE_SESSION_EXPIRED = (\d+)/.exec(worker)?.[1])).toBe(SESSION_EXPIRED_CLOSE);
   });
 });
 
