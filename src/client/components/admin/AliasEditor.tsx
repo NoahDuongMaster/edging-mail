@@ -43,24 +43,24 @@ export const AliasEditor: React.FC<{ t: ThemeTokens; user: AdminUser }> = ({ use
   };
 
   return (
-    <section aria-labelledby="alias-heading" className="ad-dsec">
+    <section aria-labelledby="alias-heading" className="adm-dsec">
       {/* What the extra addresses do, in an InfoTip after the section's title (DESIGN-v4m R1). */}
       <div className="ui-tip-row">
-        <h3 id="alias-heading" className="ad-dsec-title">
+        <h3 id="alias-heading" className="adm-dsec-title">
           {tr('users.alias_heading')}
         </h3>
         <InfoTip label={tr('users.alias_heading')}>{tr('users.alias_hint')}</InfoTip>
       </div>
       {/* One card: the addresses (or None), then the field that adds one. */}
-      <div className="ad-card ad-alias-card">
+      <div className="adm-card adm-alias-card">
         {user.aliases.length === 0 ? (
-          <p className="ad-muted ad-alias-none">{tr('users.alias_none')}</p>
+          <p className="adm-muted adm-alias-none">{tr('users.alias_none')}</p>
         ) : (
-          <Table label={tr('users.alias_heading')} dense className="ad-table ad-table-aliases">
+          <Table label={tr('users.alias_heading')} dense className="adm-table adm-table-aliases">
             <thead>
               <tr>
                 <th scope="col">{tr('term.address')}</th>
-                <th scope="col" className="ad-end">
+                <th scope="col" className="adm-end">
                   <VisuallyHidden>{tr('admin.col_actions')}</VisuallyHidden>
                 </th>
               </tr>
@@ -68,8 +68,8 @@ export const AliasEditor: React.FC<{ t: ThemeTokens; user: AdminUser }> = ({ use
             <tbody>
               {user.aliases.map((alias) => (
                 <tr key={alias}>
-                  <td className="ad-cell-alias ad-wrap">{alias}</td>
-                  <td className="ad-cell-remove ad-end ad-shrink">
+                  <td className="adm-cell-alias adm-wrap">{alias}</td>
+                  <td className="adm-cell-remove adm-end adm-shrink">
                     <IconButton
                       label={tr('users.alias_remove', { address: alias })}
                       size="sm"
@@ -91,9 +91,9 @@ export const AliasEditor: React.FC<{ t: ThemeTokens; user: AdminUser }> = ({ use
           onSubmit={(event) => {
             void submit(event);
           }}
-          className="ad-field-group"
+          className="adm-field-group"
         >
-          <div className="ad-inline">
+          <div className="adm-inline">
             <TextField
               id="alias-new"
               label={tr('users.alias_add_label')}

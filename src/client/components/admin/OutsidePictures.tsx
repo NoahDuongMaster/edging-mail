@@ -52,12 +52,12 @@ export const OutsidePictures: React.FC<{ enabled: boolean | undefined }> = ({ en
           // The answer is said only while this card is on screen (a callback of `mutate` is dropped once it is gone); the settings are read again either way.
           save.mutate(next, { onSuccess: () => announce(tr('settings.saved')) });
         }}
-        className="ad-switch"
+        className="adm-switch"
       />
       {save.isSuccess || save.isError ? (
-        <div className="ad-row-note">
+        <div className="adm-row-note">
           {save.isSuccess ? (
-            <p className="ad-feedback">
+            <p className="adm-feedback">
               <CircleCheck size={16} aria-hidden="true" />
               {tr('settings.saved')}
             </p>

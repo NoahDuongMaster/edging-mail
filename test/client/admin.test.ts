@@ -31,7 +31,7 @@ const renderDns = (check: DnsCheck): string => renderToStaticMarkup(createElemen
 const mxRows = (html: string): string[] =>
   [
     ...(html.split(`aria-label="${tr('domains.sending')}"`)[0] ?? '').matchAll(
-      /<li class="ad-record"><span class="ad-rtype">MX<\/span><span class="ad-record-name" translate="no">([^<]*)<\/span>/g
+      /<li class="adm-record"><span class="adm-rtype">MX<\/span><span class="adm-record-name" translate="no">([^<]*)<\/span>/g
     )
   ].map((match) => match[1]);
 
@@ -56,7 +56,7 @@ describe('the DNS answer of a domain', () => {
     const html = renderDns(dnsAnswer([]));
     // v3: the card's one badge is its summary (DomainCard); the steps and the records say their state in words after an icon, never a pill.
     expect(html).not.toContain('ui-badge');
-    const words = [...html.matchAll(/<span class="ad-plain" data-tone="(\w+)">/g)].map((match) => match[1]);
+    const words = [...html.matchAll(/<span class="adm-plain" data-tone="(\w+)">/g)].map((match) => match[1]);
     // Receiving and sending not ready (danger), then the three records, what is missing first: required (danger), optional (warning), found.
     expect(words).toEqual(['danger', 'danger', 'danger', 'warning', 'success']);
     expect(html).toContain(tr('domains.record_ok'));
@@ -65,7 +65,7 @@ describe('the DNS answer of a domain', () => {
 
   it('numbers the steps of the checklist (ui Steps) and gives every host a Copy that names it', () => {
     const html = renderDns(dnsAnswer([{ priority: 10, host: 'mx.other.example' }]));
-    expect(html).toMatch(/^<ol role="list" class="ui-steps ad-checklist"><li class="ui-step">/);
+    expect(html).toMatch(/^<ol role="list" class="ui-steps adm-checklist"><li class="ui-step">/);
     expect(html.match(/<li class="ui-step">/g)).toHaveLength(2);
     for (const host of ['mx.other.example', 'cf-bounce.example.com', 'cf-bounce._domainkey.example.com', '_dmarc.example.com']) {
       expect(html, host).toContain(`aria-label="${tr('domains.copy_record', { name: host })}"`);
@@ -84,7 +84,7 @@ describe('the DNS answer of a domain', () => {
     expect(html).not.toContain(tr('domains.guide_path_routing'));
     expect(html).toMatch(/<a href="https:\/\/dash\.cloudflare\.com\/" target="_blank" rel="noopener noreferrer"/);
     // v4m R1: the step that works says nothing more than its Ready; only the failing step has a line on what is missing.
-    expect(html.match(/class="ad-dns-line"/g)).toHaveLength(1);
+    expect(html.match(/class="adm-dns-line"/g)).toHaveLength(1);
     expect(html).toContain(tr('domains.records_missing', { count: 2 }));
   });
 });
@@ -92,7 +92,7 @@ describe('the DNS answer of a domain', () => {
 describe('a missing record of Email Sending', () => {
   it('says where its value is (the app cannot know it), and only under the records that are missing', () => {
     const html = renderDns(dnsAnswer([]));
-    expect(html.match(/class="ad-record-hint"/g)).toHaveLength(2);
+    expect(html.match(/class="adm-record-hint"/g)).toHaveLength(2);
     expect(html).toContain(tr('domains.record_value_hint'));
   });
 });
@@ -128,14 +128,14 @@ describe('the state of a person in the admin console', () => {
     expect(render(createElement(PersonTwoFactor, { user: person({ two_factor: false, status: 'disabled' }) }))).not.toContain('data-tone');
     // Under its column header the short word; in a phone's stacked row (no header) the short phrase of the one meta line (v4m).
     const short = render(createElement(PersonTwoFactor, { user: person({}), short: true }));
-    expect(short).toContain(`<span class="ad-wide">${tr('users.two_factor_on')}</span>`);
-    expect(short).toContain(`<span class="ad-narrow">${tr('users.two_factor_meta_on')}</span>`);
+    expect(short).toContain(`<span class="adm-wide">${tr('users.two_factor_on')}</span>`);
+    expect(short).toContain(`<span class="adm-narrow">${tr('users.two_factor_meta_on')}</span>`);
   });
 
   it('draws every status as an icon and a word, never a pill, so the words of the column share one edge', () => {
     for (const fields of [{}, { never_signed_in: true }, { status: 'disabled' as const }]) {
       const html = render(createElement(PersonStatus, { user: person(fields) }));
-      expect(html).toMatch(/^<span class="ad-plain"( data-tone="(warning|danger)")?><span class="ad-state-icon" aria-hidden="true">/);
+      expect(html).toMatch(/^<span class="adm-plain"( data-tone="(warning|danger)")?><span class="adm-state-icon" aria-hidden="true">/);
       expect(html).not.toContain('ui-badge');
     }
   });

@@ -131,8 +131,8 @@ describe('the screens before the mailbox (truong C-9, C-11, C-12)', () => {
     // button there (the name button of a row of the People table), on the console's root and on the panel of every admin dialog (ModalFrame, a
     // ui Dialog whose panel takes the classes it is given).
     expect(read('index.css')).toMatch(/@media \(max-width: 900px\) \{\s*\.nm-admin button \{\s*min-height: 44px;/);
-    expect(read('components', 'admin', 'AdminConsole.tsx')).toMatch(/className="ad-console nm-admin"/);
-    expect(read('components', 'admin', 'adminUi.tsx')).toMatch(/<Dialog\b[^>]*\sclassName="nm-admin ad-dialog"/);
+    expect(read('components', 'admin', 'AdminConsole.tsx')).toMatch(/className="adm-console nm-admin"/);
+    expect(read('components', 'admin', 'adminUi.tsx')).toMatch(/<Dialog\b[^>]*\sclassName="nm-admin adm-dialog"/);
     expect(read('ui', 'Dialog.tsx')).toMatch(/className=\{cx\('ui-dialog', className\)\}/);
     expect(read('components', 'E2eBadge.tsx')).not.toMatch(/minHeight:/);
   });

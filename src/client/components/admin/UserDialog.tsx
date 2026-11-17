@@ -64,13 +64,13 @@ export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose
     if (confirming !== null) {
       target = footRef.current?.querySelector<HTMLElement>('[data-autofocus]');
     } else if (before !== null) {
-      target = actionsRef.current?.querySelectorAll<HTMLElement>('.ad-actions-row button').item(BUTTON_PLACE[before]);
+      target = actionsRef.current?.querySelectorAll<HTMLElement>('.adm-actions-row button').item(BUTTON_PLACE[before]);
     }
     target?.focus({ preventScroll: true });
     // On a phone sheet a confirmation can open under the fold: its question is brought into view (at once, nothing glides); its buttons
     // are the sheet's foot, always in view.
     if (confirming !== null) {
-      actionsRef.current?.querySelector('.ad-confirm')?.scrollIntoView({ block: 'nearest' });
+      actionsRef.current?.querySelector('.adm-confirm')?.scrollIntoView({ block: 'nearest' });
     }
   }, [confirming]);
   // When an admin's two-factor reset was scheduled for (it is not done yet): said under the buttons, not as a success.
@@ -176,7 +176,7 @@ export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose
         aria-label={tr('common.confirm')}
         onKeyDown={confirmKey}
         aria-describedby={phone ? 'user-confirm' : undefined}
-        className="ad-confirm-foot"
+        className="adm-confirm-foot"
       >
         <Button data-autofocus disabled={action.busy} onClick={() => setConfirming(null)}>
           {tr('common.cancel')}
@@ -201,10 +201,10 @@ export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose
 
       <AliasEditor t={t} user={user} />
 
-      <section ref={actionsRef} aria-labelledby="user-actions" className="ad-dsec">
+      <section ref={actionsRef} aria-labelledby="user-actions" className="adm-dsec">
         <AccountHeading id="user-actions" user={user} isSelf={isSelf} />
         {pending === null ? (
-          <div className="ad-actions-row">
+          <div className="adm-actions-row">
             {/* Each action's button, described by what follows from it (said in the section's InfoTip); Delete account last, apart. */}
             <ActionLine id="user-role-desc" text={tr(user.role === 'member' ? 'users.make_admin_desc' : 'users.make_member_desc')}>
               {user.role === 'member' ? (
@@ -262,7 +262,7 @@ export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose
             )}
             {/* Delete account stands apart, under a hairline: its own dialog says what it deletes, before anything is. */}
             {isSelf ? null : (
-              <div className="ad-action ad-danger">
+              <div className="adm-action adm-danger">
                 <Button ref={deleteRef} variant="danger" disabled={action.busy} onClick={onDelete}>
                   {tr('admin.delete_account')}
                 </Button>
@@ -270,10 +270,10 @@ export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose
             )}
           </div>
         ) : (
-          <div id="user-confirm" className="ad-confirm">
-            {pending.title === undefined ? null : <p className="ad-confirm-title">{pending.title}</p>}
+          <div id="user-confirm" className="adm-confirm">
+            {pending.title === undefined ? null : <p className="adm-confirm-title">{pending.title}</p>}
             {pending.paragraphs.map((paragraph) => (
-              <p key={paragraph} className="ad-text">
+              <p key={paragraph} className="adm-text">
                 {paragraph}
               </p>
             ))}
@@ -283,12 +283,12 @@ export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose
         )}
         {/* Said once: when the list already carries the scheduled reset, the summary at the top says it. */}
         {scheduledDue === null || user.two_factor_reset_due_at !== null ? null : (
-          <p role="status" className="ad-muted">
+          <p role="status" className="adm-muted">
             {tr('users.reset_scheduled', { due: formatWhen(scheduledDue) })}
           </p>
         )}
         {action.error === null ? null : <ErrorText>{action.error}</ErrorText>}
-        {isSelf ? <p className="ad-muted">{tr('users.self_note')}</p> : null}
+        {isSelf ? <p className="adm-muted">{tr('users.self_note')}</p> : null}
       </section>
     </ModalFrame>
   );

@@ -33,7 +33,7 @@ const ICONS: Record<Tab, React.ReactNode> = {
 };
 
 /** The row the glide capsule sits under (ui/glide.ts): the open section's tab in the nav. */
-const OPEN_SECTION = '.ad-tabs > [role="tab"][aria-selected="true"]';
+const OPEN_SECTION = '.adm-tabs > [role="tab"][aria-selected="true"]';
 
 /**
  * The nav's own box with the capsule of the open section, which glides from row to row (v3 signature H3), as in Settings. It mounts with
@@ -44,8 +44,8 @@ const SectionNav: React.FC<{ open: Tab; children: React.ReactNode }> = ({ open, 
   const navRef = React.useRef<HTMLDivElement | null>(null);
   const capsule = useGlide(navRef, OPEN_SECTION, { key: open });
   return (
-    <div ref={navRef} className="ad-side ui-glide-host">
-      <div ref={capsule} className="ui-glide ad-glide" aria-hidden="true" />
+    <div ref={navRef} className="adm-side ui-glide-host">
+      <div ref={capsule} className="ui-glide adm-glide" aria-hidden="true" />
       {children}
     </div>
   );
@@ -125,7 +125,7 @@ const Workspace: React.FC<{ t: ThemeTokens; onClose: () => void }> = ({ t, onClo
   };
 
   const close = (
-    <IconButton ref={closeRef} label={tr('admin.close_console')} onClick={onClose} className="ad-close">
+    <IconButton ref={closeRef} label={tr('admin.close_console')} onClick={onClose} className="adm-close">
       <X size={18} aria-hidden="true" />
     </IconButton>
   );
@@ -135,27 +135,27 @@ const Workspace: React.FC<{ t: ThemeTokens; onClose: () => void }> = ({ t, onClo
     <div
       ref={rootRef}
       role="dialog"
-      className="ad-console nm-admin"
+      className="adm-console nm-admin"
       aria-modal="true"
       aria-labelledby="admin-title"
       tabIndex={-1}
       onKeyDown={onKeyDown}
     >
       <StepUpProvider t={t}>
-        <div ref={sheetRef} className="ad-sheet">
+        <div ref={sheetRef} className="adm-sheet">
           {phone ? (
             <PhoneBar
               as="h1"
               titleId="admin-title"
               title={tr('term.admin_console')}
               start={close}
-              end={<span ref={setBarSlot} className="ad-bar-slot" />}
+              end={<span ref={setBarSlot} className="adm-bar-slot" />}
               scroller={sheetRef}
-              className="ad-bar"
+              className="adm-bar"
             />
           ) : (
-            <div className="ad-head">
-              <h1 id="admin-title" className="ad-title">
+            <div className="adm-head">
+              <h1 id="admin-title" className="adm-title">
                 {tr('term.admin_console')}
               </h1>
               {close}
@@ -163,11 +163,11 @@ const Workspace: React.FC<{ t: ThemeTokens; onClose: () => void }> = ({ t, onClo
           )}
           <SectionNav open={tab}>
             {self === undefined ? null : (
-              <div className="ad-identity">
+              <div className="adm-identity">
                 <Avatar name={selfName} size="md" selected />
-                <div className="ad-identity-text">
-                  <span className="ad-identity-name">{selfName}</span>
-                  <span className="ad-identity-address">{self.email}</span>
+                <div className="adm-identity-text">
+                  <span className="adm-identity-name">{selfName}</span>
+                  <span className="adm-identity-address">{self.email}</span>
                 </div>
               </div>
             )}
@@ -181,20 +181,20 @@ const Workspace: React.FC<{ t: ThemeTokens; onClose: () => void }> = ({ t, onClo
                 trailing:
                   id === 'users' && total !== undefined ? (
                     // The count rolls when it changes (an account added or deleted); the tab's own name is what is read.
-                    <span className="ad-count" aria-hidden="true">
+                    <span className="adm-count" aria-hidden="true">
                       <Odometer value={total} format={(count) => fmt.number(count)} />
                     </span>
                   ) : undefined
               }))}
               value={tab}
               onChange={choose}
-              className="ad-tabs"
+              className="adm-tabs"
               phoneRow
               orientation="vertical"
             />
           </SectionNav>
           <BarSlot.Provider value={phone ? barSlot : null}>
-            <div className="ad-main">
+            <div className="adm-main">
               <TabPanel tabsId="admin" value="users" selected={tab}>
                 <UsersPanel t={t} onGoToDomains={() => setTab('domains')} />
               </TabPanel>

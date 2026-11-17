@@ -64,7 +64,7 @@ describe('the card of the pictures of outside senders', () => {
     expect(html).not.toMatch(/<form|<input|<textarea/);
     expect(html.match(/<button\b/g)).toHaveLength(2);
     expect(html).not.toContain('role="alert"');
-    expect(html).not.toContain('ad-feedback');
+    expect(html).not.toContain('adm-feedback');
   });
 
   it('is off when the server says off, on when it says on, and cannot be pressed before the settings are read', () => {

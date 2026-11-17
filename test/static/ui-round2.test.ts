@@ -89,16 +89,16 @@ describe('admin console', () => {
 
   it('never starts a wrapped line of a person card with the dot before the extra addresses (J3-32)', () => {
     const admin = withoutComments(component('admin', 'admin.css'));
-    expect(admin).toMatch(/\.ad-people \.ad-sub \{\s*display: flex;\s*flex-wrap: wrap;\s*column-gap: 16px;\s*overflow: hidden;/);
-    expect(admin).toMatch(/\.ad-people \.ad-sub > span \{\s*min-width: 0;\s*margin-inline-start: -16px;/);
+    expect(admin).toMatch(/\.adm-people \.adm-sub \{\s*display: flex;\s*flex-wrap: wrap;\s*column-gap: 16px;\s*overflow: hidden;/);
+    expect(admin).toMatch(/\.adm-people \.adm-sub > span \{\s*min-width: 0;\s*margin-inline-start: -16px;/);
   });
 
   it('offers no Remove on a domain that addresses use, says why on its card, and checks it once when the page opens (J4-31, J4-27)', () => {
     const domains = component('admin', 'DomainsPanel.tsx');
     expect(domains).toMatch(/const inUse = domain\.addresses_count > 0;/);
     // J3-38: the count is always in the meta line, and "In use" stands in Remove's place (same width) on a domain that addresses use.
-    expect(domains).toMatch(/<span className="ad-domain-meta">\s*<span>\{addresses\}<\/span>/);
-    expect(domains).toMatch(/\{inUse \? \(\s*<span className="ad-in-use">\{tr\('domains\.in_use'\)\}<\/span>/);
+    expect(domains).toMatch(/<span className="adm-domain-meta">\s*<span>\{addresses\}<\/span>/);
+    expect(domains).toMatch(/\{inUse \? \(\s*<span className="adm-in-use">\{tr\('domains\.in_use'\)\}<\/span>/);
     expect(domains).toMatch(/if \(inUse && !autoChecked\.current\) \{\s*autoChecked\.current = true;\s*mutate\(domain\.id\);/);
     expect(domains).toContain("tr('domains.remove_failed', { name: domain.name, reason: removeError })");
     expect(domains).toMatch(/removeError=\{removeFailed === domain\.id \? removeAction\.error : null\}/);
@@ -116,7 +116,7 @@ describe('admin console', () => {
   it('starts the notes of a temporary password on the inner edge of the password box (J3-29)', () => {
     const admin = withoutComments(component('admin', 'admin.css'));
     // v3: the ui SecretBox insets its value 20px; the notes' text starts on that edge.
-    expect(admin).toMatch(/\.ad-list \{[^}]*padding: 14px 20px;[^}]*list-style: none;/);
+    expect(admin).toMatch(/\.adm-list \{[^}]*padding: 14px 20px;[^}]*list-style: none;/);
   });
 });
 

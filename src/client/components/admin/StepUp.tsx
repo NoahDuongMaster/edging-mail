@@ -91,10 +91,10 @@ const StepUpDialog: React.FC<{ t: ThemeTokens; onDone: () => void; onCancel: () 
         onSubmit={(event) => {
           void submit(event);
         }}
-        className="ad-form"
+        className="adm-form"
       >
-        <p className="ad-muted">{tr('admin.step_up_body_short')}</p>
-        <div className="ad-field-group">
+        <p className="adm-muted">{tr('admin.step_up_body_short')}</p>
+        <div className="adm-field-group">
           <CodeField
             id="step-up-code"
             label={tr('admin.step_up_code')}

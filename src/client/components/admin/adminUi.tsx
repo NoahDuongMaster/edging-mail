@@ -30,11 +30,11 @@ export const tipLines = (lines: readonly (string | readonly [string, string])[])
     // A space between two lines, so the words read as sentences where the lines are joined (the announcement of an opened tip).
     index === 0 ? null : ' ',
     typeof line === 'string' ? (
-      <span key={line} className="ad-tip-line">
+      <span key={line} className="adm-tip-line">
         {line}
       </span>
     ) : (
-      <span key={line[0]} className="ad-tip-line">
+      <span key={line[0]} className="adm-tip-line">
         <strong>{line[0]}</strong> {line[1]}
       </span>
     )
@@ -48,12 +48,12 @@ export const MoreText: React.FC<{ label: string; text: string }> = ({ label, tex
   const [open, setOpen] = React.useState(false);
   const panelId = React.useId();
   return (
-    <div className="ad-more">
-      <Disclosure open={open} onOpenChange={setOpen} controls={panelId} look="button" className="ad-toggle">
+    <div className="adm-more">
+      <Disclosure open={open} onOpenChange={setOpen} controls={panelId} look="button" className="adm-toggle">
         {label}
       </Disclosure>
       <DisclosurePanel id={panelId} open={open}>
-        <p className="ad-muted">{text}</p>
+        <p className="adm-muted">{text}</p>
       </DisclosurePanel>
     </div>
   );
@@ -79,7 +79,7 @@ const ACCOUNT_BUTTON: React.RefObject<HTMLElement | null> = {
 
 /** What went wrong, as words with an icon in the danger colour. Announced as soon as it appears; `id` lets a field point at it. */
 export const ErrorText: React.FC<{ id?: string; children: React.ReactNode }> = ({ id, children }) => (
-  <p id={id} role="alert" className="ad-error">
+  <p id={id} role="alert" className="adm-error">
     <CircleAlert size={16} aria-hidden="true" />
     <span>{children}</span>
   </p>
@@ -104,8 +104,8 @@ export const StateWord: React.FC<{ icon: React.ReactNode; tone?: 'success' | 'wa
   tone,
   children
 }) => (
-  <span className="ad-plain" data-tone={tone}>
-    <span className="ad-state-icon" aria-hidden="true">
+  <span className="adm-plain" data-tone={tone}>
+    <span className="adm-state-icon" aria-hidden="true">
       {icon}
     </span>
     {children}
@@ -120,7 +120,7 @@ export const PersonStatus: React.FC<{ user: AdminUser }> = ({ user }) => {
   const tr = useT();
   switch (personState(user)) {
     case 'active': {
-      return <StateWord icon={<span className="ad-dot" />}>{tr('users.status_active')}</StateWord>;
+      return <StateWord icon={<span className="adm-dot" />}>{tr('users.status_active')}</StateWord>;
     }
     case 'pending': {
       return (
@@ -152,8 +152,8 @@ export const PersonTwoFactor: React.FC<{ user: AdminUser; short?: boolean }> = (
     <StateWord icon={user.two_factor ? <ShieldCheck size={14} /> : <ShieldOff size={14} />} tone={exposed ? 'warning' : undefined}>
       {short ? (
         <>
-          <span className="ad-wide">{tr(user.two_factor ? 'users.two_factor_on' : 'users.two_factor_off')}</span>
-          <span className="ad-narrow">{tr(user.two_factor ? 'users.two_factor_meta_on' : 'users.two_factor_meta_off')}</span>
+          <span className="adm-wide">{tr(user.two_factor ? 'users.two_factor_on' : 'users.two_factor_off')}</span>
+          <span className="adm-narrow">{tr(user.two_factor ? 'users.two_factor_meta_on' : 'users.two_factor_meta_off')}</span>
         </>
       ) : (
         tr(user.two_factor ? 'users.two_factor_is_on' : 'users.two_factor_is_off')
@@ -165,7 +165,7 @@ export const PersonTwoFactor: React.FC<{ user: AdminUser; short?: boolean }> = (
 /** The role of an account, the same pill for both roles so their words line up; an admin's pill is a step stronger. */
 export const PersonRole: React.FC<{ user: AdminUser }> = ({ user }) => {
   const tr = useT();
-  return user.role === 'admin' ? <Badge className="ad-role-admin">{tr('term.admin')}</Badge> : <Badge>{tr('term.member')}</Badge>;
+  return user.role === 'admin' ? <Badge className="adm-role-admin">{tr('term.admin')}</Badge> : <Badge>{tr('term.member')}</Badge>;
 };
 
 /**
@@ -184,13 +184,13 @@ export const PageHead: React.FC<{ title: string; description: string; info?: str
   let place: React.ReactNode = null;
   if (action !== undefined) {
     place =
-      slot === null ? <div className="ad-page-action">{action}</div> : createPortal(<div className="ad-bar-action">{action}</div>, slot);
+      slot === null ? <div className="adm-page-action">{action}</div> : createPortal(<div className="adm-bar-action">{action}</div>, slot);
   }
   return (
-    <header className="ad-page-head">
-      <div className="ad-page-heading">
-        <h2 className="ad-page-title">{title}</h2>
-        <p className="ad-page-desc">
+    <header className="adm-page-head">
+      <div className="adm-page-heading">
+        <h2 className="adm-page-title">{title}</h2>
+        <p className="adm-page-desc">
           {description}
           {info === undefined ? null : <InfoTip label={title}>{info}</InfoTip>}
         </p>
@@ -211,21 +211,21 @@ export const Group: React.FC<{
   headingLevel?: 3 | 4;
   children: React.ReactNode;
 }> = ({ title, description, info, headingLevel = 3, children }) => (
-  <Section grouped className="ad-group" title={title} description={description} info={info} headingLevel={headingLevel}>
+  <Section grouped className="adm-group" title={title} description={description} info={info} headingLevel={headingLevel}>
     {children}
   </Section>
 );
 
 /** A row of a Group: its label (with an InfoTip after it that explains it) on the left, its control on the right; under it on a narrow card. */
 export const Row: React.FC<{ label?: string; info?: string; children?: React.ReactNode }> = ({ label, info, children }) => (
-  <div className="ad-row">
+  <div className="adm-row">
     {label === undefined ? null : (
-      <div className="ad-row-text ui-tip-row">
-        <span className="ad-row-label">{label}</span>
+      <div className="adm-row-text ui-tip-row">
+        <span className="adm-row-label">{label}</span>
         {info === undefined ? null : <InfoTip label={label}>{info}</InfoTip>}
       </div>
     )}
-    {children === undefined ? null : <div className="ad-row-control">{children}</div>}
+    {children === undefined ? null : <div className="adm-row-control">{children}</div>}
   </div>
 );
 
@@ -239,13 +239,13 @@ const DASHBOARD_URL = 'https://dash.cloudflare.com/';
 export const DashboardLink: React.FC<{ path?: string }> = ({ path }) => {
   const tr = useT();
   return (
-    <p className="ad-dash">
-      <a href={DASHBOARD_URL} target="_blank" rel="noopener noreferrer" className="ad-ext">
+    <p className="adm-dash">
+      <a href={DASHBOARD_URL} target="_blank" rel="noopener noreferrer" className="adm-ext">
         {tr('domains.open_dashboard')}
         <ExternalLink size={13} aria-hidden="true" />
         <VisuallyHidden>{tr('domains.new_tab')}</VisuallyHidden>
       </a>
-      {path === undefined ? null : <span className="ad-dash-path">{path}</span>}
+      {path === undefined ? null : <span className="adm-dash-path">{path}</span>}
     </p>
   );
 };
@@ -335,7 +335,7 @@ export const ModalFrame: React.FC<ModalFrameProps> = ({
       role={alert ? 'alertdialog' : 'dialog'}
       describedBy={describedBy}
       width={maxWidth}
-      className="nm-admin ad-dialog"
+      className="nm-admin adm-dialog"
       ref={findFirst}
       initialFocusRef={firstRef}
       returnFocusRef={ACCOUNT_BUTTON}

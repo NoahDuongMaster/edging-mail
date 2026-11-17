@@ -99,7 +99,7 @@ export const TwoFactorPolicy: React.FC<{ required: boolean | undefined }> = ({ r
             setConfirming(true);
           }
         }}
-        className="ad-switch"
+        className="adm-switch"
       />
       {confirming ? (
         // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Escape is a shortcut for the Cancel button of this form; the buttons are the controls
@@ -113,10 +113,10 @@ export const TwoFactorPolicy: React.FC<{ required: boolean | undefined }> = ({ r
               cancel();
             }
           }}
-          className="ad-confirm"
+          className="adm-confirm"
         >
           {/* The consequence in one line; that the change is logged and told to the other admins, in its InfoTip. */}
-          <p className="ad-text">
+          <p className="adm-text">
             {tr('admin.policy_off_body_short')}
             <InfoTip label={tr('admin.policy_turn_off')}>{tr('admin.policy_off_body')}</InfoTip>
           </p>
@@ -136,7 +136,7 @@ export const TwoFactorPolicy: React.FC<{ required: boolean | undefined }> = ({ r
             aria-describedby={mismatch ? `${FIELD_ID}-error` : undefined}
           />
           {mismatch ? <ErrorText id={`${FIELD_ID}-error`}>{tr('admin.policy_confirm_mismatch', { address: email })}</ErrorText> : null}
-          <div className="ad-confirm-foot">
+          <div className="adm-confirm-foot">
             <Button disabled={action.busy} onClick={cancel}>
               {tr('common.cancel')}
             </Button>
@@ -147,9 +147,9 @@ export const TwoFactorPolicy: React.FC<{ required: boolean | undefined }> = ({ r
         </form>
       ) : null}
       {saved || action.error !== null ? (
-        <div className="ad-row-note">
+        <div className="adm-row-note">
           {saved ? (
-            <p className="ad-feedback">
+            <p className="adm-feedback">
               <CircleCheck size={16} aria-hidden="true" />
               {tr('settings.saved')}
             </p>

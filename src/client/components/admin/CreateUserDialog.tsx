@@ -82,7 +82,7 @@ export const CreateUserDialog: React.FC<CreateUserDialogProps> = ({ t, onClose, 
   } else if (domains.data === undefined) {
     body = <Loading t={t} label={tr('common.loading')} />;
   } else if (list.length === 0) {
-    body = <p className="ad-text">{tr('users.create_no_domain')}</p>;
+    body = <p className="adm-text">{tr('users.create_no_domain')}</p>;
     footer = (
       <Button variant="primary" onClick={onGoToDomains}>
         {tr('domains.add_a_domain')}
@@ -96,10 +96,10 @@ export const CreateUserDialog: React.FC<CreateUserDialogProps> = ({ t, onClose, 
         onSubmit={(event) => {
           void submit(event);
         }}
-        className="ad-form"
+        className="adm-form"
       >
-        <div className="ad-field-group">
-          <div className="ad-address">
+        <div className="adm-field-group">
+          <div className="adm-address">
             <TextField
               id="new-user-local"
               label={tr('term.address')}
@@ -115,11 +115,11 @@ export const CreateUserDialog: React.FC<CreateUserDialogProps> = ({ t, onClose, 
               aria-invalid={problem !== null}
               aria-describedby={problem === null ? undefined : 'new-user-local-error'}
             />
-            <span aria-hidden="true" className="ad-at">
+            <span aria-hidden="true" className="adm-at">
               @
             </span>
             {list.length === 1 ? (
-              <span className="ad-domain-name">{list[0].name}</span>
+              <span className="adm-domain-name">{list[0].name}</span>
             ) : (
               <Select
                 label={tr('term.domain')}
@@ -152,7 +152,7 @@ export const CreateUserDialog: React.FC<CreateUserDialogProps> = ({ t, onClose, 
           value={role}
           onChange={(value) => setRole(value === 'admin' ? 'admin' : 'member')}
         />
-        <p className="ad-muted">{tr('users.create_password_note_short')}</p>
+        <p className="adm-muted">{tr('users.create_password_note_short')}</p>
         {action.error === null ? null : <ErrorText>{action.error}</ErrorText>}
       </form>
     );

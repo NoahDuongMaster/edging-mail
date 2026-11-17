@@ -101,7 +101,7 @@ const RecordState: React.FC<{ found: boolean; required: boolean }> = ({ found, r
 /** Copy for a host name of a record (where the admin types it at a DNS provider): named by the host, so each Copy of a list says which. */
 const CopyHost: React.FC<{ host: string }> = ({ host }) => {
   const tr = useT();
-  return <CopyButton text={host} size="sm" variant="ghost" aria-label={tr('domains.copy_record', { name: host })} className="ad-copy" />;
+  return <CopyButton text={host} size="sm" variant="ghost" aria-label={tr('domains.copy_record', { name: host })} className="adm-copy" />;
 };
 
 /**
@@ -111,16 +111,16 @@ const CopyHost: React.FC<{ host: string }> = ({ host }) => {
 const RecordRow: React.FC<{ record: DnsCheck['sending']['records'][number] }> = ({ record }) => {
   const tr = useT();
   return (
-    <li className="ad-record">
-      <span className="ad-rtype">{record.type}</span>
-      <span className="ad-record-name" translate="no">
+    <li className="adm-record">
+      <span className="adm-rtype">{record.type}</span>
+      <span className="adm-record-name" translate="no">
         {record.name}
       </span>
-      <span className="ad-record-end">
+      <span className="adm-record-end">
         <RecordState found={record.found} required={record.required !== false} />
         <CopyHost host={record.name} />
       </span>
-      {record.found ? null : <span className="ad-record-hint">{tr('domains.record_value_hint')}</span>}
+      {record.found ? null : <span className="adm-record-hint">{tr('domains.record_value_hint')}</span>}
     </li>
   );
 };
@@ -158,20 +158,20 @@ const DnsStep: React.FC<{ part: Part }> = ({ part }) => {
   const panelId = React.useId();
   return (
     <Step>
-      <section aria-label={part.title} className="ad-dns-part" data-ready={part.ready ? 'true' : 'false'}>
-        <div className="ad-dns-head">
-          <strong className="ad-dns-title">{part.title}</strong>
+      <section aria-label={part.title} className="adm-dns-part" data-ready={part.ready ? 'true' : 'false'}>
+        <div className="adm-dns-head">
+          <strong className="adm-dns-title">{part.title}</strong>
           <Status ready={part.ready} />
         </div>
-        {part.note === null ? null : <p className="ad-dns-line">{part.note}</p>}
-        <div className="ad-dns-tools">
-          <Disclosure open={open} onOpenChange={setOpen} controls={panelId} look="button" className="ad-toggle">
+        {part.note === null ? null : <p className="adm-dns-line">{part.note}</p>}
+        <div className="adm-dns-tools">
+          <Disclosure open={open} onOpenChange={setOpen} controls={panelId} look="button" className="adm-toggle">
             {open ? tr('domains.hide_records') : tr('domains.show_records')}
           </Disclosure>
           {part.ready ? null : <DashboardLink path={part.path} />}
         </div>
-        <DisclosurePanel id={panelId} open={open} className="ad-dns-panel">
-          <div className="ad-dns-records">{part.records}</div>
+        <DisclosurePanel id={panelId} open={open} className="adm-dns-panel">
+          <div className="adm-dns-records">{part.records}</div>
         </DisclosurePanel>
       </section>
     </Step>
@@ -203,15 +203,15 @@ export const DnsResult: React.FC<{ check: DnsCheck }> = ({ check }) => {
   if (listed.length > 0) {
     // The MX hosts the domain points to, in the same rows as the records of Email Sending: type, host, and the priority where a status would be.
     mxList = (
-      <ul className="ad-records">
+      <ul className="adm-records">
         {listed.map((mx) => (
-          <li key={`${mx.priority}-${mx.host}`} className="ad-record">
-            <span className="ad-rtype">{MX_TYPE}</span>
-            <span className="ad-record-name" translate="no">
+          <li key={`${mx.priority}-${mx.host}`} className="adm-record">
+            <span className="adm-rtype">{MX_TYPE}</span>
+            <span className="adm-record-name" translate="no">
               {mx.host}
             </span>
-            <span className="ad-record-end">
-              <span className="ad-muted">{tr('domains.mx_priority', { priority: mx.priority })}</span>
+            <span className="adm-record-end">
+              <span className="adm-muted">{tr('domains.mx_priority', { priority: mx.priority })}</span>
               <CopyHost host={mx.host} />
             </span>
           </li>
@@ -219,7 +219,7 @@ export const DnsResult: React.FC<{ check: DnsCheck }> = ({ check }) => {
       </ul>
     );
   } else if (!nullMx) {
-    mxList = <p className="ad-muted">{tr('domains.no_mx')}</p>;
+    mxList = <p className="adm-muted">{tr('domains.no_mx')}</p>;
   }
   const receiving: Part = {
     title: tr('domains.receiving'),
@@ -236,7 +236,7 @@ export const DnsResult: React.FC<{ check: DnsCheck }> = ({ check }) => {
       : tr('domains.records_missing', { count: check.sending.records.filter((record) => !record.found).length }),
     path: tr('domains.guide_path_sending'),
     records: (
-      <ul className="ad-records">
+      <ul className="adm-records">
         {/* What is missing first (required, then optional), then what was found: the row to act on is never under the fold. */}
         {check.sending.records
           .toSorted((a, b) => recordRank(a) - recordRank(b))
@@ -249,7 +249,7 @@ export const DnsResult: React.FC<{ check: DnsCheck }> = ({ check }) => {
   // The step to act on comes first; two steps that work, or two that do not, keep their order (receiving, then sending).
   const parts = check.sending.ready || !check.receiving.ready ? [receiving, sending] : [sending, receiving];
   return (
-    <Steps className="ad-checklist">
+    <Steps className="adm-checklist">
       {parts.map((part) => (
         // Keyed by its state as well: a step that a new check finds working folds, one that breaks opens.
         <DnsStep key={`${part.title}-${String(part.ready)}`} part={part} />
@@ -311,17 +311,17 @@ const DomainCard: React.FC<DomainCardProps> = ({ t, domain, onRemove, removing, 
   const checkLabel = check.isPending ? tr('admin.checking') : tr('admin.check_dns');
 
   return (
-    <li className="ad-domain">
+    <li className="adm-domain">
       <Card
         title={domain.name}
         headingLevel={3}
         description={
           // J3-38: every card has the same head: the count always first in the meta line, then the state of the last check.
-          <span className="ad-domain-meta">
+          <span className="adm-domain-meta">
             <span>{addresses}</span>
             <Summary check={result} />
             {result === undefined ? null : (
-              <span className="ad-checked">{tr('domains.checked_at', { when: checkedWhen(result.checked_at) })}</span>
+              <span className="adm-checked">{tr('domains.checked_at', { when: checkedWhen(result.checked_at) })}</span>
             )}
           </span>
         }
@@ -332,25 +332,25 @@ const DomainCard: React.FC<DomainCardProps> = ({ t, domain, onRemove, removing, 
               {checkLabel}
             </Button>
             {inUse ? (
-              <span className="ad-in-use">{tr('domains.in_use')}</span>
+              <span className="adm-in-use">{tr('domains.in_use')}</span>
             ) : (
-              <Button variant="ghost" size="sm" className="ad-remove" disabled={removing} onClick={onRemove}>
+              <Button variant="ghost" size="sm" className="adm-remove" disabled={removing} onClick={onRemove}>
                 {tr('common.remove')}
               </Button>
             )}
           </>
         }
-        className="ad-domain-card"
+        className="adm-domain-card"
       >
-        <div className="ad-domain-body">
+        <div className="adm-domain-body">
           {removeError === null ? null : <ErrorText>{tr('domains.remove_failed', { name: domain.name, reason: removeError })}</ErrorText>}
           {check.isError ? <ErrorText>{adminErrorText(check.error)}</ErrorText> : null}
           {result === undefined ? null : <DnsResult check={result} />}
-          <div className="ad-domain-foot">
+          <div className="adm-domain-foot">
             <Button
               variant="ghost"
               size="sm"
-              className="ad-toggle"
+              className="adm-toggle"
               leadingIcon={<BookOpen size={16} strokeWidth={1.75} aria-hidden="true" />}
               aria-haspopup="dialog"
               onClick={() => setGuide(true)}
@@ -430,16 +430,16 @@ export const DomainsPanel: React.FC<{ t: ThemeTokens }> = ({ t }) => {
     );
   } else if (domains.data === undefined) {
     list = (
-      <div role="status" aria-label={tr('domains.loading')} className="ad-domains-loading">
+      <div role="status" aria-label={tr('domains.loading')} className="adm-domains-loading">
         <Skeleton height={148} />
         <Skeleton height={148} />
       </div>
     );
   } else if (domains.data.length === 0) {
-    list = <EmptyState art={<FlightTrail size="md" />} title={tr('domains.empty')} className="ad-empty" />;
+    list = <EmptyState art={<FlightTrail size="md" />} title={tr('domains.empty')} className="adm-empty" />;
   } else {
     list = (
-      <ul aria-label={tr('admin.tab_domains')} className="ad-domains">
+      <ul aria-label={tr('admin.tab_domains')} className="adm-domains">
         {domains.data.map((domain) => (
           <DomainCard
             key={domain.id}
@@ -474,9 +474,9 @@ export const DomainsPanel: React.FC<{ t: ThemeTokens }> = ({ t }) => {
       onSubmit={(event) => {
         void submit(event);
       }}
-      className="ad-field-group ad-add-domain"
+      className="adm-field-group adm-add-domain"
     >
-      <div className="ad-inline">
+      <div className="adm-inline">
         <TextField
           id="domain-new"
           label={tr(phone ? 'term.domain' : 'domains.add_a_domain')}
@@ -496,13 +496,13 @@ export const DomainsPanel: React.FC<{ t: ThemeTokens }> = ({ t }) => {
         {phone ? null : addButton}
       </div>
       {problem === null ? null : <ErrorText id="domain-new-error">{problem}</ErrorText>}
-      <p className="ad-muted ad-note">{tr('domains.add_note_short')}</p>
+      <p className="adm-muted adm-note">{tr('domains.add_note_short')}</p>
       {addAction.error === null ? null : <ErrorText>{addAction.error}</ErrorText>}
     </form>
   );
 
   return (
-    <div className="ad-pane" data-width="narrow">
+    <div className="adm-pane" data-width="narrow">
       <PageHead
         title={tr('admin.tab_domains')}
         description={tr('admin.domains_desc_short')}

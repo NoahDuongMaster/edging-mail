@@ -27,19 +27,19 @@ export const PersonSummary: React.FC<{ user: AdminUser; isSelf: boolean }> = ({ 
     meta = tr('users.temp_expires', { when: fmt.dateTime(user.temp_password_expires_at) });
   }
   return (
-    <div className="ad-summary">
+    <div className="adm-summary">
       <Avatar name={personName(user)} size={48} hue={user.status === 'disabled' ? undefined : avatarHue(user.email)} />
-      <div className="ad-summary-text">
-        <p className="ad-summary-address ad-wrap">{user.email}</p>
-        <div className="ad-badges">
+      <div className="adm-summary-text">
+        <p className="adm-summary-address adm-wrap">{user.email}</p>
+        <div className="adm-badges">
           <PersonRole user={user} />
           <PersonStatus user={user} />
           <PersonTwoFactor user={user} />
-          {isSelf ? <span className="ad-muted">{tr('users.this_is_you')}</span> : null}
+          {isSelf ? <span className="adm-muted">{tr('users.this_is_you')}</span> : null}
         </div>
-        <p className="ad-muted">{meta}</p>
+        <p className="adm-muted">{meta}</p>
         {user.two_factor_reset_due_at === null ? null : (
-          <p className="ad-muted">{tr('users.reset_scheduled', { due: fmt.dateTime(user.two_factor_reset_due_at) })}</p>
+          <p className="adm-muted">{tr('users.reset_scheduled', { due: fmt.dateTime(user.two_factor_reset_due_at) })}</p>
         )}
       </div>
     </div>
@@ -68,7 +68,7 @@ export const AccountHeading: React.FC<{ id: string; user: AdminUser; isSelf: boo
   }
   return (
     <div className="ui-tip-row">
-      <h3 id={id} className="ad-dsec-title">
+      <h3 id={id} className="adm-dsec-title">
         {tr('term.account')}
       </h3>
       <InfoTip label={tr('term.account')}>{tipLines(lines)}</InfoTip>
@@ -86,8 +86,8 @@ export const ActionLine: React.FC<{ id: string; text: string; shown?: boolean; c
   shown,
   children
 }) => (
-  <div className="ad-action">
-    <p id={id} className={shown === true ? 'ad-muted' : 'ui-visually-hidden'}>
+  <div className="adm-action">
+    <p id={id} className={shown === true ? 'adm-muted' : 'ui-visually-hidden'}>
       {text}
     </p>
     {children}
@@ -122,11 +122,11 @@ export const NameForm: React.FC<NameFormProps> = ({ user, busy, run }) => {
   };
 
   return (
-    <form onSubmit={save} className="ad-dsec" aria-labelledby="user-profile">
-      <h3 id="user-profile" className="ad-dsec-title">
+    <form onSubmit={save} className="adm-dsec" aria-labelledby="user-profile">
+      <h3 id="user-profile" className="adm-dsec-title">
         {tr('users.profile_heading')}
       </h3>
-      <div className="ad-card ad-inline">
+      <div className="adm-card adm-inline">
         <TextField
           id="user-name"
           label={tr('term.display_name')}
@@ -143,7 +143,7 @@ export const NameForm: React.FC<NameFormProps> = ({ user, busy, run }) => {
         </Button>
       </div>
       {saved ? (
-        <p className="ad-feedback">
+        <p className="adm-feedback">
           <CircleCheck size={16} aria-hidden="true" />
           {tr('settings.saved')}
         </p>

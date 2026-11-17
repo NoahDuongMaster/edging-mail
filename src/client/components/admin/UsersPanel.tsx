@@ -80,10 +80,10 @@ const LastSignIn: React.FC<{ at: number }> = ({ at }) => {
           ref.current = node;
         }}
         dateTime={new Date(at).toISOString()}
-        className="ad-when"
+        className="adm-when"
         {...tip.anchor}
       >
-        <span className="ad-when-main" aria-hidden="true">
+        <span className="adm-when-main" aria-hidden="true">
           {when}
         </span>
         <VisuallyHidden>{tr('users.last_sign_in', { when })}</VisuallyHidden>
@@ -108,7 +108,7 @@ const TempExpiry: React.FC<{ at: number }> = ({ at }) => {
   }
   const when = fmt.dateTime(at, options);
   return (
-    <span className="ad-temp-expiry">
+    <span className="adm-temp-expiry">
       {at > now ? tr('users.temp_password_expires', { when }) : tr('users.temp_password_expired', { when })}
     </span>
   );
@@ -128,7 +128,7 @@ const SortHeader: React.FC<{ label: string; sort: Sort; column: Sort['key']; onS
   const active = sort.key === column;
   let arrow: React.ReactNode;
   if (!active) {
-    arrow = <ArrowUpDown size={12} aria-hidden="true" className="ad-sort-idle" />;
+    arrow = <ArrowUpDown size={12} aria-hidden="true" className="adm-sort-idle" />;
   } else if (sort.dir === 'asc') {
     arrow = <ArrowUp size={12} aria-hidden="true" />;
   } else {
@@ -140,7 +140,7 @@ const SortHeader: React.FC<{ label: string; sort: Sort; column: Sort['key']; onS
   }
   return (
     <th scope="col" className={className} aria-sort={ariaSort}>
-      <button type="button" className="ad-sort" onClick={onSort}>
+      <button type="button" className="adm-sort" onClick={onSort}>
         {label}
         {arrow}
       </button>
@@ -180,20 +180,20 @@ const UserRow: React.FC<{ user: AdminUser; onOpen: () => void }> = ({ user, onOp
   };
   return (
     // A pointer shortcut: the name button in the first cell is the control for the keyboard and screen readers.
-    <tr className="ad-link-row" data-state={personState(user)} onClick={openFromRow}>
-      <td className="ad-cell-person ad-wrap">
-        <div className="ad-who">
+    <tr className="adm-link-row" data-state={personState(user)} onClick={openFromRow}>
+      <td className="adm-cell-person adm-wrap">
+        <div className="adm-who">
           {/* Each person's own tint; a disabled account keeps the quiet neutral tile. */}
           <Avatar name={title} size="md" hue={user.status === 'disabled' ? undefined : avatarHue(user.email)} />
-          <button type="button" className="ad-person" onClick={onOpen}>
-            <span className="ad-cell-title">{title}</span>
+          <button type="button" className="adm-person" onClick={onOpen}>
+            <span className="adm-cell-title">{title}</span>
             {user.display_name === '' && user.aliases.length === 0 ? null : (
-              <span className="ad-sub">
+              <span className="adm-sub">
                 {user.display_name === '' ? null : <span>{user.email}</span>}
                 {user.aliases.length === 0 ? null : (
-                  <span className="ad-sub-extra">
-                    <span className="ad-extra-long">{tr('users.extra_addresses', { count: user.aliases.length })}</span>
-                    <span className="ad-extra-short" aria-hidden="true">
+                  <span className="adm-sub-extra">
+                    <span className="adm-extra-long">{tr('users.extra_addresses', { count: user.aliases.length })}</span>
+                    <span className="adm-extra-short" aria-hidden="true">
                       {tr('users.extra_addresses_short', { count: fmt.number(user.aliases.length) })}
                     </span>
                   </span>
@@ -203,25 +203,25 @@ const UserRow: React.FC<{ user: AdminUser; onOpen: () => void }> = ({ user, onOp
           </button>
         </div>
       </td>
-      <td className="ad-cell-tag">
+      <td className="adm-cell-tag">
         <PersonRole user={user} />
       </td>
-      <td className="ad-cell-tag">
+      <td className="adm-cell-tag">
         <PersonStatus user={user} />
       </td>
-      <td className="ad-cell-tag">
+      <td className="adm-cell-tag">
         <PersonTwoFactor user={user} short />
       </td>
       <td
-        className="ad-cell-when ad-quiet"
+        className="adm-cell-when adm-quiet"
         data-none={user.last_login_at === null && user.temp_password_expires_at === null ? 'true' : undefined}
         // A last sign-in stands at the end of the name's line in a phone's stacked row; a temporary password's expiry ends the meta line.
         data-time={user.last_login_at === null ? undefined : 'true'}
       >
-        <div className="ad-when-row">
+        <div className="adm-when-row">
           {user.last_login_at === null ? (
             user.temp_password_expires_at === null ? (
-              <span className="ad-wide ad-never">{tr('users.never')}</span>
+              <span className="adm-wide adm-never">{tr('users.never')}</span>
             ) : (
               // J4-44: the fact an admin acts on for an account still on its temporary password: when that password stops working.
               <TempExpiry at={user.temp_password_expires_at} />
@@ -229,9 +229,9 @@ const UserRow: React.FC<{ user: AdminUser; onOpen: () => void }> = ({ user, onOp
           ) : (
             <LastSignIn at={user.last_login_at} />
           )}
-          <span className="ad-manage" aria-hidden="true">
-            <span className="ad-manage-word">{tr('users.manage')}</span>
-            <ChevronRight size={16} className="ad-go" />
+          <span className="adm-manage" aria-hidden="true">
+            <span className="adm-manage-word">{tr('users.manage')}</span>
+            <ChevronRight size={16} className="adm-go" />
           </span>
         </div>
       </td>
@@ -332,7 +332,7 @@ export const UsersPanel: React.FC<UsersPanelProps> = ({ t, onGoToDomains }) => {
       <EmptyState
         art={<FlightTrail size="md" />}
         title={debounced.trim() === '' ? tr('users.empty') : tr('users.no_match', { query: debounced.trim() })}
-        className="ad-empty"
+        className="adm-empty"
       />
     );
   } else if (users.length === 0) {
@@ -340,7 +340,7 @@ export const UsersPanel: React.FC<UsersPanelProps> = ({ t, onGoToDomains }) => {
       <EmptyState
         art={<FlightTrail size="md" />}
         title={tr('users.filter_none')}
-        className="ad-empty"
+        className="adm-empty"
         action={
           <Button
             size="sm"
@@ -356,17 +356,17 @@ export const UsersPanel: React.FC<UsersPanelProps> = ({ t, onGoToDomains }) => {
     );
   } else {
     body = (
-      <Table label={tr('admin.tab_people')} dense className="ad-table ad-people">
+      <Table label={tr('admin.tab_people')} dense className="adm-table adm-people">
         <thead>
           <tr>
-            <SortHeader label={tr('term.account')} sort={sort} column="name" onSort={() => sortBy('name')} className="ad-col-person" />
-            <th scope="col" className="ad-col-tag">
+            <SortHeader label={tr('term.account')} sort={sort} column="name" onSort={() => sortBy('name')} className="adm-col-person" />
+            <th scope="col" className="adm-col-tag">
               {tr('users.role')}
             </th>
-            <th scope="col" className="ad-col-tag">
+            <th scope="col" className="adm-col-tag">
               {tr('users.col_status')}
             </th>
-            <th scope="col" className="ad-col-tag">
+            <th scope="col" className="adm-col-tag">
               {tr('users.col_two_factor')}
             </th>
             <SortHeader
@@ -374,7 +374,7 @@ export const UsersPanel: React.FC<UsersPanelProps> = ({ t, onGoToDomains }) => {
               sort={sort}
               column="last"
               onSort={() => sortBy('last')}
-              className="ad-col-when"
+              className="adm-col-when"
             />
           </tr>
         </thead>
@@ -386,7 +386,7 @@ export const UsersPanel: React.FC<UsersPanelProps> = ({ t, onGoToDomains }) => {
         {/* The end of the list, with its count: it closes a short table so the space under it reads as the end of the page. */}
         <tfoot>
           <tr>
-            <td colSpan={5} className="ad-table-foot">
+            <td colSpan={5} className="adm-table-foot">
               {countText}
             </td>
           </tr>
@@ -396,7 +396,7 @@ export const UsersPanel: React.FC<UsersPanelProps> = ({ t, onGoToDomains }) => {
   }
 
   return (
-    <div className="ad-pane">
+    <div className="adm-pane">
       <PageHead
         title={tr('admin.tab_people')}
         description={tr('admin.people_desc_short')}
@@ -412,7 +412,7 @@ export const UsersPanel: React.FC<UsersPanelProps> = ({ t, onGoToDomains }) => {
           </Button>
         }
       />
-      <div className="ad-toolbar">
+      <div className="adm-toolbar">
         <TextField
           type="search"
           variant="search"
@@ -453,7 +453,7 @@ export const UsersPanel: React.FC<UsersPanelProps> = ({ t, onGoToDomains }) => {
           onChange={setFilter}
           size="md"
           wrap
-          className="ad-filter"
+          className="adm-filter"
         />
         <Select
           id="users-two-factor"
@@ -466,12 +466,12 @@ export const UsersPanel: React.FC<UsersPanelProps> = ({ t, onGoToDomains }) => {
           ]}
           value={twoFactor}
           onChange={(next) => setTwoFactor(TWO_FACTOR_FILTERS.find((value) => value === next) ?? 'any')}
-          className="ad-pill-select"
+          className="adm-pill-select"
         />
       </div>
       {body}
       {query.hasNextPage || query.isError ? (
-        <div className="ad-foot">
+        <div className="adm-foot">
           {query.hasNextPage ? (
             <Button
               size="sm"

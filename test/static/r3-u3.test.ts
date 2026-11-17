@@ -99,7 +99,7 @@ describe('Settings and the admin console on a phone on its side (J5-23)', () => 
 describe('deleting an account and new recovery codes', () => {
   it('reads the warning of a deletion when its alert dialog opens (J1-26)', () => {
     expect(deleteUser).toContain('describedBy={WARNING_ID}');
-    expect(deleteUser).toContain('<p id={WARNING_ID} className="ad-text ad-warn">');
+    expect(deleteUser).toContain('<p id={WARNING_ID} className="adm-text adm-warn">');
     expect(dialog).toContain('aria-describedby={describedBy ?? (description === undefined ? undefined : descriptionId)}');
   });
 

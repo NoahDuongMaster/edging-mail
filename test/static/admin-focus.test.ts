@@ -47,7 +47,7 @@ describe('the person dialog keeps the keyboard where it was (D-6)', () => {
     );
     // On a phone the foot is the ModalFrame's (always in view), the question in the body describes its group; on a desktop it stays under the question.
     expect(dialog).toMatch(/<ModalFrame [^>]*footer=\{phone \? foot : undefined\}>/);
-    expect(dialog).toMatch(/<div id="user-confirm" className="ad-confirm">[^]*?\{phone \? null : foot\}\s*<\/div>/);
+    expect(dialog).toMatch(/<div id="user-confirm" className="adm-confirm">[^]*?\{phone \? null : foot\}\s*<\/div>/);
     const { confirmation } = rowAndConfirmation();
     expect(confirmation.match(/data-autofocus/g)).toHaveLength(1);
     expect(confirmation).toMatch(
@@ -65,11 +65,11 @@ describe('the person dialog keeps the keyboard where it was (D-6)', () => {
     expect(action).toContain('{pending.action}');
     expect(action).not.toContain('data-autofocus');
     expect(confirmation).toMatch(
-      /aria-describedby=\{phone \? 'user-confirm' : undefined\}\s+className="ad-confirm-foot"\s*>\s*<Button data-autofocus/
+      /aria-describedby=\{phone \? 'user-confirm' : undefined\}\s+className="adm-confirm-foot"\s*>\s*<Button data-autofocus/
     );
     // Goes away (Cancel, Escape, done): back to the button at the place of the one that asked, if there was one.
     expect(dialog).toMatch(
-      /\} else if \(before !== null\) \{\s*target = actionsRef\.current\?\.querySelectorAll<HTMLElement>\('\.ad-actions-row button'\)\.item\(BUTTON_PLACE\[before\]\);/
+      /\} else if \(before !== null\) \{\s*target = actionsRef\.current\?\.querySelectorAll<HTMLElement>\('\.adm-actions-row button'\)\.item\(BUTTON_PLACE\[before\]\);/
     );
     expect(dialog).toMatch(/target\?\.focus\(\{ preventScroll: true \}\);/);
     expect(dialog).toMatch(/<section ref=\{actionsRef\} aria-labelledby="user-actions"/);

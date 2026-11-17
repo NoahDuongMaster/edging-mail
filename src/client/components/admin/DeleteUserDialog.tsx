@@ -91,12 +91,12 @@ export const DeleteUserDialog: React.FC<DeleteUserDialogProps> = ({ t, user, onC
         onSubmit={(event) => {
           void submit(event);
         }}
-        className="ad-form"
+        className="adm-form"
       >
         {/* What is lost, on the danger tint with its icon: the one thing to read before typing the address. */}
-        <p id={WARNING_ID} className="ad-text ad-warn">
+        <p id={WARNING_ID} className="adm-text adm-warn">
           <TriangleAlert size={16} aria-hidden="true" />
-          <span>{tRich('users.delete_body', { address: <strong className="ad-strong ad-wrap">{user.email}</strong> })}</span>
+          <span>{tRich('users.delete_body', { address: <strong className="adm-strong adm-wrap">{user.email}</strong> })}</span>
         </p>
         <TextField
           ref={field}

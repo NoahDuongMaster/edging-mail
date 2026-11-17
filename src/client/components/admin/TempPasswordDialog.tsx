@@ -59,14 +59,14 @@ export const TempPasswordDialog: React.FC<TempPasswordDialogProps> = ({ t, addre
       locked={!copied}
       maxWidth={460}
     >
-      <p className="ad-text">{tRich('users.created_give', { address: <strong className="ad-strong ad-wrap">{address}</strong> })}</p>
+      <p className="adm-text">{tRich('users.created_give', { address: <strong className="adm-strong adm-wrap">{address}</strong> })}</p>
       <SecretBox label={tr('term.temporary_password')} value={password} valueRef={codeRef}>
         <CopyButton data-autofocus text={password} onResult={onCopied} />
-        <span role="status" className="ad-muted" data-tone={copyFailed ? 'danger' : undefined}>
+        <span role="status" className="adm-muted" data-tone={copyFailed ? 'danger' : undefined}>
           {copyFailed ? tr('users.copy_failed') : ''}
         </span>
       </SecretBox>
-      <ul className="ad-list">
+      <ul className="adm-list">
         <li>{tr('users.created_note_once')}</li>
         <li>{tr('users.created_note_expiry', { hours: TEMP_PASSWORD_HOURS })}</li>
         <li>{tr('users.created_note_send')}</li>
@@ -77,7 +77,7 @@ export const TempPasswordDialog: React.FC<TempPasswordDialogProps> = ({ t, addre
 
 /** A spinner line for a panel that is loading. */
 export const Loading: React.FC<{ t: ThemeTokens; label: string }> = ({ label }) => (
-  <p role="status" className="ad-loading">
+  <p role="status" className="adm-loading">
     <Spinner size={14} decorative /> {label}
   </p>
 );

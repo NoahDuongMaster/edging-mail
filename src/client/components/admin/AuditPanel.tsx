@@ -96,7 +96,7 @@ const Event: React.FC<{ entry: AuditEntry }> = ({ entry }) => {
   let tile: React.ReactNode;
   if (failed) {
     tile = (
-      <span className="ad-event-tile" data-tone="warning">
+      <span className="adm-event-tile" data-tone="warning">
         <TriangleAlert size={14} aria-hidden="true" />
       </span>
     );
@@ -104,7 +104,7 @@ const Event: React.FC<{ entry: AuditEntry }> = ({ entry }) => {
     tile = <Avatar name={entry.actor_email} size="sm" hue={avatarHue(entry.actor_email)} />;
   } else {
     tile = (
-      <span className="ad-event-tile">
+      <span className="adm-event-tile">
         <UserRound size={14} aria-hidden="true" />
       </span>
     );
@@ -119,16 +119,16 @@ const Event: React.FC<{ entry: AuditEntry }> = ({ entry }) => {
     who = self ? actor : tr('audit.actor_to_target', { actor, target: entry.target });
   }
   return (
-    <li className="ad-event" data-tone={failed ? 'warning' : undefined}>
+    <li className="adm-event" data-tone={failed ? 'warning' : undefined}>
       {tile}
-      <div className="ad-event-text">
-        <p className="ad-event-action">{actionLabel(entry.action, tr)}</p>
-        <p className="ad-event-who ad-wrap">
+      <div className="adm-event-text">
+        <p className="adm-event-action">{actionLabel(entry.action, tr)}</p>
+        <p className="adm-event-who adm-wrap">
           <span>{who}</span>
-          {detail === '' ? null : <span className="ad-event-detail">{detail}</span>}
+          {detail === '' ? null : <span className="adm-event-detail">{detail}</span>}
         </p>
       </div>
-      <time className="ad-event-time" dateTime={new Date(entry.at).toISOString()}>
+      <time className="adm-event-time" dateTime={new Date(entry.at).toISOString()}>
         {fmt.time(entry.at)}
       </time>
     </li>
@@ -161,7 +161,7 @@ export const AuditPanel: React.FC<{ t: ThemeTokens }> = () => {
 
   if (query.isError && query.data === undefined) {
     return (
-      <div className="ad-pane" data-width="narrow">
+      <div className="adm-pane" data-width="narrow">
         {head}
         <LoadError
           error={query.error}
@@ -174,7 +174,7 @@ export const AuditPanel: React.FC<{ t: ThemeTokens }> = () => {
   }
   if (query.data === undefined) {
     return (
-      <div className="ad-pane" data-width="narrow">
+      <div className="adm-pane" data-width="narrow">
         {head}
         <ListSkeleton label={tr('audit.loading')} rows={6} lines={2} />
       </div>
@@ -182,22 +182,22 @@ export const AuditPanel: React.FC<{ t: ThemeTokens }> = () => {
   }
   if (loaded.length === 0) {
     return (
-      <div className="ad-pane" data-width="narrow">
+      <div className="adm-pane" data-width="narrow">
         {head}
-        <EmptyState art={<FlightTrail size="md" />} title={tr('audit.empty')} className="ad-empty" />
+        <EmptyState art={<FlightTrail size="md" />} title={tr('audit.empty')} className="adm-empty" />
       </div>
     );
   }
 
   return (
-    <div className="ad-pane" data-width="narrow">
+    <div className="adm-pane" data-width="narrow">
       {head}
-      <div className="ad-toolbar ad-filters">
+      <div className="adm-toolbar adm-filters">
         <Select
           id="audit-kind"
           label={tr('audit.filter_kind')}
           hideLabel
-          className="ad-pill-select"
+          className="adm-pill-select"
           options={[
             { value: 'all', label: tr('audit.kind_all') },
             { value: 'accounts', label: tr('audit.kind_accounts') },
@@ -215,7 +215,7 @@ export const AuditPanel: React.FC<{ t: ThemeTokens }> = () => {
           id="audit-person"
           label={tr('audit.filter_person')}
           hideLabel
-          className="ad-pill-select"
+          className="adm-pill-select"
           options={[
             { value: '', label: tr('audit.person_all') },
             ...people.map((email) => ({ value: email, label: actorName(email, tr) ?? email }))
@@ -235,14 +235,14 @@ export const AuditPanel: React.FC<{ t: ThemeTokens }> = () => {
           onChange={(next) => chooseRange(RANGES.find((value) => value === next) ?? '7')}
           size="md"
           wrap
-          className="ad-filter ad-range"
+          className="adm-filter adm-range"
         />
       </div>
       {entries.length === 0 ? (
         <EmptyState
           art={<FlightTrail size="md" />}
           title={tr('audit.filter_none')}
-          className="ad-empty"
+          className="adm-empty"
           action={
             <Button
               size="sm"
@@ -257,13 +257,13 @@ export const AuditPanel: React.FC<{ t: ThemeTokens }> = () => {
           }
         />
       ) : (
-        <div className="ad-timeline">
+        <div className="adm-timeline">
           {byDay(entries).map((day) => (
-            <section key={day.key} aria-labelledby={`audit-day-${day.key}`} className="ad-day">
-              <h3 id={`audit-day-${day.key}`} className="ad-day-title">
+            <section key={day.key} aria-labelledby={`audit-day-${day.key}`} className="adm-day">
+              <h3 id={`audit-day-${day.key}`} className="adm-day-title">
                 {dayLabel(day.at, tr)}
               </h3>
-              <ol className="ad-events">
+              <ol className="adm-events">
                 {day.entries.map((entry) => (
                   <Event key={entry.id} entry={entry} />
                 ))}
@@ -272,7 +272,7 @@ export const AuditPanel: React.FC<{ t: ThemeTokens }> = () => {
           ))}
         </div>
       )}
-      <div className="ad-foot">
+      <div className="adm-foot">
         {rangeComplete ? (
           <>
             <span>{tr('audit.end_range')}</span>

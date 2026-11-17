@@ -33,9 +33,9 @@ export const LanguagePanel: React.FC<{ t: ThemeTokens }> = () => {
   }, [saved, tr]);
 
   return (
-    <div className="ad-pane">
+    <div className="adm-pane">
       <PageHead title={tr('term.settings')} description={tr('admin.settings_desc')} />
-      <div className="ad-cards">
+      <div className="adm-cards">
         <Group title={tr('lang.label')}>
           <Row label={tr('lang.org_default')} info={tr('lang.org_default_hint')}>
             <Select
@@ -52,13 +52,13 @@ export const LanguagePanel: React.FC<{ t: ThemeTokens }> = () => {
                   save.mutate(next);
                 }
               }}
-              className="ad-select"
+              className="adm-select"
             />
           </Row>
           {saved || loadError !== undefined || saveError !== undefined ? (
-            <div className="ad-row-note">
+            <div className="adm-row-note">
               {saved ? (
-                <p className="ad-feedback">
+                <p className="adm-feedback">
                   <CircleCheck size={16} aria-hidden="true" />
                   {tr('settings.saved')}
                 </p>

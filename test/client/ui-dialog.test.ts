@@ -85,9 +85,9 @@ describe('an inline ui Dialog', () => {
   });
 
   it('takes an exact width and the classes of its panel and scrim', () => {
-    const html = render({ width: 460, className: 'nm-admin ad-dialog', rootClassName: 'st-root', size: 'lg' });
+    const html = render({ width: 460, className: 'nm-admin adm-dialog', rootClassName: 'st-root', size: 'lg' });
     expect(html).toMatch(/^<div role="presentation" class="ui-dialog-root st-root">/);
-    const panel = tagWith(html, 'ui-dialog nm-admin ad-dialog');
+    const panel = tagWith(html, 'ui-dialog nm-admin adm-dialog');
     expect(panel).toContain('data-size="lg"');
     expect(panel).toContain('style="max-width:460px"');
     expect(tagWith(render(), 'ui-dialog')).not.toContain('style=');
