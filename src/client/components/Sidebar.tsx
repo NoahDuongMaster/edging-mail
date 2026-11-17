@@ -124,9 +124,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ t, folder, onSelectFolder, sta
             <ul role="list" className="mb-nav-list">
               {NAV_ITEMS.map((item) => {
                 const active = folder === item.id;
-                // Drafts and Snoozed show their total (nothing there is new mail); every other folder shows its unread mail.
-                const count =
-                  item.id === 'drafts' || item.id === 'snoozed' ? (folderStats[item.id]?.total ?? 0) : (folderStats[item.id]?.unread ?? 0);
+                // The Inbox shows its unread mail (what wants attention, in the weight of the text); every other folder shows how many messages it
+                // holds (quiet), so Sent, Starred, Archive, Spam and Trash say how full they are.
+                const count = item.id === 'inbox' ? (folderStats.inbox?.unread ?? 0) : (folderStats[item.id]?.total ?? 0);
                 const Icon = item.icon;
                 return (
                   <li key={item.id}>
