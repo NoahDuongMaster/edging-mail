@@ -5,8 +5,8 @@ import { usePatchUser } from '../../lib/admin/users';
 import { announce } from '../../lib/announce';
 import { fmt, useT } from '../../lib/i18n';
 import { avatarHue } from '../../theme';
-import { Avatar, Button, TextField } from '../../ui';
-import { PersonRole, PersonStatus, PersonTwoFactor } from './adminUi';
+import { Avatar, Button, InfoTip, TextField } from '../../ui';
+import { PersonRole, PersonStatus, PersonTwoFactor, tipLines } from './adminUi';
 
 /** The name of a person as the console shows it: their display name, or their address when they have none. */
 export const personName = (user: AdminUser): string => (user.display_name === '' ? user.email : user.display_name);
@@ -45,6 +45,54 @@ export const PersonSummary: React.FC<{ user: AdminUser; isSelf: boolean }> = ({ 
     </div>
   );
 };
+
+/**
+ * The title of the account's actions in a person's dialog, with one InfoTip after it that says what each action shown does, after the
+ * button's name (DESIGN-v4m R1: the lines beside the buttons are gone from the screen; each button keeps its line as its description).
+ */
+export const AccountHeading: React.FC<{ id: string; user: AdminUser; isSelf: boolean }> = ({ id, user, isSelf }) => {
+  const tr = useT();
+  const member = user.role === 'member';
+  const lines: (readonly [string, string])[] = [
+    member ? [tr('users.make_admin'), tr('users.make_admin_desc')] : [tr('users.make_member'), tr('users.make_member_desc')]
+  ];
+  if (!isSelf) {
+    const active = user.status === 'active';
+    lines.push(active ? [tr('admin.disable'), tr('users.disable_desc')] : [tr('admin.enable'), tr('users.enable_desc')]);
+    if (user.two_factor) {
+      lines.push([tr('users.reset_two_factor'), tr('users.reset_two_factor_desc')]);
+    }
+    if (user.never_signed_in) {
+      lines.push([tr('users.reissue_temp_password'), tr('users.reissue_desc')]);
+    }
+  }
+  return (
+    <div className="ui-tip-row">
+      <h3 id={id} className="ad-dsec-title">
+        {tr('term.account')}
+      </h3>
+      <InfoTip label={tr('term.account')}>{tipLines(lines)}</InfoTip>
+    </div>
+  );
+};
+
+/**
+ * One action of the account: the button, described by the line on what follows from it (`id`). The line is for screen readers only (the
+ * section's InfoTip says it for every action, DESIGN-v4m R1) unless `shown`: why the button is off, needed where it is pressed.
+ */
+export const ActionLine: React.FC<{ id: string; text: string; shown?: boolean; children: React.ReactNode }> = ({
+  id,
+  text,
+  shown,
+  children
+}) => (
+  <div className="ad-action">
+    <p id={id} className={shown === true ? 'ad-muted' : 'ui-visually-hidden'}>
+      {text}
+    </p>
+    {children}
+  </div>
+);
 
 interface NameFormProps {
   user: AdminUser;

@@ -204,8 +204,8 @@
   display: -webkit-box;
   max-width: 100%;
   overflow: hidden;
-  font-size: 11px;
-  line-height: 14px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
   font-weight: 500;
   text-align: center;
   text-wrap: balance;
@@ -269,8 +269,8 @@
   text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   color: var(--text3);
   font-variant-numeric: tabular-nums;
 }
@@ -279,6 +279,10 @@
 .rd-top {
   flex: none;
   gap: 0;
+  /* DESIGN-v4m R3: a phone's top bar is 56 px, as the list's app bar it is pushed from: its 44 px controls in the middle, clear of the
+     par avion edge over its top. */
+  min-height: 56px;
+  align-items: center;
   /* Back's arrow (22 px, 11 px inside its 44 px button) starts on the content column of the subject below, and Older's chevron (20 px, 12 px
      inside) ends on it: 16 px from the edge, or the safe area's edge of a phone in landscape (J5-16, J3-40: the glyphs, not the buttons, on
      the column in both orientations). */
@@ -297,8 +301,8 @@
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   color: var(--text2);
   font-variant-numeric: tabular-nums;
 }
@@ -391,8 +395,8 @@
   align-items: flex-start;
   gap: 6px;
   margin: 6px 2px 2px;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
   color: var(--text2);
 }
 .rd-new-hint[data-tone='danger'] {
@@ -417,16 +421,16 @@
   padding-block: 10px 2px;
   background: transparent;
   color: var(--text3);
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
   font-weight: 600;
   cursor: default;
 }
 .rd-snooze-when {
   margin: 0;
   padding: 0 2px;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   color: var(--text2);
   font-variant-numeric: tabular-nums;
 }
@@ -434,8 +438,8 @@
 .rd-pop-title {
   margin: 0;
   padding: 6px 10px 4px;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
   font-weight: 600;
   color: var(--text3);
 }
@@ -448,6 +452,10 @@
   overflow-y: auto;
   /* Its height is the unit of the mail frame's height (100cqh, below). Its size comes from the pane, never from what it holds. */
   container-type: size;
+}
+/* A phone: a control reached with Tab (Reply, Forward, a file) scrolls clear of the floating action bar, never under it (2.4.11). */
+.rd-root[data-compact='true'] .rd-scroll {
+  scroll-padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
 }
 /* The letter (v3): 720 px of content at most, 32 px over it and 40 px each side, centred in a sheet wider than 880 px; in a narrower sheet it
    starts on the left with 32 px margins (24 px from 480 px down), so the toolbar's glyphs reach the column too (J3-36; READING_COLUMN in
@@ -535,8 +543,8 @@
 /* The subject reads as the letter's title, the typographic peak of the screen: 32/40 650 (24/32 on a phone). */
 .rd-subject {
   margin: 0;
-  font-size: 32px;
-  line-height: 40px;
+  font-size: calc(var(--fs-title) + 14px);
+  line-height: calc(var(--lh-title) + 14px);
   font-weight: 650;
   letter-spacing: -0.022em;
   color: var(--text);
@@ -544,8 +552,8 @@
   text-wrap: pretty;
 }
 .rd-page[data-compact='true'] .rd-subject {
-  font-size: 24px;
-  line-height: 32px;
+  font-size: calc(var(--fs-title) + 4px);
+  line-height: calc(var(--lh-title) + 4px);
   letter-spacing: -0.018em;
 }
 /* The labels under the subject (v3 R4): quiet like the list's, the hue only in the dot (set inline), the name in text2, no fill; a chip
@@ -568,7 +576,7 @@
   border-color: transparent;
   background: transparent;
   box-shadow: none;
-  font-size: 13px;
+  font-size: var(--fs-label);
   transition: background-color var(--dur-fast) var(--ease-standard);
 }
 .ui-chip.rd-tag .ui-chip-dot {
@@ -648,8 +656,8 @@
   gap: 0 8px;
 }
 .rd-name {
-  font-size: 15px;
-  line-height: 22px;
+  font-size: calc(var(--fs-body) + 1px);
+  line-height: calc(var(--lh-body) + 2px);
   font-weight: 600;
   overflow-wrap: anywhere;
 }
@@ -658,16 +666,16 @@
 .rd-addr {
   min-width: 0;
   overflow: hidden;
-  font-size: 13px;
-  line-height: 22px;
+  font-size: var(--fs-secondary);
+  line-height: calc(var(--lh-secondary) + 2px);
   color: var(--text2);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 /* A phone column is narrow (about 170px beside the avatar and the star at 320px): 12/16 there, so a common address fits on its line. */
 .rd-page[data-compact='true'] .rd-addr {
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
 }
 /* Opened with the recipients, the address wraps only where MessageView lets it (after the @ and before a dot), never inside a name; a single
    name wider than the column is still cut with an ellipsis. */
@@ -681,8 +689,8 @@
 }
 .rd-date {
   flex: none;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   color: var(--text3);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -741,8 +749,8 @@
   display: flex;
   margin: 0;
   color: var(--text2);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
 }
 .rd-rcpt-text {
   min-width: 0;
@@ -856,8 +864,8 @@ button.rd-rcpt {
   border-radius: var(--radius-pill);
   background: transparent;
   box-shadow: none;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-label);
+  line-height: var(--lh-label);
   font-weight: 500;
   text-align: left;
   white-space: normal;
@@ -917,8 +925,8 @@ button.rd-rcpt {
   align-items: center;
   gap: 6px;
   margin: 0;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-label);
+  line-height: var(--lh-label);
   font-weight: 600;
   color: var(--text);
 }
@@ -934,8 +942,8 @@ button.rd-rcpt {
 }
 .rd-trust-note {
   margin: 4px 0 0;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   color: var(--text2);
 }
 /* J4-34: the quiet way out of a doubtful message (Move to Spam), under the words. */
@@ -950,8 +958,8 @@ button.rd-rcpt {
 }
 .rd-trust-sheet-body .rd-trust-note {
   margin: 0;
-  font-size: 15px;
-  line-height: 22px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
 }
 .rd-trust-sheet-body .ui-btn.rd-trust-action {
   width: 100%;
@@ -981,27 +989,32 @@ button.rd-rcpt {
   flex: 1 1 14em;
   min-width: 0;
   margin: 0;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
 }
 .rd-note {
   max-width: 70ch;
   margin-bottom: 16px;
 }
+/* DESIGN-v4m R1: a reader notice whose why is in an InfoTip (a locked message, hidden images) draws no leading Info glyph of its own: two
+   circled i's in one line read as one thing said twice; the InfoTip's glyph is the notice's one icon, the info tint says the rest. */
+:is(.rd-note, .rd-mail) .ui-banner[data-tone='info']:has(.ui-infotip) > .ui-banner-icon {
+  display: none;
+}
 /* HTML / Plain text: a ui SegmentedControl. */
 .rd-view {
   margin-bottom: 12px;
 }
-/* Plain text set for reading: 16/26 in the desktop column (36em: about 75 characters of prose a line), 15/24 on a phone. */
+/* Plain text set for reading: 16/26 in the desktop column (36em: about 75 characters of prose a line), 16/26 on a phone (DESIGN-v4m). */
 .rd-text {
   max-width: 36em;
-  font-size: 16px;
-  line-height: 26px;
+  font-size: calc(var(--fs-body) + 2px);
+  line-height: calc(var(--lh-body) + 6px);
   color: var(--text);
 }
 .rd-text[data-compact='true'] {
-  font-size: 15px;
-  line-height: 24px;
+  font-size: calc(var(--fs-secondary) + 1px);
+  line-height: calc(var(--lh-secondary) + 4px);
 }
 .rd-text p {
   margin: 0 0 16px;
@@ -1035,7 +1048,7 @@ button.rd-rcpt {
   margin-bottom: 12px;
 }
 .rd-quote-attr {
-  font-size: 14px;
+  font-size: var(--fs-body);
 }
 
 /* The mail frame: notices stand above the white canvas (a mail is drawn on white in both themes, so the sender's colours stay readable). */
@@ -1124,8 +1137,8 @@ button.rd-rcpt {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-label);
+  line-height: var(--lh-label);
   font-weight: 500;
   color: var(--text2);
   font-variant-numeric: tabular-nums;
@@ -1207,13 +1220,13 @@ button.rd-rcpt {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   font-weight: 500;
 }
 .rd-file-size {
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
   color: var(--text3);
   font-variant-numeric: tabular-nums;
 }
@@ -1296,7 +1309,7 @@ button.rd-rcpt {
   width: fit-content;
   margin-inline-start: -12px;
   color: var(--text3);
-  font-size: 13px;
+  font-size: var(--fs-button-sm);
   font-weight: 400;
 }
 .rd-error {
@@ -1371,10 +1384,11 @@ button.rd-rcpt {
 }
 .ui-menu-item.rd-sheet-item {
   justify-content: space-between;
-  min-height: 44px;
+  /* A sheet is a phone's list of choices: 48px rows (DESIGN-v4m R4), the words at --fs-body (16 there). */
+  min-height: calc(var(--control-touch) + 4px);
 }
 .rd-sheet-hint {
-  font-size: 13px;
+  font-size: var(--fs-secondary);
   color: var(--text2);
   font-variant-numeric: tabular-nums;
 }
@@ -1387,6 +1401,9 @@ button.rd-rcpt {
 }
 .rd-label-sheet .rd-menu-list {
   overflow: visible;
+}
+.rd-label-sheet .ui-menu-item.rd-menu-item {
+  min-height: calc(var(--control-touch) + 4px);
 }
 /* In the sheet the rows run to the sheet's own edges: the new-label field and its divider take the same edges (no popover row inset). */
 .rd-label-sheet .rd-new,
@@ -1408,8 +1425,8 @@ button.rd-rcpt {
   border-radius: var(--radius-control);
   background: var(--raised);
   color: var(--text);
-  font-size: 14px;
-  line-height: 20px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;

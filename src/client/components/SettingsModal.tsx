@@ -2,7 +2,6 @@ import React from 'react';
 import {
   Bell,
   Building2,
-  ChevronLeft,
   ChevronRight,
   CircleAlert,
   CircleCheck,
@@ -27,11 +26,28 @@ import { useSaveLanguage } from '../lib/language';
 import { useSecretHeld } from '../lib/secretHold';
 import { pushForSignOut, usePushNotifications } from '../lib/push';
 import { useSaveSettings, useSettings, type Settings, type SettingsPatch } from '../lib/settings';
-import { Avatar, Button, Dialog, RadioGroup, Section, Spinner, Switch, TabPanel, Tabs, TextArea, TextField, useGlide } from '../ui';
+import {
+  ActionBar,
+  Avatar,
+  Button,
+  Dialog,
+  PHONE_QUERY,
+  RadioGroup,
+  Section,
+  Spinner,
+  Switch,
+  TabPanel,
+  Tabs,
+  TextArea,
+  TextField,
+  useGlide,
+  useMediaMatch
+} from '../ui';
 import { LanguagePicker } from './LanguagePicker';
 import { ErrorLine } from './auth/authUi';
 import { DeveloperDocs, DOCS_TABS, type DocsTab } from './settings/DeveloperDocs';
-import { DensityPreference, MotionPreference, ShortcutsPreference, UndoSendPreference } from './settings/PreferencesPanel';
+import { DensityGroup, MotionGroup, ShortcutsPreference, UndoSendPreference } from './settings/PreferencesPanel';
+import { SettingsBar, SettingsViewProvider, type SettingsView } from './settings/SettingsBar';
 import { SettingRow, SettingsGroup, SettingsPage } from './settings/SettingsPage';
 import { SecuritySection } from './security/SecuritySection';
 import './settings/settings.css';
@@ -169,6 +185,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const user = useSession().data?.user;
   const [tab, setTab] = React.useState<SettingsSection>(initialSection);
   const [pane, setPane] = React.useState<Pane>('nav');
+  // A view open inside the section (a view of Security): a phone's bar shows its title and goes back to the section (SettingsBar).
+  const [view, setView] = React.useState<SettingsView | null>(null);
+  // A phone (or a touch screen): Save is in the bottom action bar of the sheet, not in the card (DESIGN-v4m R3; ui ActionBar docks there).
+  const phone = useMediaMatch(PHONE_QUERY);
   // When Settings opens, the focus goes to the row of the open section in the nav (with its ring when opened from the keyboard), not to a
   // field, which on a phone would raise the keyboard. Looked up when the dialog opens, through a ref object that never changes.
   const dialogRef = React.useRef<HTMLDivElement | null>(null);
@@ -302,9 +322,39 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         : push.permission === 'granted'
           ? tr('settings.push_off')
           : tr('settings.push_ask');
+  // What the browser allows is an InfoTip after the label (the switch itself says On or Off); why it does not work (blocked) and that it is
+  // working stay a visible line, as the person needs them while acting.
+  const pushHintMode = push.busy || push.permission === 'denied' ? 'inline' : 'tip';
 
-  // The profile: one group of rows (the name, the address, the signature: label and hint on the left, the field on the right), Save as its
-  // last row with what it did at its left.
+  // The profile: one group of rows (the name, the address, the signature: label (and tip) on the left, the field on the right), then what
+  // Save did as the card's last row. Save sits at its right on a desktop; on a phone it is the full-width button of the sheet's bottom bar.
+  const feedbackLine =
+    feedback === null && dirty ? (
+      <p className="st-feedback" data-tone="pending">
+        <CircleDot size={16} aria-hidden="true" />
+        {tr('settings.unsaved')}
+      </p>
+    ) : feedback?.type === 'saved' ? (
+      <p role="status" className="st-feedback" data-tone="success">
+        <CircleCheck size={16} aria-hidden="true" />
+        {tr('settings.saved')}
+      </p>
+    ) : feedback?.type === 'unchanged' ? (
+      <p role="status" className="st-feedback">
+        <Info size={16} aria-hidden="true" />
+        {tr('settings.no_changes')}
+      </p>
+    ) : feedback?.type === 'error' || feedback?.type === 'offline' ? (
+      <p role="alert" className="st-feedback" data-tone="danger">
+        <CircleAlert size={16} aria-hidden="true" />
+        {feedback.type === 'offline' ? tr('settings.save_offline') : feedback.text}
+      </p>
+    ) : null;
+  const save = (
+    <Button type="submit" variant="primary" loading={isSaving}>
+      {isSaving ? tr('settings.saving') : tr('common.save')}
+    </Button>
+  );
   const profile =
     values === undefined ? (
       <SettingsGroup>
@@ -363,36 +413,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               placeholder={tr('settings.signature_placeholder')}
             />
           </div>
-          <div className="st-form-foot">
-            {feedback === null && dirty ? (
-              <p className="st-feedback" data-tone="pending">
-                <CircleDot size={16} aria-hidden="true" />
-                {tr('settings.unsaved')}
-              </p>
-            ) : null}
-            {feedback?.type === 'saved' ? (
-              <p role="status" className="st-feedback" data-tone="success">
-                <CircleCheck size={16} aria-hidden="true" />
-                {tr('settings.saved')}
-              </p>
-            ) : null}
-            {feedback?.type === 'unchanged' ? (
-              <p role="status" className="st-feedback">
-                <Info size={16} aria-hidden="true" />
-                {tr('settings.no_changes')}
-              </p>
-            ) : null}
-            {feedback?.type === 'error' || feedback?.type === 'offline' ? (
-              <p role="alert" className="st-feedback" data-tone="danger">
-                <CircleAlert size={16} aria-hidden="true" />
-                {feedback.type === 'offline' ? tr('settings.save_offline') : feedback.text}
-              </p>
-            ) : null}
-            <Button type="submit" variant="primary" loading={isSaving}>
-              {isSaving ? tr('settings.saving') : tr('common.save')}
-            </Button>
-          </div>
+          {phone ? (
+            feedbackLine === null ? null : (
+              <div className="st-form-foot">{feedbackLine}</div>
+            )
+          ) : (
+            <div className="st-form-foot">
+              {feedbackLine}
+              {save}
+            </div>
+          )}
         </SettingsGroup>
+        {phone ? <ActionBar>{save}</ActionBar> : null}
       </form>
     );
 
@@ -432,19 +464,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           />
         )}
       </Section>
-      <SettingsGroup title={tr('prefs.motion')}>
-        <MotionPreference />
-      </SettingsGroup>
+      <MotionGroup />
     </>
   );
 
   // The message list and sending, on this device (lib/prefs.ts): the row density, and how long a sent message can be taken back.
   const mail = (
     <>
-      {/* The page's line already says these stay in this browser: the groups do not repeat it. */}
-      <SettingsGroup title={tr('prefs.density')}>
-        <DensityPreference />
-      </SettingsGroup>
+      {/* The page's tip already says these stay in this browser: the groups do not repeat it. */}
+      <DensityGroup />
       <SettingsGroup title={tr('prefs.undo_send')}>
         <UndoSendPreference />
       </SettingsGroup>
@@ -470,6 +498,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               id="settings-push"
               label={tr('settings.push_device')}
               hint={pushStatus}
+              hintMode={pushHintMode}
               checked={push.subscribed}
               disabled={push.busy}
               onChange={() => {
@@ -646,20 +675,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       }
     >
       <TabPanel tabsId={TABS_ID} value={current.id} selected={current.id}>
-        {/* A phone shows one section at a time: Back returns to the list (the same pane switch as a tap on a row, the other way). */}
-        <div className="st-back">
-          <Button
-            variant="ghost"
-            size="sm"
-            leadingIcon={<ChevronLeft size={16} aria-hidden="true" />}
-            disabled={secretHeld}
-            onClick={() => setPane('nav')}
-          >
-            {tr('term.settings')}
-          </Button>
-        </div>
+        {/* A phone shows one section at a time under a bar (hidden on a desktop by settings.css): Back returns to the list (the same pane
+            switch as a tap on a row, the other way), or from a view of the section to the section; the title of what is on screen and its
+            tip; the sheet's X stays at the right. */}
+        <SettingsBar
+          title={view?.title ?? tr(current.labelKey)}
+          info={view === null ? [tr(current.descriptionKey)] : view.info}
+          backDisabled={secretHeld}
+          onBack={view?.back ?? (() => setPane('nav'))}
+        />
         {/* A new section fades in (keyed, so it is a new element each time). */}
-        <SectionBody key={current.id}>{contentOf(current)}</SectionBody>
+        <SettingsViewProvider value={setView}>
+          <SectionBody key={current.id}>{contentOf(current)}</SectionBody>
+        </SettingsViewProvider>
       </TabPanel>
     </Dialog>
   );

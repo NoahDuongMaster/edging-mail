@@ -92,7 +92,9 @@ export const LockedMailDialog: React.FC<LockedMailDialogProps> = ({ t, user, mai
       open
       onClose={dismiss}
       title={tr('locked.dialog_title')}
+      // The irreversible part stays visible (what is deleted, for good); that nothing goes at once and it can be cancelled is in the tip.
       description={tr('locked.dialog_body', { count: mail.locked })}
+      info={tr('locked.dialog_note')}
       role="alertdialog"
       initialFocusRef={confirmRef}
       returnFocusRef={ACCOUNT_BUTTON}
@@ -117,7 +119,6 @@ export const LockedMailDialog: React.FC<LockedMailDialogProps> = ({ t, user, mai
         }}
         className="st-dialog-form"
       >
-        <p className="st-muted">{tr('locked.dialog_note')}</p>
         <TextField
           ref={confirmRef}
           id="locked-confirm"

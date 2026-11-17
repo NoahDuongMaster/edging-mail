@@ -4,8 +4,15 @@ import { UNDO_SEND_CHOICES, setPref, usePrefs } from '../../lib/prefs';
 import { SHOW_SHORTCUTS_EVENT } from '../../lib/shortcuts';
 import { Button, RadioGroup, Section, Select, Switch } from '../../ui';
 import { ShortcutList } from '../ShortcutList';
-import { SettingRow, SettingsGroup } from './SettingsPage';
+import { SettingRow, SettingsGroup, tipLines } from './SettingsPage';
 import './settings.css';
+
+interface ChoiceGroupProps {
+  /** The level of the group's title: 4 under a page of Settings (default), 3 in the panel alone. */
+  headingLevel?: 2 | 3 | 4;
+  /** One line under the title (the panel alone says the choice stays in this browser). */
+  description?: string;
+}
 
 /**
  * Motion on this device: follow the system setting, or reduce it here whatever the system says (`data-motion` on <html>). The choices are
@@ -19,12 +26,33 @@ export function MotionPreference(): React.ReactElement {
       className="st-choices"
       label={tr('prefs.motion_choice')}
       options={[
-        { value: 'system', label: tr('prefs.motion_system'), hint: tr('prefs.motion_system_hint') },
-        { value: 'reduce', label: tr('prefs.motion_reduce'), hint: tr('prefs.motion_reduce_hint') }
+        { value: 'system', label: tr('prefs.motion_system') },
+        { value: 'reduce', label: tr('prefs.motion_reduce') }
       ]}
       value={motion}
       onChange={(value) => setPref('motion', value === 'reduce' ? 'reduce' : 'system')}
     />
+  );
+}
+
+/**
+ * Motion as a group of Settings: its title with what each choice does in ONE InfoTip after it (DESIGN-v4m R1: one tip per section beats one
+ * per option), then the two choices.
+ */
+export function MotionGroup({ headingLevel, description }: ChoiceGroupProps): React.ReactElement {
+  const tr = useT();
+  return (
+    <SettingsGroup
+      headingLevel={headingLevel}
+      title={tr('prefs.motion')}
+      description={description}
+      info={tipLines([
+        { term: tr('prefs.motion_system'), text: tr('prefs.motion_system_hint') },
+        { term: tr('prefs.motion_reduce'), text: tr('prefs.motion_reduce_hint') }
+      ])}
+    >
+      <MotionPreference />
+    </SettingsGroup>
   );
 }
 
@@ -37,8 +65,8 @@ export function DensityPreference(): React.ReactElement {
       className="st-choices"
       label={tr('prefs.density')}
       options={[
-        { value: 'comfortable', label: tr('prefs.density_comfortable'), hint: tr('prefs.density_comfortable_hint') },
-        { value: 'compact', label: tr('prefs.density_compact'), hint: tr('prefs.density_compact_hint') }
+        { value: 'comfortable', label: tr('prefs.density_comfortable') },
+        { value: 'compact', label: tr('prefs.density_compact') }
       ]}
       value={density}
       onChange={(value) => setPref('density', value === 'compact' ? 'compact' : 'comfortable')}
@@ -46,9 +74,28 @@ export function DensityPreference(): React.ReactElement {
   );
 }
 
+/** Density as a group of Settings: its title with what each choice does in one InfoTip after it, then the two choices. */
+export function DensityGroup({ headingLevel, description }: ChoiceGroupProps): React.ReactElement {
+  const tr = useT();
+  return (
+    <SettingsGroup
+      headingLevel={headingLevel}
+      title={tr('prefs.density')}
+      description={description}
+      info={tipLines([
+        { term: tr('prefs.density_comfortable'), text: tr('prefs.density_comfortable_hint') },
+        { term: tr('prefs.density_compact'), text: tr('prefs.density_compact_hint') }
+      ])}
+    >
+      <DensityPreference />
+    </SettingsGroup>
+  );
+}
+
 /**
  * How long a sent message waits in this browser, so Undo can take it back (WCAG 2.2.1: the person sets the time, or turns it off). Five
- * choices, so a list (ui/Select) rather than a row of radios: one row of a group, its label and hint on the left, the list on the right.
+ * choices, so a list (ui/Select) rather than a row of radios: one row of a group, its label (with what it does in an InfoTip) on the left,
+ * the list on the right.
  */
 export function UndoSendPreference(): React.ReactElement {
   const tr = useT();
@@ -77,8 +124,9 @@ export function UndoSendPreference(): React.ReactElement {
 
 /**
  * The switch for single-key shortcuts (WCAG 2.1.4) and EVERY key of the mailbox (J4-29, J6-28): the same list the ? dialog shows, drawn by
- * the same component from the same source (lib/shortcuts SHORTCUT_GROUPS), so the two never disagree. The switch and the way to that dialog
- * anywhere (the ? key, and a button: the mailbox listens for SHOW_SHORTCUTS_EVENT) are one group; the keys follow on a card of their own.
+ * the same component from the same source (lib/shortcuts SHORTCUT_GROUPS), so the two never disagree. The switch and the button that opens
+ * that dialog (the mailbox listens for SHOW_SHORTCUTS_EVENT; the list itself names the ? key) are one group; the keys follow on a card of
+ * their own.
  */
 export function ShortcutsPreference(): React.ReactElement {
   const tr = useT();
@@ -93,7 +141,7 @@ export function ShortcutsPreference(): React.ReactElement {
           checked={shortcuts}
           onChange={(on) => setPref('shortcuts', on)}
         />
-        <SettingRow hint={tr('shortcuts.anywhere')}>
+        <SettingRow>
           <Button size="sm" onClick={() => window.dispatchEvent(new Event(SHOW_SHORTCUTS_EVENT))}>
             {tr('shortcuts.open')}
           </Button>
@@ -117,12 +165,8 @@ export function PreferencesPanel({ headingLevel = 3 }: { headingLevel?: 2 | 3 | 
   const tr = useT();
   return (
     <div className="st-page">
-      <SettingsGroup headingLevel={headingLevel} title={tr('prefs.motion')} description={tr('prefs.device_only')}>
-        <MotionPreference />
-      </SettingsGroup>
-      <SettingsGroup headingLevel={headingLevel} title={tr('prefs.density')} description={tr('prefs.device_only')}>
-        <DensityPreference />
-      </SettingsGroup>
+      <MotionGroup headingLevel={headingLevel} description={tr('prefs.device_only')} />
+      <DensityGroup headingLevel={headingLevel} description={tr('prefs.device_only')} />
       <SettingsGroup headingLevel={headingLevel} title={tr('prefs.undo_send')} description={tr('prefs.device_only')}>
         <UndoSendPreference />
       </SettingsGroup>

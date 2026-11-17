@@ -91,7 +91,14 @@ describe('the Settings dialog and its sections', () => {
     expect(settings).not.toMatch(/footer=\{/);
     expect(settings).toMatch(/disabled=\{signingOut \|\| secretHeld\}/);
     expect(settings).toMatch(/disabled: secretHeld/);
-    expect(settings).toMatch(/disabled=\{secretHeld\}\s+onClick=\{\(\) => setPane\('nav'\)\}/);
+    // The phone bar's Back (SettingsBar) is off while a secret is held, as the X; it goes back to a view's section, or to the list.
+    expect(settings).toMatch(/backDisabled=\{secretHeld\}\s+onBack=\{view\?\.back \?\? \(\(\) => setPane\('nav'\)\)\}/);
+    expect(read(path.join(COMPONENTS, 'settings', 'SettingsBar.tsx'))).toMatch(
+      /<IconButton label=\{tr\('common\.back'\)\} disabled=\{backDisabled\} onClick=\{onBack\}>/
+    );
+    // A bar title that does not fit at the title size (Vietnamese at 320px) steps down to the body size before it is cut.
+    expect(read(path.join(COMPONENTS, 'settings', 'SettingsBar.tsx'))).toMatch(/el\.dataset\.fit = 'tight';/);
+    expect(css).toMatch(/\.st-bar-title\[data-fit='tight'\] \{\s+font-size: var\(--fs-body\);/);
   });
 
   it('keeps the notifications switch usable when the browser blocks notifications: only a running request disables it', () => {
@@ -143,7 +150,7 @@ describe('the Settings dialog and its sections', () => {
     // (onActivate), the arrows only move the selection, so moving through the list never hides it under the keyboard's focus.
     expect(settings).toMatch(/<Tabs\s+id=\{TABS_ID\}\s+className="st-tabs"\s+orientation="vertical"\s/);
     expect(settings).toMatch(/onActivate=\{\(\) => \{\s*if \(!secretHeld\) \{\s*setPane\('section'\);/);
-    expect(settings).toMatch(/onClick=\{\(\) => setPane\('nav'\)\}/);
+    expect(settings).toMatch(/\(\) => setPane\('nav'\)/);
     // The open section's row carries the gliding capsule of the v3 signature (ui/glide.ts), keyed on the open section; the Tabs' own ink
     // gives way to it.
     expect(settings).toMatch(/const capsule = useGlide\(navRef, OPEN_ROW, \{ key: `\$\{openKey\} \$\{settled\}` \}\);/);
@@ -157,8 +164,11 @@ describe('the Settings dialog and its sections', () => {
     // Big rows (56px, the icon in a tile, a chevron) on a phone; the open section's glide capsule is a desktop thing only.
     expect(phone).toMatch(/\.ui-tabs\.st-tabs > \.ui-tab,[^{]*\{[^}]*min-height: 56px;/);
     expect(phone).toMatch(/\.st-glide \{\s*display: none;/);
-    // In a section a phone's head is a nav bar: Back to the list over the head, on the left; the title is kept for screen readers only.
-    expect(phone).toMatch(/\.st-back \{\s*position: absolute;[^}]*display: block;/);
+    // In a section a phone's head is the bar (DESIGN-v4m R3): Back, the title of what is on screen and its tip over the head, on the left
+    // (the head never scrolls); the dialog's title is kept for screen readers only, and so are the page's and a view's own headings.
+    expect(phone).toMatch(/\.st-bar \{\s*position: absolute;[^}]*display: flex;/);
+    expect(phone).toMatch(/\.st-page-head,\s*\.st-view-heading \{\s*position: absolute;[^}]*clip-path: inset\(50%\);/);
+    expect(phone).toMatch(/\.st-page-head > \.ui-infotip,\s*\.st-view-heading > \.ui-infotip,\s*\.st-view-back \{\s*display: none;/);
     expect(phone).toMatch(
       /\.st-dialog:has\(\.st-nav\[data-pane='section'\]\) > \.ui-dialog-head > \.ui-dialog-title \{[^}]*clip-path: inset\(50%\);/
     );
@@ -201,5 +211,27 @@ describe('the Settings dialog and its sections', () => {
       /const opener = back \? section\.current\?\.querySelector<HTMLElement>\(`\[data-view="\$\{CSS\.escape\(before\)\}"\]`\) : null;/
     );
     expect(section).toMatch(/\(opener \?\? heading\.current\)\?\.focus\(\);/);
+  });
+
+  it('v4m: says what a page or a view is for in an InfoTip after its title, keeps the primary in the bottom bar, and sizes type by variable', () => {
+    // R1: no line of helper text under a page title; the description is the tip's words (and the phone bar's).
+    const page = read(path.join(COMPONENTS, 'settings', 'SettingsPage.tsx'));
+    expect(page).toMatch(/<header className="st-page-head ui-tip-row">[\s\S]*?<InfoTip label=\{title\}>\{description\}<\/InfoTip>/);
+    expect(sources.map(read).join('\n')).not.toMatch(/st-page-desc/);
+    // A view's explanation is its `info` (a tip after its title, in the bar on a phone); its form keeps one short line visible.
+    const frame = read(path.join(COMPONENTS, 'security', 'securityUi.tsx'));
+    expect(frame).toMatch(/useSettingsView\(\{ title: barTitle \?\? title, back: onBack, info \}\);/);
+    // R3: the button of every form of Security, and Save of the profile on a phone, is in a ui ActionBar (docked at the sheet's bottom on a
+    // phone, a plain row on a desktop); the boxes on the way to a docked bar fill the sheet's body, so it stands at the bottom edge.
+    for (const file of ['CredentialForm.tsx', 'ChangePasswordView.tsx', 'RecoveryKeyView.tsx', 'securityUi.tsx']) {
+      expect(read(path.join(COMPONENTS, 'security', file)), file).toMatch(/<ActionBar>\s*(<AuthButton|<Button|\{danger)/);
+    }
+    expect(settings).toMatch(/\{phone \? <ActionBar>\{save\}<\/ActionBar> : null\}/);
+    const phone = /@media \(max-width: 640px\) \{([\s\S]*?)\n\}/.exec(cssCode)?.[1] ?? '';
+    expect(phone).toMatch(/\.st-dialog > \.ui-dialog-body \{\s*--ui-actionbar-bleed: 16px;/);
+    expect(phone).toMatch(/\.st-dialog > \.ui-dialog-body \.ui-actionbar\[data-docked='true'\] \{\s*margin-top: auto;/);
+    // R2: every size in settings.css comes from the --fs-* / --lh-* variables (or a calc of them): no px literal is left (a code chip keeps
+    // its relative 0.86em).
+    expect(cssCode).not.toMatch(/(font-size|line-height): [\d.]+px/);
   });
 });

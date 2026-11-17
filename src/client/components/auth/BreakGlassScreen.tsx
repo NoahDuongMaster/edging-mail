@@ -9,7 +9,7 @@ import { usePasswordCheck } from '../../lib/password/usePasswordCheck';
 import { useAction } from '../../lib/useAction';
 import { PasswordField, SecretField } from '../PasswordField';
 import { TextField } from '../../ui';
-import { AuthButton, AuthCard, ErrorLine, TextButton } from './authUi';
+import { AuthActions, AuthButton, AuthCard, ErrorLine, TextButton, useAuthPhone } from './authUi';
 import { RecoveryKeyPanel } from './RecoveryKeyPanel';
 
 type Step = 'details' | 'key' | 'done';
@@ -33,6 +33,7 @@ export const BreakGlassScreen: React.FC<{ t: ThemeTokens; onBack: () => void }> 
   const [draft, setDraft] = React.useState<RecoveryKeyDraft | null>(null);
   const secrets = React.useRef<{ setupKey: string; password: string } | null>(null);
   const check = usePasswordCheck(password, 'admin', contextWords(email));
+  const phone = useAuthPhone();
   // The new recovery key is zeroed when a newer draft replaces it and when this screen goes; the typed details are dropped with the screen.
   React.useEffect(
     () => () => {
@@ -86,14 +87,23 @@ export const BreakGlassScreen: React.FC<{ t: ThemeTokens; onBack: () => void }> 
       <AuthCard t={t} title={tr('breakglass.done_title')} lead={tr('breakglass.done_lead')}>
         <p className="au-text">{tr('breakglass.old_mail')}</p>
         <p className="au-text">{tr('breakglass.two_factor')}</p>
-        <AuthButton t={t} type="button" label={tr('forgot.done_button')} onClick={onBack} />
+        <AuthActions>
+          <AuthButton t={t} type="button" label={tr('forgot.done_button')} onClick={onBack} />
+        </AuthActions>
       </AuthCard>
     );
   }
 
   if (step === 'key' && draft !== null) {
     return (
-      <AuthCard t={t} wide step={{ current: 2, total: STEPS }} title={tr('recovery.title_new')} lead={tr('breakglass.key_lead')}>
+      <AuthCard
+        t={t}
+        wide
+        step={{ current: 2, total: STEPS }}
+        title={tr('recovery.title_new')}
+        lead={tr('breakglass.key_lead')}
+        back={{ label: tr('common.cancel'), onClick: onBack, kind: 'close' }}
+      >
         <RecoveryKeyPanel
           t={t}
           draft={draft}
@@ -121,7 +131,9 @@ export const BreakGlassScreen: React.FC<{ t: ThemeTokens; onBack: () => void }> 
       picker
       step={{ current: 1, total: STEPS }}
       title={tr('breakglass.title')}
-      lead={tr('breakglass.lead')}
+      lead={tr('breakglass.lead_short')}
+      info={tr('breakglass.lead')}
+      back={{ label: tr('common.back'), onClick: onBack }}
       onSubmit={(event) => {
         void next(event);
       }}
@@ -168,10 +180,18 @@ export const BreakGlassScreen: React.FC<{ t: ThemeTokens; onBack: () => void }> 
         autoComplete="new-password"
       />
       <ErrorLine t={t} id="glass-error" text={action.error} />
-      <AuthButton t={t} busy={action.busy} label={tr('gate.continue')} />
-      <div className="au-alt">
-        <TextButton t={t} label={tr('common.back')} onClick={onBack} />
-      </div>
+      <AuthActions
+        after={
+          // On a phone Back is the arrow at the start of the top bar (AuthCard `back`).
+          phone ? null : (
+            <div className="au-alt">
+              <TextButton t={t} label={tr('common.back')} onClick={onBack} />
+            </div>
+          )
+        }
+      >
+        <AuthButton t={t} busy={action.busy} label={tr('gate.continue')} />
+      </AuthActions>
     </AuthCard>
   );
 };

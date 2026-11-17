@@ -39,8 +39,8 @@
   overflow: hidden;
   background: var(--chrome);
   color: var(--text);
-  font-size: 14px;
-  line-height: 22px;
+  font-size: var(--fs-body);
+  line-height: calc(var(--lh-body) + 2px);
 }
 /* On a phone the list and the reader fill the screen, so the page behind them is the surface (no sheets). */
 .mb-root[data-layout='phone'] {
@@ -78,8 +78,8 @@
   border-radius: 8px;
 }
 .mb-wordmark {
-  font-size: 16px;
-  line-height: 24px;
+  font-size: calc(var(--fs-body) + 2px);
+  line-height: calc(var(--lh-body) + 4px);
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
@@ -212,7 +212,7 @@
   background: var(--accent-soft);
   color: var(--accent-text);
   box-shadow: var(--mb-tonal-ring), var(--control-shadow);
-  font-size: 14px;
+  font-size: var(--fs-button);
   font-weight: 600;
 }
 @media (hover: hover) {
@@ -276,8 +276,8 @@
   background: transparent;
   color: var(--text2);
   font: inherit;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   font-weight: 500;
   text-align: left;
   cursor: pointer;
@@ -325,8 +325,8 @@
 .mb-nav-count {
   flex: none;
   color: var(--text3);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: calc(var(--fs-meta) + 1px);
+  line-height: var(--lh-label);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
@@ -363,8 +363,8 @@
   margin: 0;
   padding: 0 12px;
   color: var(--text2);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-label);
   font-weight: 600;
 }
 
@@ -418,14 +418,14 @@
   white-space: nowrap;
 }
 .mb-account-name {
-  font-size: 14px;
-  line-height: 20px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   font-weight: 600;
 }
 .mb-account-addr {
   color: var(--text3);
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
 }
 .mb-rail-foot > .ui-icon-btn {
   flex: none;
@@ -472,16 +472,16 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 18px;
-  line-height: 26px;
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 .mb-phone-count {
   flex: none;
   color: var(--text3);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-label);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -531,7 +531,7 @@
   background: var(--mb-fab-fill);
   color: var(--accent-text);
   box-shadow: none;
-  font-size: 15px;
+  font-size: var(--fs-button);
   font-weight: 600;
   pointer-events: auto;
   clip-path: inset(0 0 0 0 round var(--radius-pill));
@@ -709,8 +709,8 @@
 }
 .mb-selsum-title {
   margin: 0;
-  font-size: 24px;
-  line-height: 32px;
+  font-size: calc(var(--fs-title) + 6px);
+  line-height: calc(var(--lh-title) + 6px);
   font-weight: 600;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
@@ -719,8 +719,8 @@
   max-width: 44ch;
   margin: 8px 0 0;
   color: var(--text2);
-  font-size: 14px;
-  line-height: 22px;
+  font-size: var(--fs-body);
+  line-height: calc(var(--lh-body) + 2px);
 }
 /* The first ticked messages: sender, then subject, one line each, on a quiet raised card (what the actions will touch); no lines between. */
 .mb-selsum-list {
@@ -742,8 +742,8 @@
   grid-column: 1 / -1;
   min-width: 0;
   padding: 6px 10px;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
 }
 .mb-selsum-item {
   display: grid;
@@ -795,8 +795,8 @@
 .mb-selsum-keys {
   max-width: 44ch;
   margin: 16px 0 0;
-  font-size: 13px;
-  line-height: 24px;
+  font-size: var(--fs-secondary);
+  line-height: calc(var(--lh-secondary) + 4px);
   color: var(--text2);
 }
 .mb-selsum-keys .sk-note-keys {
@@ -810,9 +810,9 @@
   flex: none;
   padding: 0;
 }
-/* On a phone the notices come under the header (App.tsx), on the surface, inset to the content edge. */
+/* On a phone the notices are the top of the list's scroller (MessageList `notices`, inside its padded tools): no room of their own. */
 .mb-root[data-layout='phone'] .mb-strip {
-  padding: 8px 20px 4px;
+  padding: 0;
 }
 .mb-strip-list {
   display: flex;
@@ -830,11 +830,22 @@
   flex-wrap: wrap;
   gap: 8px;
 }
+/* A banner's buttons on a row of their own (a narrow banner) wrap instead of running past its edge: ui Banner keeps its action box at its
+   widest content (flex: none), 24px wider than a 320px phone's banner once the buttons read at 15px; here it may shrink to the row. */
+.mb-strip .ui-banner-action {
+  flex-shrink: 1;
+  min-width: 0;
+}
 .mb-note {
   margin: 2px 0 0;
   color: var(--text2);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
+}
+/* When a notice's Dismiss button comes: a meta line (13 on a phone), the quietest words of the banner. */
+.mb-note[data-meta='true'] {
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
 }
 .mb-note[data-tone='error'] {
   color: var(--danger);
@@ -953,8 +964,8 @@
   padding: 0;
 }
 .mb-status .ui-empty-title {
-  font-size: 24px;
-  line-height: 32px;
+  font-size: calc(var(--fs-title) + 6px);
+  line-height: calc(var(--lh-title) + 6px);
   letter-spacing: -0.02em;
 }
 .mb-status .ui-empty-description {
@@ -968,8 +979,8 @@
 .mb-retry {
   margin: 12px 0 0;
   color: var(--text3);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   font-variant-numeric: tabular-nums;
 }
 body:has(.mb-status) {
@@ -985,6 +996,13 @@ body:has(.mb-status) {
 .mb-blank {
   height: 100%;
   background: var(--bg);
+}
+
+/* DESIGN-v4m R2 on a phone (or any touch screen): the Labels heading of the drawer is meta (13), as the list's day headings are. */
+@media (max-width: 640px), (pointer: coarse) {
+  .mb-labels-title {
+    font-size: var(--fs-meta);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

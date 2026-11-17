@@ -6,7 +6,7 @@ import { useAddDomain, useAdminDomains, useCheckDomain, useRemoveDomain } from '
 import { adminErrorText } from '../../lib/admin/types';
 import type { AdminDomain, DnsCheck } from '../../lib/admin/types';
 import { announce } from '../../lib/announce';
-import { fmt, tRich, useT } from '../../lib/i18n';
+import { fmt, useT } from '../../lib/i18n';
 import {
   Badge,
   Button,
@@ -19,11 +19,12 @@ import {
   Skeleton,
   Step,
   Steps,
-  TextField
+  TextField,
+  useMediaMatch
 } from '../../ui';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { DomainGuideDialog } from './DomainGuide';
-import { DashboardLink, ErrorText, Group, LoadError, PageHead, StateWord } from './adminUi';
+import { DashboardLink, ErrorText, Group, LoadError, ModalFrame, PageHead, PHONE_LAYOUT, StateWord } from './adminUi';
 import { useAdminAction } from './useAdminAction';
 
 /** Ready or not: the word after its icon, in the tone of the answer (the words say it; the colour only adds to it). */
@@ -139,7 +140,8 @@ const recordRank = (record: DnsCheck['sending']['records'][number]): number => {
 interface Part {
   title: string;
   ready: boolean;
-  note: string;
+  /** What the check found that is missing (null for a step that works: its Ready says it). */
+  note: string | null;
   /** The way to the page of the Cloudflare dashboard where the step is set up. */
   path: string;
   records: React.ReactNode;
@@ -161,7 +163,7 @@ const DnsStep: React.FC<{ part: Part }> = ({ part }) => {
           <strong className="ad-dns-title">{part.title}</strong>
           <Status ready={part.ready} />
         </div>
-        <p className="ad-dns-line">{part.note}</p>
+        {part.note === null ? null : <p className="ad-dns-line">{part.note}</p>}
         <div className="ad-dns-tools">
           <Disclosure open={open} onOpenChange={setOpen} controls={panelId} look="button" className="ad-toggle">
             {open ? tr('domains.hide_records') : tr('domains.show_records')}
@@ -185,10 +187,11 @@ export const DnsResult: React.FC<{ check: DnsCheck }> = ({ check }) => {
   // RFC 7505: a null MX ("0 .", parsed to an empty host) says the domain accepts no mail. It is said in words and never listed as a host.
   const nullMx = check.receiving.mx.some((mx) => mx.host === '');
   const listed = check.receiving.mx.filter((mx) => mx.host !== '');
-  // The sentences come from what the check found (the server's own `note` is English text for API clients only).
-  let receivingNote: string;
+  // The sentences come from what the check found (the server's own `note` is English text for API clients only); a step that works has
+  // none (its Ready says it).
+  let receivingNote: string | null = null;
   if (check.receiving.ready) {
-    receivingNote = tr('domains.note_mx_cloudflare');
+    // Nothing to add to its Ready.
   } else if (nullMx) {
     receivingNote = tr('domains.note_mx_null');
   } else if (listed.length === 0) {
@@ -229,7 +232,7 @@ export const DnsResult: React.FC<{ check: DnsCheck }> = ({ check }) => {
     title: tr('domains.sending'),
     ready: check.sending.ready,
     note: check.sending.ready
-      ? tr('domains.note_sending_ready')
+      ? null
       : tr('domains.records_missing', { count: check.sending.records.filter((record) => !record.found).length }),
     path: tr('domains.guide_path_sending'),
     records: (
@@ -362,6 +365,9 @@ const DomainCard: React.FC<DomainCardProps> = ({ t, domain, onRemove, removing, 
   );
 };
 
+/** The form that adds a domain; on a phone its Add domain is in the foot of its dialog, outside it. */
+const ADD_FORM = 'domain-add';
+
 export const DomainsPanel: React.FC<{ t: ThemeTokens }> = ({ t }) => {
   const tr = useT();
   const domains = useAdminDomains();
@@ -369,6 +375,9 @@ export const DomainsPanel: React.FC<{ t: ThemeTokens }> = ({ t }) => {
   const remove = useRemoveDomain();
   const addAction = useAdminAction();
   const removeAction = useAdminAction();
+  // A phone adds a domain in a dialog opened from the console's top bar (the page starts with the domains); a desktop in the page.
+  const phone = useMediaMatch(PHONE_LAYOUT);
+  const [adding, setAdding] = React.useState(false);
   const [value, setValue] = React.useState('');
   const [touched, setTouched] = React.useState(false);
   const [removeTarget, setRemoveTarget] = React.useState<AdminDomain | null>(null);
@@ -387,7 +396,14 @@ export const DomainsPanel: React.FC<{ t: ThemeTokens }> = ({ t }) => {
       announce(tr('domains.added', { name }));
       setValue('');
       setTouched(false);
+      setAdding(false);
     }
+  };
+
+  const closeAdding = () => {
+    setAdding(false);
+    setTouched(false);
+    addAction.clearError();
   };
 
   const confirmRemove = async () => {
@@ -438,51 +454,93 @@ export const DomainsPanel: React.FC<{ t: ThemeTokens }> = ({ t }) => {
     );
   }
 
+  const addButton = (
+    <Button
+      type="submit"
+      form={ADD_FORM}
+      variant="primary"
+      leadingIcon={<Plus size={16} aria-hidden="true" />}
+      disabled={addAction.busy}
+      loading={addAction.busy}
+    >
+      {tr('domains.add_domain')}
+    </Button>
+  );
+  // The field says what adding does in an InfoTip after its label; the line under it keeps the consequence (DESIGN-v4m R1).
+  const addForm = (
+    <form
+      id={ADD_FORM}
+      noValidate
+      onSubmit={(event) => {
+        void submit(event);
+      }}
+      className="ad-field-group ad-add-domain"
+    >
+      <div className="ad-inline">
+        <TextField
+          id="domain-new"
+          label={tr(phone ? 'term.domain' : 'domains.add_a_domain')}
+          hint={tr('domains.add_note', { check: tr('admin.check_dns') })}
+          inputMode="url"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          autoComplete="off"
+          placeholder={tr('domains.name_placeholder')}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={() => setTouched(true)}
+          aria-invalid={problem !== null}
+          aria-describedby={problem === null ? undefined : 'domain-new-error'}
+        />
+        {phone ? null : addButton}
+      </div>
+      {problem === null ? null : <ErrorText id="domain-new-error">{problem}</ErrorText>}
+      <p className="ad-muted ad-note">{tr('domains.add_note_short')}</p>
+      {addAction.error === null ? null : <ErrorText>{addAction.error}</ErrorText>}
+    </form>
+  );
+
   return (
     <div className="ad-pane" data-width="narrow">
-      <PageHead title={tr('admin.tab_domains')} description={tr('admin.domains_desc')} />
-      <Group>
-        <form
-          noValidate
-          onSubmit={(event) => {
-            void submit(event);
-          }}
-          className="ad-field-group ad-add-domain"
-        >
-          <div className="ad-inline">
-            <TextField
-              id="domain-new"
-              label={tr('domains.add_a_domain')}
-              inputMode="url"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              autoComplete="off"
-              placeholder={tr('domains.name_placeholder')}
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              onBlur={() => setTouched(true)}
-              aria-invalid={problem !== null}
-              aria-describedby={problem === null ? undefined : 'domain-new-error'}
-            />
+      <PageHead
+        title={tr('admin.tab_domains')}
+        description={tr('admin.domains_desc_short')}
+        info={tr('admin.domains_desc')}
+        action={
+          phone ? (
             <Button
-              type="submit"
               variant="primary"
               leadingIcon={<Plus size={16} aria-hidden="true" />}
-              disabled={addAction.busy}
-              loading={addAction.busy}
+              aria-haspopup="dialog"
+              aria-label={tr('domains.add_domain')}
+              onClick={() => setAdding(true)}
             >
-              {tr('domains.add_domain')}
+              {tr('common.add')}
             </Button>
-          </div>
-          {problem === null ? null : <ErrorText id="domain-new-error">{problem}</ErrorText>}
-          <p className="ad-muted ad-note">
-            {tRich('domains.add_note', { check: <span className="ad-strong">{tr('admin.check_dns')}</span> })}
-          </p>
-          {addAction.error === null ? null : <ErrorText>{addAction.error}</ErrorText>}
-        </form>
-      </Group>
+          ) : undefined
+        }
+      />
+      {phone ? null : <Group>{addForm}</Group>}
       {list}
+      {phone && adding ? (
+        <ModalFrame
+          t={t}
+          title={tr('domains.add_a_domain')}
+          onClose={closeAdding}
+          locked={addAction.busy}
+          footer={
+            <>
+              <Button onClick={closeAdding} disabled={addAction.busy}>
+                {tr('common.cancel')}
+              </Button>
+              {addButton}
+            </>
+          }
+        >
+          {addForm}
+        </ModalFrame>
+      ) : null}
       <ConfirmDialog
         isOpen={removeTarget !== null}
         t={t}

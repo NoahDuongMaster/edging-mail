@@ -12,7 +12,7 @@ import { useAction } from '../../lib/useAction';
 import { useCountdown } from '../../lib/useCountdown';
 import { PasswordField, SecretField } from '../PasswordField';
 import { TextField } from '../../ui';
-import { AuthButton, AuthCard, ErrorLine, TextButton } from './authUi';
+import { AuthActions, AuthButton, AuthCard, ErrorLine, TextButton, TipLine, useAuthPhone } from './authUi';
 import { RecoveryKeyPanel } from './RecoveryKeyPanel';
 
 interface ForgotScreenProps {
@@ -82,6 +82,7 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
   const keyProblem = useKeyProblem(recoveryText);
   const role = (flow?.minPasswordLength ?? 12) >= 16 ? 'admin' : 'member';
   const check = usePasswordCheck(password, role, contextWords(email));
+  const phone = useAuthPhone();
 
   React.useEffect(
     () => () => {
@@ -161,14 +162,19 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
   if (step === 'done') {
     return (
       <AuthCard t={t} title={tr('forgot.done_title')} lead={tr('forgot.done_lead')}>
-        <AuthButton t={t} type="button" label={tr('forgot.done_button')} onClick={onBack} />
+        <AuthActions>
+          <AuthButton t={t} type="button" label={tr('forgot.done_button')} onClick={onBack} />
+        </AuthActions>
       </AuthCard>
     );
   }
 
+  // Cancel leaves the whole flow (back to sign-in): nothing has changed until the last step's request.
+  const cancel = { label: tr('common.cancel'), onClick: onBack, kind: 'close' as const };
+
   if (step === 'key' && flow !== null && draft !== null) {
     return (
-      <AuthCard t={t} wide step={{ current: 3, total: STEPS }} title={tr('recovery.title_new')} lead={tr('forgot.key_lead')}>
+      <AuthCard t={t} wide step={{ current: 3, total: STEPS }} title={tr('recovery.title_new')} lead={tr('forgot.key_lead')} back={cancel}>
         <RecoveryKeyPanel
           t={t}
           draft={draft}
@@ -185,8 +191,9 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
             chosen.current = null;
             setStep('done');
           }}
-        />
-        <p className="au-note">{tr('forgot.nothing_changed')}</p>
+        >
+          <p className="au-note">{tr('forgot.nothing_changed')}</p>
+        </RecoveryKeyPanel>
       </AuthCard>
     );
   }
@@ -198,6 +205,7 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
         step={{ current: 2, total: STEPS }}
         title={tr('forgot.password_title')}
         lead={tr('forgot.password_lead')}
+        back={cancel}
         onSubmit={(event) => {
           void toKey(event);
         }}
@@ -222,10 +230,17 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
           autoComplete="new-password"
         />
         <ErrorLine t={t} id="forgot-error" text={action.error} />
-        <AuthButton t={t} busy={action.busy} label={tr('gate.continue')} />
-        <div className="au-alt">
-          <TextButton t={t} label={tr('common.cancel')} onClick={onBack} />
-        </div>
+        <AuthActions
+          after={
+            phone ? null : (
+              <div className="au-alt">
+                <TextButton t={t} label={tr('common.cancel')} onClick={onBack} />
+              </div>
+            )
+          }
+        >
+          <AuthButton t={t} busy={action.busy} label={tr('gate.continue')} />
+        </AuthActions>
       </AuthCard>
     );
   }
@@ -239,7 +254,9 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
       picker
       step={{ current: 1, total: STEPS }}
       title={tr('forgot.title')}
-      lead={tr('forgot.lead')}
+      lead={tr('forgot.lead_short')}
+      info={tr('forgot.lead')}
+      back={{ label: tr('common.back'), onClick: onBack }}
       onSubmit={(event) => {
         void verify(event);
       }}
@@ -284,13 +301,27 @@ export const ForgotScreen: React.FC<ForgotScreenProps> = ({ t, initialEmail, onB
         spellCheck={false}
       />
       <ErrorLine t={t} id="forgot-error" text={errorText} />
-      <AuthButton t={t} busy={action.busy} disabled={wait > 0} label={tr('gate.continue')} />
-      {/* The next step for a member who lost the key too, and what it costs (J4-08): no admin can reset a password or open the mail. */}
-      <p className="au-note">{tr('forgot.lost_key')}</p>
-      <div className="au-alt">
-        <TextButton t={t} label={tr('forgot.admin_link')} onClick={onBreakGlass} />
-        <TextButton t={t} label={tr('common.back')} onClick={onBack} />
-      </div>
+      <AuthActions
+        after={
+          <>
+            {/* The next step for a member who lost the key too, and what it costs (J4-08): no admin can reset a password or open the mail.
+                One question on the page, the answer behind its tip (v4m R1). */}
+            <TipLine
+              className="au-note"
+              text={tr('forgot.lost_key_short')}
+              tip={tr('forgot.lost_key')}
+              label={tr('forgot.lost_key_short')}
+            />
+            <div className="au-alt">
+              <TextButton t={t} label={tr('forgot.admin_link')} onClick={onBreakGlass} />
+              {/* On a phone Back is the arrow at the start of the top bar (AuthCard `back`). */}
+              {phone ? null : <TextButton t={t} label={tr('common.back')} onClick={onBack} />}
+            </div>
+          </>
+        }
+      >
+        <AuthButton t={t} busy={action.busy} disabled={wait > 0} label={tr('gate.continue')} />
+      </AuthActions>
     </AuthCard>
   );
 };

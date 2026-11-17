@@ -8,7 +8,7 @@ import { RecoveryKeyDraft } from '../../lib/crypto/recoveryDraft';
 import { useFieldFocus } from '../../lib/fieldFocus';
 import { useT } from '../../lib/i18n';
 import { useAction } from '../../lib/useAction';
-import { TextField } from '../../ui';
+import { ActionBar, TextField } from '../../ui';
 import { AuthButton, ErrorLine } from '../auth/authUi';
 import { RecoveryKeyPanel } from '../auth/RecoveryKeyPanel';
 import { CredentialForm } from './CredentialForm';
@@ -60,7 +60,14 @@ const TestKey: React.FC<InnerProps> = ({ t, user, onBack }) => {
   };
 
   return (
-    <ViewFrame t={t} title={tr('security.test_key')} onBack={onBack}>
+    // What the check does is the one visible line; that it happens in this browser and changes nothing is in the tip after the title.
+    <ViewFrame
+      t={t}
+      title={tr('security.test_key')}
+      barTitle={tr('term.recovery_key')}
+      info={[tr('security.key_test_lead')]}
+      onBack={onBack}
+    >
       <form
         noValidate
         onSubmit={(event) => {
@@ -68,7 +75,7 @@ const TestKey: React.FC<InnerProps> = ({ t, user, onBack }) => {
         }}
         className="st-view-form"
       >
-        <p className="st-lead">{tr('security.key_test_lead')}</p>
+        <p className="st-lead">{tr('security.key_test_lead_short')}</p>
         <TextField
           id="security-key-test"
           label={tr('term.recovery_key')}
@@ -100,9 +107,9 @@ const TestKey: React.FC<InnerProps> = ({ t, user, onBack }) => {
             {result === 'ok' ? tr('security.key_test_ok') : tr('security.key_test_wrong')}
           </p>
         )}
-        <div>
+        <ActionBar>
           <AuthButton t={t} busy={action.busy} label={tr('security.key_test_button')} />
-        </div>
+        </ActionBar>
       </form>
     </ViewFrame>
   );
@@ -211,7 +218,7 @@ const NewKey: React.FC<InnerProps> = ({ t, user, onBack }) => {
 
   if (step === 'key') {
     return (
-      <ViewFrame t={t} title={tr('recovery.title_new')} onBack={null}>
+      <ViewFrame t={t} title={tr('recovery.title_new')} barTitle={tr('term.recovery_key')} onBack={null}>
         {needCode ? (
           // The server wants a fresh code before it replaces the key (step-up): asked above the key, in a quiet well of its own, with the
           // one-time-code field (paste and the phone's autofill work).
@@ -236,11 +243,11 @@ const NewKey: React.FC<InnerProps> = ({ t, user, onBack }) => {
   }
 
   return (
-    <ViewFrame t={t} title={tr('security.new_key')} onBack={onBack}>
+    <ViewFrame t={t} title={tr('security.new_key')} barTitle={tr('term.recovery_key')} info={[tr('security.key_new_lead')]} onBack={onBack}>
       <CredentialForm
         t={t}
         id="security-key-new"
-        lead={tr('security.key_new_lead')}
+        lead={tr('security.key_new_lead_short')}
         submitLabel={tr('gate.continue')}
         withCode={false}
         work={(password) => NewRecoveryKeyFlow.start(user, password)}

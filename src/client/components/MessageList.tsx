@@ -131,8 +131,10 @@ interface MessageListProps {
   resultsText?: string;
   /** Trash and Spam: deletes everything in the folder for good (the caller asks first). Offered while the folder has mail. */
   onEmptyFolder?: () => void;
-  /** The search field: under the title in the sheet's head on a desktop; on a phone it scrolls away with the list (the app bar stays). */
+  /** The search field: under the title in the sheet's head on a desktop; on a phone it stays under the app bar while the list scrolls. */
   searchSlot?: React.ReactNode;
+  /** A phone: the account notices and the locked-mail banner, the top of the scroller (they scroll away with the filters). */
+  notices?: React.ReactNode;
   /** The Drafts folder: rows name the recipients instead of the sender and are dated by their last save. */
   isDrafts?: boolean;
   /** The Snoozed folder: rows are grouped by the day they come back, in the server's soonest-first order. */
@@ -1167,6 +1169,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   resultsText = '',
   onEmptyFolder,
   searchSlot,
+  notices,
   isDrafts = false,
   isSnoozed = false,
   compact = false,
@@ -1205,6 +1208,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   const filters = filterOptions(folder, tr);
   // The scrollbar shows while the list scrolls (with a mouse; messagelist.css): set on each scroll, cleared a moment after the last one.
   // data-stuck: the rows' top is above the scroller's (a day heading sticks there), so the rows fade in under it (messagelist.css).
+  // data-scrolled on the list (a phone): rows pass under the search that stays above them, which then draws its hairline.
   React.useEffect(() => {
     const scroller = scrollerRef.current;
     if (scroller === null) {
@@ -1215,6 +1219,7 @@ export const MessageList: React.FC<MessageListProps> = ({
       scroller.dataset.scrolling = '';
       const body = scroller.querySelector('.ml-body');
       scroller.toggleAttribute('data-stuck', body !== null && body.getBoundingClientRect().top < scroller.getBoundingClientRect().top - 1);
+      scroller.closest('.ml-root')?.toggleAttribute('data-scrolled', scroller.scrollTop > 0);
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
         delete scroller.dataset.scrolling;
@@ -1637,16 +1642,18 @@ export const MessageList: React.FC<MessageListProps> = ({
       </div>
     ) : null;
 
-  const binLine = bin ? (
-    <div className="ml-bin">
-      <p className="ml-bin-text">{tr('list.kept_until_deleted', { folder: title })}</p>
-      {emptyable ? (
-        <Button variant="danger" size="sm" onClick={onEmptyFolder}>
-          {tr('list.empty_folder', { folder: title })}
-        </Button>
-      ) : null}
-    </div>
-  ) : null;
+  // How long mail stays in Trash or Spam, beside Empty Trash: only while the folder holds mail (an empty one's own line says it is empty).
+  const binLine =
+    bin && messages.length > 0 ? (
+      <div className="ml-bin">
+        <p className="ml-bin-text">{tr('list.kept_until_deleted', { folder: title })}</p>
+        {emptyable ? (
+          <Button variant="danger" size="sm" onClick={onEmptyFolder}>
+            {tr('list.empty_folder', { folder: title })}
+          </Button>
+        ) : null}
+      </div>
+    ) : null;
 
   return (
     <section
@@ -1690,6 +1697,9 @@ export const MessageList: React.FC<MessageListProps> = ({
           {selecting ? selectionNote : null}
         </>
       )}
+      {/* DESIGN-v4m R3: the phone's search stays under the app bar (outside the scroller), one tap away however far the list scrolled; the
+          scope, the Trash line and the filters scroll away with the rows. A hairline under it once rows pass under it (data-scrolled). */}
+      {compact && searchSlot !== undefined ? <div className="ml-search">{searchSlot}</div> : null}
 
       <div className="ml-scroll-wrap">
         {fresh > 0 ? (
@@ -1715,10 +1725,10 @@ export const MessageList: React.FC<MessageListProps> = ({
           className="ml-scroll"
           data-compact={compact ? 'true' : undefined}
         >
-          {/* The phone's search and filters scroll away with the rows; the app bar above them stays. */}
+          {/* The phone's notices, scope, Trash line and filters scroll away with the rows; the app bar and the search above them stay. */}
           {compact ? (
             <div className="ml-tools" data-closing={isDrafts && !searching ? 'true' : undefined}>
-              {searchSlot}
+              {notices}
               {scopeBar}
               {binLine}
               {filterBar}

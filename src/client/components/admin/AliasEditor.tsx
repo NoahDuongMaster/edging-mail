@@ -5,7 +5,7 @@ import { domainProblem, localPartProblem } from '../../lib/admin/address';
 import type { AdminUser } from '../../lib/admin/types';
 import { useAddAlias, useRemoveAlias } from '../../lib/admin/users';
 import { useT, type TFunction } from '../../lib/i18n';
-import { Button, IconButton, Table, TextField, VisuallyHidden } from '../../ui';
+import { Button, IconButton, InfoTip, Table, TextField, VisuallyHidden } from '../../ui';
 import { ErrorText } from './adminUi';
 import { useAdminAction } from './useAdminAction';
 
@@ -44,10 +44,13 @@ export const AliasEditor: React.FC<{ t: ThemeTokens; user: AdminUser }> = ({ use
 
   return (
     <section aria-labelledby="alias-heading" className="ad-dsec">
-      <h3 id="alias-heading" className="ad-dsec-title">
-        {tr('users.alias_heading')}
-      </h3>
-      <p className="ad-muted">{tr('users.alias_hint')}</p>
+      {/* What the extra addresses do, in an InfoTip after the section's title (DESIGN-v4m R1). */}
+      <div className="ui-tip-row">
+        <h3 id="alias-heading" className="ad-dsec-title">
+          {tr('users.alias_heading')}
+        </h3>
+        <InfoTip label={tr('users.alias_heading')}>{tr('users.alias_hint')}</InfoTip>
+      </div>
       {/* One card: the addresses (or None), then the field that adds one. */}
       <div className="ad-card ad-alias-card">
         {user.aliases.length === 0 ? (

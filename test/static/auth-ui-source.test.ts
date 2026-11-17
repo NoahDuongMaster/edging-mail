@@ -69,15 +69,21 @@ describe('the screens before the mailbox', () => {
 
   it('put the language list in the bar of page actions top right, outside the card and before it, as the ui Select', () => {
     const card = read(path.join(AUTH, 'authUi.tsx'));
-    const bar = card.indexOf('className="au-bar"');
+    const top = card.slice(card.indexOf('className="au-top"'), card.indexOf('className="au-column"'));
+    const bar = top.indexOf('className="au-bar"');
     const column = card.indexOf('className="au-column"');
     const form = card.indexOf('className="au-card');
     // The bar comes first on the page (Sign out of the unlock screen, then the list: first in the tab order), the brand and the card after.
     expect(bar).toBeGreaterThan(-1);
-    expect(card.indexOf('{topAction}')).toBeGreaterThan(bar);
-    expect(card.indexOf('<LanguagePicker')).toBeGreaterThan(card.indexOf('{topAction}'));
+    expect(top.indexOf('{topAction}')).toBeGreaterThan(bar);
+    expect(top.indexOf('<LanguagePicker')).toBeGreaterThan(top.indexOf('{topAction}'));
     expect(card.indexOf('<LanguagePicker')).toBeLessThan(column);
     expect(column).toBeLessThan(form);
+    // v4m R3: on a phone the same pair is the end of the fixed top bar (Sign out first, then the language as its code), before the card.
+    const phone = card.slice(card.indexOf('<PhoneBar'), card.indexOf('const titleElement'));
+    expect(phone).toMatch(/end=\{[\s\S]*?\{topAction\}\s*\{picked\}/);
+    expect(card).toMatch(/const picked = picker \? <LanguagePicker t=\{t\} id="auth-language" short=\{phone\} \/> : null;/);
+    expect(card.indexOf('{phoneBar ?? (')).toBeLessThan(column);
     expect(css).toMatch(/\.au-bar \{[^}]*justify-content: flex-end;/);
     expect(card).not.toContain('au-corner');
     expect(read(path.join(COMPONENTS, 'LanguagePicker.tsx'))).toContain('<Select');
@@ -195,8 +201,15 @@ describe('the screens before the mailbox', () => {
     const credential = code(path.join(security, 'CredentialForm.tsx'));
     expect(credential).toMatch(/disabled=\{action\.busy \|\| wait > 0\}/);
     expect(credential).toMatch(/<AuthButton t=\{t\} busy=\{action\.busy\} disabled=\{wait > 0\} label=\{submitLabel\} \/>/);
-    // The focused field is scrolled above Setup's docked Continue bar: the page keeps that much scroll padding, and the scroll honours it.
-    expect(css).toMatch(/html:has\(\.au-sticky\) \{\s*scroll-padding-bottom: 96px;\s*\}/);
+    // Setup's Continue is the docked bottom action bar on every window (v4m R3, was the .au-sticky footer from 641 px): a field reached
+    // with Tab is scrolled above it by the window's scroll padding (ui.css), and the scroll honours it.
+    expect(code(path.join(AUTH, 'SetupScreen.tsx'))).toMatch(
+      /<AuthActions dock="always">\s*<AuthButton t=\{t\} busy=\{starting\} label=\{tr\('gate\.continue'\)\} \/>\s*<\/AuthActions>/
+    );
+    expect(read(path.join(ROOT, 'src', 'client', 'ui', 'ui.css'))).toMatch(
+      /html:has\(\.ui-actionbar\[data-docked='true'\]\) \{\s*scroll-padding-bottom: calc\(var\(--ui-h-md\) \+ 48px/
+    );
+    expect(css).not.toContain('au-sticky');
     const focus = read(path.join(ROOT, 'src', 'client', 'lib', 'fieldFocus.ts'));
     expect(focus).toMatch(/input\.focus\(\{ preventScroll: true \}\);/);
     expect(focus.match(/scrollIntoView\(\{ block: 'nearest' \}\)/g)).toHaveLength(2);
@@ -241,17 +254,20 @@ describe('the screens before the mailbox', () => {
     expect(css).toMatch(
       /\.au-panel\[data-still='true'\] :is\(\.au-panel-letter, \.au-panel-reveal, \.au-letter-postmark\) \{\s*animation: none;\s*\}/
     );
-    // The sign-in and unlock forms name the server and end on the trust line.
+    // The sign-in and unlock forms name the server and end on the trust line (with the main button: AuthActions puts it under the button,
+    // or above the docked bottom bar on a phone).
     for (const name of ['SignInScreen.tsx', 'UnlockScreen.tsx']) {
       expect(code(path.join(AUTH, name)), name).toMatch(/server="(sign-in|unlock)"/);
-      expect(code(path.join(AUTH, name)), name).toMatch(/<TrustLine \/>\s*<\/AuthCard>/);
+      expect(code(path.join(AUTH, name)), name).toMatch(
+        /<AuthActions after=\{<TrustLine \/>\}>\s*<AuthButton(?:(?!\/>)[\s\S])*\/>\s*<\/AuthActions>\s*<\/AuthCard>/
+      );
       // Forgot password lives in the password's row (on its label row with a mouse, auth.css), after the field and its error.
       expect(code(path.join(AUTH, name)), name).toMatch(
         /<div className="au-secret-row">\s*<SecretField[\s\S]*?<ErrorLine[\s\S]*?<HintedLink/
       );
     }
     expect(css).toMatch(
-      /@media \(min-width: 641px\) and \(pointer: fine\) \{\s*\/\*[^*]*\*\/\s*\.au-secret-row \.ui-btn\.au-link-btn\[data-variant='ghost'\] \{\s*position: absolute;/
+      /@media \(min-width: 641px\) and \(pointer: fine\) \{\s*\/\*[^*]*\*\/\s*\.au-secret-row \.au-hinted \{\s*position: absolute;/
     );
   });
 
@@ -265,31 +281,108 @@ describe('the screens before the mailbox', () => {
     // One brand row on every width (tile 32, name 18); on the split page it stands over the form with the language list on its line.
     expect(card.match(/className="au-brand"/g)).toHaveLength(1);
     expect(card).toContain('<img src="/logo.svg" alt="" width={32} height={32} className="au-brand-mark" />');
-    expect(css).toMatch(/\.au-brand \{[^}]*font-size: 18px;/);
+    expect(css).toMatch(/\.au-brand \{[^}]*font-size: var\(--fs-title\);/);
     expect(css).toMatch(/\.au-brand-mark \{[^}]*width: 32px;\s*height: 32px;/);
     expect(css).toMatch(/\.au-page\[data-layout='split'\] \.au-top \{[^}]*max-width: 448px;[^}]*margin: auto auto 0;/);
     // The trust line stays the promise of a narrow window and a phone; the split page hides it (the panel says it).
     expect(css).toMatch(/\.au-page\[data-layout='split'\] \.au-trust \{\s*display: none;/);
-    // Forgot password: the consequence is the link's tooltip with a mouse (hover and keyboard focus) and a visible line without hover; it
-    // always describes the link (aria-describedby), so a screen reader hears it on every device.
-    expect(card).toMatch(/aria-describedby=\{`\$\{id\}-hint`\}\s*\{\.\.\.tip\.anchor\}/);
-    expect(card).toMatch(/onFocus=\{\(event\) => tip\.show\(event\.currentTarget\.matches\(':focus-visible'\)\)\}/);
-    expect(card).toMatch(/<Tooltip open=\{tip\.open\} text=\{hint\} anchorRef=\{ref\} \{\.\.\.tip\.bubble\} \/>/);
-    expect(css).toMatch(/@media \(hover: hover\) \{\s*\.au-link-hint \{\s*position: absolute;[^}]*clip-path: inset\(50%\);/);
+    // Forgot password: the consequence is the InfoTip right after the link (v4m R1: a press shows it, on every device; no line of helper
+    // text under the password that could read like an error); it always describes the link (aria-describedby to the same words, kept in
+    // the page visually hidden), so a screen reader hears it on every device.
+    expect(card).toMatch(
+      /<Button variant="ghost" size="sm" className="au-link-btn" aria-describedby=\{`\$\{id\}-hint`\} onClick=\{onClick\}>\s*\{label\}\s*<\/Button>\s*<InfoTip label=\{label\}>\{hint\}<\/InfoTip>\s*<HiddenHint id=\{`\$\{id\}-hint`\} text=\{hint\} \/>/
+    );
+    expect(css).not.toContain('au-link-hint');
   });
 
-  it('keep one measured rhythm on the phone sign-in form, centred while it fits, the language chevron on the fields edge (FP2)', () => {
+  it('keep one measured rhythm on the phone sign-in form, centred between the two bars while it fits, the language chevron on the fields edge (FP2)', () => {
     const phone = /@media \(max-width: 640px\) \{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
-    // The chevron's ink (3.3px inside its 16px box) ends on the fields' right edge.
-    expect(phone).toMatch(/\.au-bar \.au-lang \.ui-select \{\s*padding-inline-end: 6px;/);
-    // The column stands in the middle of the room when it fits; the window scrolls when it does not (the page rules above).
-    expect(phone).toMatch(/\.au-page:has\(#signin-email\) \.au-column \{\s*margin: auto;/);
+    // The chevron's ink (3.3px inside its 16px box) ends on the fields' right edge (now in the phone's top bar).
+    expect(phone).toMatch(/\.au-phonebar \.au-lang \.ui-select \{\s*padding-inline: 30px 6px;/);
+    // The form stands in the middle of the room between the top bar and the bottom action bar when it fits (the head's auto margin and
+    // the bar's share the room); the window scrolls when it does not (the page rules above).
+    expect(phone).toMatch(/\.au-column,\s*\.au-column\[data-wide='true'\] \{\s*flex: 1 0 auto;/);
+    expect(phone).toMatch(/\.au-card \.au-actionbar\[data-docked='true'\] \{\s*margin-top: auto;/);
     // 24px between the groups on the ink, 32px above Sign in, 24px under it: each block takes back the room of its own line boxes.
-    expect(phone).toMatch(/\.au-card:has\(#signin-email\) > \.au-head \{\s*margin-bottom: -9px;/);
+    expect(phone).toMatch(/\.au-card:has\(#signin-email\) > \.au-head \{\s*margin-top: auto;\s*margin-bottom: -9px;/);
     expect(phone).toMatch(/\.au-card:has\(#signin-email\) > \.au-secret-row \{\s*margin-top: -5px;/);
     expect(phone).toMatch(/\.au-card:has\(#signin-email\) > \.ui-check \{\s*margin-block: -15px -14px;/);
     expect(phone).toMatch(/\.au-card:has\(#signin-email\) > \.au-trust \{\s*margin-top: -4px;/);
     expect(css).toMatch(/body:has\(\.au-page\) \{\s*overflow-y: auto;/);
     expect(code(path.join(AUTH, 'SignInScreen.tsx'))).toMatch(/<TextField\s+id="signin-email"/);
+  });
+
+  it('give every phone screen the fixed top bar and the docked bottom action bar, and every flow a way back (v4m R3)', () => {
+    const card = code(path.join(AUTH, 'authUi.tsx'));
+    // The top bar: ui PhoneBar (sticky, 56 px) only in the phone layout, with the way back of the flow at its start.
+    expect(card).toMatch(/export const AUTH_PHONE = '\(max-width: 640px\)';/);
+    expect(card).toMatch(/const phoneBar = phone \? \(\s*<PhoneBar\s+as="div"\s+className="au-phonebar"/);
+    expect(card).toMatch(/<IconButton label=\{back\.label\} disabled=\{backHeld\} onClick=\{back\.onClick\}>/);
+    // The bottom bar: the main button of every form in a ui ActionBar (AuthActions); no screen draws a bare primary of its own.
+    expect(card).toMatch(/<ActionBar dock=\{dock\} className="au-actionbar">/);
+    for (const file of sources.filter((name) => name.includes(`${path.sep}auth${path.sep}`))) {
+      const source = code(file);
+      for (const match of source.matchAll(/<AuthButton\b(?:(?!\/>)[\s\S])*?\/>/g)) {
+        if (/\bquiet\b/.test(match[0])) {
+          continue;
+        }
+        const before = source.slice(0, match.index);
+        expect(before.lastIndexOf('<AuthActions'), `${path.basename(file)}: ${match[0].slice(0, 60)}`).toBeGreaterThan(
+          before.lastIndexOf('</AuthActions>')
+        );
+      }
+    }
+    // A way back in every flow that has one: in the top bar on a phone, a text button in the card elsewhere (never both).
+    const back = (name: string) => code(path.join(AUTH, name));
+    expect(back('ForgotScreen.tsx')).toMatch(/back=\{\{ label: tr\('common\.back'\), onClick: onBack \}\}/);
+    expect(back('ForgotScreen.tsx')).toMatch(
+      /\{phone \? null : <TextButton t=\{t\} label=\{tr\('common\.back'\)\} onClick=\{onBack\} \/>\}/
+    );
+    expect(back('BreakGlassScreen.tsx')).toMatch(/back=\{\{ label: tr\('common\.back'\), onClick: onBack \}\}/);
+    expect(back('SignInScreen.tsx')).toMatch(/back=\{\{ label: tr\('common\.back'\), onClick: back \}\}/);
+    expect(back('SetupScreen.tsx')).toMatch(/back=\{\{ label: tr\('common\.back'\), onClick: goBack \}\}/);
+    expect(back('GateScreens.tsx')).toMatch(/back=\{\{ label: tr\('common\.back'\), onClick: \(\) => setStep\('password'\) \}\}/);
+    // The panels leave out their own Cancel when the card's top bar holds it (useBarBack), and the bar waits while their request runs.
+    expect(back('RecoveryKeyPanel.tsx')).toMatch(/const barBack = useBarBack\(busy\);/);
+    expect(back('RecoveryKeyPanel.tsx')).toMatch(/onCancel === undefined \|\| barBack \? null : \(/);
+    // The gates' one way out, Sign out, is the end of the top bar on a phone.
+    expect(back('GateScreens.tsx')).toMatch(/return phone \? \{ top: <SignOutButton t=\{t\} top \/>, foot: null \}/);
+  });
+
+  it('keep the visible copy short and the rest behind InfoTips, consequences included (v4m R1)', () => {
+    // One short line, the whole text behind the tip at its end: the lost-key answer, the downloaded file's risk, what admins can do.
+    expect(code(path.join(AUTH, 'ForgotScreen.tsx'))).toMatch(
+      /<TipLine\s+className="au-note"\s+text=\{tr\('forgot\.lost_key_short'\)\}\s+tip=\{tr\('forgot\.lost_key'\)\}/
+    );
+    expect(code(path.join(AUTH, 'RecoveryKeyPanel.tsx'))).toMatch(
+      /<TipLine\s+className="au-muted"\s+text=\{tr\('recovery\.download_warning_short'\)\}\s+tip=\{tr\('recovery\.download_warning'\)\}/
+    );
+    expect(code(path.join(AUTH, 'SetupScreen.tsx'))).toMatch(
+      /<TipLine\s+className="au-note"\s+text=\{tr\('users\.admin_claim_more'\)\}\s+tip=\{adminClaimLimits\(\)\.join\(' '\)\}/
+    );
+    // The recovery key's claim and the shown-once warning stay on the page (irreversible).
+    expect(code(path.join(AUTH, 'RecoveryKeyPanel.tsx'))).toMatch(/<p className="au-text">\{tr\('recovery\.claim'\)\}<\/p>/);
+    expect(code(path.join(AUTH, 'RecoveryKeyPanel.tsx'))).toMatch(/<p className="au-banner-line">\{tr\('recovery\.shown_once'\)\}<\/p>/);
+    // The longer leads behind a tip after the title, the short line under it.
+    for (const [name, key] of [
+      ['ForgotScreen.tsx', 'forgot.lead'],
+      ['BreakGlassScreen.tsx', 'breakglass.lead'],
+      ['GateScreens.tsx', 'gate.password_lead'],
+      ['GateScreens.tsx', 'gate.keys_lead']
+    ]) {
+      expect(code(path.join(AUTH, name)), key).toContain(`lead={tr('${key}_short')}`);
+      expect(code(path.join(AUTH, name)), key).toContain(`info={tr('${key}')}`);
+    }
+    // The tip is outside the heading (its name stays the title's words).
+    expect(code(path.join(AUTH, 'authUi.tsx'))).toMatch(
+      /<div className="au-title-row ui-tip-row">\s*\{titleElement\}\s*<InfoTip label=\{title\}>\{info\}<\/InfoTip>/
+    );
+    // The password rules stay a visible line while typing (PasswordField's live status), not a tip.
+    expect(read(path.join(COMPONENTS, 'PasswordField.tsx'))).toMatch(
+      /<p id=\{`\$\{id\}-status`\} aria-live="polite" className="au-status"/
+    );
+    // No literal reading size left: the type variables of ui.css (decorative marks of the brand panel's letter excepted).
+    const sizes = [...css.replaceAll(/\/\*[\s\S]*?\*\//g, '').matchAll(/font-size: (\d+)px/g)].map((match) => match[1]);
+    expect(sizes).toEqual(['23']);
   });
 });

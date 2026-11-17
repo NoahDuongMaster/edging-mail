@@ -15,6 +15,9 @@
 .ml-root {
   /* Vertical padding of a row, and the box of the star button, which sits on the subject line. */
   --ml-pad-y: 12px;
+  /* The line of each of a row's three lines (sender, subject, preview): 20px with a mouse, 22px on a phone or a touch screen (DESIGN-v4m
+     R2: the row reads at 16/15/15 there). The dot, the star, the loading rows and compact density's one line are placed on it. */
+  --ml-line: var(--lh-secondary);
   --ml-star: var(--ui-h-sm);
   /* The avatar of a row (36 with a mouse, 40 on a phone). */
   --ml-avatar: 36px;
@@ -120,8 +123,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 24px;
-  line-height: 32px;
+  font-size: calc(var(--fs-title) + 6px);
+  line-height: calc(var(--lh-title) + 6px);
   font-weight: 600;
   letter-spacing: -0.02em;
 }
@@ -132,8 +135,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
-  line-height: 22px;
+  font-size: var(--fs-body);
+  line-height: calc(var(--lh-body) + 2px);
   font-weight: 500;
   color: var(--text3);
   font-variant-numeric: tabular-nums;
@@ -143,10 +146,12 @@
   flex: none;
   gap: 2px;
 }
-/* The search pill: the sheet's width less its edges, under the title. */
+/* The search pill: the sheet's width less its edges, under the title. (On a phone it stays under the app bar and draws a hairline once
+   rows pass under it, below: that is what the transition is for.) */
 .ml-search {
   flex: none;
   padding: 0 var(--ml-edge) 4px;
+  transition: box-shadow var(--dur-fast) var(--ease-standard);
 }
 
 /* ---------- Filters, the scope of a search, the Trash line ---------- */
@@ -211,8 +216,8 @@
   border: 0;
   border-radius: var(--radius-pill);
   background: var(--raised);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-label);
+  line-height: var(--lh-label);
   font-weight: 500;
   white-space: nowrap;
   transition:
@@ -265,25 +270,41 @@
 .ml-bin-text {
   margin: 0;
   color: var(--text2);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
 }
 
-/* The phone's search, scope, Trash line and filters: the top of the scroller, so they scroll away with the rows (the app bar stays). 8px
-   between them (lead review 9: the search 44px, the chips' row 32px seen with its 44px targets reaching 6px into the air round it); the
-   padding keeps the search's 3px focus ring inside the scroller, which clips. */
+/* The phone's scope, Trash line and filters: the top of the scroller, so they scroll away with the rows (the app bar and the search above
+   them stay). 8px between them (lead review 9: the chips' row 32px seen with its 44px targets reaching 6px into the air round it); the
+   padding keeps a 3px focus ring inside the scroller, which clips. Empty (Drafts, no search): no box at all. */
 .ml-tools {
   display: flex;
   flex: none;
   flex-direction: column;
   gap: 8px;
-  padding: 4px var(--ml-edge) 8px;
+  padding: 6px var(--ml-edge) 8px;
+}
+.ml-tools:empty {
+  display: none;
 }
 .ml-tools > .ml-chiprow {
   margin-block: -6px;
 }
 .ml-tools[data-closing='true'] {
   padding-bottom: 8px;
+}
+/* The phone's search (DESIGN-v4m R3): fixed under the app bar, outside the scroller, so it is one tap away however far the list scrolled
+   (measured at 390x844: a 56px band; 6 whole rows stay in view while scrolling, 6.4 on average if it scrolled away, so it costs less than
+   half a row and the bar keeps its two actions). Its padding keeps the field's 3px focus ring clear; a hairline under it only once rows
+   pass under it (data-scrolled, MessageList), the app bar's rule (ui PhoneBar). */
+.ml-root[data-compact='true'] > .ml-search {
+  position: relative;
+  z-index: var(--z-raise);
+  padding: 4px var(--ml-edge) 8px;
+  background: var(--surface);
+}
+.ml-root[data-compact='true'][data-scrolled] > .ml-search {
+  box-shadow: 0 1px 0 var(--border);
 }
 
 /* ---------- Scroller, date groups ---------- */
@@ -384,8 +405,8 @@
   margin: 0;
   padding: 12px var(--ml-edge) 4px;
   background: var(--surface);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-label);
   font-weight: 600;
   color: var(--text2);
 }
@@ -526,12 +547,12 @@
 }
 
 /* The unread dot (DESIGN-v3 4.1; W5 lead review 2): an 8px indicator dot in the RIGHT column, right-aligned under the time, on the middle of
-   the subject's line (the row's top padding, the sender's 20px line, half the subject's line, less half the dot). On the stamp's corner it
+   the subject's line (the row's top padding, the sender's line, half the subject's line, less half the dot). On the stamp's corner it
    read as misplaced; here the left gutter keeps only the open row's pill. It shrinks away when the mail is read (M5); the weight of the
    text changes at once: two cues. The words "Unread" are in the row's name. The subject (and the star) give it its room on an unread row. */
 .ml-dot {
   position: absolute;
-  top: calc(var(--ml-pad-y) + 26px);
+  top: calc(var(--ml-pad-y) + var(--ml-line) * 1.5 - 4px);
   right: var(--ml-end);
   z-index: var(--z-raise);
   width: 8px;
@@ -594,8 +615,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14.5px;
-  line-height: 20px;
+  font-size: calc(var(--fs-body) + 0.5px);
+  line-height: var(--ml-line);
   font-weight: 500;
   color: var(--text);
 }
@@ -605,8 +626,8 @@
 /* The time is always the quiet tabular figure: unread is said by the weight and the dot, not by a third colour. */
 .ml-time {
   flex: none;
-  font-size: 12.5px;
-  line-height: 16px;
+  font-size: calc(var(--fs-meta) + 0.5px);
+  line-height: var(--lh-meta);
   color: var(--text3);
   font-variant-numeric: tabular-nums;
 }
@@ -632,8 +653,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: var(--fs-body);
+  line-height: var(--ml-line);
   font-weight: 400;
   color: var(--text2);
 }
@@ -659,8 +680,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--ml-line);
   color: var(--text3);
 }
 .ml-chips {
@@ -691,8 +712,8 @@
   gap: 6px;
   min-width: 0;
   color: var(--text2);
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -711,8 +732,8 @@
 .ml-more-labels {
   flex: none;
   color: var(--text2);
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
@@ -753,7 +774,7 @@
    or while the row is pointed at or has focus (the outline): stars on every row were noise (DESIGN-v3 4.1). */
 .ml-star {
   position: absolute;
-  top: calc(var(--ml-pad-y) + 24px);
+  top: calc(var(--ml-pad-y) + var(--ml-line) + 4px);
   right: calc(var(--ml-end) - (var(--ml-star) - 16px) / 2);
   display: inline-flex;
   align-items: flex-start;
@@ -1133,8 +1154,8 @@
   flex: 1 0 auto;
   margin: 0 0 0 6px;
   white-space: nowrap;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -1180,8 +1201,8 @@
 .ml-selbar-phone .ml-selbar-count {
   margin: 0;
   padding-left: 4px;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
 }
 /* The phone's More sheet: a list opened in it (Snooze, Move to folder, Add label) starts with Back, a hairline under it (J2-22); Snooze's
    picked date and time stands under its list, Snooze in the sheet's footer. */
@@ -1208,8 +1229,8 @@
   border-radius: 12px;
   background: var(--raised);
   color: var(--text2);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
@@ -1243,8 +1264,8 @@
   justify-content: center;
   gap: 4px;
   padding-inline: 4px;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
   font-weight: 600;
   text-align: center;
 }
@@ -1307,8 +1328,9 @@
 
 /* The loading rows (ui ListSkeleton) are the rows that replace them, so nothing jumps when the mail arrives: they start under the room of the
    first day heading (36px) and the list's own 4px, their bars start where a row's text starts (after the avatar, drawn here as a circle), and
-   each bar sits in the middle of the 20px line it stands for (sender, subject, preview), so a placeholder row is exactly as high as a row
-   (84px with a mouse, 88px on a phone). They come only after 300ms of waiting, fading in (M13), so a quick load never flashes them. */
+   each bar sits in the middle of the line it stands for (sender, subject, preview: --ml-line, 20px or 22px), so a placeholder row is exactly
+   as high as a row (84px with a mouse, 94px on a phone). They come only after 300ms of waiting, fading in (M13), so a quick load never
+   flashes them. The bars are 14, 14 and 12px: the first starts half its line's spare room down, the gaps are a line less a bar. */
 .ml-skel {
   padding-top: 40px;
   animation: nm-fade var(--dur-quick) var(--ease-enter) 300ms both;
@@ -1317,8 +1339,8 @@
   padding-top: var(--ml-head-h);
 }
 .ml-skel .ui-skel-row {
-  gap: 6px;
-  padding: calc(var(--ml-pad-y) + 3px) 20px calc(var(--ml-pad-y) + 5px) var(--ml-text);
+  gap: calc(var(--ml-line) - 14px);
+  padding: calc(var(--ml-pad-y) + (var(--ml-line) - 14px) / 2) 20px calc(var(--ml-pad-y) + var(--ml-line) / 2 - 5px) var(--ml-text);
   position: relative;
   margin-bottom: 2px;
   border-bottom: 0;
@@ -1376,7 +1398,7 @@
 }
 .ml-snooze-hint {
   flex: none;
-  font-size: 13px;
+  font-size: var(--fs-secondary);
   color: var(--text3);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -1398,8 +1420,8 @@
   align-items: flex-start;
   gap: 6px;
   margin: 0;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   font-weight: 500;
   color: var(--danger);
 }
@@ -1513,7 +1535,7 @@
   flex-direction: row-reverse;
   flex-wrap: wrap;
   align-content: flex-start;
-  height: 20px;
+  height: var(--ml-line);
 }
 :root[data-density='compact'] .ml-line3:has(> .ml-chips) {
   min-width: min-content;
@@ -1534,7 +1556,7 @@
   flex: none;
   order: -1;
   width: 0;
-  height: 20px;
+  height: var(--ml-line);
   margin-left: -12px;
   content: '';
 }
@@ -1561,10 +1583,10 @@
 :root[data-density='compact'] .ml-root[data-compact='true'] .ml-sender {
   flex: 1;
 }
-/* Two lines: the dot stays on the middle of the first (the sender's 20px line). */
+/* Two lines: the dot stays on the middle of the first (the sender's line). */
 :root[data-density='compact'] .ml-root[data-compact='true'] .ml-dot {
   align-self: flex-start;
-  margin-top: 6px;
+  margin-top: calc((var(--ml-line) - 8px) / 2);
 }
 :root[data-density='compact'] .ml-root[data-compact='true'] .ml-line2 {
   max-width: 100%;
@@ -1617,8 +1639,8 @@
   background: var(--raised);
   color: var(--text2);
   font: inherit;
-  font-size: 12px;
-  line-height: 18px;
+  font-size: var(--fs-meta);
+  line-height: calc(var(--lh-meta) + 2px);
   text-align: center;
 }
 .ml-menu-end {
@@ -1657,8 +1679,8 @@
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   text-align: left;
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-standard);
@@ -1693,7 +1715,7 @@
 .ml-menu-hint {
   flex: none;
   color: var(--text3);
-  font-size: 13px;
+  font-size: var(--fs-secondary);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -1709,6 +1731,30 @@
   outline-offset: -2px;
 }
 
+/* ---------- Phone type (DESIGN-v4m R2, R4) ---------- */
+
+/* A phone (or any touch screen) reads a row at phone sizes: the sender is its title (16, --fs-body; 650 unread, 500 read), the subject a
+   step under it (15, --fs-secondary) so the sender still leads, the preview 15, the time 13 (--fs-meta), each on a 22px line (--ml-line);
+   a day heading is meta too (13) on its 20px line (--ml-head-h stays). A desktop keeps the v3 half steps (14.5, 12.5) from the same
+   variables. The row menu's choices are 48px rows in its sheet, the list a thumb runs down (the popup with a mouse keeps its 36px). */
+@media (max-width: 640px), (pointer: coarse) {
+  .ml-sender {
+    font-size: var(--fs-body);
+  }
+  .ml-subject {
+    font-size: var(--fs-secondary);
+  }
+  .ml-time {
+    font-size: var(--fs-meta);
+  }
+  .ml-group-title {
+    font-size: var(--fs-meta);
+  }
+  .ml-menu-item {
+    min-height: calc(var(--control-touch) + 4px);
+  }
+}
+
 /* Reduced motion (the system setting, or the in-app choice below): a state change is just there. The swipe still follows the finger; only
    its settle is instant. The fades of the heading, the body, the pill, the wash and the loading rows are opacity only (their moves are
    scaled by --motion, which is 0 then). */
@@ -1722,11 +1768,24 @@
   .ml-swipe-reveal svg,
   .ml-swipe-pane,
   .ml-fchip-face,
-  .ml-menu-item {
+  .ml-menu-item,
+  .ml-search {
     transition: none;
   }
 }
 :root[data-motion='reduce']
-  :is(.ml-check, .ml-pick, .ml-row, .ml-dot, .ml-star, .ml-quick, .ml-swipe-reveal svg, .ml-swipe-pane, .ml-fchip-face, .ml-menu-item) {
+  :is(
+    .ml-check,
+    .ml-pick,
+    .ml-row,
+    .ml-dot,
+    .ml-star,
+    .ml-quick,
+    .ml-swipe-reveal svg,
+    .ml-swipe-pane,
+    .ml-fchip-face,
+    .ml-menu-item,
+    .ml-search
+  ) {
   transition: none;
 }

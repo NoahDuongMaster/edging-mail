@@ -11,6 +11,11 @@ interface Layer {
   escape: () => void;
   /** The element of a dialog: an Escape pressed inside it goes to its content first. Unset for a popup, which takes Escape at once. */
   element: React.RefObject<HTMLElement | null> | undefined;
+  /**
+   * A layer that holds no control (a toggletip's bubble): it takes Escape while it is on top, but the layer under it stays "on top" for
+   * everything else, so a dialog keeps trapping Tab while a tip of its content is open.
+   */
+  passive: boolean;
 }
 
 const stack: Layer[] = [];
@@ -45,9 +50,15 @@ function onKeyDown(event: KeyboardEvent): void {
 /**
  * Registers a layer for as long as `active` is true. `onEscape` is called when Escape is pressed and this layer is on top. With `element`
  * (a dialog), an Escape pressed inside that element is left to the element's own keydown handler, which calls `onEscape` itself.
- * Returns `isTop()`: true while no later layer is open above this one.
+ * `passive` (a toggletip): the layer takes Escape, but does not count for the `isTop()` of the layers under it.
+ * Returns `isTop()`: true while no later layer (other than passive ones) is open above this one.
  */
-export function useLayer(active: boolean, onEscape: () => void, element?: React.RefObject<HTMLElement | null>): () => boolean {
+export function useLayer(
+  active: boolean,
+  onEscape: () => void,
+  element?: React.RefObject<HTMLElement | null>,
+  passive = false
+): () => boolean {
   const escapeRef = React.useRef(onEscape);
   const layerRef = React.useRef<Layer | null>(null);
 
@@ -63,7 +74,8 @@ export function useLayer(active: boolean, onEscape: () => void, element?: React.
       escape: () => {
         escapeRef.current();
       },
-      element
+      element,
+      passive
     };
     layerRef.current = layer;
     stack.push(layer);
@@ -77,9 +89,12 @@ export function useLayer(active: boolean, onEscape: () => void, element?: React.
         document.removeEventListener('keydown', onKeyDown, true);
       }
     };
-  }, [active, element]);
+  }, [active, element, passive]);
 
-  return React.useCallback(() => layerRef.current !== null && stack.at(-1) === layerRef.current, []);
+  return React.useCallback(() => {
+    const at = layerRef.current === null ? -1 : stack.indexOf(layerRef.current);
+    return at !== -1 && stack.slice(at + 1).every((above) => above.passive);
+  }, []);
 }
 
 let scrollLocks = 0;

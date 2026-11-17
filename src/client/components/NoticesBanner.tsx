@@ -111,7 +111,9 @@ const NoticeRow: React.FC<{
         ) : null}
         {/* Not dismissible yet (security notices stay seven days): when its Dismiss button comes, in a quiet line. */}
         {dismissible || notice.dismissibleAfter === undefined ? null : (
-          <p className="mb-note">{tr('notice.dismiss_from', { date: formatWhen(notice.dismissibleAfter) })}</p>
+          <p className="mb-note" data-meta="true">
+            {tr('notice.dismiss_from', { date: formatWhen(notice.dismissibleAfter) })}
+          </p>
         )}
         {/* The banner is an alert region, so the failure is read out with it. */}
         {failed ? (
@@ -160,7 +162,7 @@ export const NoticesBanner: React.FC<NoticesBannerProps> = ({ onOpenSettings }) 
       {others.length > 0 || rest > 0 ? (
         <div className="mb-strip-more">
           {others.length > 0 ? (
-            <Disclosure open={open} onOpenChange={setOpen} controls={panelId} size="sm">
+            <Disclosure open={open} onOpenChange={setOpen} controls={panelId} inline>
               {open ? tr('notice.fewer') : tr('notice.more_count', { count: others.length + rest })}
             </Disclosure>
           ) : null}

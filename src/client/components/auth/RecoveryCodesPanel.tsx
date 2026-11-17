@@ -6,7 +6,7 @@ import type { TFunction } from '../../lib/i18n';
 import { useT } from '../../lib/i18n';
 import { useSecretHold } from '../../lib/secretHold';
 import { CopyButton, SecretBox } from '../../ui';
-import { AuthButton, CheckboxRow, ErrorLine } from './authUi';
+import { AuthActions, AuthButton, CheckboxRow, ErrorLine } from './authUi';
 
 // The single-use recovery codes of two-factor sign-in, shown once right after enrolment. They are not the recovery key (that one restores
 // access to mail and lives in RecoveryKeyPanel); they only stand in for the authenticator app when the phone is lost.
@@ -96,24 +96,28 @@ export const RecoveryCodesPanel: React.FC<RecoveryCodesPanelProps> = ({ t, codes
         t={t}
         id={SAVED_ID}
         label={tr('twofa.saved_check')}
+        // Needed while choosing (the codes cannot be seen again): a visible line, not a tip (v4m R1).
         hint={tr('twofa.saved_hint')}
+        hintMode="inline"
         checked={saved}
         onChange={setSaved}
         error={pressed && !saved ? tr('twofa.saved_required') : null}
       />
-      <AuthButton
-        t={t}
-        type="button"
-        label={tr('twofa.continue')}
-        onClick={() => {
-          if (!saved) {
-            setPressed(true);
-            focusLater(SAVED_ID);
-            return;
-          }
-          onDone();
-        }}
-      />
+      <AuthActions>
+        <AuthButton
+          t={t}
+          type="button"
+          label={tr('twofa.continue')}
+          onClick={() => {
+            if (!saved) {
+              setPressed(true);
+              focusLater(SAVED_ID);
+              return;
+            }
+            onDone();
+          }}
+        />
+      </AuthActions>
     </div>
   );
 };

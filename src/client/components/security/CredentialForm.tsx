@@ -4,7 +4,7 @@ import { firstInvalid, useFieldFocus } from '../../lib/fieldFocus';
 import { useT } from '../../lib/i18n';
 import { useAction } from '../../lib/useAction';
 import { useCountdown } from '../../lib/useCountdown';
-import { Button } from '../../ui';
+import { ActionBar, Button } from '../../ui';
 import { AuthButton } from '../auth/authUi';
 import { CODE_LENGTH, CodeInput, Failure, PasswordInput } from './securityUi';
 
@@ -12,9 +12,10 @@ interface CredentialFormProps<T> {
   t: ThemeTokens;
   /** Prefix of the field ids, so two forms never share one. */
   id: string;
+  /** The one visible line over the fields (DESIGN-v4m R1: what the action does; the rest is in the view's tip). */
   lead: string;
   submitLabel: string;
-  /** A plain line under the button. */
+  /** A plain line over the button: what else the action does (the other devices are signed out). */
   note?: string;
   /** Also asks for the six-digit code of the authenticator app. */
   withCode: boolean;
@@ -28,7 +29,8 @@ interface CredentialFormProps<T> {
 
 /**
  * The password (and, where the action needs it, one code) for an action of the Security section. It is not a mutation of react-query: a password
- * and a code must not sit in a cache, so the screen runs `work` through `useAction` and empties both fields as soon as it returns.
+ * and a code must not sit in a cache, so the screen runs `work` through `useAction` and empties both fields as soon as it returns. The button
+ * is the last thing of the form, in a ui ActionBar: the full-width bottom bar of the sheet on a phone, a plain row on a desktop.
  */
 export function CredentialForm<T>({
   t,
@@ -105,7 +107,8 @@ export function CredentialForm<T>({
         />
       ) : null}
       <Failure t={t} id={`${id}-error`} error={action.error} wait={wait} />
-      <div>
+      {note === undefined ? null : <p className="st-muted">{note}</p>}
+      <ActionBar>
         {danger ? (
           // The same rules as AuthButton (busy: a spinner, aria-busy, no clicks), in the danger colour.
           <Button
@@ -122,8 +125,7 @@ export function CredentialForm<T>({
         ) : (
           <AuthButton t={t} busy={action.busy} disabled={wait > 0} label={submitLabel} />
         )}
-      </div>
-      {note === undefined ? null : <p className="st-muted">{note}</p>}
+      </ActionBar>
     </form>
   );
 }

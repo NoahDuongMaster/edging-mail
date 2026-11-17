@@ -15,7 +15,7 @@ import { usePasswordCheck } from '../../lib/password/usePasswordCheck';
 import { pushForSignOut } from '../../lib/push';
 import { useAction } from '../../lib/useAction';
 import { PasswordField, SecretField } from '../PasswordField';
-import { AuthButton, AuthCard, CheckboxRow, ErrorLine, TextButton } from './authUi';
+import { AuthActions, AuthButton, AuthCard, CheckboxRow, ErrorLine, TextButton, useAuthPhone } from './authUi';
 import type { AuthStep } from './authUi';
 import { RecoveryKeyPanel } from './RecoveryKeyPanel';
 import { TwoFactorEnrolment } from './TwoFactorEnrolment';
@@ -57,26 +57,32 @@ function gateStep(user: SessionUser, step: GateStep): AuthStep | undefined {
   return index === -1 || journey.steps.length < 2 ? undefined : { current: index + 1, total: journey.steps.length };
 }
 
-const SignOutButton: React.FC<{ t: ThemeTokens }> = ({ t }) => {
+/** Sign out, the one way out of a first sign-in: a quiet text button under the form; on a phone, the end of the top bar (`top`). */
+const SignOutButton: React.FC<{ t: ThemeTokens; top?: boolean }> = ({ t, top = false }) => {
   const tr = useT();
   const logout = useLogout({ push: pushForSignOut() });
-  return (
-    <div className="au-alt">
-      <TextButton t={t} label={tr('auth.sign_out')} disabled={logout.isPending} onClick={() => logout.mutate()} />
-    </div>
-  );
+  const button = <TextButton t={t} label={tr('auth.sign_out')} disabled={logout.isPending} onClick={() => logout.mutate()} />;
+  return top ? button : <div className="au-alt">{button}</div>;
 };
+
+/** Where Sign out goes on this layout: the top bar on a phone (AuthCard `topAction`), under the form elsewhere. */
+function useSignOutPlace(t: ThemeTokens): { top: React.ReactNode; foot: React.ReactNode } {
+  const phone = useAuthPhone();
+  return phone ? { top: <SignOutButton t={t} top />, foot: null } : { top: undefined, foot: <SignOutButton t={t} /> };
+}
 
 interface CurrentPasswordProps extends GateProps {
   title: string;
   lead: string;
+  /** The longer explanation of the step, behind an InfoTip after the title. */
+  info?: string;
   label: string;
   step: AuthStep | undefined;
   onReady: (credentials: GateCredentials) => void;
 }
 
 /** Shown when the sign-in's own copy of the credentials is gone (the page was reloaded in the middle of a gate): the current password, once. */
-const CurrentPasswordStep: React.FC<CurrentPasswordProps> = ({ t, user, title, lead, label, step, onReady }) => {
+const CurrentPasswordStep: React.FC<CurrentPasswordProps> = ({ t, user, title, lead, info, label, step, onReady }) => {
   const tr = useT();
   const action = useAction();
   const [password, setPassword] = React.useState('');
@@ -85,6 +91,7 @@ const CurrentPasswordStep: React.FC<CurrentPasswordProps> = ({ t, user, title, l
   const [chosen, setChosen] = React.useState(start.shared);
   const shared = start.locked || chosen;
   const focusLater = useFieldFocus();
+  const signOut = useSignOutPlace(t);
   const submit = async (event: React.SyntheticEvent) => {
     event.preventDefault();
     if (action.busy) {
@@ -111,6 +118,8 @@ const CurrentPasswordStep: React.FC<CurrentPasswordProps> = ({ t, user, title, l
       step={step}
       title={title}
       lead={lead}
+      info={info}
+      topAction={signOut.top}
       onSubmit={(event) => {
         void submit(event);
       }}
@@ -131,12 +140,14 @@ const CurrentPasswordStep: React.FC<CurrentPasswordProps> = ({ t, user, title, l
         id="gate-shared"
         label={tr('auth.shared_device')}
         hint={shared ? tr('auth.shared_device_hint') : tr('auth.shared_device_short')}
+        note={shared ? tr('auth.shared_device_hint_short') : undefined}
         checked={shared}
         onChange={setChosen}
         locked={start.locked}
       />
-      <AuthButton t={t} busy={action.busy} label={tr('gate.continue')} />
-      <SignOutButton t={t} />
+      <AuthActions after={signOut.foot}>
+        <AuthButton t={t} busy={action.busy} label={tr('gate.continue')} />
+      </AuthActions>
     </AuthCard>
   );
 };
@@ -191,6 +202,7 @@ export const FirstPasswordScreen: React.FC<GateProps> = ({ t, user }) => {
   // Continue can always be pressed: a press with something missing shows both fields' errors and takes the keyboard to the first of them.
   const [submitted, setSubmitted] = React.useState(false);
   const focusLater = useFieldFocus();
+  const signOut = useSignOutPlace(t);
 
   if (credentials === null) {
     return (
@@ -207,7 +219,13 @@ export const FirstPasswordScreen: React.FC<GateProps> = ({ t, user }) => {
   }
   if (step === 'key') {
     return (
-      <AuthCard t={t} wide step={gateStep(user, 'key')} title={tr('recovery.title_first')}>
+      <AuthCard
+        t={t}
+        wide
+        step={gateStep(user, 'key')}
+        title={tr('recovery.title_first')}
+        back={{ label: tr('common.back'), onClick: () => setStep('password') }}
+      >
         {draft === null ? null : (
           <RecoveryKeyPanel
             t={t}
@@ -241,7 +259,9 @@ export const FirstPasswordScreen: React.FC<GateProps> = ({ t, user }) => {
       t={t}
       step={gateStep(user, 'password')}
       title={tr('gate.password_title')}
-      lead={tr('gate.password_lead')}
+      lead={tr('gate.password_lead_short')}
+      info={tr('gate.password_lead')}
+      topAction={signOut.top}
       onSubmit={(event) => {
         event.preventDefault();
         setSubmitted(true);
@@ -276,8 +296,9 @@ export const FirstPasswordScreen: React.FC<GateProps> = ({ t, user }) => {
         onChange={(event) => setRepeat(event.target.value)}
         autoComplete="new-password"
       />
-      <AuthButton t={t} label={tr('gate.continue')} />
-      <SignOutButton t={t} />
+      <AuthActions after={signOut.foot}>
+        <AuthButton t={t} label={tr('gate.continue')} />
+      </AuthActions>
     </AuthCard>
   );
 };
@@ -289,6 +310,7 @@ export const KeySetupScreen: React.FC<GateProps> = ({ t, user }) => {
   const [credentials, setCredentials] = React.useState<GateCredentials | null>(readGateCredentials);
   const draft = useDraft(credentials !== null);
   const step = gateStep(user, 'key');
+  const signOut = useSignOutPlace(t);
   if (credentials === null) {
     return (
       <CurrentPasswordStep
@@ -296,14 +318,23 @@ export const KeySetupScreen: React.FC<GateProps> = ({ t, user }) => {
         user={user}
         step={step}
         title={tr('gate.keys_title')}
-        lead={tr('gate.keys_lead')}
+        lead={tr('gate.keys_lead_short')}
+        info={tr('gate.keys_lead')}
         label={tr('term.password')}
         onReady={setCredentials}
       />
     );
   }
   return (
-    <AuthCard t={t} wide step={step} title={tr('gate.keys_title')} lead={tr('gate.keys_lead')}>
+    <AuthCard
+      t={t}
+      wide
+      step={step}
+      title={tr('gate.keys_title')}
+      lead={tr('gate.keys_lead_short')}
+      info={tr('gate.keys_lead')}
+      topAction={signOut.top}
+    >
       {draft === null ? null : (
         <RecoveryKeyPanel
           t={t}
@@ -316,7 +347,7 @@ export const KeySetupScreen: React.FC<GateProps> = ({ t, user }) => {
           }}
         />
       )}
-      <SignOutButton t={t} />
+      {signOut.foot}
     </AuthCard>
   );
 };
@@ -328,6 +359,7 @@ export const TwoFactorGateScreen: React.FC<GateProps> = ({ t, user }) => {
   const [credentials, setCredentials] = React.useState<GateCredentials | null>(readGateCredentials);
   const [phase, setPhase] = React.useState<'two_factor' | 'two_factor_codes'>('two_factor');
   const step = gateStep(user, phase);
+  const signOut = useSignOutPlace(t);
   if (credentials === null) {
     return (
       <CurrentPasswordStep
@@ -335,14 +367,14 @@ export const TwoFactorGateScreen: React.FC<GateProps> = ({ t, user }) => {
         user={user}
         step={step}
         title={tr('gate.two_factor_title')}
-        lead={tr('gate.two_factor_lead')}
+        lead={tr('gate.two_factor_lead_short')}
         label={tr('term.password')}
         onReady={setCredentials}
       />
     );
   }
   return (
-    <AuthCard t={t} wide step={step} title={tr('gate.two_factor_title')} lead={tr('gate.two_factor_lead')}>
+    <AuthCard t={t} wide step={step} title={tr('gate.two_factor_title')} lead={tr('gate.two_factor_lead_short')} topAction={signOut.top}>
       <TwoFactorEnrolment
         t={t}
         credentials={credentials}
@@ -352,7 +384,7 @@ export const TwoFactorGateScreen: React.FC<GateProps> = ({ t, user }) => {
           applySignedIn(queryClient, { ...user, totp_enabled: true });
         }}
       />
-      <SignOutButton t={t} />
+      {signOut.foot}
     </AuthCard>
   );
 };

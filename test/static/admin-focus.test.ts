@@ -24,15 +24,18 @@ it('the ui Button and TextField give their props to one native element', () => {
   expect(field).toMatch(/<input\s[^>]*\{\.\.\.input\}/);
 });
 
-/** The buttons of the row of actions and of the confirmation, as source text. */
+/** The buttons of the row of actions and of the confirmation, as source text. The confirmation's buttons are the sheet's foot (DESIGN-v4m R3),
+ * drawn before the body that shows the row. */
 const rowAndConfirmation = (): { row: string; confirmation: string } => {
+  const foot = dialog.indexOf('const foot =');
+  const footEnd = dialog.indexOf('return (', foot);
   const start = dialog.indexOf('{pending === null ? (');
-  const middle = dialog.indexOf('role="group"', start);
-  const end = dialog.indexOf('{scheduledDue === null', middle);
-  expect(start).toBeGreaterThan(0);
-  expect(middle).toBeGreaterThan(start);
-  expect(end).toBeGreaterThan(middle);
-  return { row: dialog.slice(start, middle), confirmation: dialog.slice(middle, end) };
+  const end = dialog.indexOf('<div id="user-confirm"', start);
+  expect(foot).toBeGreaterThan(0);
+  expect(footEnd).toBeGreaterThan(foot);
+  expect(start).toBeGreaterThan(footEnd);
+  expect(end).toBeGreaterThan(start);
+  return { row: dialog.slice(start, end), confirmation: dialog.slice(foot, footEnd) };
 };
 
 describe('the person dialog keeps the keyboard where it was (D-6)', () => {
@@ -40,8 +43,11 @@ describe('the person dialog keeps the keyboard where it was (D-6)', () => {
     expect(dialog).toMatch(/React\.useEffect\(\(\) => \{[^]*?shownRef\.current = confirming;[^]*?\}, \[confirming\]\);/);
     // Appears: focus goes to the control marked data-autofocus, and that is the CANCEL button, never the action (ADM-1: a held Enter must not land on the action).
     expect(dialog).toMatch(
-      /if \(confirming !== null\) \{\s*target = actionsRef\.current\?\.querySelector<HTMLElement>\('\[data-autofocus\]'\);/
+      /if \(confirming !== null\) \{\s*target = footRef\.current\?\.querySelector<HTMLElement>\('\[data-autofocus\]'\);/
     );
+    // On a phone the foot is the ModalFrame's (always in view), the question in the body describes its group; on a desktop it stays under the question.
+    expect(dialog).toMatch(/<ModalFrame [^>]*footer=\{phone \? foot : undefined\}>/);
+    expect(dialog).toMatch(/<div id="user-confirm" className="ad-confirm">[^]*?\{phone \? null : foot\}\s*<\/div>/);
     const { confirmation } = rowAndConfirmation();
     expect(confirmation.match(/data-autofocus/g)).toHaveLength(1);
     expect(confirmation).toMatch(
@@ -58,10 +64,12 @@ describe('the person dialog keeps the keyboard where it was (D-6)', () => {
     expect(action).toContain('void pending.run()');
     expect(action).toContain('{pending.action}');
     expect(action).not.toContain('data-autofocus');
-    expect(confirmation).toMatch(/<div className="ad-confirm-foot">\s*<Button data-autofocus/);
+    expect(confirmation).toMatch(
+      /aria-describedby=\{phone \? 'user-confirm' : undefined\}\s+className="ad-confirm-foot"\s*>\s*<Button data-autofocus/
+    );
     // Goes away (Cancel, Escape, done): back to the button at the place of the one that asked, if there was one.
     expect(dialog).toMatch(
-      /\} else if \(before !== null\) \{\s*target = actionsRef\.current\?\.querySelectorAll<HTMLElement>\('button'\)\.item\(BUTTON_PLACE\[before\]\);/
+      /\} else if \(before !== null\) \{\s*target = actionsRef\.current\?\.querySelectorAll<HTMLElement>\('\.ad-actions-row button'\)\.item\(BUTTON_PLACE\[before\]\);/
     );
     expect(dialog).toMatch(/target\?\.focus\(\{ preventScroll: true \}\);/);
     expect(dialog).toMatch(/<section ref=\{actionsRef\} aria-labelledby="user-actions"/);

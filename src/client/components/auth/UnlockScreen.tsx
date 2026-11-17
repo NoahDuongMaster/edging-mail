@@ -9,7 +9,7 @@ import { useT } from '../../lib/i18n';
 import { pushForSignOut } from '../../lib/push';
 import { useAction } from '../../lib/useAction';
 import { SecretField } from '../PasswordField';
-import { AuthButton, AuthCard, CheckboxRow, ErrorLine, HintedLink, TextButton, TrustLine } from './authUi';
+import { AuthActions, AuthButton, AuthCard, CheckboxRow, ErrorLine, HintedLink, TextButton, TrustLine } from './authUi';
 import { openForgotNext } from './nextScreen';
 
 /**
@@ -103,12 +103,14 @@ export const UnlockScreen: React.FC<{ t: ThemeTokens; user: SessionUser }> = ({ 
         id="unlock-shared"
         label={tr('auth.shared_device')}
         hint={shared ? tr('auth.shared_device_hint') : tr('auth.shared_device_short')}
+        note={shared ? tr('auth.shared_device_hint_short') : undefined}
         checked={shared}
         onChange={setChosen}
         locked={start.locked}
       />
-      <AuthButton t={t} busy={action.busy} label={tr('keys.unlock')} />
-      <TrustLine />
+      <AuthActions after={<TrustLine />}>
+        <AuthButton t={t} busy={action.busy} label={tr('keys.unlock')} />
+      </AuthActions>
     </AuthCard>
   );
 };

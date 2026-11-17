@@ -83,7 +83,9 @@ describe('the DNS answer of a domain', () => {
     expect(html).toContain(tr('domains.guide_path_sending'));
     expect(html).not.toContain(tr('domains.guide_path_routing'));
     expect(html).toMatch(/<a href="https:\/\/dash\.cloudflare\.com\/" target="_blank" rel="noopener noreferrer"/);
-    expect(html).toContain(tr('domains.note_mx_cloudflare'));
+    // v4m R1: the step that works says nothing more than its Ready; only the failing step has a line on what is missing.
+    expect(html.match(/class="ad-dns-line"/g)).toHaveLength(1);
+    expect(html).toContain(tr('domains.records_missing', { count: 2 }));
   });
 });
 
@@ -124,10 +126,10 @@ describe('the state of a person in the admin console', () => {
       'data-tone="warning"'
     );
     expect(render(createElement(PersonTwoFactor, { user: person({ two_factor: false, status: 'disabled' }) }))).not.toContain('data-tone');
-    // Under its column header the short word, with the whole phrase for the stacked rows of a narrow table.
+    // Under its column header the short word; in a phone's stacked row (no header) the short phrase of the one meta line (v4m).
     const short = render(createElement(PersonTwoFactor, { user: person({}), short: true }));
     expect(short).toContain(`<span class="ad-wide">${tr('users.two_factor_on')}</span>`);
-    expect(short).toContain(`<span class="ad-narrow">${tr('users.two_factor_is_on')}</span>`);
+    expect(short).toContain(`<span class="ad-narrow">${tr('users.two_factor_meta_on')}</span>`);
   });
 
   it('draws every status as an icon and a word, never a pill, so the words of the column share one edge', () => {

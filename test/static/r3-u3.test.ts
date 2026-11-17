@@ -110,7 +110,7 @@ describe('deleting an account and new recovery codes', () => {
 
   it('has one heading over new codes and the replaced-codes fact as a quiet notice (J3-41); two columns from a 360px box (J5-26)', () => {
     expect(twoFactor).toMatch(
-      /<ViewFrame t=\{t\} title=\{tr\('security\.codes_new_title'\)\} onBack=\{null\}>\s*<Banner tone="info" live=\{false\}>/
+      /<ViewFrame t=\{t\} title=\{tr\('security\.codes_new_title'\)\} barTitle=\{tr\('term\.recovery_codes'\)\} onBack=\{null\}>\s*<Banner tone="info" live=\{false\}>/
     );
     expect(twoFactor).toContain('showHeading={false}');
     expect(codes).toMatch(/\{showHeading \? \(\s*<Heading ref=\{heading\}/);

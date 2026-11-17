@@ -221,8 +221,16 @@
     "context": "Admin console, Domains page: the one line under the page title.",
     "security": false
   },
+  "admin.domains_desc_short": {
+    "context": "Short form of admin.domains_desc on phones and desktop: the one line under the Domains page title; the whole text is in the InfoTip at the end of that line.",
+    "security": false
+  },
   "admin.people_desc": {
     "context": "Admin console, People page: the one line under the page title.",
+    "security": false
+  },
+  "admin.people_desc_short": {
+    "context": "Short form of admin.people_desc on phones and desktop: the one line under the People page title; the whole text is in the InfoTip at the end of that line.",
     "security": false
   },
   "admin.policy_confirm_label": {
@@ -239,6 +247,10 @@
   },
   "admin.policy_off_body": {
     "context": "Admin Settings, two-factor rule: the question shown before the requirement is turned off for members.",
+    "security": true
+  },
+  "admin.policy_off_body_short": {
+    "context": "Short form of admin.policy_off_body on phones and desktop: the question shown before the two-factor requirement is turned off for members; the whole text (the change is logged, the other admins are told) is in the InfoTip after it.",
     "security": true
   },
   "admin.policy_off_effect": {
@@ -269,8 +281,8 @@
     "context": "Admin console, Settings page: the one line under the page title.",
     "security": false
   },
-  "admin.step_up_body": {
-    "context": "Step-up dialog: explains why the code is asked.",
+  "admin.step_up_body_short": {
+    "context": "Short form of the step-up text on phones and desktop: the one line of the step-up dialog (its title already says a fresh check is asked) above the 6-digit code field.",
     "security": true
   },
   "admin.step_up_code": {
@@ -704,6 +716,10 @@
     "context": "Admin Audit log tab: line above the list.",
     "security": true
   },
+  "audit.intro_short": {
+    "context": "Short form of audit.intro on phones and desktop: the one line under the Audit log page title; the whole text (passwords are never recorded) is in the InfoTip at the end of that line.",
+    "security": true
+  },
   "audit.kind_accounts": {
     "context": "Audit log, Event filter: account and alias changes.",
     "security": false
@@ -841,6 +857,10 @@
     "context": "Hint under the shared-device checkbox on the sign-in screen: the encryption key stays in this browser tab only, but closing the tab does not end the sign-in. \"Sign out\" is the catalogue label of the sign-out button. cyber CAT-15.",
     "security": true
   },
+  "auth.shared_device_hint_short": {
+    "context": "Short form of auth.shared_device_hint on phones and desktop: one line under the ticked shared-device checkbox (sign-in, unlock, first-sign-in screens); the whole text is in the checkbox's info tip. \"Sign out\" is the catalogue label of the sign-out button (auth.sign_out).",
+    "security": true
+  },
   "auth.shared_device_short": {
     "context": "Sign-in, unlock and first-sign-in screens: short line under the shared-device checkbox, always shown, saying what ticking it changes for the person (subject: the choice): the encryption key is kept in this tab's memory only, so the password is asked again once the tab is closed or reloaded (the session itself stays signed in). Once the box is ticked the longer auth.shared_device_hint replaces it.",
     "security": true
@@ -896,6 +916,10 @@
   },
   "breakglass.lead": {
     "context": "Under the heading: only for admins who lost both password and recovery key; needs the deployment's setup key.",
+    "security": true
+  },
+  "breakglass.lead_short": {
+    "context": "Short form of breakglass.lead on phones and desktop: the one line under the title of the break-glass screen (Restore an admin account); the whole text is in the info tip after the title.",
     "security": true
   },
   "breakglass.old_mail": {
@@ -957,6 +981,10 @@
     "context": "Shown while a list or screen is loading",
     "security": false,
     "max": 24
+  },
+  "common.optional_label": {
+    "context": "A field label that marks the field as optional: {label} is the field's own label (Setup: the display name). Keep it short; it is a label, not a sentence.",
+    "security": false
   },
   "common.remove": {
     "context": "Generic button: remove an item from a list (not delete the account or mail)",
@@ -1246,6 +1274,10 @@
     "context": "Quiet line under the recipient fields when the message will NOT be end-to-end encrypted. {reason} is one of the four compose.reason_* sentences (it starts with a small letter and ends with a full stop). Information, not a warning.",
     "security": true,
     "max": 40
+  },
+  "compose.state_plain_short": {
+    "context": "Short form of compose.state_plain on phones and narrow windows: the quiet line under the recipients when the message will NOT be end-to-end encrypted; the full sentence with its reason is in an InfoTip after it. Information, not a warning.",
+    "security": true
   },
   "compose.style_heading": {
     "context": "Text style dropdown option: heading",
@@ -1593,6 +1625,10 @@
     "context": "Domains tab: note under the add form. {check} is the Check DNS button name shown as a badge.",
     "security": false
   },
+  "domains.add_note_short": {
+    "context": "Short form of domains.add_note on phones and desktop: the one line under the field that adds a domain; the whole text is in the InfoTip after the field label.",
+    "security": false
+  },
   "domains.added": {
     "context": "Announced to screen readers after a domain was added. {name} is the domain.",
     "security": false
@@ -1750,10 +1786,6 @@
     "security": false,
     "max": 14
   },
-  "domains.note_mx_cloudflare": {
-    "context": "DNS check result, receiving: the MX records point to Cloudflare Email Routing.",
-    "security": false
-  },
   "domains.note_mx_none": {
     "context": "DNS check result, receiving: no MX records.",
     "security": false
@@ -1764,10 +1796,6 @@
   },
   "domains.note_mx_other": {
     "context": "DNS check result, receiving: the MX records point to another provider. {hosts} is a comma-separated list of host names.",
-    "security": false
-  },
-  "domains.note_sending_ready": {
-    "context": "DNS check result, sending: all required records exist.",
     "security": false
   },
   "domains.open_dashboard": {
@@ -2483,8 +2511,16 @@
     "context": "Under the heading: what the three steps are.",
     "security": true
   },
+  "forgot.lead_short": {
+    "context": "Short form of forgot.lead on phones and desktop: the one line under the title of Forgot password, step 1; the whole text (what the three steps are) is in the info tip after the title.",
+    "security": true
+  },
   "forgot.lost_key": {
     "context": "Forgot password screen: note under Continue for a member who lost the recovery key too (the honest consequence and the next step).",
+    "security": true
+  },
+  "forgot.lost_key_short": {
+    "context": "Short form of forgot.lost_key on phones and desktop: a one-line question at the end of Forgot password, step 1; the answer (forgot.lost_key, the consequence for the old mail) is in the info tip at the end of the line.",
     "security": true
   },
   "forgot.nothing_changed": {
@@ -2507,6 +2543,14 @@
     "context": "Bar above an HTML message that has remote images, left of the 'Show images' button",
     "security": false
   },
+  "frame.images_blocked_short": {
+    "context": "Short form of frame.images_blocked: the bar above an HTML message with remote images, left of 'Show images'; the reason (frame.images_blocked) is in an InfoTip after it.",
+    "security": false
+  },
+  "frame.images_tip_label": {
+    "context": "What the InfoTip after frame.images_blocked_short explains; read by screen readers inside ui.info_about ('About {label}'). A short noun phrase.",
+    "security": false
+  },
   "frame.title": {
     "context": "Accessible title of the frame that shows the HTML body of a message (screen readers only)",
     "security": false
@@ -2524,6 +2568,10 @@
     "context": "Under the heading of the key setup screen.",
     "security": true
   },
+  "gate.keys_lead_short": {
+    "context": "Short form of gate.keys_lead on phones and desktop: the one line under the title of the first-sign-in step that makes the encryption keys; the whole text is in the info tip after the title.",
+    "security": true
+  },
   "gate.keys_title": {
     "context": "Heading of the screen that sets up the encryption keys and shows the recovery key.",
     "security": true
@@ -2534,6 +2582,10 @@
   },
   "gate.password_lead": {
     "context": "Under the heading: the account is still on the temporary password an admin made; choose your own.",
+    "security": true
+  },
+  "gate.password_lead_short": {
+    "context": "Short form of gate.password_lead on phones and desktop: the one line under the title of the first-sign-in step that replaces the temporary password; the whole text is in the info tip after the title.",
     "security": true
   },
   "gate.password_title": {
@@ -2548,8 +2600,8 @@
     "context": "Label of the field that repeats the new password.",
     "security": true
   },
-  "gate.two_factor_lead": {
-    "context": "Under the heading of the two-factor setup screen: it is required for this account.",
+  "gate.two_factor_lead_short": {
+    "context": "First-sign-in step that sets up two-factor sign-in: the one line under its title, saying why this step is required (the next line says an authenticator app is needed).",
     "security": true
   },
   "gate.two_factor_title": {
@@ -2886,15 +2938,13 @@
     "context": "Screen-reader only text before an unread message row",
     "security": false
   },
-  "locked.banner#one": {
-    "context": "Card above the mailbox, singular ({count} is 1). After an admin restored their account with the setup key, mail that arrived before is sealed to the OLD encryption key; only the recovery key they had then can open it, so this browser cannot. Calm, factual; a 'Why?' button and two buttons follow (Keep it locked, Delete it…). Glossary: message, key, encrypt.",
-    "security": true,
-    "max": 130
+  "locked.banner_short#one": {
+    "context": "Card above the mailbox, singular ({count} is 1), and the Settings > Security card 'Locked old mail'. After an admin restored their account with the setup key, mail that arrived before is sealed to the OLD encryption key; only the recovery key they had then can open it, so this browser cannot (the why is behind 'See why'). Calm, factual; the 'See why' button and two buttons follow (Keep it locked, Delete it…). Glossary: message, key, encrypt.",
+    "security": true
   },
-  "locked.banner#other": {
-    "context": "Plural form of locked.banner#one.",
-    "security": true,
-    "max": 140
+  "locked.banner_short#other": {
+    "context": "Plural form of locked.banner_short#one.",
+    "security": true
   },
   "locked.cancel": {
     "context": "Button that stops a deletion of locked old mail that was asked for and is waiting for its date (on the locked-mail card and on the notice). vi and zh-CN are cyber's (overrides); no need to translate.",
@@ -2936,7 +2986,7 @@
     "max": 80
   },
   "locked.dialog_note": {
-    "context": "Plain note under the first line of the confirmation dialog: the server waits several days before deleting, and the person can cancel in that time. Do not write the number of days.",
+    "context": "The confirmation dialog of deleting locked mail: the server waits several days before deleting, and the person can cancel in that time. Do not write the number of days. Shown in an InfoTip after the dialog title.",
     "security": true,
     "max": 150
   },
@@ -3002,6 +3052,10 @@
   },
   "mailcrypto.note_other_key": {
     "context": "Reader body for a message that was encrypted to a key other than the one now in use (for example after an admin recovery of the account). Says only what this browser can do; it does not claim who else can or cannot open it.",
+    "security": true
+  },
+  "mailcrypto.note_other_key_short": {
+    "context": "Short form of mailcrypto.note_other_key: the reader's one line for a message sealed to an older key than the one in use now; the full sentence is in an InfoTip after it. Says only what this browser can do.",
     "security": true
   },
   "mailcrypto.note_pending": {
@@ -3521,6 +3575,10 @@
     "context": "Warning under the Copy and Download buttons: a downloaded file stays on the device; on iPhone and iPad the file opens in a viewer, so Copy is the way there.",
     "security": true
   },
+  "recovery.download_warning_short": {
+    "context": "Short form of recovery.download_warning on phones and desktop: one line under Copy and Download of a new recovery key; the whole text (the file stays on the device, the iPhone viewer) is in the info tip at the end of the line.",
+    "security": true
+  },
   "recovery.file_title": {
     "context": "First line of the downloaded recovery key text file. {address} is the person's email address. The product name stays as it is.",
     "security": true
@@ -3601,12 +3659,12 @@
     "context": "Settings > Security, row 'Recovery key': badge saying the account has a recovery key (it was saved when the account was set up).",
     "security": true
   },
-  "security.cannot_turn_off_admin": {
-    "context": "Security card row 'Two-factor sign-in': shown instead of a Turn off button when the signed-in person is an admin.",
+  "security.cannot_turn_off_admin_short": {
+    "context": "Short form of security.cannot_turn_off_admin on phones and desktop: the one line of the two-factor sign-in card in Settings > Security when the account is an admin's (why there is no Turn off). 'it' = two-factor sign-in, the card's title.",
     "security": true
   },
-  "security.cannot_turn_off_required": {
-    "context": "Security card row 'Two-factor sign-in': shown instead of a Turn off button when the organisation requires two-factor sign-in of everyone.",
+  "security.cannot_turn_off_required_short": {
+    "context": "Short form of security.cannot_turn_off_required on phones and desktop: the one line of the two-factor sign-in card when the organisation requires it (why there is no Turn off). 'it' = two-factor sign-in, the card's title.",
     "security": true
   },
   "security.change_password": {
@@ -3620,19 +3678,23 @@
     "max": 18
   },
   "security.codes_hint": {
-    "context": "Settings > Security, card 'Recovery codes' (only with two-factor sign-in on): the line under the title.",
+    "context": "Settings > Security, card 'Recovery codes' (only with two-factor sign-in on): what they are. Shown in an InfoTip after the card's title.",
     "security": true
   },
   "security.codes_lead": {
-    "context": "Paragraph above the password and code fields of the 'Get new recovery codes' form: the old recovery codes stop working.",
+    "context": "Settings > Security > Recovery codes, the 'Get new recovery codes' form: the old recovery codes stop working (the short form security.codes_lead_short is the visible line). Shown in an InfoTip (the circled i) after the title, on phones and desktop.",
+    "security": true
+  },
+  "security.codes_lead_short": {
+    "context": "Short form of security.codes_lead on phones and desktop: the one visible line of Settings > Security > Recovery codes (the full text is in an InfoTip after the title).",
     "security": true
   },
   "security.codes_new_title": {
     "context": "Settings > Security, the view that shows a fresh set of recovery codes after the form: its only heading (the replaced-codes note sits under it).",
     "security": true
   },
-  "security.codes_replace_note": {
-    "context": "Shown above the new recovery codes list (after the form): the new codes replace the old ones.",
+  "security.codes_replace_note_short": {
+    "context": "Short form of security.codes_replace_note on phones and desktop: quiet notice above the new recovery codes in Settings > Security (the old ones stopped working).",
     "security": true
   },
   "security.current_password": {
@@ -3654,11 +3716,7 @@
     "max": 90
   },
   "security.devices_hint": {
-    "context": "Settings > Security, card 'Other devices': the line under the title.",
-    "security": true
-  },
-  "security.devices_lead": {
-    "context": "Lead line of the 'Sign out other devices' form, above the password field.",
+    "context": "Settings > Security, card 'Other devices': in an InfoTip after the card's title; also the one visible line of the Other devices view, above its password field.",
     "security": true
   },
   "security.devices_title": {
@@ -3675,7 +3733,11 @@
     "security": true
   },
   "security.key_new_lead": {
-    "context": "Paragraph above the password field that starts making a new recovery key: it replaces the old one, the password and the mail stay as they are.",
+    "context": "Settings > Security > Create a new recovery key: it replaces the old one, the password and the mail stay as they are (the short form security.key_new_lead_short is the visible line). Shown in an InfoTip (the circled i) after the title, on phones and desktop.",
+    "security": true
+  },
+  "security.key_new_lead_short": {
+    "context": "Short form of security.key_new_lead on phones and desktop: the one visible line of Settings > Security > Create a new recovery key (the full text is in an InfoTip after the title).",
     "security": true
   },
   "security.key_since": {
@@ -3697,7 +3759,11 @@
     "security": true
   },
   "security.key_test_lead": {
-    "context": "Paragraph above the recovery key test field: what the test does, that it runs in this browser and sends nothing.",
+    "context": "Settings > Security > Test my recovery key: what the test does, that it runs in this browser and sends nothing (the short form security.key_test_lead_short is the visible line). Shown in an InfoTip (the circled i) after the title, on phones and desktop.",
+    "security": true
+  },
+  "security.key_test_lead_short": {
+    "context": "Short form of security.key_test_lead on phones and desktop: the one visible line of Settings > Security > Test my recovery key (the full text is in an InfoTip after the title).",
     "security": true
   },
   "security.key_test_ok": {
@@ -3731,7 +3797,11 @@
     "security": true
   },
   "security.off_lead": {
-    "context": "Paragraph above the password and code fields of the form that turns two-factor sign-in off: says what is lost.",
+    "context": "Settings > Security, the form that turns two-factor sign-in off: says what is lost (the short form security.off_lead_short is the visible line). Shown in an InfoTip (the circled i) after the title, on phones and desktop.",
+    "security": true
+  },
+  "security.off_lead_short": {
+    "context": "Short form of security.off_lead on phones and desktop: the one visible line of Settings > Security > turn two-factor sign-in off, the consequence (the full text is in an InfoTip after the title).",
     "security": true
   },
   "security.on_done": {
@@ -3739,11 +3809,11 @@
     "security": true
   },
   "security.on_lead": {
-    "context": "Paragraph above the password field that starts turning on two-factor sign-in (the QR code screen follows).",
+    "context": "Settings > Security, turning on two-factor sign-in, step 1 of 3: the second paragraph of the tip after the title, after twofa.intro (the QR code screen follows the password).",
     "security": true
   },
-  "security.other_devices_note": {
-    "context": "Note under the submit button of the new-recovery-codes and turn-off forms: this device stays signed in, every other device is signed out (the server ends the other sessions).",
+  "security.other_devices_note_short": {
+    "context": "Short form of security.other_devices_note on phones and desktop: plain line above the button of new recovery codes and of turning two-factor sign-in off (what else the action does).",
     "security": true
   },
   "security.password_changed": {
@@ -3751,12 +3821,12 @@
     "security": true,
     "max": 90
   },
-  "security.password_hint": {
-    "context": "Settings > Security, card 'Password': the line under the title.",
+  "security.password_note": {
+    "context": "Settings > Security > Change password: what changing the password does and does not do (the short form security.password_note_short is the visible line). Shown in an InfoTip (the circled i) after the title, on phones and desktop.",
     "security": true
   },
-  "security.password_note": {
-    "context": "Plain note under the Change password button: what changing the password does and does not do.",
+  "security.password_note_short": {
+    "context": "Short form of security.password_note on phones and desktop: the one visible line of Settings > Security > Change password (the full text is in an InfoTip after the title).",
     "security": true
   },
   "security.password_required": {
@@ -3764,7 +3834,7 @@
     "security": true
   },
   "security.recovery_hint": {
-    "context": "Settings > Account > Security: line under the 'Recovery key' row label: what the recovery key is for (forgot-password flow keeps the mail readable).",
+    "context": "Settings > Security, card 'Recovery key': what the recovery key is for (forgot-password flow keeps the mail readable). Shown in an InfoTip after the card's title.",
     "security": true
   },
   "security.step_up_lead": {
@@ -3795,11 +3865,7 @@
     "max": 16
   },
   "security.two_factor_off": {
-    "context": "Settings > Security, card 'Two-factor sign-in' when it is off: the line under the title (the badge says Off).",
-    "security": true
-  },
-  "security.two_factor_on": {
-    "context": "Settings > Security, card 'Two-factor sign-in' when it is on: the line under the title (the badge says On).",
+    "context": "Settings > Security, card 'Two-factor sign-in' when it is off (the badge says Off): in an InfoTip after the card's title.",
     "security": true
   },
   "send.changed_body": {
@@ -4024,10 +4090,6 @@
     "context": "Settings, Account tab: label of the read-only field with the person's own sign-in address. Kept as \"Your address\" (possessive) rather than the glossary word \"Address\".",
     "security": false
   },
-  "setup.address_hint": {
-    "context": "First-run Setup screen, step 1: small hint under the email address field (the label is auth.email_label). It is the first admin's sign-in address.",
-    "security": false
-  },
   "setup.deploy_guide": {
     "context": "First-run Setup screen when the deployment lacks secrets: the words of the link to the deployment guide (docs/deployment.md on GitHub), put in place of {guide} in setup.not_ready_step_add. Lower case, it sits inside a sentence.",
     "security": false
@@ -4062,7 +4124,7 @@
     "security": false
   },
   "setup.name_hint": {
-    "context": "First-run Setup screen, step 1: small hint under the display name field (the label is term.display_name). The field may stay empty.",
+    "context": "First-run Setup screen, step 1: the info tip after the display name field's label (common.optional_label with term.display_name already says the field may stay empty).",
     "security": false
   },
   "setup.not_ready_app_password": {
@@ -4114,10 +4176,6 @@
     "context": "First-run Setup, step 2 (the recovery key screen): hint under a field to type the setup key again after the server refused it. Nothing was created, so the recovery key shown above is still valid; the person does not start again.",
     "security": true,
     "max": 220
-  },
-  "shortcuts.anywhere": {
-    "context": "Settings > Keyboard, under the list of keys: the ? key shows the same list as a dialog.",
-    "security": false
   },
   "shortcuts.clear_selection": {
     "context": "In the list of keyboard shortcuts: what Esc does while messages are selected.",
@@ -4362,6 +4420,10 @@
     "context": "Two-factor enrolment on a phone or touch screen (gate and Settings): above the 'Open in authenticator app' button, the key and the QR code. Same as twofa.app_hint but ends with adding the account here instead of scanning. App names are product names, never translated.",
     "security": true
   },
+  "twofa.app_hint_phone_short": {
+    "context": "Short form of twofa.app_hint_phone and twofa.app_hint on phones and desktop: one line at the top of the two-factor set-up (first sign-in and Settings); the whole text (what the app does, more examples, install one first) is in the info tip at the end of the line. Google Authenticator is a product name: keep it.",
+    "security": true
+  },
   "twofa.code_hint": {
     "context": "Two-factor enrolment screen: small hint under the six-digit code input (codes change every 30 seconds).",
     "security": true
@@ -4411,7 +4473,11 @@
     "security": true
   },
   "twofa.intro": {
-    "context": "Settings > Security, turning on two-factor sign-in, step 1 of 3 (before the password): what two-factor sign-in is.",
+    "context": "Settings > Security, turning on two-factor sign-in, step 1 of 3 (before the password): what two-factor sign-in is (the short form twofa.intro_short is the visible line). Shown in an InfoTip (the circled i) after the title, on phones and desktop.",
+    "security": true
+  },
+  "twofa.intro_short": {
+    "context": "Short form of twofa.intro on phones and desktop: the one visible line of Settings > Security, turning on two-factor sign-in, step 1 of 3 (the full text is in an InfoTip after the title).",
     "security": true
   },
   "twofa.manual_title": {
@@ -4457,6 +4523,10 @@
   "twofa.verify": {
     "context": "Button: primary button under the six-digit code input on the two-factor enrolment screen; checks the code and turns two-factor sign-in on.",
     "security": true
+  },
+  "ui.info_about": {
+    "context": "Screen-reader name of the small circled 'i' button after a label or a title that shows a short explanation when pressed (a toggletip). {label} = the label or title it explains, e.g. 'Display name'.",
+    "security": false
   },
   "users.add_person": {
     "context": "People page: the primary button that opens the New account dialog.",
@@ -4554,8 +4624,8 @@
     "context": "New account dialog: no domain exists yet, so no account can be created.",
     "security": false
   },
-  "users.create_password_note": {
-    "context": "New account dialog: tells the admin what happens after Create account.",
+  "users.create_password_note_short": {
+    "context": "Short form of the old note of the New account dialog on phones and desktop: what happens after Create account (one chance to copy the temporary password).",
     "security": true
   },
   "users.created_give": {
@@ -4593,10 +4663,6 @@
   },
   "users.delete_confirm_mismatch": {
     "context": "Delete account dialog: error under the confirmation field when Delete account is pressed and the typed text is not the address. {address} is the account address.",
-    "security": false
-  },
-  "users.delete_hint": {
-    "context": "Person dialog: the line beside Delete account (it opens a confirmation).",
     "security": false
   },
   "users.delete_key_note": {
@@ -4855,6 +4921,14 @@
   },
   "users.two_factor_is_on": {
     "context": "Admin console: a person's two-factor state where no column header names it (stacked rows on a phone, the person's dialog).",
+    "security": true
+  },
+  "users.two_factor_meta_off": {
+    "context": "People list on a phone (and a narrow table): in the one meta line of a person (role, status, two-factor), this person has no two-factor sign-in. Short form of users.two_factor_is_off.",
+    "security": true
+  },
+  "users.two_factor_meta_on": {
+    "context": "People list on a phone (and a narrow table): in the one meta line of a person (role, status, two-factor), this person has two-factor sign-in set up. Short form of users.two_factor_is_on.",
     "security": true
   },
   "users.two_factor_off": {

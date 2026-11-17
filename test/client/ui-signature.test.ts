@@ -73,7 +73,14 @@ describe('DateTimePicker (H9)', () => {
     expect(invalid).toContain('aria-describedby="when-problem"');
     const own = render(h(DateTimePicker, { ...props, hideLabel: false, hint: 'Local time', error: 'Too soon' }));
     expect(own).toContain('aria-describedby="when-hint when-error"');
-    expect(own).toContain('<span id="when-label" class="ui-label">Snooze until</span>');
+    // v4m R1: the hint is an InfoTip after the label by default (the label element keeps only its words, so the name is unchanged) and
+    // stays in the page for aria-describedby; `hintMode="inline"` keeps the visible line.
+    expect(own).toContain('<div class="ui-label ui-tip-row"><span id="when-label">Snooze until</span><button type="button"');
+    expect(own).toContain('<span id="when-hint" class="ui-visually-hidden">Local time</span>');
+    const inline = render(h(DateTimePicker, { ...props, hideLabel: false, hint: 'Local time', hintMode: 'inline' }));
+    expect(inline).toContain('<span id="when-label" class="ui-label">Snooze until</span>');
+    expect(inline).toContain('<p id="when-hint" class="ui-hint">Local time</p>');
+    expect(inline).not.toContain('ui-infotip');
     expect(own).toContain('aria-invalid="true"');
     const empty = render(h(DateTimePicker, { ...props, value: '' }));
     expect(empty).toContain('data-placeholder="true">Choose a date and time</span>');

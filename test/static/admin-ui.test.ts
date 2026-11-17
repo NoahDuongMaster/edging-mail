@@ -28,11 +28,19 @@ describe('the admin console', () => {
     expect([...defined].filter((name) => !used.has(name))).toEqual([]);
   });
 
-  it('gives every stacked People row on a phone one shape: the last sign-in on a line of its own, whatever the badges say', () => {
+  it('gives every stacked People row on a phone one shape: the name, the address, one meta line, the last sign-in at the end of the name', () => {
     // An Admin badge and a Member badge are words of different lengths: inline after them, the date sat on the badges' line for one person
-    // and on its own line for the next.
-    expect(css).toMatch(/\.ad-table \.ad-cell-person,\s*\.ad-table \.ad-cell-when \{\s*flex: 1 1 100%;\s*\}/);
-    expect(css).toMatch(/\.ad-people \.ad-cell-person,\s*\.ad-people \.ad-cell-when \{\s*flex: 1 1 100%;\s*\}/);
+    // and on its own line for the next. v4m: three lines (as a row of the mail list), the last sign-in where a message shows its time, the
+    // role, status and two-factor as ONE meta line in the meta size.
+    expect(css).toMatch(/\.ad-table \.ad-cell-person \{\s*flex: 1 1 100%;\s*\}/);
+    expect(css).toMatch(/\.ad-people \.ad-cell-person \{\s*flex: 1 1 100%;\s*margin-inline-start: -44px;\s*\}/);
+    expect(css).toMatch(
+      /\.ad-people :is\(\.ad-cell-tag, \.ad-cell-when\) \{\s*font-size: var\(--fs-meta\);\s*line-height: var\(--lh-meta\);/
+    );
+    expect(css).toMatch(/\.ad-people \.ad-cell-when\[data-time='true'\] \{\s*position: absolute;\s*top: 12px;\s*right: 16px;/);
+    expect(read('UsersPanel.tsx')).toMatch(/data-time=\{user\.last_login_at === null \? undefined : 'true'\}/);
+    // Screen readers hear the whole sentence; the screen shows the time alone.
+    expect(read('UsersPanel.tsx')).toMatch(/<VisuallyHidden>\{tr\('users\.last_sign_in', \{ when \}\)\}<\/VisuallyHidden>/);
   });
 
   it('lays People out by the width its table has: columns that never overflow from 680px, one block per person below (J3-02, J5-08)', () => {
@@ -174,8 +182,10 @@ describe('the admin console', () => {
     // (and no identity row: the title bar names the console).
     expect(css).toMatch(/\.ui-tabs\.ad-tabs\[aria-orientation='vertical'\] > \.ui-ink \{\s*display: none;/);
     expect(css).toMatch(/\.ad-glide,\s*\.ad-identity \{\s*display: none;/);
-    // The page head: the h2 at 24/32 with one line under it, as a page of Settings; the content column is at most 1040px.
-    expect(css).toMatch(/\.ad-page-title \{[^}]*font-size: 24px;\s*line-height: 32px;/);
+    // The page head: the h2 at 24/32 (the title size + 6px) with one line under it, as a page of Settings; the column is at most 1040px.
+    expect(css).toMatch(
+      /\.ad-page-title \{[^}]*font-size: calc\(var\(--fs-title\) \+ 6px\);\s*line-height: calc\(var\(--lh-title\) \+ 6px\);/
+    );
     expect(css).toMatch(/--ad-max: 1040px;/);
     // A mask or a filter on the page would hold the console's inline dialogs (fixed) inside it: the top fade is a sticky veil instead.
     expect(css.replaceAll(/\/\*[\s\S]*?\*\//g, '')).not.toMatch(/mask-image|filter:|container-type|contain:/);
@@ -311,5 +321,75 @@ describe('the admin console', () => {
     expect(plain).toMatch(/\.ad-state-icon:has\(> \.ad-dot\) \{\s*justify-content: flex-start;/);
     // A role pill in a disabled row keeps the secondary grey (the third one fell to 3.8:1 on a hovered dark row).
     expect(plain).toMatch(/\.ad-link-row\[data-state='disabled'\] \.ui-badge \{\s*color: var\(--text2\);/);
+  });
+});
+
+// DESIGN-v4m: less text on screen (InfoTips), the phone type scale, fixed chrome, the section action always reachable, primaries in the
+// dialog foot, one-line people rows, 44px targets.
+describe('the admin console on a phone (DESIGN-v4m)', () => {
+  it('writes every font size and line height with the type variables (R2): no px literal is left in admin.css', () => {
+    const plain = css.replaceAll(/\/\*[\s\S]*?\*\//g, '');
+    expect(plain.match(/(font-size|line-height):\s*\d[\d.]*px/g)).toBeNull();
+  });
+
+  it('keeps a fixed top bar with Close, the title and the open section action, and the row of tabs fixed under it (R3)', () => {
+    const frame = read('AdminConsole.tsx');
+    expect(frame).toMatch(/const phone = useMediaMatch\(PHONE_LAYOUT\);/);
+    expect(frame).toMatch(/<PhoneBar\s+as="h1"\s+titleId="admin-title"\s+title=\{tr\('term\.admin_console'\)\}\s+start=\{close\}/);
+    expect(frame).toMatch(/end=\{<span ref=\{setBarSlot\} className="ad-bar-slot" \/>\}\s+scroller=\{sheetRef\}/);
+    expect(frame).toMatch(/<BarSlot\.Provider value=\{phone \? barSlot : null\}>/);
+    // The page head draws its action in the bar's end slot on a phone (a portal), in the head on a desktop.
+    const ui = read('adminUi.tsx');
+    expect(ui).toContain("export const PHONE_LAYOUT = '(max-width: 640px)';");
+    expect(ui).toMatch(
+      /slot === null \? <div className="ad-page-action">\{action\}<\/div> : createPortal\(<div className="ad-bar-action">\{action\}<\/div>, slot\)/
+    );
+    // In the bar the action is a compact primary: its icon and "Add", named in full ("Add person"), so the title keeps its room at 320px.
+    expect(ui).toContain('export const useInBar = (): boolean => React.useContext(BarSlot) !== null;');
+    expect(read('UsersPanel.tsx')).toMatch(
+      /aria-label=\{inBar \? tr\('users\.add_person'\) : undefined\}[^]*?\{tr\(inBar \? 'common\.add' : 'users\.add_person'\)\}/
+    );
+    expect(read('DomainsPanel.tsx')).toMatch(/aria-label=\{tr\('domains\.add_domain'\)\}[^]*?\{tr\('common\.add'\)\}/);
+    const phone = /@media \(max-width: 640px\) \{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
+    expect(phone).toMatch(/\.ad-side \{\s*position: sticky;\s*top: calc\(56px \+ env\(safe-area-inset-top\)\);/);
+    // Domains adds a domain from the bar on a phone: the form opens in a dialog, its Add domain in the foot.
+    const domains = read('DomainsPanel.tsx');
+    expect(domains).toMatch(/\{phone \? null : <Group>\{addForm\}<\/Group>\}/);
+    expect(domains).toMatch(/\{phone && adding \? \(\s*<ModalFrame/);
+  });
+
+  it('puts the primary of every form dialog in the ui Dialog foot, the submit naming its form (R3, lead decision 9)', () => {
+    for (const name of names) {
+      expect(code(name), name).not.toContain('ad-dialog-foot');
+    }
+    expect(read('adminUi.tsx')).toMatch(/info=\{info\}\s+footer=\{footer\}/);
+    for (const [name, form] of [
+      ['CreateUserDialog.tsx', 'FORM_ID'],
+      ['StepUp.tsx', 'FORM_ID'],
+      ['DeleteUserDialog.tsx', 'FORM_ID'],
+      ['DomainsPanel.tsx', 'ADD_FORM']
+    ] as const) {
+      const source = read(name);
+      expect(source, name).toMatch(new RegExp(String.raw`<form\s+id=\{${form}\}`));
+      expect(source, name).toMatch(new RegExp(String.raw`type="submit"[^>]*form=\{${form}\}`));
+    }
+    expect(read('TempPasswordDialog.tsx')).toMatch(/footer=\{foot\}/);
+  });
+
+  it('shows one short line per page, section and dialog, the rest behind an InfoTip after the title it explains (R1)', () => {
+    expect(read('UsersPanel.tsx')).toMatch(/description=\{tr\('admin\.people_desc_short'\)\}\s+info=\{tr\('admin\.people_desc'\)\}/);
+    expect(read('DomainsPanel.tsx')).toMatch(/description=\{tr\('admin\.domains_desc_short'\)\}\s+info=\{tr\('admin\.domains_desc'\)\}/);
+    expect(read('AuditPanel.tsx')).toMatch(/description=\{tr\('audit\.intro_short'\)\} info=\{tr\('audit\.intro'\)\}/);
+    expect(read('AliasEditor.tsx')).toMatch(/<InfoTip label=\{tr\('users\.alias_heading'\)\}>\{tr\('users\.alias_hint'\)\}<\/InfoTip>/);
+    expect(read('PersonHeader.tsx')).toMatch(/<InfoTip label=\{tr\('term\.account'\)\}>\{tipLines\(lines\)\}<\/InfoTip>/);
+    expect(read('TwoFactorPolicy.tsx')).toMatch(
+      /info=\{tipLines\(\[tr\('admin\.policy_desc'\), tr\('admin\.policy_on_effect'\), tr\('admin\.policy_off_effect'\)\]\)\}/
+    );
+    expect(read('DeleteUserDialog.tsx')).toMatch(
+      /info=\{tipLines\(\[tr\('security\.admin_delete_lost_keys'\), tr\('users\.delete_key_note'\)\]\)\}/
+    );
+    // The account's action lines stay as each button's description (screen readers), off the screen; a reason a button is off stays shown.
+    expect(read('PersonHeader.tsx')).toMatch(/className=\{shown === true \? 'ad-muted' : 'ui-visually-hidden'\}/);
+    expect(read('UserDialog.tsx')).toMatch(/shown=\{!user\.two_factor\}/);
   });
 });

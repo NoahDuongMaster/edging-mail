@@ -3,7 +3,7 @@ import type { ThemeTokens } from '../theme';
 import { useT } from '../lib/i18n';
 import { buildMailDocument } from '../lib/mailDocument';
 import type { EmbeddedImages } from '../lib/mailcrypto/inline';
-import { Banner, Button } from '../ui';
+import { Banner, Button, InfoTip } from '../ui';
 
 const NO_EMBEDDED: ReadonlyMap<string, string> = new Map();
 
@@ -89,7 +89,15 @@ export const MailFrame: React.FC<MailFrameProps> = ({ html, t, loadEmbedded }) =
             </Button>
           }
         >
-          {hasRemoteImages ? tr('frame.images_blocked') : tr('mailcrypto.images_hidden')}
+          {/* DESIGN-v4m R1: the fact in one line, why (the sender cannot tell when it is opened) in its InfoTip. */}
+          {hasRemoteImages ? (
+            <span className="ui-tip-row">
+              <span>{tr('frame.images_blocked_short')}</span>
+              <InfoTip label={tr('frame.images_tip_label')}>{tr('frame.images_blocked')}</InfoTip>
+            </span>
+          ) : (
+            tr('mailcrypto.images_hidden')
+          )}
         </Banner>
       ) : null}
       {showImages && opened !== null && opened.failed > 0 ? (

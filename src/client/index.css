@@ -411,21 +411,21 @@ h1[tabindex='-1']:focus {
   list-style: decimal;
 }
 .nm-editor h3 {
-  font-size: 19px;
-  line-height: 26px;
+  font-size: calc(var(--fs-body) + 5px);
+  line-height: calc(var(--lh-body) + 6px);
   margin: 0 0 12px;
 }
 .nm-editor h4 {
-  font-size: 16px;
-  line-height: 24px;
+  font-size: calc(var(--fs-body) + 2px);
+  line-height: calc(var(--lh-body) + 4px);
   margin: 0 0 10px;
 }
 
 /* Email body rendering inside the reader (sandboxed iframe) */
 .nm-mail-body {
   font-family: var(--font-sans);
-  font-size: 15px;
-  line-height: 24px;
+  font-size: calc(var(--fs-body) + 1px);
+  line-height: calc(var(--lh-body) + 4px);
   color: inherit;
   word-break: break-word;
 }

@@ -111,8 +111,12 @@ describe('the Settings dialog', () => {
     expect(foot).toContain('Admin console');
     expect(foot).toContain('Sign out');
     expect(foot).not.toContain('role="tab"');
-    // Each section is a page: its title (h3, can take the focus on a phone) and one line under it.
-    expect(html).toMatch(/<h3 id="[^"]+" tabindex="-1" class="st-page-title st-focus-title">Profile<\/h3><p class="st-page-desc">/);
+    // Each section is a page: its title (h3, can take the focus on a phone) and what the section is for in an InfoTip after it (v4m R1: no
+    // line of helper text under it; the words stay in the page for the tip's announcement).
+    expect(html).toMatch(
+      /<header class="st-page-head ui-tip-row"><h3 id="[^"]+" tabindex="-1" class="st-page-title st-focus-title">Profile<\/h3><button type="button"[^>]*class="ui-infotip"[^>]*aria-label="About Profile"/
+    );
+    expect(html).not.toContain('st-page-desc');
   });
 
   it('shows a member the seven sections of the account: no technical sections and no admin console', () => {
@@ -124,9 +128,12 @@ describe('the Settings dialog', () => {
     expect(tagOf(html, 'settings-panel-profile')).toContain('role="tabpanel"');
   });
 
-  it('on a phone, a section has a way back to the list (hidden on a desktop by settings.css)', () => {
+  it('on a phone, a section has a bar with a way back to the list, its title and its tip (hidden on a desktop by settings.css)', () => {
     const html = render({ section: 'keyboard' });
-    expect(html).toMatch(/<div class="st-back"><button\b[^>]*>[\s\S]*?Settings<\/button><\/div>/);
+    const bar = /<div class="st-bar">[\s\S]*?<\/div><\/div>/.exec(html)?.[0] ?? '';
+    expect(bar).toMatch(/^<div class="st-bar"><button\b[^>]*aria-label="Back"[^>]*>/);
+    expect(bar).toContain('<span class="st-bar-title" aria-hidden="true">Keyboard</span>');
+    expect(bar).toContain('aria-label="About Keyboard"');
     expect(tagOf(html, 'settings-tab-keyboard')).toContain('aria-selected="true"');
   });
 
@@ -189,7 +196,7 @@ describe('the Settings dialog', () => {
     // Every key, from the one list the ? dialog draws too (J4-29, J6-28: components/ShortcutList), and the way to that dialog.
     expect(keyboard).toMatch(/<h5 id="prefs-keys-move" class="sk-title">/);
     expect(keyboard).toContain(`<dd>${tr('shortcuts.select_down')}</dd>`);
-    expect(keyboard).toContain(tr('shortcuts.anywhere'));
+    // v4m: the button needs no line of its own: the list names the ? key ("Show keyboard shortcuts").
     expect(keyboard).toMatch(new RegExp(`<button[^>]*>${tr('shortcuts.open')}</button>`));
     expect(keyboard).not.toContain('ui-table-wrap');
   });
@@ -207,9 +214,14 @@ describe('the Settings dialog', () => {
       expect(tagOf(html, `${id}-label`), id).toMatch(/^<h4 [^>]*class="st-status-title"/);
     }
     expect(tagOf(html, 'security-title')).toMatch(/^<h3 [^>]*tabindex="-1"/i);
-    // An admin cannot turn two-factor sign-in off: the card says why and offers no Turn off.
-    expect(html).toContain('Admin accounts always need two-factor sign-in');
+    // An admin cannot turn two-factor sign-in off: the card says why in one short line and offers no Turn off.
+    expect(html).toContain(tr('security.cannot_turn_off_admin_short'));
     expect(html).not.toContain('data-view="two_factor_off"');
+    // v4m R1: what each card is for is an InfoTip after its title, not a line under it.
+    for (const label of ['Recovery key', 'Recovery codes', 'Other devices']) {
+      expect(html, label).toContain(`aria-label="About ${label}"`);
+    }
+    expect(html).not.toContain(tr('security.recovery_hint'));
     expect(html).toMatch(/<button\b[^>]*data-view="activity"[^>]*>Review<\/button>/);
     // Signing out the other devices is one more card with one action (its form asks for the password).
     expect(html).toMatch(/<button\b[^>]*data-view="devices"[^>]*>Sign out other devices<\/button>/);

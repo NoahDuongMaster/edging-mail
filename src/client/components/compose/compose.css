@@ -56,8 +56,8 @@
 .cp-title {
   flex: none;
   margin: 0;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: calc(var(--fs-title) - 2px);
+  line-height: calc(var(--lh-title) - 2px);
   font-weight: 600;
   letter-spacing: -0.01em;
   white-space: nowrap;
@@ -70,8 +70,8 @@
   justify-content: flex-end;
   gap: 4px;
   min-width: 0;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
   text-align: right;
   color: var(--text3);
   font-variant-numeric: tabular-nums;
@@ -187,8 +187,8 @@
   width: 64px;
   white-space: nowrap;
   min-height: var(--ui-h-md);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-label);
+  line-height: var(--lh-label);
   color: var(--text3);
 }
 .cp-field {
@@ -209,8 +209,8 @@
   margin: 0;
   padding: 6px 24px 4px;
   overflow: hidden;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -240,7 +240,7 @@
   color: var(--text);
   font: inherit;
   font-size: var(--ui-field-size);
-  line-height: 20px;
+  line-height: var(--lh-body);
   text-overflow: ellipsis;
 }
 /* J3-35: an empty input beside chips takes no room at rest, so the row is as tall as its chips (no empty line under them); it takes its room
@@ -279,8 +279,8 @@
   padding-inline: 0;
 }
 .cp-subject {
-  font-size: 18px;
-  line-height: 26px;
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
   font-weight: 500;
 }
 /* A placeholder is not a subject: it keeps the weight of the other fields' placeholders. */
@@ -418,8 +418,8 @@
   white-space: nowrap;
 }
 .cp-option-addr {
-  font-size: 13px;
-  line-height: 18px;
+  font-size: var(--fs-secondary);
+  line-height: calc(var(--lh-secondary) - 2px);
   color: var(--text2);
 }
 /* What matched what is typed (the start of a word of the name or of the address): in bold, in the text colour. */
@@ -429,8 +429,8 @@
 }
 /* A row with no name: the address is its one line, in the colour of a name. */
 .cp-option-text > .cp-option-addr:only-child {
-  font-size: 14px;
-  line-height: 20px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   color: var(--text);
 }
 /* A field with a problem (not an address, or empty at Send): the row's hairline turns red and the problem stands on a line of its own under
@@ -448,8 +448,8 @@
   margin: 0;
   padding: 0 4px 8px;
   color: var(--danger);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   font-weight: 500;
   overflow-wrap: anywhere;
 }
@@ -466,8 +466,8 @@
   gap: 8px;
   margin: 0;
   padding: 10px 24px;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   color: var(--text2);
   overflow-wrap: anywhere;
 }
@@ -508,6 +508,26 @@
     white-space: nowrap;
   }
 }
+/* DESIGN-v4m R1: without a mouse, a message that is not end-to-end says only that in its line, with an InfoTip after it that holds the
+   whole sentence and its reason; that sentence stays the status for screen readers (visually hidden). With a mouse the lock's tooltip
+   says it all, so the short line is not drawn. */
+.cp-lock-short {
+  display: none;
+}
+@media (max-width: 900px), (hover: none) {
+  .cp-lock[data-compose-state='plain'] > .cp-lock-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .cp-lock-short {
+    display: block;
+    min-width: 0;
+  }
+}
 
 /* ---------- The formatting toolbar: one Tab stop, one row; what does not fit goes into More formatting ---------- */
 
@@ -544,7 +564,7 @@
 .cp-style .ui-select {
   min-height: var(--ui-h-sm);
   padding: 0 8px;
-  font-size: 13px;
+  font-size: var(--fs-button-sm);
 }
 /* In the row of icon tools the style list is quiet like them (no edge until the pointer or focus is on it); its words and chevron say it opens. */
 .cp-style .ui-select:not(:focus-visible, [aria-expanded='true']) {
@@ -576,8 +596,8 @@
 }
 .cp-ask-error {
   margin: 0;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   font-weight: 500;
   color: var(--danger);
 }
@@ -598,8 +618,8 @@
   padding: 16px 24px 20px;
   background: transparent;
   color: var(--text);
-  font-size: 15px;
-  line-height: 24px;
+  font-size: calc(var(--fs-body) + 1px);
+  line-height: calc(var(--lh-body) + 4px);
   /* The ring of :focus-visible, drawn inside: the scrolling pane around the editor would cut it outside. */
   outline-offset: -2px;
   overflow-y: auto;
@@ -651,15 +671,15 @@
 .cp-file-name {
   max-width: 240px;
   overflow: hidden;
-  font-size: 13px;
-  line-height: 18px;
+  font-size: var(--fs-secondary);
+  line-height: calc(var(--lh-secondary) - 2px);
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .cp-file-size {
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
   color: var(--text3);
   font-variant-numeric: tabular-nums;
 }
@@ -745,8 +765,8 @@
     height: auto;
     margin-inline-end: 0;
     padding: 0 0 4px calc(64px + 12px);
-    font-size: 12px;
-    line-height: 16px;
+    font-size: var(--fs-secondary);
+    line-height: var(--lh-secondary);
   }
 }
 
@@ -820,9 +840,27 @@
   .cp-field.cp-from {
     padding: 4px max(16px, env(safe-area-inset-right, 0px)) 2px max(16px, env(safe-area-inset-left, 0px));
   }
+  /* DESIGN-v4m R2: From, To, Subject and the body read at 16 on a phone (--fs-body; the fields are 16 for iOS anyway). */
+  .cp-field.cp-from,
+  .cp-subject {
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+  }
+  /* At 16 a name and its address seldom share a phone's line (390 px: 22 px short): the address goes under the name, on the column of the
+     fields (a hanging indent as wide as the label and its gap), whole instead of cut. */
+  .cp-field.cp-from {
+    padding-left: calc(max(16px, env(safe-area-inset-left, 0px)) + 64px);
+    text-indent: -64px;
+    white-space: normal;
+  }
+  .cp-from-addr {
+    overflow-wrap: anywhere;
+  }
   .cp-from-label {
     width: 56px;
     margin-inline-end: calc(8px - 0.25em);
+    /* The indent is inherited: the label's own word stays where it is. */
+    text-indent: 0;
   }
   .cp-row.cp-row-subject {
     gap: 0;
@@ -871,8 +909,8 @@
     height: auto;
     margin-inline-end: 0;
     padding: 0 0 4px calc(56px + 8px);
-    font-size: 12px;
-    line-height: 16px;
+    font-size: var(--fs-secondary);
+    line-height: var(--lh-secondary);
     overflow-wrap: anywhere;
   }
   .cp-row-to .cp-lock svg {
@@ -886,8 +924,8 @@
   /* A phone writes at reading size: 16/26 (DESIGN-v3 4.2). */
   .cp-editor {
     padding: 16px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px));
-    font-size: 16px;
-    line-height: 26px;
+    font-size: var(--fs-body);
+    line-height: calc(var(--lh-secondary) + 4px);
   }
   .cp-quote {
     padding: 0 max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px));

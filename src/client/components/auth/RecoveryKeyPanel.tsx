@@ -7,7 +7,7 @@ import { credentialErrorText } from '../../lib/crypto/errors';
 import { firstInvalid, useFieldFocus } from '../../lib/fieldFocus';
 import { useT } from '../../lib/i18n';
 import { Banner, CopyButton, SecretBox, TextField } from '../../ui';
-import { AuthButton, ErrorLine, TextButton } from './authUi';
+import { AuthActions, AuthButton, ErrorLine, TextButton, TipLine, useBarBack } from './authUi';
 
 interface RecoveryKeyPanelProps {
   t: ThemeTokens;
@@ -20,6 +20,11 @@ interface RecoveryKeyPanelProps {
   /** Backing out of a flow that has changed nothing yet. Absent where the key must be confirmed (a first key: no way to skip). */
   onCancel?: () => void;
   cancelLabel?: string;
+  /**
+   * What the screen around the panel adds before its main button (a note, a field typed again): inside the form, so on a phone the action
+   * bar stays the last thing of the page.
+   */
+  children?: React.ReactNode;
 }
 
 const NO_TYPING: readonly string[] = ['', '', ''];
@@ -31,7 +36,16 @@ const groupId = (position: number): string => `recovery-group-${position}`;
  * it without the right groups. The confirm button can always be pressed: a group left empty is said under its own field. The key text is on
  * screen only while this panel is mounted; the parent discards the draft when it unmounts it (the bytes are zeroed there).
  */
-export const RecoveryKeyPanel: React.FC<RecoveryKeyPanelProps> = ({ t, draft, address, replaces, onConfirmed, onCancel, cancelLabel }) => {
+export const RecoveryKeyPanel: React.FC<RecoveryKeyPanelProps> = ({
+  t,
+  draft,
+  address,
+  replaces,
+  onConfirmed,
+  onCancel,
+  cancelLabel,
+  children
+}) => {
   const tr = useT();
   const [challenge, setChallenge] = React.useState(() => drawChallenge(draft.text));
   const [typed, setTyped] = React.useState<readonly string[]>(NO_TYPING);
@@ -42,6 +56,8 @@ export const RecoveryKeyPanel: React.FC<RecoveryKeyPanelProps> = ({ t, draft, ad
   const [failure, setFailure] = React.useState<string | null>(null);
   const alive = React.useRef(true);
   const focusLater = useFieldFocus();
+  // On a phone the screen's top bar holds the way back (and it waits while the request runs): the panel then draws none of its own.
+  const barBack = useBarBack(busy);
   React.useEffect(() => {
     alive.current = true;
     return () => {
@@ -134,7 +150,13 @@ export const RecoveryKeyPanel: React.FC<RecoveryKeyPanelProps> = ({ t, draft, ad
         />
       </div>
       {copyFailed ? <ErrorLine t={t} id="recovery-copy-error" text={tr('recovery.copy_failed')} /> : null}
-      <p className="au-muted">{tr('recovery.download_warning')}</p>
+      {/* v4m R1: the risk of the file in one line, the rest (it stays on the device, the iPhone viewer) behind the tip at its end. */}
+      <TipLine
+        className="au-muted"
+        text={tr('recovery.download_warning_short')}
+        tip={tr('recovery.download_warning')}
+        label={tr('recovery.download')}
+      />
 
       <p className="au-strong au-part">{tr('recovery.confirm_lead', { first, second, third })}</p>
       <ErrorLine t={t} id="recovery-mismatch" text={mismatch ? tr('recovery.confirm_mismatch') : null} />
@@ -158,13 +180,19 @@ export const RecoveryKeyPanel: React.FC<RecoveryKeyPanelProps> = ({ t, draft, ad
         ))}
       </div>
       <ErrorLine t={t} id="recovery-failure" text={failure} />
-      <AuthButton t={t} busy={busy} label={tr('recovery.confirm_button')} />
-      {onCancel === undefined ? null : (
-        // A way back is a quiet text button under the main one, as on the other screens before the mailbox.
-        <div className="au-alt">
-          <TextButton t={t} label={cancelLabel ?? tr('common.cancel')} onClick={onCancel} disabled={busy} />
-        </div>
-      )}
+      {children}
+      <AuthActions
+        after={
+          onCancel === undefined || barBack ? null : (
+            // A way back is a quiet text button under the main one, as on the other screens before the mailbox.
+            <div className="au-alt">
+              <TextButton t={t} label={cancelLabel ?? tr('common.cancel')} onClick={onCancel} disabled={busy} />
+            </div>
+          )
+        }
+      >
+        <AuthButton t={t} busy={busy} label={tr('recovery.confirm_button')} />
+      </AuthActions>
     </form>
   );
 };

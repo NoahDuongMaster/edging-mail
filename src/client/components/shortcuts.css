@@ -12,8 +12,8 @@
 .sk-title {
   margin: 0 0 6px;
   padding-left: 14px;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
   font-weight: 600;
   color: var(--text3);
 }
@@ -51,8 +51,8 @@
   min-width: 0;
   margin: 0;
   color: var(--text);
-  font-size: 14px;
-  line-height: 20px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
 }
 /* The ? dialog: Act on a message (the longest group) in a column of its own, the three others beside it, so every key fits a laptop
    screen without scrolling; wide enough that the longest rows keep their words on one line. One column where the dialog is a sheet. */
@@ -89,16 +89,16 @@
 .sk-plus,
 .sk-or {
   color: var(--text2);
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
 }
 /* J6-38: under Act on a message, the keys that act on every ticked message (a quiet line, the keycaps after the words, wrapping as words). */
 .sk-note {
   margin: 10px 0 0;
   padding: 0 14px;
   color: var(--text2);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
 }
 .sk-note-keys {
   display: inline-flex;
@@ -120,6 +120,6 @@
 .sk-more-text {
   margin: 0;
   color: var(--text2);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
 }

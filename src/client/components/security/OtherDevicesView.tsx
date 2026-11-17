@@ -14,7 +14,8 @@ interface OtherDevicesViewProps {
 
 /**
  * Sign out other devices: the password, then every other browser and phone that is signed in to this account is signed out. This device stays
- * signed in with its key (signing out of THIS device is the Sign out of the account menu; a password change ends the other devices too).
+ * signed in with its key (signing out of THIS device is the Sign out of the account menu; a password change ends the other devices too). Its
+ * one visible line says both halves; the password field and the button say what to do.
  */
 export const OtherDevicesView: React.FC<OtherDevicesViewProps> = ({ t, user, onBack }) => {
   const tr = useT();
@@ -32,9 +33,8 @@ export const OtherDevicesView: React.FC<OtherDevicesViewProps> = ({ t, user, onB
       <CredentialForm
         t={t}
         id="security-devices"
-        lead={tr('security.devices_lead')}
+        lead={tr('security.devices_hint')}
         submitLabel={tr('security.devices_action')}
-        note={tr('security.other_devices_note')}
         withCode={false}
         work={(password) => signOutOtherDevices(user, password)}
         onResult={() => {

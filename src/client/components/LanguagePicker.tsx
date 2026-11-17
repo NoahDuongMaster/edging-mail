@@ -11,6 +11,11 @@ interface LanguagePickerProps {
   onChosen?: (locale: Locale) => Promise<unknown>;
   /** Shows the word "Language" above the list (Settings); the small picker of the sign-in screens has only the accessible name. */
   showLabel?: boolean;
+  /**
+   * The phone's top bar (v4m R3): the box shows the globe and the code of the language ("EN") instead of its name, so it fits beside the
+   * title; the list still names every language in full, and the box's accessible name keeps the full name (auth.css draws the code).
+   */
+  short?: boolean;
   id?: string;
 }
 
@@ -23,7 +28,7 @@ const OPTIONS = LOCALES.map((tag) => ({ value: tag, label: LANGUAGE_NAMES[tag], 
  * finds theirs. The app's own list (ui/Select: arrows, Home/End, letters, Escape, 44 px rows on touch). The choice applies at once and is
  * kept on this device; `onChosen` saves it to the account.
  */
-export const LanguagePicker: React.FC<LanguagePickerProps> = ({ onChosen, showLabel = false, id = 'language-picker' }) => {
+export const LanguagePicker: React.FC<LanguagePickerProps> = ({ onChosen, showLabel = false, short = false, id = 'language-picker' }) => {
   const tr = useT();
   const locale = useLocale();
   const [busy, setBusy] = React.useState(false);
@@ -46,7 +51,7 @@ export const LanguagePicker: React.FC<LanguagePickerProps> = ({ onChosen, showLa
   };
 
   return (
-    <div className="au-lang" data-compact={showLabel ? undefined : 'true'}>
+    <div className="au-lang" data-compact={showLabel ? undefined : 'true'} data-short={short ? 'true' : undefined}>
       {showLabel ? null : <Globe size={15} aria-hidden="true" className="au-lang-icon" />}
       <Select
         id={id}

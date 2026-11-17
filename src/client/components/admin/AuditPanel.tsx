@@ -157,7 +157,7 @@ export const AuditPanel: React.FC<{ t: ThemeTokens }> = () => {
   // Every event of the range is in: a loaded event is older than its start (or there is nothing more to load).
   const oldest = loaded.at(-1)?.at;
   const rangeComplete = range !== 'all' && oldest !== undefined && oldest < since;
-  const head = <PageHead title={tr('term.audit_log')} description={tr('audit.intro')} />;
+  const head = <PageHead title={tr('term.audit_log')} description={tr('audit.intro_short')} info={tr('audit.intro')} />;
 
   if (query.isError && query.data === undefined) {
     return (

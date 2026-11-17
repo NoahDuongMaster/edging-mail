@@ -20,6 +20,11 @@ export interface ButtonProps extends Omit<React.ComponentProps<'button'>, 'type'
   type?: 'button' | 'submit';
   /** `pill`: fully rounded ends, for the Compose button and the phone's floating Compose. Default: the control radius. */
   shape?: 'pill';
+  /**
+   * A text button that stands inside a line of text ("See why", "Show all (3)"): it takes the font of its line, and its target grows to
+   * 24 px with a mouse and 44 px on touch round the words, given back with negative margins so no text moves (ui.css `data-inline`).
+   */
+  inline?: boolean;
 }
 
 /**
@@ -35,6 +40,7 @@ export function Button({
   fullWidth = false,
   type = 'button',
   shape,
+  inline = false,
   className,
   onClick,
   children,
@@ -54,6 +60,7 @@ export function Button({
       data-variant={variant}
       data-size={size}
       data-shape={shape}
+      data-inline={inline ? 'true' : undefined}
       aria-busy={loading ? true : undefined}
       aria-disabled={loading ? true : undefined}
       onClick={handleClick}

@@ -16,6 +16,24 @@
   --ui-h-field: calc(var(--control-md) + 4px);
   /* Text inside a field is 16px on a phone, so iOS does not zoom in when it gets focus. */
   --ui-field-size: 14px;
+  /* The search pill (TextField variant="search") stays a step lower than a form field on touch: 40px, 44px on touch (fields: 48px). */
+  --ui-h-search: calc(var(--control-md) + 4px);
+  /* Type (DESIGN-v4m R2): every size of text is one of these, never a number in a rule. A desktop (a fine pointer, wider than 640px) keeps
+     the v3 sizes; a phone or a touch screen reads at 15-16px and nothing a person reads is under 13px there (the phone block below). */
+  --fs-body: 14px; /* body text, field values, row titles, menu items */
+  --lh-body: 20px;
+  --fs-secondary: 13px; /* descriptions, previews, addresses, a one-line hint */
+  --lh-secondary: 20px;
+  --fs-label: 13px; /* field labels, row labels (500), segment labels */
+  --lh-label: 20px;
+  --fs-meta: 12px; /* times, counts, badges, group headings, keycaps: the smallest size a person reads */
+  --lh-meta: 16px;
+  --fs-button: 14px; /* a button md and lg */
+  --fs-button-sm: 13px; /* a button sm */
+  --fs-title: 18px; /* a sheet, dialog or page title in a bar */
+  --lh-title: 26px;
+  --fs-tip: 14px; /* the words in an InfoTip's bubble */
+  --lh-tip: 20px;
   /* The chosen segment of a track (SegmentedControl, the tabs in `grid`): the surface, lifted by a small shadow. */
   --ui-lifted: var(--surface);
   /* The soft halo round a focused field: 3px of --focus at 22%, outside a 2px --focus edge. */
@@ -154,11 +172,34 @@
     --ui-h-sm: var(--control-touch);
     --ui-h-md: var(--control-touch);
     --ui-h-field: var(--control-touch);
+    --ui-h-search: var(--control-touch);
   }
 }
 @media (max-width: 900px) {
   :root {
     --ui-field-size: 16px;
+  }
+}
+/* A phone or a touch screen (DESIGN-v4m R2, R4): reading text 15-16px, nothing under 13px, form fields 48px high (buttons stay 44px, the
+   touch minimum: a 48px button row would only make the bars heavier). */
+@media (max-width: 640px), (pointer: coarse) {
+  :root {
+    --ui-h-field: calc(var(--control-touch) + 4px);
+    --ui-field-size: 16px;
+    --fs-body: 16px;
+    --lh-body: 24px;
+    --fs-secondary: 15px;
+    --lh-secondary: 22px;
+    --fs-label: 15px;
+    --lh-label: 20px;
+    --fs-meta: 13px;
+    --lh-meta: 18px;
+    --fs-button: 16px;
+    --fs-button-sm: 15px;
+    --fs-title: 20px;
+    --lh-title: 28px;
+    --fs-tip: 15px;
+    --lh-tip: 22px;
   }
 }
 
@@ -188,7 +229,7 @@
   border: 0;
   border-radius: var(--radius-control);
   background: transparent;
-  font-size: 14px;
+  font-size: var(--fs-button);
   line-height: 20px;
   font-weight: 500;
   letter-spacing: -0.005em;
@@ -207,7 +248,7 @@
   height: var(--ui-h-sm);
   gap: 6px;
   padding: 0 12px;
-  font-size: 13px;
+  font-size: var(--fs-button-sm);
 }
 .ui-btn[data-size='lg'] {
   height: var(--ui-h-lg);
@@ -383,6 +424,28 @@
   width: var(--ui-h-lg);
 }
 
+/* An inline text button (Button / Disclosure `inline`: "See why", "6 more notices", "Show all (3)"): it takes the font of its line, and its
+   box grows to a 24px target with a mouse and 44px on touch round the words (DESIGN-v4m R4), the room given back with negative margins
+   so no text moves: its margin box is exactly one line high and 6px wider on each side than the words. */
+:is(.ui-btn, .ui-disclosure)[data-inline='true'] {
+  --ui-inline-box: 24px;
+  height: auto;
+  min-height: var(--ui-inline-box);
+  padding-block: 0;
+  padding-inline: 6px;
+  margin-inline: -6px;
+  margin-block: calc((20px - var(--ui-inline-box)) / 2);
+  margin-block: calc((1lh - var(--ui-inline-box)) / 2);
+  font: inherit;
+  line-height: inherit;
+  vertical-align: top;
+}
+@media (max-width: 640px), (pointer: coarse) {
+  :is(.ui-btn, .ui-disclosure)[data-inline='true'] {
+    --ui-inline-box: 44px;
+  }
+}
+
 /* The loader of a busy control (Spinner.tsx, the wingbeat of signature.css) stands where the icon was; under reduced motion it stands still
    and says what is happening in words beside it. */
 .ui-spinner {
@@ -416,8 +479,8 @@
   border-radius: 8px;
   background: var(--text);
   color: var(--bg);
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
   font-weight: 500;
   /* A long label (a file name, an address in "Remove ...") wraps inside the bubble instead of spilling out of it. */
   white-space: normal;
@@ -446,11 +509,124 @@
   background: color-mix(in srgb, var(--bg) 16%, transparent);
   color: color-mix(in srgb, var(--bg) 82%, var(--text));
   font-family: inherit;
-  font-size: 11px;
-  line-height: 16px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+/* ---------- InfoTip ---------- */
+
+/* The toggletip (InfoTip.tsx, DESIGN-v4m R1): a circled "i" in --text3 (5.3:1 light, 6.1:1 dark on the surface), the accent's text colour
+   under the pointer and while its bubble is open. Its target is 24px with a mouse and 44px on touch; negative margins take the room back,
+   so its margin box is exactly one line of the text it follows (1lh) and the glyph starts 4px after the last word. */
+.ui-infotip,
+.ui-infotip[data-size] {
+  --ui-tip-box: 24px;
+  --ui-tip-glyph: 20px;
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--ui-tip-box);
+  height: var(--ui-tip-box);
+  min-height: 0;
+  margin-block: calc((20px - var(--ui-tip-box)) / 2);
+  margin-block: calc((1lh - var(--ui-tip-box)) / 2);
+  margin-inline: calc(4px - (var(--ui-tip-box) - var(--ui-tip-glyph)) / 2) calc((var(--ui-tip-glyph) - var(--ui-tip-box)) / 2);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text3);
+  font: inherit;
+  line-height: inherit;
+  vertical-align: top;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+.ui-infotip[data-size='sm'] {
+  --ui-tip-glyph: 16px;
+}
+.ui-infotip-glyph {
+  display: inline-flex;
+  border-radius: var(--radius-pill);
+}
+.ui-infotip[aria-expanded='true'] {
+  color: var(--accent-text);
+}
+/* Open: the glyph also stands on a soft accent disc (the button is where the bubble comes from). */
+.ui-infotip[aria-expanded='true'] .ui-infotip-glyph {
+  background: var(--accent-soft);
+}
+@media (hover: hover) {
+  .ui-infotip:hover {
+    color: var(--accent-text);
+  }
+}
+@media (max-width: 640px), (pointer: coarse) {
+  .ui-infotip,
+  .ui-infotip[data-size] {
+    --ui-tip-box: 44px;
+  }
+}
+/* The bubble: a popup (the surface, the popup ring and shadow, 14px corners) of words only, 14/20 on a desktop and 15/22 on touch, at most
+   300px wide and never wider than the screen less 8px each side (position.ts keeps it inside). Under reduced motion it only fades (the
+   popup rule below). */
+.ui-popover.ui-infotip-bubble {
+  width: max-content;
+  max-width: min(300px, calc(100vw - 16px));
+  padding: 10px 12px;
+  /* Words only, a few lines: nothing to scroll, and the arrow stands outside the box. */
+  overflow: visible;
+  color: var(--text);
+  font-size: var(--fs-tip);
+  line-height: var(--lh-tip);
+  font-weight: 400;
+  text-align: start;
+  text-wrap: pretty;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+/* 8px between the glyph and the bubble, with a 12px arrow (a turned square of the bubble's fill with the popup ring on its two outer
+   sides) that points at the glyph's middle (position.ts --ui-pop-anchor-x), kept clear of the rounded corners. The bubble starts 12px
+   before the glyph (InfoTip.tsx), so the arrow sits 16px in from its left edge unless the screen edge pushed the bubble. */
+.ui-popover.ui-infotip-bubble[data-side='below'] {
+  margin-top: 4px;
+}
+.ui-popover.ui-infotip-bubble[data-side='above'] {
+  margin-top: -4px;
+}
+.ui-infotip-bubble::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: clamp(12px, calc(var(--ui-pop-anchor-x, 50%) - 6px), calc(100% - 24px));
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--ui-pop-bg);
+  box-shadow: -1px -1px 0 var(--ui-pop-ring);
+  rotate: 45deg;
+  pointer-events: none;
+}
+.ui-infotip-bubble[data-side='above']::before {
+  top: auto;
+  bottom: -6px;
+  box-shadow: 1px 1px 0 var(--ui-pop-ring);
+}
+/* A text with its InfoTip (a field label, a switch or a row label, a section or dialog title): the words, then the tip right after the last
+   word on the same line, also when the words wrap. The text element (a label, a heading) stays its own element, so its accessible name is
+   its words alone. */
+.ui-tip-row {
+  display: block;
+  min-width: 0;
+}
+.ui-tip-row > :not(.ui-infotip) {
+  display: inline;
 }
 
 /* ---------- Toolbar ---------- */
@@ -480,20 +656,20 @@
   min-width: 0;
 }
 .ui-label {
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-label);
+  line-height: var(--lh-label);
   font-weight: 500;
   color: var(--text);
 }
 .ui-hint {
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   color: var(--text3);
 }
 .ui-error {
   margin: 0;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   font-weight: 500;
   color: var(--danger);
 }
@@ -563,6 +739,7 @@ p.ui-hint {
    with the focus edge and halo of every field. */
 .ui-input[data-variant='search'] {
   --ui-placeholder: var(--text3);
+  min-height: var(--ui-h-search);
   padding-inline: 14px 8px;
   background: var(--raised);
   border-color: transparent;
@@ -592,7 +769,7 @@ p.ui-hint {
   color: inherit;
   font: inherit;
   font-size: var(--ui-field-size);
-  line-height: 20px;
+  line-height: var(--lh-body);
   caret-color: var(--accent);
 }
 .ui-input-el::placeholder {
@@ -603,6 +780,14 @@ textarea.ui-input-el {
   display: block;
   min-height: 64px;
   resize: vertical;
+}
+/* A finger cannot drag the corner: on touch the box grows with its text instead (where the browser can), up to 40 % of the screen. */
+@media (pointer: coarse) {
+  textarea.ui-input-el {
+    resize: none;
+    field-sizing: content;
+    max-height: 40dvh;
+  }
 }
 /* The corner a text area is dragged by: two short diagonal strokes in the strong hairline colour instead of the browser's hatch (Chrome,
    Edge and Safari with a mouse, where index.css styles the scrollbars). */
@@ -690,7 +875,7 @@ input[type='search']::-webkit-search-decoration {
 .ui-select {
   justify-content: space-between;
   font-size: var(--ui-field-size);
-  line-height: 20px;
+  line-height: var(--lh-body);
   cursor: pointer;
   user-select: none;
 }
@@ -766,8 +951,8 @@ input[type='search']::-webkit-search-decoration {
   min-height: var(--ui-h-md);
   padding: 6px 10px 6px 12px;
   border-radius: 8px;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   color: var(--text);
   cursor: pointer;
 }
@@ -812,8 +997,8 @@ input[type='search']::-webkit-search-decoration {
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   text-align: left;
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-standard);
@@ -830,7 +1015,7 @@ input[type='search']::-webkit-search-decoration {
 .ui-menu-hint {
   flex: none;
   color: var(--text2);
-  font-size: 13px;
+  font-size: var(--fs-secondary);
   font-variant-numeric: tabular-nums;
 }
 .ui-menu-chevron {
@@ -881,8 +1066,8 @@ input[type='search']::-webkit-search-decoration {
 }
 .ui-menu-title {
   min-width: 0;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
   font-weight: 600;
   color: var(--text3);
 }
@@ -905,7 +1090,7 @@ input[type='search']::-webkit-search-decoration {
   gap: 10px;
   /* 36px high on a desktop, 44px on touch, with the box on the first line of text. */
   min-height: var(--ui-h-md);
-  padding-block: calc((var(--ui-h-md) - 20px) / 2);
+  padding-block: calc((var(--ui-h-md) - var(--lh-body)) / 2);
   cursor: pointer;
 }
 .ui-check[data-disabled='true'] {
@@ -917,13 +1102,32 @@ input[type='search']::-webkit-search-decoration {
   flex-direction: column;
   gap: 2px;
   min-width: 0;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   color: var(--text);
 }
 .ui-check[data-disabled='true'] .ui-check-text,
 .ui-check[data-disabled='true'] .ui-hint {
   color: var(--text3);
+}
+/* A row whose hint is an InfoTip (Checkbox, RadioGroup `hintMode="tip"`): a div whose <label for> covers the whole row (its ::after), so
+   a tap anywhere on the row still ticks the box, while the tip is lifted over it and takes its own taps. */
+.ui-check[data-tip='true'] {
+  position: relative;
+}
+.ui-check[data-tip='true'] > .ui-check-text {
+  display: block;
+}
+.ui-check-label {
+  cursor: inherit;
+}
+.ui-check[data-tip='true'] .ui-check-label::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+.ui-check[data-tip='true'] .ui-infotip {
+  z-index: var(--z-raise);
 }
 
 /* The box of a checkbox holds the real input and the tick drawn over it (an SVG path whose stroke draws in 150ms when it is ticked). */
@@ -933,7 +1137,8 @@ input[type='search']::-webkit-search-decoration {
   flex: none;
   width: 18px;
   height: 18px;
-  margin-top: 1px;
+  /* On the middle of the first line (20px on a desktop, 24px on touch). */
+  margin-top: calc((var(--lh-body) - 18px) / 2);
 }
 .ui-check-box > .ui-check-input {
   margin: 0;
@@ -961,7 +1166,7 @@ input[type='search']::-webkit-search-decoration {
   flex: none;
   width: 18px;
   height: 18px;
-  margin: 1px 0 0;
+  margin: calc((var(--lh-body) - 18px) / 2) 0 0;
   background-color: var(--surface);
   border: 1px solid var(--control);
   box-shadow: var(--field-shadow);
@@ -1065,7 +1270,8 @@ input[type='search']::-webkit-search-decoration {
 }
 /* The label of a switch reads like the label of a checkbox. */
 .ui-switch-text .ui-label {
-  font-size: 14px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   font-weight: 400;
 }
 /* A 36x20 track: off, a soft neutral fill inside the 3:1 --control edge; on, the accent. One 16px light thumb with the control shadow in
@@ -1203,8 +1409,8 @@ input[type='search']::-webkit-search-decoration {
   border: 0;
   background: transparent;
   color: var(--text2);
-  font-size: 14px;
-  line-height: 20px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
@@ -1309,8 +1515,8 @@ input[type='search']::-webkit-search-decoration {
 .ui-tab-group {
   padding: 20px 12px 6px;
   color: var(--text3);
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
   font-weight: 600;
 }
 .ui-tab-group:first-child,
@@ -1341,8 +1547,8 @@ input[type='search']::-webkit-search-decoration {
     justify-content: center;
     padding: 4px 8px;
     border-radius: 9px;
-    font-size: 13px;
-    line-height: 18px;
+    font-size: var(--fs-label);
+    line-height: var(--lh-label);
     text-align: center;
     white-space: normal;
   }
@@ -1389,8 +1595,8 @@ input[type='search']::-webkit-search-decoration {
   border: 1px solid transparent;
   border-radius: var(--radius-pill);
   color: var(--text2);
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -1569,8 +1775,8 @@ input[type='search']::-webkit-search-decoration {
     inset 0 -1px 0 var(--ui-btn-ring);
   color: var(--text2);
   font-family: inherit;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
@@ -1598,6 +1804,8 @@ hr.ui-divider {
   --tone: var(--accent-text);
   --tone-bg: var(--accent-soft);
   --tone-mix: 0%;
+  /* The banner's line: 22px on a desktop, 26px on touch; its icon and its buttons centre on it. */
+  --ui-banner-lh: calc(var(--lh-body) + 2px);
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
@@ -1626,7 +1834,7 @@ hr.ui-divider {
 }
 .ui-banner-icon {
   flex: none;
-  margin-top: 2px;
+  margin-top: calc((var(--ui-banner-lh) - 18px) / 2);
   color: var(--tone);
 }
 .ui-banner-body {
@@ -1635,13 +1843,13 @@ hr.ui-divider {
 }
 .ui-banner-title {
   margin: 0;
-  font-size: 14px;
-  line-height: 22px;
+  font-size: var(--fs-body);
+  line-height: var(--ui-banner-lh);
   font-weight: 600;
 }
 .ui-banner-text {
-  font-size: 14px;
-  line-height: 22px;
+  font-size: var(--fs-body);
+  line-height: var(--ui-banner-lh);
 }
 .ui-banner-action {
   flex: none;
@@ -1650,7 +1858,7 @@ hr.ui-divider {
 /* A button is taller than a line of text: it grows into the banner's padding instead of pushing the text off its centre. */
 .ui-banner-action,
 .ui-banner > .ui-icon-btn {
-  margin-block: calc((22px - var(--ui-h-sm)) / 2);
+  margin-block: calc((var(--ui-banner-lh) - var(--ui-h-sm)) / 2);
 }
 /* The dismiss X ends on the banner's content edge (its 16px glyph, not its 32/44px box): the box grows into the right padding. */
 .ui-banner > .ui-icon-btn:last-child {
@@ -1666,7 +1874,7 @@ hr.ui-divider {
 }
 .ui-banner:has(> .ui-banner-action) > .ui-banner-action,
 .ui-banner:has(> .ui-banner-action) > .ui-icon-btn {
-  margin-block: clamp(calc((22px - var(--ui-h-sm)) / 2), (480px - 100%) * 999, 0px);
+  margin-block: clamp(calc((var(--ui-banner-lh) - var(--ui-h-sm)) / 2), (480px - 100%) * 999, 0px);
 }
 /* Dark: a secondary button on a tinted banner is lifted off it with a tint of the banner's own tone (the page's button step there reads as a
    hole in it). Variables, so hover, pressed and disabled keep their own rules. */
@@ -1695,15 +1903,15 @@ hr.ui-divider {
 }
 .ui-section-title {
   margin: 0;
-  font-size: 16px;
-  line-height: 26px;
+  font-size: calc(var(--fs-body) + 2px);
+  line-height: var(--lh-title);
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 .ui-section-description {
   margin: 2px 0 0;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   color: var(--text2);
 }
 .ui-section-actions {
@@ -1799,8 +2007,8 @@ hr.ui-divider {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   font-variant-numeric: tabular-nums;
 }
 .ui-table th {
@@ -1808,8 +2016,8 @@ hr.ui-divider {
   background: var(--surface);
   box-shadow: inset 0 -1px 0 var(--border);
   color: var(--text3);
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
   font-weight: 600;
   text-align: left;
   white-space: nowrap;
@@ -1910,8 +2118,8 @@ hr.ui-divider {
 }
 .ui-empty-title {
   margin: 0;
-  font-size: 18px;
-  line-height: 26px;
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -1919,8 +2127,8 @@ hr.ui-divider {
   max-width: 40ch;
   margin: 0;
   color: var(--text2);
-  font-size: 14px;
-  line-height: 22px;
+  font-size: var(--fs-body);
+  line-height: calc(var(--lh-body) + 2px);
 }
 .ui-empty-action {
   margin-top: 12px;
@@ -2036,8 +2244,8 @@ hr.ui-divider {
 .ui-dialog-title {
   min-width: 0;
   margin: 0;
-  font-size: 18px;
-  line-height: 26px;
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
   font-weight: 600;
   letter-spacing: -0.01em;
   overflow-wrap: anywhere;
@@ -2047,14 +2255,14 @@ hr.ui-divider {
    it to 40px wide on a touch screen, under the 44px target. */
 .ui-dialog-head .ui-btn {
   flex: none;
-  margin: calc((26px - var(--ui-h-sm)) / 2) calc((18px - var(--ui-h-sm)) / 2) calc((26px - var(--ui-h-sm)) / 2) 0;
+  margin: calc((var(--lh-title) - var(--ui-h-sm)) / 2) calc((18px - var(--ui-h-sm)) / 2) calc((var(--lh-title) - var(--ui-h-sm)) / 2) 0;
 }
 .ui-dialog-description {
   margin: 4px 0 0;
   padding: 0 var(--ui-dialog-pad);
   color: var(--text2);
-  font-size: 14px;
-  line-height: 22px;
+  font-size: var(--fs-body);
+  line-height: calc(var(--lh-body) + 2px);
   white-space: pre-line;
 }
 /* The row under the heading (the tabs of Settings) does not scroll with the content; what is in it sets its own spacing. */
@@ -2157,6 +2365,141 @@ hr.ui-divider {
   .ui-dialog-foot > .ui-btn {
     flex: 1 1 0;
   }
+  /* DESIGN-v4m R3: the head and the foot stay while only the body scrolls (the panel is a flex column, the body its only scroller). The
+     last fixed part above the body draws a hairline once the content has scrolled under it (Dialog.tsx `data-scrolled`), lifted over the
+     content; while the body scrolls at all (`data-scrolls`) the foot is a bar of its own: a hairline and a 16px fade above it, 16px of
+     room plus the bottom safe area. */
+  .ui-dialog[data-scrolled='true'] > :has(+ .ui-dialog-body) {
+    position: relative;
+    z-index: var(--z-raise);
+    box-shadow: 0 1px 0 var(--border);
+  }
+  .ui-dialog[data-scrolls='true'] > .ui-dialog-foot {
+    position: relative;
+    z-index: var(--z-raise);
+    padding-top: 16px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    background: var(--ui-dialog-bg);
+    box-shadow: inset 0 1px 0 var(--border);
+  }
+  .ui-dialog[data-scrolls='true'] > .ui-dialog-foot::before {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: 100%;
+    left: 0;
+    height: 16px;
+    background: linear-gradient(to top, var(--ui-dialog-bg), color-mix(in srgb, var(--ui-dialog-bg) 60%, transparent) 50%, transparent);
+    pointer-events: none;
+  }
+}
+
+/* ---------- PhoneBar, ActionBar ---------- */
+
+/* The top bar of a phone view (PhoneBar.tsx, DESIGN-v4m R3): 56px plus the top safe area, on the surface, sticky at the top of what
+   scrolls; back/close, the title (20/28 600 on touch, one line), up to two actions. A hairline under it once the content has scrolled under
+   it (data-scrolled). The glyph of a start button lands 16px from the edge (4px of room + the 44px box's 12px). */
+.ui-phonebar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-float);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: calc(56px + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) max(4px, env(safe-area-inset-right)) 0 max(4px, env(safe-area-inset-left));
+  background: var(--ui-phonebar-bg, var(--surface));
+  transition: box-shadow var(--dur-fast) var(--ease-standard);
+}
+.ui-phonebar[data-scrolled='true'] {
+  box-shadow: 0 1px 0 var(--border);
+}
+.ui-phonebar-start,
+.ui-phonebar-end {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+.ui-phonebar-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding-inline: 4px;
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ui-phonebar > .ui-phonebar-title:first-child {
+  padding-left: 12px;
+}
+
+/* The bottom action bar (ActionBar.tsx, DESIGN-v4m R3). Undocked: a row of buttons at the end. Docked (a phone or a touch screen, or
+   dock="always"): sticky at the bottom of what scrolls and above the on-screen keyboard (--ui-vv-bottom, written from visualViewport while
+   a docked bar is on screen), the surface with a hairline and a 16px fade above it, 16px of room plus the bottom safe area (not under a
+   keyboard, which covers that band), the buttons sharing the width (one primary: full width). The page sets --ui-actionbar-bleed (and
+   --ui-actionbar-bleed-end) to its side padding, so the bar reaches the edges and its buttons keep the content's edges.
+   ActionBar.tsx measures its defaults (--ui-actionbar-auto-*: its parent's side padding; in a scroller with bottom padding P a sticky
+   bottom of -P, since Blink measures it from the padding edge, and as the scroller's own child a bottom margin of -P so it also meets the
+   bottom at the end of the scroll). An area overrides them with the inherited knobs --ui-actionbar-bleed / -bleed-end / -bottom / -bg. */
+.ui-actionbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.ui-actionbar[data-docked='true'] {
+  position: sticky;
+  --ui-ab-start: var(--ui-actionbar-bleed, var(--ui-actionbar-auto-bleed, 0px));
+  --ui-ab-end: var(--ui-actionbar-bleed-end, var(--ui-actionbar-bleed, var(--ui-actionbar-auto-bleed-end, 0px)));
+  bottom: var(--ui-actionbar-bottom, var(--ui-actionbar-auto-bottom, var(--ui-vv-bottom, 0px)));
+  z-index: var(--z-raise);
+  flex-wrap: nowrap;
+  margin: 0 calc(var(--ui-ab-end) * -1) calc(var(--ui-actionbar-auto-end, 0px) * -1) calc(var(--ui-ab-start) * -1);
+  padding: 16px var(--ui-ab-end) max(16px, calc(16px + env(safe-area-inset-bottom) - var(--ui-vv-bottom, 0px))) var(--ui-ab-start);
+  background: var(--ui-actionbar-bg, var(--surface));
+  box-shadow: inset 0 1px 0 var(--border);
+}
+.ui-actionbar[data-docked='true']::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  left: 0;
+  height: 16px;
+  background: linear-gradient(
+    to top,
+    var(--ui-actionbar-bg, var(--surface)),
+    color-mix(in srgb, var(--ui-actionbar-bg, var(--surface)) 60%, transparent) 50%,
+    transparent
+  );
+  pointer-events: none;
+}
+.ui-actionbar[data-docked='true'] > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+/* A field reached with Tab or by the keyboard's Next scrolls clear of a docked bar. */
+html:has(.ui-actionbar[data-docked='true']) {
+  scroll-padding-bottom: calc(var(--ui-h-md) + 48px + env(safe-area-inset-bottom));
+}
+/* In a ui Dialog (Settings, an admin dialog) the bar sticks to the bottom of the dialog's body on the dialog's own fill (as the body's own
+   child it reaches the body's edges, its scrollbar lane included, and its bottom edge), and takes no keyboard inset of its own: the sheet
+   already stands on the keyboard (Dialog.tsx). */
+.ui-dialog {
+  --ui-actionbar-bg: var(--ui-dialog-bg);
+}
+.ui-dialog .ui-actionbar[data-docked='true'] {
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+}
+.ui-dialog-body:has(.ui-actionbar[data-docked='true']) {
+  scroll-padding-bottom: calc(var(--ui-h-md) + 48px);
 }
 
 /* ---------- Toast ---------- */
@@ -2172,8 +2515,8 @@ hr.ui-divider {
   padding: 6px 6px 6px 16px;
   border-radius: var(--radius-card);
   box-shadow: var(--float-shadow);
-  font-size: 14px;
-  line-height: 20px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
 }
 .ui-toast-text {
   min-width: 0;
@@ -2285,7 +2628,7 @@ hr.ui-divider {
   background: transparent;
   color: var(--text2);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-label);
   line-height: 20px;
   font-weight: 500;
   white-space: nowrap;
@@ -2305,7 +2648,7 @@ hr.ui-divider {
 .ui-seg[data-size='md'] .ui-seg-item {
   height: calc(var(--ui-h-md) - 6px);
   padding: 0 14px;
-  font-size: 14px;
+  font-size: var(--fs-body);
 }
 /* On touch (where --ui-h-* are 44px) a segment is the whole 44px target, not 6px less, and at least 44px wide: its label is never under 28px
    (28 + 8 + 8 = 44 for the small size; a short label such as "All" sits in the middle). The label sets that width, not a min-width of the
@@ -2396,6 +2739,19 @@ hr.ui-divider {
     color: var(--text);
   }
 }
+/* An inline one ("See why", "6 more notices") is an action inside a sentence: it must not read as more of the sentence, so it takes the
+   link colour of the app (accent text: 6.5:1 and more on every surface and status tint, both themes) and the label weight. */
+.ui-disclosure[data-look='text'][data-inline='true'] {
+  color: var(--accent-text);
+  font-weight: 500;
+}
+@media (hover: hover) {
+  .ui-disclosure[data-look='text'][data-inline='true']:hover {
+    color: var(--accent-text);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
 .ui-disclosure-chevron {
   flex: none;
   transition: transform var(--dur-base) var(--ease-standard);
@@ -2438,8 +2794,8 @@ hr.ui-divider {
   padding: 0 7px;
   border: 1px solid transparent;
   border-radius: var(--radius-pill);
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -2476,8 +2832,8 @@ hr.ui-divider {
   border-radius: 14px;
   background: var(--ui-fill);
   color: var(--text);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   font-weight: 500;
   white-space: normal;
 }
@@ -2535,15 +2891,15 @@ hr.ui-divider {
   min-width: 0;
 }
 .ui-secret-caption {
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
   color: var(--text3);
 }
 .ui-secret-value {
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 16px;
-  line-height: 24px;
+  font-size: calc(var(--fs-body) + 2px);
+  line-height: calc(var(--lh-body) + 4px);
   letter-spacing: 0.06em;
   overflow-wrap: anywhere;
   user-select: all;
@@ -2587,7 +2943,7 @@ hr.ui-divider {
   box-shadow: inset 0 0 0 1px var(--ui-well-ring);
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-meta);
   line-height: 20px;
   white-space: pre;
 }
@@ -2612,8 +2968,9 @@ hr.ui-divider {
 .ui-step {
   position: relative;
   min-width: 0;
-  padding: 2px 0 24px 40px;
-  line-height: 20px;
+  /* The 24px number sits on the first line (20px on a desktop, 24px on touch). */
+  padding: calc((24px - var(--lh-body)) / 2) 0 24px 40px;
+  line-height: var(--lh-body);
   overflow-wrap: anywhere;
   counter-increment: ui-step;
 }
@@ -2633,7 +2990,7 @@ hr.ui-divider {
   background: var(--accent-soft);
   border-radius: 50%;
   color: var(--accent-text);
-  font-size: 12px;
+  font-size: var(--fs-meta);
   line-height: 1.25;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -2650,8 +3007,8 @@ hr.ui-divider {
 }
 .ui-step-title {
   margin: 0;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   font-weight: 600;
 }
 .ui-step-body {
@@ -2736,7 +3093,9 @@ hr.ui-divider {
   .ui-seg-thumb,
   .ui-disclosure-chevron,
   .ui-collapse,
-  .ui-card {
+  .ui-card,
+  .ui-infotip,
+  .ui-phonebar {
     transition: none;
   }
   .ui-skeleton,
@@ -2761,13 +3120,13 @@ hr.ui-divider {
     overflow: visible;
     clip-path: none;
     color: var(--text2);
-    font-size: 13px;
+    font-size: var(--fs-secondary);
   }
 }
 :root[data-motion='reduce'] :is(.ui-btn, .ui-select svg, .ui-switch-thumb, .ui-check-mark path, .ui-check-input, .ui-radio-input) {
   transition: none;
 }
-:root[data-motion='reduce'] :is(.ui-ink, .ui-seg-thumb, .ui-disclosure-chevron, .ui-collapse, .ui-card) {
+:root[data-motion='reduce'] :is(.ui-ink, .ui-seg-thumb, .ui-disclosure-chevron, .ui-collapse, .ui-card, .ui-infotip, .ui-phonebar) {
   transition: none;
 }
 :root[data-motion='reduce'] :is(.ui-skeleton, .ui-copy-tick) {
@@ -2787,7 +3146,7 @@ hr.ui-divider {
   overflow: visible;
   clip-path: none;
   color: var(--text2);
-  font-size: 13px;
+  font-size: var(--fs-secondary);
 }
 
 /* The inert copy a closing layer leaves behind (motion.ts leaveGhost) plays only its exit: it must not start its enter again (a transition

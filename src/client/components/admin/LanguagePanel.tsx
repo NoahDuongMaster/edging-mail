@@ -35,7 +35,7 @@ export const LanguagePanel: React.FC<{ t: ThemeTokens }> = () => {
       <PageHead title={tr('term.settings')} description={tr('admin.settings_desc')} />
       <div className="ad-cards">
         <Group title={tr('lang.label')}>
-          <Row label={tr('lang.org_default')} hint={tr('lang.org_default_hint')}>
+          <Row label={tr('lang.org_default')} info={tr('lang.org_default_hint')}>
             <Select
               id="admin-language"
               label={tr('lang.org_default')}

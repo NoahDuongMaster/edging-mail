@@ -15,6 +15,11 @@ export interface DisclosureProps extends Omit<
   look?: 'text' | 'button';
   /** The size of the `button` look. */
   size?: ControlSize;
+  /**
+   * It stands inside a line of text ("See why", "6 more notices"): its target grows to 24 px with a mouse and 44 px on touch round the
+   * words, given back with negative margins so no text moves (ui.css `data-inline`; Button `inline` for the button look).
+   */
+  inline?: boolean;
   /** What it opens, in words (or a Badge that says it). The chevron comes after it. */
   children: React.ReactNode;
 }
@@ -31,6 +36,7 @@ export function Disclosure({
   controls,
   look = 'text',
   size = 'sm',
+  inline = false,
   className,
   children,
   ...rest
@@ -43,6 +49,7 @@ export function Disclosure({
       <Button
         variant="ghost"
         size={size}
+        inline={inline}
         className={cx('ui-disclosure', className)}
         aria-expanded={open}
         aria-controls={controls}
@@ -59,6 +66,7 @@ export function Disclosure({
       type="button"
       className={cx('ui-disclosure', className)}
       data-look="text"
+      data-inline={inline ? 'true' : undefined}
       aria-expanded={open}
       aria-controls={controls}
       onClick={() => onOpenChange(!open)}

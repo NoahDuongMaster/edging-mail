@@ -1,11 +1,23 @@
 import React from 'react';
-import { Building2, CircleAlert, Lock, ShieldCheck } from 'lucide-react';
+import { Building2, ChevronLeft, CircleAlert, Lock, ShieldCheck, X } from 'lucide-react';
 import { DARK, DURATION, EASING, LIGHT } from '../../../shared/design/tokens';
 import { BRAND_NAME } from '../../../shared/i18n';
 import type { ThemeTokens } from '../../theme';
 import { useDocumentTitle } from '../../lib/documentTitle';
 import { tRich, useT } from '../../lib/i18n';
-import { Button, Checkbox, FlightTrail, Tooltip, useTooltip } from '../../ui';
+import {
+  ActionBar,
+  Button,
+  Checkbox,
+  FlightTrail,
+  HiddenHint,
+  IconButton,
+  InfoTip,
+  PHONE_QUERY,
+  PhoneBar,
+  useMediaMatch,
+  type HintMode
+} from '../../ui';
 import { useIdleBeat } from '../../ui/EmptyState';
 import { motionReduced } from '../../ui/motion';
 import { LanguagePicker } from '../LanguagePicker';
@@ -38,6 +50,51 @@ const pageHost = (): string => (typeof location === 'undefined' ? '' : location.
 export interface AuthStep {
   current: number;
   total: number;
+}
+
+/** The phone layout of these screens (auth.css): the fixed top bar instead of the brand row, the ways back in it (DESIGN-v4m R3). */
+export const AUTH_PHONE = '(max-width: 640px)';
+
+/** True while the screens are in their phone layout (a window up to 640 px wide). False on the server. */
+export const useAuthPhone = (): boolean => useMediaMatch(AUTH_PHONE);
+
+/** True while the bottom action bar is docked (ui ActionBar: a phone or a touch screen): the quiet ways out then stand above it. */
+export const useAuthDocked = (): boolean => useMediaMatch(PHONE_QUERY);
+
+/** The way back of a screen, drawn in the top bar on a phone (an arrow for Back, a cross for Cancel); elsewhere the screen draws it. */
+export interface AuthBack {
+  label: string;
+  onClick: () => void;
+  /** `back` (default): one step back in the flow; `close`: leaves the flow (Cancel). */
+  kind?: 'back' | 'close';
+}
+
+/**
+ * What a part of a screen needs to know about the card around it: whether the card's top bar holds its way back (then the part draws no
+ * Cancel or Back of its own), and a way to disable that back while the part runs a request. Outside a card (Settings) nothing of this.
+ */
+interface AuthBar {
+  holdsBack: boolean;
+  holdBack: (held: boolean) => void;
+}
+const AuthBarContext = React.createContext<AuthBar>({
+  holdsBack: false,
+  holdBack: () => {
+    // No card around the part: nothing to hold.
+  }
+});
+
+/** True when the top bar of the card around this part shows the way back, so the part leaves out its own; the bar's back is held while `busy`. */
+export function useBarBack(busy: boolean): boolean {
+  const { holdsBack, holdBack } = React.useContext(AuthBarContext);
+  React.useEffect(() => {
+    if (!holdsBack) {
+      return;
+    }
+    holdBack(busy);
+    return () => holdBack(false);
+  }, [holdsBack, holdBack, busy]);
+  return holdsBack;
 }
 
 /**
@@ -265,6 +322,8 @@ interface AuthCardProps {
   pageTitle?: string;
   /** One short paragraph under the title. */
   lead?: string;
+  /** The longer explanation of the screen, behind an InfoTip after the title (DESIGN-v4m R1: the lead stays one short line). */
+  info?: string;
   /**
    * Which server the password goes to, as a quiet chip under the title: 'Sign in to mail.example.com' before sign-in, 'Signed in to ...' on
    * the unlock screen. The host of the page, as text (never a link), so a person with accounts on several servers sees which one this is.
@@ -276,6 +335,11 @@ interface AuthCardProps {
   wide?: boolean;
   /** A quiet action top right, before the language picker (the unlock screen's Sign out): first on the page and in the tab order. */
   topAction?: React.ReactNode;
+  /**
+   * The way back of this screen (Back to the step before, Cancel out of the flow). On a phone it is the start of the fixed top bar and the
+   * screen leaves its own text button out (useAuthPhone); elsewhere the screen draws it as before.
+   */
+  back?: AuthBack;
   /** Where this screen is in a flow of several: "Step 1 of 2" over the title. */
   step?: AuthStep;
   /** A short line above the title, for a screen that is not a numbered step. */
@@ -295,16 +359,19 @@ export const AuthCard: React.FC<AuthCardProps> = ({
   title,
   pageTitle,
   lead,
+  info,
   server,
   picker = false,
   wide = false,
   topAction,
+  back,
   step,
   eyebrow,
   illustration = false,
   onSubmit,
   children
 }) => {
+  const tr = useT();
   const Tag = onSubmit === undefined ? 'div' : 'form';
   const heading = React.useRef<HTMLHeadingElement>(null);
   const card = React.useRef<HTMLElement | null>(null);
@@ -312,6 +379,11 @@ export const AuthCard: React.FC<AuthCardProps> = ({
   // The first card of the page rises in by CSS (data-enter); this one is decided once, when it mounts.
   const rise = React.useMemo(() => !cardShown, []);
   const shownTitle = React.useRef<string | null>(null);
+  const phone = useAuthPhone();
+  const [backHeld, setBackHeld] = React.useState(false);
+  const holdsBack = phone && back !== undefined;
+  const bar = React.useMemo<AuthBar>(() => ({ holdsBack, holdBack: setBackHeld }), [holdsBack]);
+  const headingGone = useScrolledPast(heading, phone);
   useIdleBeat(art, illustration, title);
   // WCAG 2.4.2: the tab is named after the screen ("Sign in - Edging Mail", "Set up Edging Mail").
   useDocumentTitle([pageTitle ?? title]);
@@ -365,62 +437,156 @@ export const AuthCard: React.FC<AuthCardProps> = ({
       </span>
     </p>
   );
+  const picked = picker ? <LanguagePicker t={t} id="auth-language" short={phone} /> : null;
+
+  // v4m R3: on a phone the brand row becomes the fixed top bar: the way back (when the flow has one), the app's tile with the step (or the
+  // product name) and, once the title has scrolled under the bar, the title itself; Sign out and the language (as its code) at the end.
+  const phoneBar = phone ? (
+    <PhoneBar
+      as="div"
+      className="au-phonebar"
+      start={
+        back === undefined ? undefined : (
+          <IconButton label={back.label} disabled={backHeld} onClick={back.onClick}>
+            {back.kind === 'close' ? <X size={20} aria-hidden="true" /> : <ChevronLeft size={22} aria-hidden="true" />}
+          </IconButton>
+        )
+      }
+      title={
+        <>
+          <img src="/logo.svg" alt="" width={28} height={28} className="au-phonebar-mark" />
+          {headingGone ? (
+            <span className="au-phonebar-text" data-kind="title">
+              {title}
+            </span>
+          ) : step === undefined ? (
+            <span className="au-phonebar-text" data-kind="brand">
+              <span className="au-brand-first">{BRAND_FIRST}</span> {BRAND_REST.join(' ')}
+            </span>
+          ) : (
+            <span className="au-phonebar-text" data-kind="step">
+              {tr('auth.step', { current: step.current, total: step.total })}
+            </span>
+          )}
+        </>
+      }
+      end={
+        picked === null && topAction === undefined ? undefined : (
+          <>
+            {topAction}
+            {picked}
+          </>
+        )
+      }
+    />
+  ) : null;
+
+  const titleElement = (
+    <h1 ref={heading} tabIndex={-1} className="au-title">
+      {title}
+    </h1>
+  );
 
   return (
     <div className="au-page" data-layout={illustration ? 'status' : 'split'} data-wide={wide ? 'true' : undefined}>
       {/* v3 P1: where the brand panel is hidden (under 1024 px) the page wears the airmail edge along its very top, full width. */}
       {illustration ? null : <span className="ui-airmail au-page-edge" aria-hidden="true" />}
       <div className="au-side">
-        <div className="au-top">
-          {brand}
-          {picker || topAction !== undefined ? (
-            // The page's quiet actions, top right: Sign out first (the unlock screen, CK-17), then the language list.
-            <div className="au-bar">
-              {topAction}
-              {picker ? <LanguagePicker t={t} id="auth-language" /> : null}
-            </div>
-          ) : null}
-        </div>
+        {phoneBar ?? (
+          <div className="au-top">
+            {brand}
+            {picker || topAction !== undefined ? (
+              // The page's quiet actions, top right: Sign out first (the unlock screen, CK-17), then the language list.
+              <div className="au-bar">
+                {topAction}
+                {picker ? <LanguagePicker t={t} id="auth-language" /> : null}
+              </div>
+            ) : null}
+          </div>
+        )}
         <main className="au-column" data-wide={wide ? 'true' : undefined}>
-          <Tag
-            {...(onSubmit === undefined ? {} : { onSubmit, noValidate: true })}
-            ref={(node: HTMLElement | null) => {
-              card.current = node;
-            }}
-            className="au-card"
-            data-enter={rise ? 'rise' : undefined}
-            data-status={illustration ? 'true' : undefined}
-          >
-            <div className="au-head">
-              {/* The trail Edgar flew in on, behind him (status page); on a form, a small trail over the title where the panel is hidden. */}
-              {illustration ? <FlightTrail size="md" className="au-art-trail" /> : <FlightTrail size="sm" className="au-head-trail" />}
-              {illustration ? <img ref={art} src="/edgar.svg" alt="" width={112} height={109} className="au-art ui-empty-art" /> : null}
-              {step === undefined ? null : <AuthSteps current={step.current} total={step.total} />}
-              {eyebrow === undefined ? null : <p className="au-eyebrow">{eyebrow}</p>}
-              <h1 ref={heading} tabIndex={-1} className="au-title">
-                {title}
-              </h1>
-              {host === '' ? null : (
-                <p className="au-host">
-                  {tRich(server === 'unlock' ? 'keys.unlock_host' : 'auth.sign_in_host', {
-                    host: (
-                      <span className="au-host-name" translate="no">
-                        {host}
-                      </span>
-                    )
-                  })}
-                </p>
-              )}
-              {lead === undefined ? null : <p className="au-lead">{lead}</p>}
-            </div>
-            {children}
-          </Tag>
+          <AuthBarContext.Provider value={bar}>
+            <Tag
+              {...(onSubmit === undefined ? {} : { onSubmit, noValidate: true })}
+              ref={(node: HTMLElement | null) => {
+                card.current = node;
+              }}
+              className="au-card"
+              data-enter={rise ? 'rise' : undefined}
+              data-status={illustration ? 'true' : undefined}
+            >
+              <div className="au-head">
+                {/* The trail Edgar flew in on, behind him (status page); on a form, a small trail over the title where the panel is hidden. */}
+                {illustration ? <FlightTrail size="md" className="au-art-trail" /> : <FlightTrail size="sm" className="au-head-trail" />}
+                {illustration ? <img ref={art} src="/edgar.svg" alt="" width={112} height={109} className="au-art ui-empty-art" /> : null}
+                {step === undefined ? null : <AuthSteps current={step.current} total={step.total} />}
+                {eyebrow === undefined ? null : <p className="au-eyebrow">{eyebrow}</p>}
+                {info === undefined ? (
+                  titleElement
+                ) : (
+                  // The tip follows the title's last word, outside the heading (its name stays the title's words).
+                  <div className="au-title-row ui-tip-row">
+                    {titleElement}
+                    <InfoTip label={title}>{info}</InfoTip>
+                  </div>
+                )}
+                {host === '' ? null : (
+                  <p className="au-host">
+                    {tRich(server === 'unlock' ? 'keys.unlock_host' : 'auth.sign_in_host', {
+                      host: (
+                        <span className="au-host-name" translate="no">
+                          {host}
+                        </span>
+                      )
+                    })}
+                  </p>
+                )}
+                {lead === undefined ? null : <p className="au-lead">{lead}</p>}
+              </div>
+              {children}
+            </Tag>
+          </AuthBarContext.Provider>
         </main>
       </div>
       {illustration ? null : <BrandPanel />}
     </div>
   );
 };
+
+/**
+ * Whether `target` has scrolled up under the phone's top bar (its bottom above the bar's bottom edge): the bar then says the title. Only
+ * watched while `active` (the phone layout); false elsewhere and on the server (the last answer is kept but not used while inactive).
+ */
+function useScrolledPast(target: React.RefObject<HTMLElement | null>, active: boolean): boolean {
+  const [past, setPast] = React.useState(false);
+  React.useEffect(() => {
+    const node = target.current;
+    if (!active || node === null) {
+      return;
+    }
+    let frame = 0;
+    const check = () => {
+      frame = 0;
+      const bar = node.closest('.au-page')?.querySelector('.au-phonebar');
+      const edge = bar === null || bar === undefined ? 0 : bar.getBoundingClientRect().bottom;
+      setPast(node.getBoundingClientRect().bottom <= edge);
+    };
+    const later = () => {
+      if (frame === 0) {
+        frame = window.requestAnimationFrame(check);
+      }
+    };
+    later();
+    window.addEventListener('scroll', later, { passive: true });
+    window.addEventListener('resize', later);
+    return () => {
+      window.removeEventListener('scroll', later);
+      window.removeEventListener('resize', later);
+      window.cancelAnimationFrame(frame);
+    };
+  }, [target, active]);
+  return active && past;
+}
 
 /** The look of a bare input element next to these pieces (Settings > Security still has some). New fields use ui/TextField instead. */
 export const inputStyle = (_t: ThemeTokens): React.CSSProperties => ({
@@ -513,36 +679,66 @@ export const TextButton: React.FC<{ t: ThemeTokens; label: string; onClick: () =
 
 /**
  * A way to another screen that reads as a link ('Forgot password' of the password field): the accent's text, underlined under the pointer
- * and with the keyboard, the ui focus ring, and one line that says what the other screen needs (it describes the button for a screen
- * reader: aria-describedby). v3 P1: with a mouse that line is the link's tooltip (shown on hover and keyboard focus; auth.css hides the
- * line visually, its words stay in the page for the description), so nothing under the password reads like a field error; without hover
- * (touch) it stays a quiet 12/16 line under the link. Inside an `au-secret-row` with a mouse the link sits on the password's label row; on
- * touch it follows the field (a 44px target on the label row would cover the top of the field).
+ * and with the keyboard, the ui focus ring, and what the other screen needs behind an InfoTip right after it (v4m R1: no line of helper
+ * text under the password). The words also describe the link for a screen reader (aria-describedby, kept in the page visually hidden).
+ * With a mouse on a window wider than a phone the pair sits on the password's label row (auth.css); on touch it follows the field (a 44px
+ * target on the label row would cover the top of the field).
  */
-export const HintedLink: React.FC<{ id: string; label: string; hint: string; onClick: () => void }> = ({ id, label, hint, onClick }) => {
-  const ref = React.useRef<HTMLButtonElement | null>(null);
-  const tip = useTooltip();
-  return (
-    <div className="au-hinted">
-      <Button
-        ref={ref}
-        variant="ghost"
-        size="sm"
-        className="au-link-btn"
-        aria-describedby={`${id}-hint`}
-        {...tip.anchor}
-        onFocus={(event) => tip.show(event.currentTarget.matches(':focus-visible'))}
-        onBlur={() => tip.show(false)}
-        onPointerDown={() => tip.show(false)}
-        onClick={onClick}
-      >
-        {label}
-      </Button>
-      <p id={`${id}-hint`} className="au-link-hint">
-        {hint}
-      </p>
-      <Tooltip open={tip.open} text={hint} anchorRef={ref} {...tip.bubble} />
-    </div>
+export const HintedLink: React.FC<{ id: string; label: string; hint: string; onClick: () => void }> = ({ id, label, hint, onClick }) => (
+  <div className="au-hinted">
+    <Button variant="ghost" size="sm" className="au-link-btn" aria-describedby={`${id}-hint`} onClick={onClick}>
+      {label}
+    </Button>
+    <InfoTip label={label}>{hint}</InfoTip>
+    <HiddenHint id={`${id}-hint`} text={hint} />
+  </div>
+);
+
+/**
+ * One visible line (the short form of a longer text) with the whole text behind an InfoTip at its end (v4m R1): a note, a warning about a
+ * file, what admins can do. `label` names the tip ("About {label}"). The tip follows the last word, also when the line wraps.
+ */
+export const TipLine: React.FC<{ className: 'au-note' | 'au-muted'; text: string; tip: string; label: string }> = ({
+  className,
+  text,
+  tip,
+  label
+}) => (
+  <p className={`${className} ui-tip-row`}>
+    <span>{text}</span>
+    <InfoTip label={label} size="sm">
+      {tip}
+    </InfoTip>
+  </p>
+);
+
+/**
+ * The end of a form: the main button in the bottom action bar (ui ActionBar, DESIGN-v4m R3: docked at the bottom of the window on a phone
+ * or a touch screen, above the on-screen keyboard; `dock="always"` docks it on every window, for Setup's long form) and what follows the
+ * button (`after`: a note, the quiet ways out). Docked, the bar is the last thing of the form, so `after` stands above it; undocked the
+ * button is in the form's column as before (auth.css) and `after` follows it (the v3 order).
+ */
+export const AuthActions: React.FC<{ children: React.ReactNode; after?: React.ReactNode; dock?: 'phone' | 'always' }> = ({
+  children,
+  after,
+  dock = 'phone'
+}) => {
+  const docked = useAuthDocked() || dock === 'always';
+  const bar = (
+    <ActionBar dock={dock} className="au-actionbar">
+      {children}
+    </ActionBar>
+  );
+  return docked ? (
+    <>
+      {after}
+      {bar}
+    </>
+  ) : (
+    <>
+      {bar}
+      {after}
+    </>
   );
 };
 
@@ -566,20 +762,23 @@ export const ErrorLine: React.FC<{ t: ThemeTokens; id: string; text: string | nu
     </p>
   );
 
-/** A checkbox with a label and an explanation under it (the "shared device" choice). */
+/** A checkbox with a label and an explanation (the "shared device" choice): an InfoTip after the label, or one line under it (`hintMode`). */
 export const CheckboxRow: React.FC<{
   t: ThemeTokens;
   id: string;
   label: string;
-  /** What the choice does, always shown: the sign-in screens give one short line, and the longer one once the box is ticked (what to do then). */
+  /** What the choice does: behind an InfoTip after the label (v4m R1), or a line under it with `hintMode="inline"` (needed while choosing). */
   hint?: string;
+  hintMode?: HintMode;
+  /** One short line under the row that stays visible (what to remember once the box is ticked); the whole text is the hint's tip. */
+  note?: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
   /** The choice is not the person's to change here (the server knows this session is a shared-device one): ticked and disabled. */
   locked?: boolean;
   /** Pressing the form's button without ticking a box that must be ticked ("I have saved these codes"): what to do, under the row. */
   error?: string | null;
-}> = ({ id, label, hint, checked, onChange, locked = false, error = null }) => (
+}> = ({ id, label, hint, hintMode, note, checked, onChange, locked = false, error = null }) => (
   // C-12: ui/Checkbox makes the whole row one label (a tap anywhere on it toggles the box), 44px high on touch. The box is named by the label text
   // alone and described by the hint.
   <>
@@ -590,7 +789,9 @@ export const CheckboxRow: React.FC<{
           {label}
         </span>
       }
+      tipLabel={label}
       hint={hint}
+      hintMode={hintMode}
       checked={checked}
       disabled={locked}
       onChange={onChange}
@@ -599,6 +800,7 @@ export const CheckboxRow: React.FC<{
         ? {}
         : { 'aria-invalid': true, 'aria-describedby': hint === undefined ? `${id}-error` : `${id}-hint ${id}-error` })}
     />
+    {note === undefined ? null : <p className="au-check-note">{note}</p>}
     {error === null ? null : (
       <p id={`${id}-error`} className="ui-error au-error">
         <CircleAlert size={16} aria-hidden="true" />

@@ -66,20 +66,24 @@ export const LockedMailBanner: React.FC<{ t: ThemeTokens }> = ({ t }) => {
                     </div>
                   }
                 >
+                  {/* DESIGN-v4m R1: the consequence in one line, See why right after it (an inline text button with a 44px touch box), and
+                      its paragraph in place; the cause is that paragraph's to tell. */}
                   <p>
-                    {row.state === 'ask'
-                      ? tr('locked.banner', { count: row.mail.locked })
-                      : tr('locked.pending', { count: row.mail.locked, date: formatWhen(row.until) })}
+                    {row.state === 'ask' ? (
+                      <>
+                        {tr('locked.banner_short', { count: row.mail.locked })}{' '}
+                        <Disclosure open={why} onOpenChange={setWhy} controls={whyId} inline>
+                          {tr('locked.why')}
+                        </Disclosure>
+                      </>
+                    ) : (
+                      tr('locked.pending', { count: row.mail.locked, date: formatWhen(row.until) })
+                    )}
                   </p>
                   {row.state === 'ask' ? (
-                    <>
-                      <Disclosure open={why} onOpenChange={setWhy} controls={whyId} size="sm">
-                        {tr('locked.why')}
-                      </Disclosure>
-                      <DisclosurePanel id={whyId} open={why}>
-                        <p className="mb-note">{tr('locked.why_text')}</p>
-                      </DisclosurePanel>
-                    </>
+                    <DisclosurePanel id={whyId} open={why}>
+                      <p className="mb-note">{tr('locked.why_text')}</p>
+                    </DisclosurePanel>
                   ) : null}
                   {cancel.isError && row.state === 'pending' ? (
                     <p role="alert" data-tone="error" className="mb-note">

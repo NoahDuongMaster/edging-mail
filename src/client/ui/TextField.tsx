@@ -1,13 +1,15 @@
 import { Search } from 'lucide-react';
 import React from 'react';
 import { cx } from './cx';
-import { describedBy, Field, has } from './Field';
+import { describedBy, Field, has, type HintMode } from './Field';
 
 interface FieldOptions {
   label: string;
   /** Keeps the label for screen readers only. */
   hideLabel?: boolean;
   hint?: string;
+  /** `tip` (default): the hint behind an InfoTip after the label; `inline`: a visible line under the box, for what is needed while typing. */
+  hintMode?: HintMode;
   /** The text of what is wrong. It turns the border red, sets `aria-invalid` and is read with the field. */
   error?: string;
   /** An icon or a small control inside the left edge (a search icon). */
@@ -62,6 +64,7 @@ export function TextField({
   label,
   hideLabel,
   hint,
+  hintMode,
   error,
   leading,
   trailing,
@@ -76,7 +79,7 @@ export function TextField({
   const describedby = [describedBy(fieldId, hint, error), input['aria-describedby']].filter(has).join(' ');
   const lead = leading ?? (variant === 'search' ? <Search size={16} aria-hidden="true" /> : undefined);
   return (
-    <Field id={fieldId} label={label} hideLabel={hideLabel} hint={hint} error={error}>
+    <Field id={fieldId} label={label} hideLabel={hideLabel} hint={hint} hintMode={hintMode} error={error}>
       <Shell invalid={has(error)} disabled={input.disabled} multiline={false} variant={variant} leading={lead} trailing={trailing}>
         <input
           id={fieldId}
@@ -95,6 +98,7 @@ export function TextArea({
   label,
   hideLabel,
   hint,
+  hintMode,
   error,
   leading,
   trailing,
@@ -107,7 +111,7 @@ export function TextArea({
   const fieldId = id ?? generated;
   const describedby = [describedBy(fieldId, hint, error), textarea['aria-describedby']].filter(has).join(' ');
   return (
-    <Field id={fieldId} label={label} hideLabel={hideLabel} hint={hint} error={error}>
+    <Field id={fieldId} label={label} hideLabel={hideLabel} hint={hint} hintMode={hintMode} error={error}>
       <Shell invalid={has(error)} disabled={textarea.disabled} multiline leading={leading} trailing={trailing}>
         <textarea
           id={fieldId}

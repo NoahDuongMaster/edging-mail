@@ -135,7 +135,10 @@ describe('two-factor sign-in and recovery codes', () => {
   it('explains the six-digit code once on the scan step, and offers the otpauth link and the key first on a phone (J4-39, J5-21)', () => {
     const enrolment = component('auth', 'TwoFactorEnrolment.tsx');
     expect(enrolment).not.toContain("tr('twofa.intro')");
-    expect(component('security', 'TwoFactorView.tsx')).toContain('<p className="st-lead">{tr(\'twofa.intro\')}</p>');
+    // v4m R1: step 1 says it in one line (twofa.intro_short) and the whole of it in the tip after the view's title.
+    const turnOn = component('security', 'TwoFactorView.tsx');
+    expect(turnOn).toContain("info={[tr('twofa.intro'), tr('security.on_lead')]}");
+    expect(turnOn).toContain("lead={tr('twofa.intro_short')}");
     expect(enrolment).toMatch(/const ON_THE_PHONE = '\(max-width: 640px\), \(pointer: coarse\)';/);
     const phone = enrolment.slice(enrolment.indexOf('{onThePhone ? ('), enrolment.indexOf(') : (', enrolment.indexOf('{onThePhone ? (')));
     expect(phone.indexOf('href={enrolment.otpauth_uri}')).toBeGreaterThan(0);

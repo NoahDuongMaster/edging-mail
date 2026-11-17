@@ -79,20 +79,27 @@ describe('TextButton', () => {
 });
 
 describe('CheckboxRow', () => {
-  it('is one label round the box, its name and its hint (C-12), named by the label alone and described by the hint', () => {
+  it('is one row whose label covers the box and its name (C-12), named by the label alone and described by the hint, which is an InfoTip (v4m R1)', () => {
     const html = renderToStaticMarkup(
       createElement(CheckboxRow, { t, id: 'row', label: 'Shared device', hint: 'Stays in this tab', checked: false, onChange: nothing })
     );
-    expect(html).toMatch(/^<label class="ui-check"/);
+    // The ui Checkbox in its default hint mode: a row (ui.css stretches its one <label for> over the whole row) with the tip after the name.
+    expect(html).toMatch(/^<div class="ui-check" data-tip="true">/);
     expect(html.match(/<label/g)).toHaveLength(1);
+    expect(html).toContain('<label for="row" class="ui-check-label">');
     expect(html).toMatch(/<input[^>]*type="checkbox"/);
     expect(html).toContain('aria-labelledby="row-label"');
     expect(html).toContain('aria-describedby="row-hint"');
     expect(html).toContain('id="row-label"');
-    expect(html).toContain('id="row-hint"');
+    // The hint is still in the page for aria-describedby, for screen readers only; the words show in the tip's bubble.
+    expect(html).toContain('<span id="row-hint" class="ui-visually-hidden">Stays in this tab</span>');
+    // The tip is outside the label: a tap on it does not tick the box, and the box's name stays the label alone.
+    expect(/<label[\s\S]*?<\/label>/.exec(html)?.[0]).not.toContain('ui-infotip');
+    expect(html).toMatch(
+      /<button type="button" id="[^"]+" class="ui-infotip" data-size="md" aria-label="About Shared device" aria-expanded="false">/
+    );
     expect(html.indexOf('<input')).toBeLessThan(html.indexOf('Shared device'));
     expect(html.indexOf('Shared device')).toBeLessThan(html.indexOf('Stays in this tab'));
-    expect(html).toMatch(/<\/label>$/);
   });
 
   it('is ticked and disabled when the choice is locked', () => {
@@ -336,12 +343,17 @@ describe('the sign-in and unlock cards say where and how', () => {
     expect(html).toMatch(/<h1[^>]*>Welcome back<\/h1>/);
     expect(html).not.toMatch(/<h1[^>]*>Sign in<\/h1>/);
     expect(buttonTag(html, 'Sign in')).toContain('type="submit"');
-    // Forgot password: a ghost button with the link look, described by what a reset needs (the recovery key): its tooltip with a mouse, a
-    // line under it on touch (auth.css), always its aria-describedby (v3 P1).
+    // Forgot password: a ghost button with the link look, described by what a reset needs (the recovery key): the InfoTip right after it
+    // shows the words on a press (v4m R1), and they stay in the page, visually hidden, as its aria-describedby.
     const forgot = buttonTag(html, 'Forgot password');
     expect(forgot).toContain('class="ui-btn au-link-btn"');
     expect(forgot).toContain('aria-describedby="signin-forgot-hint"');
-    expect(html).toMatch(/<p id="signin-forgot-hint" class="au-link-hint">You need your recovery key to reset your password\.<\/p>/);
+    expect(html).toContain(
+      '<span id="signin-forgot-hint" class="ui-visually-hidden">You need your recovery key to reset your password.</span>'
+    );
+    expect(html).toMatch(
+      /<div class="au-hinted"><button[^>]*>Forgot password<\/button><button type="button"[^>]*class="ui-infotip"[^>]*aria-label="About Forgot password"/
+    );
     // It comes after the password field in the tab order (auth.css draws it on the field's label row with a mouse).
     expect(html.indexOf('id="signin-password"')).toBeLessThan(html.indexOf('signin-forgot-hint'));
     expect(html.indexOf('signin-forgot-hint')).toBeLessThan(html.indexOf('id="signin-shared"'));

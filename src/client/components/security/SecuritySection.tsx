@@ -83,9 +83,11 @@ const LockedRows: React.FC<{ onDelete: (mail: LockedMail) => void }> = ({ onDele
           icon={Lock}
           tone="warning"
           title={tr('locked.card_title')}
+          // What is locked (or when it goes) stays a line: it is the warning. Why it is locked is in the tip after the card's title.
+          info={tr('locked.why_text')}
           lines={[
             row.state === 'ask'
-              ? tr('locked.banner', { count: row.mail.locked })
+              ? tr('locked.banner_short', { count: row.mail.locked })
               : tr('locked.pending', { count: row.mail.locked, date: formatWhen(row.until) })
           ]}
         >
@@ -111,17 +113,18 @@ const LockedRows: React.FC<{ onDelete: (mail: LockedMail) => void }> = ({ onDele
 };
 
 /**
- * The overview: a status card per thing (v3), each with an icon tile in the tone of its state, the state in a word where the app knows it
- * and one action (two for the recovery key: test it, or replace it). The recovery key's card says since when the current key exists (from
- * the account activity) and when it was last tested in this browser; the server keeps no count of the recovery codes left, so their card
- * has no number.
+ * The overview: a status card per thing (v3), each with an icon tile in the tone of its state, the state in a word where the app knows it,
+ * what it is for in an InfoTip after its title (DESIGN-v4m R1: no lines of explanation on the cards) and one action (two for the recovery
+ * key: test it, or replace it). A line stays only where the person must see it: why two-factor sign-in cannot be turned off, what is locked.
+ * The recovery key's card says since when the current key exists (from the account activity) and when it was last tested in this browser;
+ * the server keeps no count of the recovery codes left, so their card has no number.
  */
 const Cards: React.FC<CardsProps> = ({ user, open, onDeleteLocked }) => {
   const tr = useT();
   const activity = useActivitySummary();
   // Only a member of an organisation that does not require it can turn it off: the same rule the Worker applies.
   const canTurnOff = user.role !== 'admin' && !user.require_2fa;
-  const reason = user.role === 'admin' ? tr('security.cannot_turn_off_admin') : tr('security.cannot_turn_off_required');
+  const reason = user.role === 'admin' ? tr('security.cannot_turn_off_admin_short') : tr('security.cannot_turn_off_required_short');
   const on = user.totp_enabled;
   const tested = keyTestedAt(user.id);
   const keyFacts = [
@@ -142,9 +145,9 @@ const Cards: React.FC<CardsProps> = ({ user, open, onDeleteLocked }) => {
             <StatusWord tone="warning">{tr('security.badge_off')}</StatusWord>
           )
         }
-        lines={
-          on ? (canTurnOff ? [tr('security.two_factor_on')] : [tr('security.two_factor_on'), reason]) : [tr('security.two_factor_off')]
-        }
+        // On: the badge says it (and, where it cannot be turned off, why). Off: what turning it on adds is in the tip.
+        info={on ? undefined : tr('security.two_factor_off')}
+        lines={on && !canTurnOff ? [reason] : []}
       >
         {on ? (
           canTurnOff ? (
@@ -177,7 +180,8 @@ const Cards: React.FC<CardsProps> = ({ user, open, onDeleteLocked }) => {
         tone={user.has_keys ? 'success' : 'neutral'}
         title={tr('term.recovery_key')}
         status={user.has_keys ? <StatusWord tone="success">{tr('security.badge_saved')}</StatusWord> : undefined}
-        lines={[tr('security.recovery_hint')]}
+        info={tr('security.recovery_hint')}
+        lines={[]}
         facts={keyFacts}
       >
         <Button
@@ -202,7 +206,7 @@ const Cards: React.FC<CardsProps> = ({ user, open, onDeleteLocked }) => {
         </Button>
       </StatusRow>
       {on ? (
-        <StatusRow id="security-codes" icon={ListOrdered} title={tr('term.recovery_codes')} lines={[tr('security.codes_hint')]}>
+        <StatusRow id="security-codes" icon={ListOrdered} title={tr('term.recovery_codes')} info={tr('security.codes_hint')} lines={[]}>
           <Button
             size="sm"
             data-view="two_factor_codes"
@@ -215,7 +219,8 @@ const Cards: React.FC<CardsProps> = ({ user, open, onDeleteLocked }) => {
           </Button>
         </StatusRow>
       ) : null}
-      <StatusRow id="security-password" icon={LockKeyhole} title={tr('term.password')} lines={[tr('security.password_hint')]}>
+      {/* What a change does (the other devices are signed out) is said by the Change password view before anything happens. */}
+      <StatusRow id="security-password" icon={LockKeyhole} title={tr('term.password')} lines={[]}>
         <Button
           size="sm"
           data-view="password"
@@ -226,7 +231,13 @@ const Cards: React.FC<CardsProps> = ({ user, open, onDeleteLocked }) => {
           {tr('security.change_password')}
         </Button>
       </StatusRow>
-      <StatusRow id="security-devices" icon={MonitorSmartphone} title={tr('security.devices_title')} lines={[tr('security.devices_hint')]}>
+      <StatusRow
+        id="security-devices"
+        icon={MonitorSmartphone}
+        title={tr('security.devices_title')}
+        info={tr('security.devices_hint')}
+        lines={[]}
+      >
         <Button
           size="sm"
           data-view="devices"

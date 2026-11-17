@@ -9,7 +9,7 @@ import type { QrMatrix } from '../../lib/crypto/qr';
 import { useT } from '../../lib/i18n';
 import { useAction } from '../../lib/useAction';
 import { CopyButton, SecretBox, Spinner, TextField, useMediaMatch } from '../../ui';
-import { AuthButton, ErrorLine, TextButton } from './authUi';
+import { AuthActions, AuthButton, ErrorLine, TextButton, TipLine } from './authUi';
 import { RecoveryCodesPanel } from './RecoveryCodesPanel';
 
 // Gate 3 (and Settings): turn on two-factor sign-in. The server makes a NEW secret every time the enrolment starts and it only counts once a
@@ -211,8 +211,14 @@ export const TwoFactorEnrolment: React.FC<TwoFactorEnrolmentProps> = ({ t, crede
       {enrolment === null ? null : (
         <>
           {/* What an authenticator app is, with names a first-timer can look for (J4-10); the only explanation of the six-digit code on this
-              step (J4-39: Settings says what two-factor sign-in is on the step before). */}
-          <p className="au-muted">{tr(onThePhone ? 'twofa.app_hint_phone' : 'twofa.app_hint')}</p>
+              step (J4-39: Settings says what two-factor sign-in is on the step before). v4m R1: what is needed in one line, the rest (what
+              the app does, more names, install one first) behind the tip at its end. */}
+          <TipLine
+            className="au-muted"
+            text={tr('twofa.app_hint_phone_short')}
+            tip={tr(onThePhone ? 'twofa.app_hint_phone' : 'twofa.app_hint')}
+            label={tr('term.authenticator_app')}
+          />
           {onThePhone ? (
             // J5-21: the app is on this phone, which cannot scan its own screen. First the link that opens the account in the app (the same
             // otpauth URI as the QR code), then the key with Copy, then the QR code for an app on another device.
@@ -269,17 +275,28 @@ export const TwoFactorEnrolment: React.FC<TwoFactorEnrolmentProps> = ({ t, crede
               aria-describedby={confirm.error === null ? undefined : 'twofa-code-error-server'}
             />
             <ErrorLine t={t} id="twofa-code-error-server" text={confirm.error} />
-            <AuthButton t={t} busy={confirm.busy} label={tr('twofa.verify')} />
+            <AuthActions
+              after={
+                onCancel === undefined ? null : (
+                  // A way back is a quiet text button under the main one, as under the recovery key (RecoveryKeyPanel).
+                  <div className="au-alt">
+                    <TextButton t={t} label={tr('common.cancel')} onClick={onCancel} disabled={confirm.busy} />
+                  </div>
+                )
+              }
+            >
+              <AuthButton t={t} busy={confirm.busy} label={tr('twofa.verify')} />
+            </AuthActions>
           </form>
         </>
       )}
 
-      {onCancel === undefined ? null : (
-        // A way back is a quiet text button under the main one, as under the recovery key (RecoveryKeyPanel).
+      {enrolment === null && onCancel !== undefined ? (
+        // Before the secret has come (loading, or its request failed): the way back under the rest.
         <div className="au-alt">
           <TextButton t={t} label={tr('common.cancel')} onClick={onCancel} disabled={confirm.busy} />
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

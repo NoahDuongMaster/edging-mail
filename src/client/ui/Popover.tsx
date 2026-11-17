@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { cx } from './cx';
 import { useLayer } from './layers';
 import { useExitMotion } from './motion';
-import { positionNextTo, type Align } from './position';
+import { positionNextTo, type Align, type PreferredSide } from './position';
 
 export interface PopoverProps extends Omit<React.ComponentProps<'div'>, 'ref'> {
   open: boolean;
@@ -15,6 +15,17 @@ export interface PopoverProps extends Omit<React.ComponentProps<'div'>, 'ref'> {
   align?: Align;
   /** At least as wide as the anchor (the list of a Select). */
   matchWidth?: boolean;
+  /** The side it tries first: below (default), above, or `auto` (the side with more room). It still flips when it does not fit. */
+  side?: PreferredSide;
+  /** Px to move it sideways from its alignment (negative: to the left), before it is kept inside the viewport. */
+  alignOffset?: number;
+  /** The element it is placed next to when that is not the anchor itself (the glyph inside a larger touch box). Default: the anchor. */
+  placeRef?: React.RefObject<HTMLElement | null>;
+  /**
+   * A popup that holds no control (InfoTip's bubble): it still takes Escape while it is on top, but a dialog under it keeps trapping Tab
+   * (layers.ts `passive`).
+   */
+  passive?: boolean;
 }
 
 /**
@@ -34,20 +45,25 @@ function PopoverPanel({
   onClose,
   align = 'start',
   matchWidth = false,
+  side = 'below',
+  alignOffset = 0,
+  placeRef,
+  passive = false,
   className,
   children,
   ...div
 }: Omit<PopoverProps, 'open'>) {
   const panelRef = React.useRef<HTMLDivElement | null>(null);
-  useLayer(true, () => onClose('escape'));
+  useLayer(true, () => onClose('escape'), undefined, passive);
   // It leaves on an inert copy that fades in 140 ms (motion.ts); the popup itself is gone at once.
   useExitMotion(panelRef, 'popup');
 
   // Before the first paint, and again when the window changes size or the page scrolls (a scroll inside the popup itself is not one).
   React.useLayoutEffect(() => {
     const place = () => {
-      if (panelRef.current !== null && anchorRef.current !== null) {
-        positionNextTo(panelRef.current, anchorRef.current, align, matchWidth);
+      const next = placeRef?.current ?? anchorRef.current;
+      if (panelRef.current !== null && next !== null) {
+        positionNextTo(panelRef.current, next, align, matchWidth, side, alignOffset);
       }
     };
     const onScroll = (event: Event) => {
@@ -62,7 +78,7 @@ function PopoverPanel({
       window.removeEventListener('resize', place);
       window.removeEventListener('scroll', onScroll, true);
     };
-  }, [anchorRef, align, matchWidth]);
+  }, [anchorRef, placeRef, align, matchWidth, side, alignOffset]);
 
   React.useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {

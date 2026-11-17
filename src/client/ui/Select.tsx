@@ -1,7 +1,7 @@
 import { Check, ChevronDown } from 'lucide-react';
 import React from 'react';
 import { cx } from './cx';
-import { describedBy, Field, has } from './Field';
+import { describedBy, Field, has, type HintMode } from './Field';
 import { firstEnabled, lastEnabled, moveIndex, typeAheadIndex } from './listNav';
 import { Popover } from './Popover';
 import { useTypeAhead } from './useTypeAhead';
@@ -19,6 +19,8 @@ export interface SelectProps {
   /** Keeps the label for screen readers only. */
   hideLabel?: boolean;
   hint?: string;
+  /** `tip` (default): the hint behind an InfoTip after the label; `inline`: a visible line under the box. */
+  hintMode?: HintMode;
   error?: string;
   options: readonly SelectOption[];
   value: string;
@@ -46,6 +48,7 @@ export function Select({
   label,
   hideLabel,
   hint,
+  hintMode,
   error,
   options,
   value,
@@ -186,7 +189,7 @@ export function Select({
   const current = selected === -1 ? undefined : options[selected];
   const describedby = describedBy(fieldId, hint, error);
   return (
-    <Field id={fieldId} label={label} hideLabel={hideLabel} hint={hint} error={error} native={false}>
+    <Field id={fieldId} label={label} hideLabel={hideLabel} hint={hint} hintMode={hintMode} error={error} native={false}>
       <div
         ref={triggerRef}
         id={fieldId}

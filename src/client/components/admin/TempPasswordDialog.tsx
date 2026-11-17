@@ -42,11 +42,19 @@ export const TempPasswordDialog: React.FC<TempPasswordDialogProps> = ({ t, addre
     }
   };
 
+  const foot = (
+    <Button variant="primary" onClick={onDone}>
+      {tr('users.password_saved')}
+    </Button>
+  );
+
   return (
+    // "I have saved it" is the dialog's foot: fixed at the bottom of a phone's sheet, the way out at any time.
     <ModalFrame
       t={t}
       title={tr(reissued ? 'users.reissued_title' : 'users.created_title')}
       closeButton={copied}
+      footer={foot}
       onClose={onDone}
       locked={!copied}
       maxWidth={460}
@@ -63,11 +71,6 @@ export const TempPasswordDialog: React.FC<TempPasswordDialogProps> = ({ t, addre
         <li>{tr('users.created_note_expiry', { hours: TEMP_PASSWORD_HOURS })}</li>
         <li>{tr('users.created_note_send')}</li>
       </ul>
-      <div className="ad-dialog-foot">
-        <Button variant="primary" onClick={onDone}>
-          {tr('users.password_saved')}
-        </Button>
-      </div>
     </ModalFrame>
   );
 };

@@ -41,8 +41,8 @@
   margin: 4px 0 0;
   padding-inline: 12px;
   color: var(--danger);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   font-weight: 500;
   overflow-wrap: anywhere;
 }
@@ -60,8 +60,8 @@
   margin: 4px 0 0;
   padding-inline: 12px;
   color: var(--text2);
-  font-size: 13px;
-  line-height: 18px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   overflow-wrap: anywhere;
 }
 .st-held-note svg {
@@ -90,8 +90,8 @@
     padding: 32px 16px 0 24px;
   }
   .st-dialog > .ui-dialog-head > .ui-dialog-title {
-    font-size: 15px;
-    line-height: 24px;
+    font-size: calc(var(--fs-body) + 1px);
+    line-height: calc(var(--lh-body) + 4px);
     color: var(--text2);
   }
   /* The X floats at the top right of the page, on the page's ground (text scrolled under it never shows through). */
@@ -125,6 +125,10 @@
   }
   .st-page-head {
     padding-right: 48px;
+  }
+  /* A touch screen this wide docks a form's ActionBar at the bottom of the page: the fade of the last 40px would cover it. */
+  .st-dialog > .ui-dialog-body:has(.ui-actionbar[data-docked='true']) {
+    mask-image: none;
   }
   /* No footer: the X next to the title, Escape, the scrim and a phone's Back button close Settings (each through the guarded `leave`). */
 }
@@ -166,13 +170,14 @@
   white-space: nowrap;
 }
 .st-identity-name {
-  font-size: 14px;
-  line-height: 20px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   font-weight: 600;
 }
+/* The address is meta: 12/16 in the nav of a desktop (it fits the nav's column whole), 13/18 on a phone. */
 .st-identity-address {
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
   color: var(--text3);
 }
 /* Rows of 36px (44px on touch), the icon 16px, the words 14/500 in --text2; the open one in the accent text colour, semibold. */
@@ -214,8 +219,9 @@
   margin-left: auto;
   color: var(--text3);
 }
-/* A phone's way back from a section to the list; a desktop shows both at once and has none. */
-.st-back {
+/* A phone's bar over the sheet's head in a section (SettingsBar: Back, the title of what is on screen and its tip); a desktop shows the
+   list and the page at once, the page's own heading, and has none. */
+.st-bar {
   display: none;
 }
 
@@ -256,21 +262,18 @@
   gap: 28px;
   max-width: 720px;
 }
+/* The page's title (24/32) with what the section is for in an InfoTip after it: the header has the title's line, so the tip stands on its
+   middle. */
 .st-page-head {
   padding-bottom: 2px;
+  line-height: calc(var(--lh-title) + 6px);
 }
 .st-page-title {
   margin: 0;
-  font-size: 24px;
-  line-height: 32px;
+  font-size: calc(var(--fs-title) + 6px);
+  line-height: calc(var(--lh-title) + 6px);
   font-weight: 600;
   letter-spacing: -0.02em;
-}
-.st-page-desc {
-  margin: 4px 0 0;
-  font-size: 14px;
-  line-height: 22px;
-  color: var(--text2);
 }
 /* The groups are set apart by the page's gap, not by the sections' own margin. */
 .st-page .ui-section + .ui-section {
@@ -281,8 +284,8 @@
   margin-bottom: 8px;
 }
 .st-page .ui-section-title {
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-label);
+  line-height: var(--lh-label);
   letter-spacing: 0;
   color: var(--text2);
 }
@@ -328,14 +331,14 @@
   min-width: 0;
 }
 .st-row-label {
-  font-size: 14px;
-  line-height: 20px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   font-weight: 500;
 }
 .st-row-hint {
   max-width: 62ch;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   color: var(--text3);
 }
 .st-row-control {
@@ -359,7 +362,7 @@
 .st-field-row .ui-field > :is(.ui-label, .ui-visually-hidden) {
   grid-area: label;
   align-self: start;
-  margin-top: calc((var(--ui-h-field, 40px) - 20px) / 2);
+  margin-top: calc((var(--ui-h-field, 40px) - var(--lh-body)) / 2);
 }
 .st-field-row .ui-field > :is(.ui-input, .ui-select) {
   grid-area: control;
@@ -374,8 +377,8 @@
 }
 .st-group .ui-field > .ui-label,
 .st-group .ui-switch-text .ui-label {
-  font-size: 14px;
-  line-height: 20px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   font-weight: 500;
 }
 /* A narrow card (a phone, a long language): the label over the box, as a form. The offsets of the two-column row go: the label no longer
@@ -436,16 +439,17 @@
 
 /* ---------- Text ---------- */
 
+/* The one visible line of a view (what it does; the rest is in the tip after its title). */
 .st-lead {
   margin: 0;
-  font-size: 14px;
-  line-height: 22px;
+  font-size: var(--fs-body);
+  line-height: calc(var(--lh-body) + 2px);
   color: var(--text);
 }
 .st-muted {
   margin: 0;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   color: var(--text2);
 }
 .st-status {
@@ -453,8 +457,8 @@
   align-items: center;
   gap: 8px;
   margin: 0;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   color: var(--text2);
 }
 /* The result of an action next to its button: saved (success), failed (danger). Always words, the icon is a second cue. */
@@ -463,8 +467,8 @@
   align-items: flex-start;
   gap: 6px;
   margin: 0;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   font-weight: 500;
 }
 .st-feedback svg {
@@ -490,8 +494,19 @@
   gap: 8px 12px;
 }
 /* Hints and quiet explanations break before a lone last word. */
-.st-dialog :is(.ui-hint, .st-muted, .st-lead, .st-page-desc, .st-row-hint, .ui-section-description) {
+.st-dialog :is(.ui-hint, .st-muted, .st-lead, .st-row-hint, .ui-section-description) {
   text-wrap: pretty;
+}
+/* A tip of several lines (SettingsPage tipLines: the two choices of Motion, a view's explanation): a block per line. The bubble is drawn
+   at the end of the page, outside the dialog. */
+.st-tip-line {
+  display: block;
+}
+.st-tip-line + .st-tip-line {
+  margin-top: 8px;
+}
+.st-tip-line > strong {
+  font-weight: 600;
 }
 /* A heading that takes the focus from script when the content under it changes (C-9b): it is not a control. */
 .st-focus-title:focus {
@@ -500,8 +515,8 @@
 /* A group's heading (Notices, Recent sign-ins, the shortcut keys): 14/600 in the text colour. */
 .st-subtitle {
   margin: 0 0 12px;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   font-weight: 600;
   color: var(--text);
 }
@@ -513,13 +528,17 @@
   flex-direction: column;
   gap: 24px;
 }
-/* Save is the last row of the card it saves, on the right, with what it did on its left (words with an icon). */
+/* Save is the last row of the card it saves, on the right, with what it did on its left (words with an icon). On a phone Save is in the
+   sheet's bottom bar and the row only says what it did, from the left. */
 .st-form-foot {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 8px 16px;
+}
+.st-form-foot:not(:has(> .ui-btn)) {
+  justify-content: flex-start;
 }
 .st-group > .ui-group > .st-form-foot {
   padding-block: 12px;
@@ -790,10 +809,15 @@
   gap: 0 10px;
   min-width: 0;
 }
+/* The card's name and the InfoTip of what it is for, on the name's line (the tip follows the last word when the name wraps). */
+.st-status-name {
+  min-width: 0;
+  line-height: calc(var(--lh-body) + 2px);
+}
 .st-status-title {
   margin: 0;
-  font-size: 15px;
-  line-height: 22px;
+  font-size: calc(var(--fs-body) + 1px);
+  line-height: calc(var(--lh-body) + 2px);
   font-weight: 600;
 }
 /* The state in a word with its icon: On and Saved in the success colour, Off and a count of notices in the warning colour (4.5:1). */
@@ -801,8 +825,8 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
   font-weight: 500;
   color: var(--text2);
 }
@@ -821,8 +845,8 @@
   align-self: start;
   min-width: 0;
   max-width: 540px;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
 }
 .st-status-lines > .st-muted {
   display: inline;
@@ -833,8 +857,8 @@
 /* A fact about the state (a date, a device): quieter than the explanation, smaller, figures in columns. */
 .st-status-fact {
   margin: 4px 0 0;
-  font-size: 12px;
-  line-height: 18px;
+  font-size: var(--fs-meta);
+  line-height: calc(var(--lh-meta) + 2px);
   color: var(--text3);
   font-variant-numeric: tabular-nums;
 }
@@ -850,6 +874,17 @@
 }
 .st-status-error {
   padding-inline: 4px;
+}
+/* A card with nothing under its title (its explanation is the tip): the title and its state stand on the tile's middle line, beside the
+   action, not at the top of a row kept for lines that are gone. */
+@container st-cards (min-width: 561px) {
+  .st-status-row:not(:has(> .st-status-lines)) {
+    grid-template-rows: minmax(40px, auto);
+    grid-template-areas: 'tile top actions';
+  }
+  .st-status-row:not(:has(> .st-status-lines)) > .st-status-top {
+    align-self: center;
+  }
 }
 @container st-cards (max-width: 560px) {
   .st-status-row {
@@ -874,6 +909,12 @@
     grid-template-areas:
       'tile top'
       'lines lines';
+  }
+  /* Nor a lines row (and its gap) when the card has no line: the action comes right under the title. */
+  .st-status-row:not(:has(> .st-status-lines)) {
+    grid-template-areas:
+      'tile top'
+      'actions actions';
   }
 }
 
@@ -909,10 +950,15 @@
     margin-inline-end: 48px;
   }
 }
+/* The view's title (24/32) with its InfoTip on the title's line. */
+.st-view-heading {
+  margin-bottom: 4px;
+  line-height: calc(var(--lh-title) + 6px);
+}
 .st-view-title {
-  margin: 0 0 4px;
-  font-size: 24px;
-  line-height: 32px;
+  margin: 0;
+  font-size: calc(var(--fs-title) + 6px);
+  line-height: calc(var(--lh-title) + 6px);
   font-weight: 600;
   letter-spacing: -0.02em;
 }
@@ -929,6 +975,10 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+/* The button of a view's form (ui ActionBar): docked on a phone; a desktop keeps it under the fields on the left, where the eye is. */
+.st-view-form > .ui-actionbar:not([data-docked]) {
+  justify-content: flex-start;
 }
 /* The views reuse the steps of the screens before the mailbox (the recovery key, the codes, the enrolment), whose buttons are 44px there
    (AuthButton, TextButton and the CopyButton of size lg, auth.css C-12). Inside Settings they have the dialog's own height instead,
@@ -965,8 +1015,8 @@
   align-items: flex-start;
   gap: 6px;
   margin: 0;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   font-weight: 500;
 }
 .st-result svg {
@@ -1014,8 +1064,8 @@
   gap: 8px;
   margin: 0;
   padding-inline: 2px;
-  font-size: 14px;
-  line-height: 22px;
+  font-size: var(--fs-body);
+  line-height: calc(var(--lh-body) + 2px);
   color: var(--text2);
 }
 .st-calm svg {
@@ -1032,8 +1082,8 @@
   align-items: flex-start;
   gap: 10px;
   padding-block: 6px;
-  font-size: 14px;
-  line-height: 22px;
+  font-size: var(--fs-body);
+  line-height: calc(var(--lh-body) + 2px);
 }
 .st-notice svg {
   flex: none;
@@ -1047,8 +1097,8 @@
   flex-direction: column;
   gap: 2px;
   padding: 0 0 18px 26px;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
 }
 .st-entry:last-child {
   padding-bottom: 2px;
@@ -1084,7 +1134,7 @@
   gap: 0 12px;
 }
 .st-entry-kind {
-  font-size: 14px;
+  font-size: var(--fs-body);
   font-weight: 500;
   color: var(--text);
 }
@@ -1122,27 +1172,28 @@
   gap: 32px;
   max-width: 680px;
 }
-/* Prose at a reading size: 15/26, the measure of the page. */
+/* Prose at a reading size, the measure of the page: the body size on a phone (16/24); a desktop adds a point and more leading (15/26, in its
+   own block). No InfoTips inside: docs are reading material. */
 .st-docs-lead {
   margin: 0;
-  font-size: 15px;
-  line-height: 26px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   color: var(--text2);
 }
 .st-docs .ui-step {
-  font-size: 15px;
-  line-height: 24px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
 }
 .st-docs .ui-step-title {
-  font-size: 15px;
-  line-height: 24px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
 }
 .st-docs .ui-step-body {
   gap: 12px;
 }
 .st-docs .ui-step-body .st-muted {
-  font-size: 14px;
-  line-height: 22px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
 }
 /* A note after the steps: a quiet tone, so it reads as an aside and not as one more step. */
 .st-docs-note {
@@ -1151,8 +1202,8 @@
   background: color-mix(in srgb, var(--accent) 4%, var(--raised));
   border-radius: var(--radius-card);
   color: var(--text2);
-  font-size: 14px;
-  line-height: 22px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
 }
 .st-docs-part {
   display: flex;
@@ -1161,8 +1212,8 @@
 }
 .st-docs-title {
   margin: 0;
-  font-size: 18px;
-  line-height: 26px;
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -1240,8 +1291,8 @@
 }
 .st-def dt {
   display: contents;
-  font-size: 14px;
-  line-height: 22px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   font-weight: 600;
 }
 .st-def-icon {
@@ -1260,9 +1311,28 @@
 .st-def dd {
   grid-column: 2;
   margin: 0;
-  font-size: 14px;
-  line-height: 22px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   color: var(--text2);
+}
+/* Docs on a desktop: a point bigger than the body size, with more leading (15/26 prose, 15/24 steps, 14/22 notes and parts), after the
+   rules above so it wins over them. */
+@media (min-width: 641px) {
+  .st-docs-lead {
+    font-size: calc(var(--fs-body) + 1px);
+    line-height: calc(var(--lh-body) + 6px);
+  }
+  .st-docs .ui-step,
+  .st-docs .ui-step-title {
+    font-size: calc(var(--fs-body) + 1px);
+    line-height: calc(var(--lh-body) + 4px);
+  }
+  .st-docs .ui-step-body .st-muted,
+  .st-docs-note,
+  .st-def dt,
+  .st-def dd {
+    line-height: calc(var(--lh-body) + 2px);
+  }
 }
 
 /* ---------- A phone: list, then section ---------- */
@@ -1271,10 +1341,6 @@
    the list of sections, or one section with a way back to the list (SettingsModal's pane): a tap on a row opens it, Back returns, each
    sliding 12px from the side it comes from. */
 @media (max-width: 640px) {
-  /* A view's Back keeps its box 6px inside the sheet's scroller (its focus ring stays whole), its chevron under the sheet's own Back. */
-  .st-view-back {
-    margin-left: -10px;
-  }
   .ui-dialog.st-dialog {
     --st-row-x: 16px;
     --st-card-shadow: none;
@@ -1293,12 +1359,14 @@
   }
   /* The list's title is the sheet's big one (the identity card and the rows come under it). */
   .st-dialog > .ui-dialog-head > .ui-dialog-title {
-    font-size: 22px;
-    line-height: 28px;
+    font-size: calc(var(--fs-title) + 2px);
+    line-height: var(--lh-title);
     letter-spacing: -0.02em;
   }
-  /* In a section the head is a nav bar: Back to the list where the title was (the title stays for screen readers: it names the dialog),
-     the X on the right. Back sits in the page but is placed over the head, so it never scrolls away. */
+  /* In a section the head is the bar (DESIGN-v4m R3): Back where the list's title was (the title stays for screen readers: it names the
+     dialog), the title of what is on screen with its tip, the X on the right. The bar (SettingsBar) sits in the page but is placed over the
+     head, so it never scrolls away; a hairline under the head once the section has scrolled under it (ui.css draws one under the part
+     right above the body, which is the hidden nav here). */
   .st-dialog:has(.st-nav[data-pane='section']) > .ui-dialog-head > .ui-dialog-title {
     position: absolute;
     width: 1px;
@@ -1310,12 +1378,64 @@
   .st-dialog:has(.st-nav[data-pane='section']) > .ui-dialog-head {
     justify-content: flex-end;
   }
-  .st-back {
+  .ui-dialog.st-dialog[data-scrolled='true']:has(.st-nav[data-pane='section']) > .ui-dialog-head {
+    position: relative;
+    z-index: var(--z-raise);
+    box-shadow: 0 1px 0 var(--border);
+  }
+  /* The end padding takes the InfoTip's -12px end margin back: a tip after a title that fills the bar keeps its 44px box clear of the X. */
+  .st-bar {
     position: absolute;
     top: 9px;
+    right: 56px;
     left: 6px;
     z-index: var(--z-raise);
-    display: block;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    height: var(--ui-h-md);
+    padding-inline-end: 12px;
+  }
+  .st-bar > .ui-btn {
+    flex: none;
+  }
+  .st-bar-heading {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    padding-left: 4px;
+    line-height: var(--lh-title);
+  }
+  .st-bar-title {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--text);
+    font-size: var(--fs-title);
+    line-height: var(--lh-title);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .st-bar-title[data-fit='tight'] {
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+  }
+  /* The page's heading and a view's are the bar's now: kept for screen readers (they name the section and take the focus), not drawn;
+     their tips and the view's own Back are the bar's. */
+  .st-page-head,
+  .st-view-heading {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .st-page-head > .ui-infotip,
+  .st-view-heading > .ui-infotip,
+  .st-view-back {
+    display: none;
   }
   .st-dialog:has(.st-nav[data-pane='nav']) > .ui-dialog-body,
   .st-dialog:has(.st-nav[data-pane='section']) > .ui-dialog-toolbar {
@@ -1328,7 +1448,29 @@
     padding: 6px 16px calc(24px + env(safe-area-inset-bottom));
   }
   .st-dialog > .ui-dialog-body {
-    padding: 8px 16px calc(32px + env(safe-area-inset-bottom));
+    --ui-actionbar-bleed: 16px;
+    padding: 12px 16px calc(32px + env(safe-area-inset-bottom));
+  }
+  /* A form's ActionBar is the sheet's bottom bar: as wide as the sheet (the body's 16px sides), on the dialog's surface (a bar of its own
+     over the page's ground), and at the sheet's bottom edge also when the page is short: each box on the way to it is a column that fills
+     the body, and the bar's top margin is auto. */
+  .st-dialog:has(.st-nav[data-pane='section']) > .ui-dialog-body:has(.ui-actionbar[data-docked='true']),
+  .st-dialog > .ui-dialog-body :has(.ui-actionbar[data-docked='true']) {
+    display: flex;
+    flex-direction: column;
+  }
+  .st-dialog > .ui-dialog-body :has(.ui-actionbar[data-docked='true']) {
+    flex: 1 0 auto;
+  }
+  .st-dialog > .ui-dialog-body .ui-actionbar[data-docked='true'] {
+    margin-top: auto;
+    /* The body's bottom padding, taken back so the bar meets the sheet's bottom edge at the end of the scroll; written here rather than
+       measured (ActionBar measures it against the bar's parent, which draws no box in the code step of the two-factor enrolment). */
+    margin-bottom: calc(-32px - env(safe-area-inset-bottom));
+  }
+  /* The same in that code step, whose box-less form (auth.css) sets the bar's bottom margin to 0 for the sign-in pages' column. */
+  .st-dialog > .ui-dialog-body form.au-part > .ui-actionbar[data-docked='true'] {
+    margin-bottom: calc(-32px - env(safe-area-inset-bottom));
   }
   .st-nav {
     gap: 0;
@@ -1350,14 +1492,6 @@
     background: var(--st-card-bg);
     box-shadow: var(--st-card-shadow);
   }
-  .st-identity-name {
-    font-size: 16px;
-    line-height: 22px;
-  }
-  .st-identity-address {
-    font-size: 13px;
-    line-height: 18px;
-  }
   /* The rows: 56px on cards (one per group), the icon in a 32px neutral tile, a chevron at the end, hairlines between that start at the
      words. */
   .ui-tabs.st-tabs {
@@ -1371,8 +1505,8 @@
     border-radius: 0;
     background: var(--st-card-bg);
     color: var(--text);
-    font-size: 15px;
-    line-height: 22px;
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
     font-weight: 500;
   }
   .ui-tabs.st-tabs > .ui-tab:active:not(:disabled) {
@@ -1428,8 +1562,8 @@
   /* The groups' titles sit on the ground above their card. */
   .ui-tabs.st-tabs > .ui-tab-group {
     padding: 22px 12px 8px;
-    font-size: 13px;
-    line-height: 18px;
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
   }
   .ui-tabs.st-tabs > .ui-ink + .ui-tab-group {
     padding-top: 0;
@@ -1450,7 +1584,7 @@
     padding: 8px 18px 8px 12px;
     border-radius: 0;
     color: var(--text);
-    font-size: 15px;
+    font-size: var(--fs-body);
     font-weight: 500;
   }
   .ui-btn.st-nav-link:first-child {
@@ -1485,14 +1619,6 @@
   }
   .st-page {
     gap: 24px;
-  }
-  .st-page-title {
-    font-size: 22px;
-    line-height: 28px;
-  }
-  .st-view-title {
-    font-size: 22px;
-    line-height: 28px;
   }
   /* Cards come to the screen's inset (16px): a little less room inside. */
   .ui-card.st-status-card {
@@ -1538,8 +1664,8 @@
     border-radius: 10px;
   }
   .st-theme .ui-check-text {
-    font-size: 13px;
-    line-height: 18px;
+    font-size: var(--fs-label);
+    line-height: var(--lh-label);
   }
 }
 /* A short phone screen (320x568, a phone on its side): the sheet takes the whole height and its title sits closer, so the list or the
@@ -1557,7 +1683,7 @@
     padding-top: 14px;
     padding-bottom: 8px;
   }
-  .st-back {
+  .st-bar {
     top: 5px;
   }
 }

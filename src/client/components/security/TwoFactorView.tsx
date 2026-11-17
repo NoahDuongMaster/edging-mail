@@ -57,13 +57,19 @@ const TurnOn: React.FC<InnerProps> = ({ t, user, onBack }) => {
     );
   }
   return (
-    <ViewFrame t={t} title={tr('term.two_factor')} onBack={onBack} step={{ current: 1, total: 3 }}>
-      {/* What two-factor sign-in is, once, before the password (the next step explains the app and its code: J4-39). */}
-      <p className="st-lead">{tr('twofa.intro')}</p>
+    // What two-factor sign-in is, once, before the password (the next step explains the app and its code: J4-39): one line, and the whole of
+    // it with what happens next in the tip after the title.
+    <ViewFrame
+      t={t}
+      title={tr('term.two_factor')}
+      info={[tr('twofa.intro'), tr('security.on_lead')]}
+      onBack={onBack}
+      step={{ current: 1, total: 3 }}
+    >
       <CredentialForm
         t={t}
         id="security-on"
-        lead={tr('security.on_lead')}
+        lead={tr('twofa.intro_short')}
         submitLabel={tr('gate.continue')}
         withCode={false}
         work={(password) => enrolmentCredentials(user, password)}
@@ -82,22 +88,22 @@ const NewCodes: React.FC<InnerProps> = ({ t, user, onBack }) => {
     // J3-41: one heading (the view's, which takes focus when the codes replace the form) and the fact that the old codes stopped working
     // as a quiet notice under it, not a second heading of the same weight with the sentence between them.
     return (
-      <ViewFrame t={t} title={tr('security.codes_new_title')} onBack={null}>
+      <ViewFrame t={t} title={tr('security.codes_new_title')} barTitle={tr('term.recovery_codes')} onBack={null}>
         <Banner tone="info" live={false}>
-          {tr('security.codes_replace_note')}
+          {tr('security.codes_replace_note_short')}
         </Banner>
         <RecoveryCodesPanel t={t} codes={codes} onDone={onBack} showHeading={false} />
       </ViewFrame>
     );
   }
   return (
-    <ViewFrame t={t} title={tr('term.recovery_codes')} onBack={onBack}>
+    <ViewFrame t={t} title={tr('term.recovery_codes')} info={[tr('security.codes_lead')]} onBack={onBack}>
       <CredentialForm
         t={t}
         id="security-codes"
-        lead={tr('security.codes_lead')}
+        lead={tr('security.codes_lead_short')}
         submitLabel={tr('security.new_codes')}
-        note={tr('security.other_devices_note')}
+        note={tr('security.other_devices_note_short')}
         withCode
         work={(password, code) => newRecoveryCodes(user, password, code)}
         onResult={setCodes}
@@ -120,13 +126,13 @@ const TurnOff: React.FC<InnerProps> = ({ t, user, onBack }) => {
     );
   }
   return (
-    <ViewFrame t={t} title={tr('term.two_factor')} onBack={onBack}>
+    <ViewFrame t={t} title={tr('term.two_factor')} info={[tr('security.off_lead')]} onBack={onBack}>
       <CredentialForm
         t={t}
         id="security-off"
-        lead={tr('security.off_lead')}
+        lead={tr('security.off_lead_short')}
         submitLabel={tr('security.turn_off')}
-        note={tr('security.other_devices_note')}
+        note={tr('security.other_devices_note_short')}
         withCode
         danger
         work={(password, code) => disableTwoFactor(user, password, code)}

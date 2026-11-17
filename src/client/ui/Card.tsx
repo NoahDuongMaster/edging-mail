@@ -1,10 +1,14 @@
 import React from 'react';
 import { cx } from './cx';
 import { has } from './Field';
+import { InfoTip } from './InfoTip';
 
 interface SectionHeaderProps {
   title?: string;
+  /** At most one visible line under the title (DESIGN-v4m R1); a longer explanation goes into `info`. */
   description?: React.ReactNode;
+  /** An explanation behind an InfoTip right after the title (it needs a title). */
+  info?: React.ReactNode;
   actions?: React.ReactNode;
   /** The level of the title in the page's outline. */
   headingLevel?: 2 | 3 | 4;
@@ -12,19 +16,28 @@ interface SectionHeaderProps {
 }
 
 /** The title, the description and the actions of a Section or a Card. */
-function SectionHeader({ title, description, actions, headingLevel = 2, titleId }: SectionHeaderProps) {
+function SectionHeader({ title, description, info, actions, headingLevel = 2, titleId }: SectionHeaderProps) {
   if (!has(title) && actions === undefined) {
     return null;
   }
   const Heading = `h${headingLevel}` as const;
+  const heading = has(title) ? (
+    <Heading id={titleId} className="ui-section-title">
+      {title}
+    </Heading>
+  ) : null;
   return (
     <div className="ui-section-head">
       <div className="ui-section-heading">
-        {has(title) ? (
-          <Heading id={titleId} className="ui-section-title">
-            {title}
-          </Heading>
-        ) : null}
+        {/* The tip stands beside the heading, not inside it: the heading's name stays its title. */}
+        {has(title) && info !== undefined ? (
+          <div className="ui-tip-row">
+            {heading}
+            <InfoTip label={title}>{info}</InfoTip>
+          </div>
+        ) : (
+          heading
+        )}
         {description === undefined ? null : <p className="ui-section-description">{description}</p>}
       </div>
       {actions === undefined ? null : <div className="ui-section-actions">{actions}</div>}

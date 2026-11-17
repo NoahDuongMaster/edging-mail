@@ -37,6 +37,9 @@ interface Pending {
   reject: (error: Error) => void;
 }
 
+/** The form of the code prompt; its Confirm is in the dialog's foot, outside it. */
+const FORM_ID = 'step-up-form';
+
 const StepUpDialog: React.FC<{ t: ThemeTokens; onDone: () => void; onCancel: () => void }> = ({ t, onDone, onCancel }) => {
   const tr = useT();
   const [code, setCode] = React.useState('');
@@ -65,14 +68,32 @@ const StepUpDialog: React.FC<{ t: ThemeTokens; onDone: () => void; onCancel: () 
   };
 
   return (
-    <ModalFrame t={t} title={tr('admin.step_up_title')} onClose={onCancel} locked={busy} maxWidth={400}>
+    <ModalFrame
+      t={t}
+      title={tr('admin.step_up_title')}
+      onClose={onCancel}
+      locked={busy}
+      maxWidth={400}
+      // Cancel and Confirm in the dialog's foot (fixed at the bottom of a phone's sheet); Confirm sends the form it names.
+      footer={
+        <>
+          <Button onClick={onCancel} disabled={busy}>
+            {tr('common.cancel')}
+          </Button>
+          <Button type="submit" form={FORM_ID} variant="primary" disabled={busy} loading={busy}>
+            {busy ? tr('admin.checking') : tr('common.confirm')}
+          </Button>
+        </>
+      }
+    >
       <form
+        id={FORM_ID}
         onSubmit={(event) => {
           void submit(event);
         }}
         className="ad-form"
       >
-        <p className="ad-muted">{tr('admin.step_up_body')}</p>
+        <p className="ad-muted">{tr('admin.step_up_body_short')}</p>
         <div className="ad-field-group">
           <TextField
             id="step-up-code"
@@ -92,14 +113,6 @@ const StepUpDialog: React.FC<{ t: ThemeTokens; onDone: () => void; onCancel: () 
             aria-describedby={error === null ? undefined : 'step-up-error'}
           />
           {error === null ? null : <ErrorText id="step-up-error">{error}</ErrorText>}
-        </div>
-        <div className="ad-dialog-foot">
-          <Button onClick={onCancel} disabled={busy}>
-            {tr('common.cancel')}
-          </Button>
-          <Button type="submit" variant="primary" disabled={busy} loading={busy}>
-            {busy ? tr('admin.checking') : tr('common.confirm')}
-          </Button>
         </div>
       </form>
     </ModalFrame>

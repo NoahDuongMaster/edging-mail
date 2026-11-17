@@ -21,6 +21,9 @@ interface CreateUserDialogProps {
   onGoToDomains: () => void;
 }
 
+/** The form of the dialog; its Create account is in the dialog's foot, outside it. */
+const FORM_ID = 'new-user-form';
+
 export const CreateUserDialog: React.FC<CreateUserDialogProps> = ({ t, onClose, onCreated, onGoToDomains }) => {
   const tr = useT();
   const domains = useAdminDomains();
@@ -56,6 +59,8 @@ export const CreateUserDialog: React.FC<CreateUserDialogProps> = ({ t, onClose, 
   };
 
   let body: React.ReactNode;
+  // The dialog's buttons, in its foot (fixed at the bottom of a phone's sheet): Create account names the form it sends.
+  let footer: React.ReactNode;
   if (domains.isError) {
     body = (
       <Banner
@@ -77,19 +82,16 @@ export const CreateUserDialog: React.FC<CreateUserDialogProps> = ({ t, onClose, 
   } else if (domains.data === undefined) {
     body = <Loading t={t} label={tr('common.loading')} />;
   } else if (list.length === 0) {
-    body = (
-      <>
-        <p className="ad-text">{tr('users.create_no_domain')}</p>
-        <div className="ad-dialog-foot">
-          <Button variant="primary" onClick={onGoToDomains}>
-            {tr('domains.add_a_domain')}
-          </Button>
-        </div>
-      </>
+    body = <p className="ad-text">{tr('users.create_no_domain')}</p>;
+    footer = (
+      <Button variant="primary" onClick={onGoToDomains}>
+        {tr('domains.add_a_domain')}
+      </Button>
     );
   } else {
     body = (
       <form
+        id={FORM_ID}
         noValidate
         onSubmit={(event) => {
           void submit(event);
@@ -144,28 +146,30 @@ export const CreateUserDialog: React.FC<CreateUserDialogProps> = ({ t, onClose, 
           name="new-user-role"
           options={[
             { value: 'member', label: tr('term.member') },
-            { value: 'admin', label: tr('term.admin') }
+            // What an admin can and cannot do (crypto-design 15.1, word for word), in an InfoTip after the choice.
+            { value: 'admin', label: tr('term.admin'), hint: adminClaim().join(' ') }
           ]}
           value={role}
           onChange={(value) => setRole(value === 'admin' ? 'admin' : 'member')}
         />
-        {role === 'admin' ? <p className="ad-muted">{adminClaim().join(' ')}</p> : null}
-        <p className="ad-muted">{tr('users.create_password_note')}</p>
+        <p className="ad-muted">{tr('users.create_password_note_short')}</p>
         {action.error === null ? null : <ErrorText>{action.error}</ErrorText>}
-        <div className="ad-dialog-foot">
-          <Button onClick={onClose} disabled={action.busy}>
-            {tr('common.cancel')}
-          </Button>
-          <Button type="submit" variant="primary" disabled={action.busy} loading={action.busy}>
-            {action.busy ? tr('users.creating') : tr('users.create_account')}
-          </Button>
-        </div>
       </form>
+    );
+    footer = (
+      <>
+        <Button onClick={onClose} disabled={action.busy}>
+          {tr('common.cancel')}
+        </Button>
+        <Button type="submit" form={FORM_ID} variant="primary" disabled={action.busy} loading={action.busy}>
+          {action.busy ? tr('users.creating') : tr('users.create_account')}
+        </Button>
+      </>
     );
   }
 
   return (
-    <ModalFrame t={t} title={tr('users.new_account')} onClose={onClose} locked={action.busy}>
+    <ModalFrame t={t} title={tr('users.new_account')} onClose={onClose} locked={action.busy} footer={footer}>
       {body}
     </ModalFrame>
   );

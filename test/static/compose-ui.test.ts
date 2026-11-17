@@ -264,8 +264,16 @@ describe('the compose as a letter (v3 X1)', () => {
 
   it('folds what the message will be into a lock on the To row whose words stay reachable (status text, tooltip, a line without a mouse)', () => {
     const state = read(path.join(COMPOSE, 'ComposeState.tsx'));
-    expect(state).toMatch(/role="status" data-compose-state=\{preview\.state\} className="cp-lock"/);
-    expect(state).toMatch(/<span className="cp-lock-text">\{text\}<\/span>/);
+    expect(state).toMatch(/data-compose-state=\{preview\.state\} className="cp-lock"/);
+    // The status is the sentence alone (never the InfoTip's button beside it, DESIGN-v4m R1).
+    expect(state).toMatch(/<span role="status" className="cp-lock-text">\s*\{text\}\s*<\/span>/);
+    // Without a mouse a message that is not end-to-end shows the short line and the whole sentence in an InfoTip after it.
+    expect(state).toMatch(
+      /<span aria-hidden="true">\{tr\('compose\.state_plain_short'\)\}<\/span>\s*<InfoTip label=\{tr\('e2e\.badge'\)\} size="sm">\s*\{text\}/
+    );
+    expect(cssCode).toMatch(
+      /@media \(max-width: 900px\), \(hover: none\) \{\s*\.cp-lock\[data-compose-state='plain'\] > \.cp-lock-text \{\s*position: absolute;/
+    );
     expect(state).toMatch(/<Tooltip open=\{tip\.open\} text=\{text\}/);
     expect(modal).toMatch(/trailing=\{\s*<>[\s\S]{0,300}<ComposeState t=\{t\} preview=\{preview\} \/>\s*\{ccBccToggle\}/);
     // Hidden only where a mouse can point at the lock; a quiet line under the To row everywhere else.

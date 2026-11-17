@@ -167,7 +167,9 @@ describe('the look of the two files', () => {
 
   it('keeps the star off the time and the quick actions: its box starts under the first line (24 px high with a mouse, 2.5.8; down the row on touch)', () => {
     const css = read('messagelist.css');
-    expect(css).toMatch(/\.ml-star \{[^}]*top: calc\(var\(--ml-pad-y\) \+ 24px\);[^}]*height: 24px;/);
+    // Under the sender's line (--ml-line: 20 px with a mouse, 22 px on touch, DESIGN-v4m R2) and 4 px of air.
+    expect(css).toMatch(/\.ml-star \{[^}]*top: calc\(var\(--ml-pad-y\) \+ var\(--ml-line\) \+ 4px\);[^}]*height: 24px;/);
+    expect(css).toMatch(/--ml-line: var\(--lh-secondary\);/);
     expect(css).toMatch(/@media \(max-width: 900px\), \(pointer: coarse\) \{\s*\.ml-star \{\s*bottom: 0;\s*height: auto;/);
     // The quick actions (28 px in a pill with 2 px of padding) end where the star's box starts: top at pad - 8, so their bottom is pad + 24.
     expect(css).toMatch(/\.ml-quick \{[^}]*top: calc\(var\(--ml-pad-y\) - 8px\);[^}]*padding: 2px;/);
@@ -194,7 +196,10 @@ describe('the look of the two files', () => {
     const css = read('messagelist.css');
     expect(css).toMatch(/\.ml-head \{[^}]*min-height: 56px;[^}]*padding: 12px 12px 12px var\(--ml-edge\);/);
     expect(css.slice(css.indexOf('.ml-head {'), css.indexOf('}', css.indexOf('.ml-head {')))).not.toMatch(/border/);
-    expect(css).toMatch(/\.ml-title \{[^}]*font-size: 24px;[^}]*line-height: 32px;[^}]*letter-spacing: -0\.02em;/);
+    // 24/32 from the type variables (DESIGN-v4m R2: no literal size; the title variable is 18/26 on a desktop).
+    expect(css).toMatch(
+      /\.ml-title \{[^}]*font-size: calc\(var\(--fs-title\) \+ 6px\);[^}]*line-height: calc\(var\(--lh-title\) \+ 6px\);[^}]*letter-spacing: -0\.02em;/
+    );
     expect(css).not.toContain("data-last='true'");
   });
 
@@ -203,12 +208,17 @@ describe('the look of the two files', () => {
     // 36 px of heading (12 + its 20 px line + 4; no hairline: the rows fade in under it while it sticks) and the list's own 4 px.
     expect(css).toMatch(/\.ml-skel \{\s*padding-top: 40px;/);
     expect(css).toMatch(/--ml-head-h: 36px;/);
-    expect(css).toMatch(/\.ml-group-title \{[^}]*padding: 12px var\(--ml-edge\) 4px;[^}]*font-size: 13px;\s*line-height: 20px;/);
+    // 13 px on its 20 px line everywhere: --fs-secondary (13) with a mouse, --fs-meta (13) on a phone; the line is --lh-label (20 on both).
+    expect(css).toMatch(
+      /\.ml-group-title \{[^}]*padding: 12px var\(--ml-edge\) 4px;[^}]*font-size: var\(--fs-secondary\);\s*line-height: var\(--lh-label\);/
+    );
+    expect(css).toMatch(/@media \(max-width: 640px\), \(pointer: coarse\) \{[\s\S]*?\.ml-group-title \{\s*font-size: var\(--fs-meta\);/);
     expect(css).not.toMatch(/\.ml-group-title[^{]*\{[^}]*(border-bottom|background: var\(--border\))/);
     // The air between two days is outside the heading, so a stuck heading keeps --ml-head-h.
     expect(css).not.toMatch(/\.ml-group \+ \.ml-group \.ml-group-title \{/);
+    // Bars of 14, 14 and 12 px, each in the middle of its line (--ml-line): 6 px gaps and 3/5 px of padding with a mouse (20 px lines).
     expect(css).toMatch(
-      /\.ml-skel \.ui-skel-row \{\s*gap: 6px;\s*padding: calc\(var\(--ml-pad-y\) \+ 3px\) 20px calc\(var\(--ml-pad-y\) \+ 5px\) var\(--ml-text\);/
+      /\.ml-skel \.ui-skel-row \{\s*gap: calc\(var\(--ml-line\) - 14px\);\s*padding: calc\(var\(--ml-pad-y\) \+ \(var\(--ml-line\) - 14px\) \/ 2\) 20px calc\(var\(--ml-pad-y\) \+ var\(--ml-line\) \/ 2 - 5px\) var\(--ml-text\);/
     );
     // The avatar of a loading row is a square block (the stamp it stands for, W6 QA) on the content edge; they appear only after 300 ms
     // of waiting (M13).
@@ -234,8 +244,10 @@ describe('the look of the two files', () => {
 
   it('W5 lead review 2: the unread dot stands in the right column, under the time on the subject line; the gutter keeps only the pill', () => {
     const css = read('messagelist.css');
-    // Right-aligned on the time's edge (--ml-end), on the middle of line 2 (the row's padding + the sender's 20px line + 10 - 4).
-    expect(css).toMatch(/\.ml-dot \{[^}]*position: absolute;\s*top: calc\(var\(--ml-pad-y\) \+ 26px\);\s*right: var\(--ml-end\);/);
+    // Right-aligned on the time's edge (--ml-end), on the middle of line 2 (the row's padding + the sender's line + half a line - 4).
+    expect(css).toMatch(
+      /\.ml-dot \{[^}]*position: absolute;\s*top: calc\(var\(--ml-pad-y\) \+ var\(--ml-line\) \* 1\.5 - 4px\);\s*right: var\(--ml-end\);/
+    );
     expect(css).not.toMatch(/\.ml-dot \{[^}]*left: calc\(var\(--ml-gutter\)/);
     // Its room: the subject (and the star of an unread row) stop before it; it hides while the quick actions take the time's place.
     expect(css).toMatch(/\.ml-row\[data-unread='true'\] \.ml-line2 \{\s*padding-right: var\(--ml-dot-room\);/);
@@ -305,7 +317,9 @@ describe('the look of the two files', () => {
     const css = read('messagelist.css');
     expect(css.replaceAll(/\/\*[\s\S]*?\*\//g, '')).not.toMatch(/\.ml-(item|row|cell|list)[^{]*\{[^}]*border-(top|bottom): 1px/);
     expect(css).toMatch(/@media \(hover: hover\) \{\s*\.ml-cell \.ml-star\[aria-pressed='false'\] \{\s*opacity: 0;/);
-    expect(css).toMatch(/\.ml-label \{[^}]*color: var\(--text2\);[^}]*font-size: 12px;\s*line-height: 16px;\s*font-weight: 500;/);
+    expect(css).toMatch(
+      /\.ml-label \{[^}]*color: var\(--text2\);[^}]*font-size: var\(--fs-meta\);\s*line-height: var\(--lh-meta\);\s*font-weight: 500;/
+    );
     expect(css.slice(css.indexOf('.ml-label {'), css.indexOf('}', css.indexOf('.ml-label {')))).not.toMatch(/background/);
     expect(css).toMatch(/\.ml-label-dot \{[^}]*width: 6px;\s*height: 6px;/);
     expect(list).not.toMatch(/<Chip key=\{label\} colors=/);

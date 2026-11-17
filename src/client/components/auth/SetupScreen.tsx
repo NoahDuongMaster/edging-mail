@@ -21,7 +21,7 @@ import { usePasswordCheck } from '../../lib/password/usePasswordCheck';
 import { PasswordField, SecretField } from '../PasswordField';
 import { Badge, Banner, Select, Step, Steps, TextField } from '../../ui';
 import { RecoveryKeyPanel } from './RecoveryKeyPanel';
-import { AuthButton, AuthCard, ErrorLine } from './authUi';
+import { AuthActions, AuthButton, AuthCard, ErrorLine, TipLine } from './authUi';
 
 // First-run Setup: the first admin. Step 1 collects the setup key, the address, the name, the organisation language and the password
 // (nothing is derived or sent yet); step 2 shows the recovery key and, once three of its groups were typed back, makes the key set and
@@ -100,14 +100,16 @@ const NotReady: React.FC<{ t: ThemeTokens; names: readonly string[] }> = ({ t, n
           })}
         </p>
       ) : null}
-      <AuthButton
-        t={t}
-        type="button"
-        label={tr('setup.reload')}
-        onClick={() => {
-          window.location.reload();
-        }}
-      />
+      <AuthActions>
+        <AuthButton
+          t={t}
+          type="button"
+          label={tr('setup.reload')}
+          onClick={() => {
+            window.location.reload();
+          }}
+        />
+      </AuthActions>
     </AuthCard>
   );
 };
@@ -268,7 +270,14 @@ const SetupFlow: React.FC<{ t: ThemeTokens; session: Session }> = ({ t, session 
 
   if (step === 'recovery' && draft !== null) {
     return (
-      <AuthCard t={t} step={{ current: 2, total: STEPS }} title={tr('recovery.title_first')} picker wide>
+      <AuthCard
+        t={t}
+        step={{ current: 2, total: STEPS }}
+        title={tr('recovery.title_first')}
+        picker
+        wide
+        back={{ label: tr('common.back'), onClick: goBack }}
+      >
         <RecoveryKeyPanel
           t={t}
           draft={draft}
@@ -277,25 +286,33 @@ const SetupFlow: React.FC<{ t: ThemeTokens; session: Session }> = ({ t, session 
           onConfirmed={confirmed}
           onCancel={goBack}
           cancelLabel={tr('common.back')}
-        />
-        {wait !== null && wait > 0 ? (
-          <p role="status" className="au-muted">
-            {tr('auth.try_again_in', { seconds: wait })}
-          </p>
-        ) : null}
-        {keyWrong ? (
-          <SecretField
-            id="setup-key-retry"
-            label={tr('setup.key_label')}
-            hint={tr('setup.wrong_key_retry')}
-            showLabel={tr('auth.show_key')}
-            autoComplete="off"
-            value={retryKey}
-            onChange={(event) => setRetryKey(event.target.value)}
+        >
+          {wait !== null && wait > 0 ? (
+            <p role="status" className="au-muted">
+              {tr('auth.try_again_in', { seconds: wait })}
+            </p>
+          ) : null}
+          {keyWrong ? (
+            <SecretField
+              id="setup-key-retry"
+              label={tr('setup.key_label')}
+              hint={tr('setup.wrong_key_retry')}
+              hintMode="inline"
+              showLabel={tr('auth.show_key')}
+              autoComplete="off"
+              value={retryKey}
+              onChange={(event) => setRetryKey(event.target.value)}
+            />
+          ) : null}
+          {/* What the first admin can and cannot do for the people they add: one line after the key, which comes first on this step, and
+              the two claims word for word behind its tip (v4m R1: 76 words were a 7-line note at 12 px). */}
+          <TipLine
+            className="au-note"
+            text={tr('users.admin_claim_more')}
+            tip={adminClaimLimits().join(' ')}
+            label={tr('users.admin_claim_more')}
           />
-        ) : null}
-        {/* What the first admin can and cannot do for the people they add: a note after the key, which comes first on this step. */}
-        <p className="au-note">{adminClaimLimits().join(' ')}</p>
+        </RecoveryKeyPanel>
       </AuthCard>
     );
   }
@@ -336,7 +353,6 @@ const SetupFlow: React.FC<{ t: ThemeTokens; session: Session }> = ({ t, session 
         <TextField
           id="setup-email"
           label={tr('auth.email_label')}
-          hint={tr('setup.address_hint')}
           error={emailError ?? undefined}
           type="text"
           inputMode="email"
@@ -350,7 +366,7 @@ const SetupFlow: React.FC<{ t: ThemeTokens; session: Session }> = ({ t, session 
         />
         <TextField
           id="setup-name"
-          label={tr('term.display_name')}
+          label={tr('common.optional_label', { label: tr('term.display_name') })}
           hint={tr('setup.name_hint')}
           error={nameError ?? undefined}
           type="text"
@@ -400,13 +416,13 @@ const SetupFlow: React.FC<{ t: ThemeTokens; session: Session }> = ({ t, session 
         onBlur={touch('confirm')}
       />
 
-      {/* The longest form of these screens: from 641px its last row (an error about the whole form, and Continue) stays docked at the bottom
-          edge of the window while the fields scroll under it, so the next step is always in sight (at a 670px-high laptop window Continue was
-          about 400px below the fold). */}
-      <div className="au-sticky">
-        <ErrorLine t={t} id="setup-start-error" text={startError} />
+      {/* The longest form of these screens: its last row (Continue) is the bottom action bar on every window (v4m R3: docked, it stays at
+          the bottom edge of the window while the fields scroll under it, so the next step is always in sight; at a 670px-high laptop window
+          Continue was about 400px below the fold). An error about the whole form stands right above it. */}
+      <ErrorLine t={t} id="setup-start-error" text={startError} />
+      <AuthActions dock="always">
         <AuthButton t={t} busy={starting} label={tr('gate.continue')} />
-      </div>
+      </AuthActions>
     </AuthCard>
   );
 };

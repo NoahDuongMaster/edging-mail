@@ -55,6 +55,7 @@ import {
   EmptyState,
   FlightTrail,
   IconButton,
+  InfoTip,
   Menu,
   Odometer,
   Postmark,
@@ -1003,7 +1004,17 @@ export const MessageView: React.FC<MessageViewProps> = ({
 
       {isUnreadable(message.mail_state) ? (
         <div data-mail-state={message.mail_state} className="rd-note">
-          <Banner>{tr(NOTE_KEYS[message.mail_state])}</Banner>
+          {/* DESIGN-v4m R1: a message sealed to an older key says so in one line; how that happened is in its InfoTip. */}
+          <Banner>
+            {message.mail_state === 'other_key' ? (
+              <span className="ui-tip-row">
+                <span>{tr('mailcrypto.note_other_key_short')}</span>
+                <InfoTip label={tr('mailcrypto.subject_locked')}>{tr(NOTE_KEYS.other_key)}</InfoTip>
+              </span>
+            ) : (
+              tr(NOTE_KEYS[message.mail_state])
+            )}
+          </Banner>
         </div>
       ) : null}
 

@@ -262,7 +262,10 @@ describe('the signature of the open letter (v3 X1)', () => {
       /@container rd-head \(max-width: 479px\) \{\s*\.ui-postmark\.rd-postmark \{\s*display: none;\s*\}\s*\.rd-head > :is\(\.rd-subject, \.rd-tags\) \{\s*margin-inline-end: 0;/
     );
     // The typographic peak: the subject 32/40 650.
-    expect(cssCode).toMatch(/\n\.rd-subject \{[^}]*font-size: 32px;\s*line-height: 40px;\s*font-weight: 650;\s*letter-spacing: -0\.022em;/);
+    // 32/40 from the type variables (DESIGN-v4m R2; the title variable is 18/26 on a desktop), 24/32 on a phone.
+    expect(cssCode).toMatch(
+      /\n\.rd-subject \{[^}]*font-size: calc\(var\(--fs-title\) \+ 14px\);\s*line-height: calc\(var\(--lh-title\) \+ 14px\);\s*font-weight: 650;\s*letter-spacing: -0\.022em;/
+    );
     // W5 lead review 6: no trail leaves the dock (it read as a stray connector); the empty reader keeps its trail; no end mark either.
     expect(view).not.toContain('rd-reply-trail');
     expect(css).not.toContain('rd-reply-trail');

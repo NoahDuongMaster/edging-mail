@@ -437,9 +437,9 @@
 .ui-dtp-month {
   margin: 0;
   color: var(--text);
-  font-size: 15px;
+  font-size: calc(var(--fs-body) + 1px);
   font-weight: 600;
-  line-height: 22px;
+  line-height: calc(var(--lh-body) + 2px);
   letter-spacing: -0.005em;
 }
 .ui-dtp-month::first-letter {
@@ -458,9 +458,9 @@
 .ui-dtp-grid th {
   padding: 0 0 4px;
   color: var(--text3);
-  font-size: 12px;
+  font-size: var(--fs-meta);
   font-weight: 500;
-  line-height: 16px;
+  line-height: var(--lh-meta);
   text-align: center;
 }
 .ui-dtp-grid td {
@@ -478,7 +478,7 @@
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-secondary);
   font-variant-numeric: tabular-nums;
   line-height: 20px;
   cursor: pointer;
@@ -548,7 +548,7 @@
   box-shadow: inset 0 0 0 1px var(--border-strong);
   color: var(--text2);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-button-sm);
   font-weight: 500;
   cursor: pointer;
   transition:
@@ -586,7 +586,7 @@
   flex: 1;
   padding-inline-start: 4px;
   color: var(--text2);
-  font-size: 13px;
+  font-size: var(--fs-label);
   font-weight: 500;
 }
 .ui-dtp-time-part {
@@ -613,8 +613,8 @@
   margin: -4px 0 0;
   padding-inline-start: 4px;
   color: var(--text2);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--fs-secondary);
+  line-height: var(--lh-secondary);
   font-variant-numeric: tabular-nums;
 }
 .ui-dtp-actions {
@@ -630,7 +630,7 @@
 .ui-dtp-sheet .ui-dtp-day {
   width: 44px;
   height: 44px;
-  font-size: 15px;
+  font-size: var(--fs-secondary);
 }
 .ui-dtp-sheet .ui-dtp-blank {
   height: 44px;

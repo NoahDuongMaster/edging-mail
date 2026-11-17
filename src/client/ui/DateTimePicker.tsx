@@ -21,7 +21,7 @@ import {
 } from './calendar';
 import { cx } from './cx';
 import { Dialog } from './Dialog';
-import { describedBy, Field, has } from './Field';
+import { describedBy, Field, has, type HintMode } from './Field';
 import { IconButton } from './IconButton';
 import { useLayer } from './layers';
 import { useMediaMatch } from './media';
@@ -61,6 +61,8 @@ export interface DateTimePickerProps {
   label?: string;
   hideLabel?: boolean;
   hint?: string;
+  /** `tip` (default): the hint behind an InfoTip after the label; `inline`: a visible line under the trigger (Field's HintMode). */
+  hintMode?: HintMode;
   error?: string;
   /** Shown while there is no value; default: "Choose a date and time". */
   placeholder?: string;
@@ -90,6 +92,7 @@ export function DateTimePicker({
   label,
   hideLabel,
   hint,
+  hintMode,
   error,
   placeholder,
   ...aria
@@ -171,7 +174,7 @@ export function DateTimePicker({
 
   if (label !== undefined) {
     return (
-      <Field id={fieldId} label={label} hideLabel={hideLabel} hint={hint} error={error} native={false}>
+      <Field id={fieldId} label={label} hideLabel={hideLabel} hint={hint} hintMode={hintMode} error={error} native={false}>
         {trigger}
         {picker}
       </Field>

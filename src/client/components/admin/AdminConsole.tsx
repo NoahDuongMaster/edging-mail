@@ -6,13 +6,13 @@ import { useSession } from '../../lib/auth';
 import { useDocumentTitle } from '../../lib/documentTitle';
 import { trapTab } from '../../lib/focusTrap';
 import { fmt, useT } from '../../lib/i18n';
-import { Avatar, IconButton, Odometer, TabPanel, Tabs, useGlide } from '../../ui';
+import { Avatar, IconButton, Odometer, PhoneBar, TabPanel, Tabs, useGlide, useMediaMatch } from '../../ui';
 import { AuditPanel } from './AuditPanel';
 import { DomainsPanel } from './DomainsPanel';
 import { LanguagePanel } from './LanguagePanel';
 import { StepUpProvider } from './StepUp';
 import { UsersPanel } from './UsersPanel';
-import { focusAccountButton } from './adminUi';
+import { BarSlot, PHONE_LAYOUT, focusAccountButton } from './adminUi';
 import './admin.css';
 
 interface AdminConsoleProps {
@@ -55,14 +55,20 @@ const SectionNav: React.FC<{ open: Tab; children: React.ReactNode }> = ({ open, 
  * The open console: a page over the mailbox, drawn as one sheet on the window ground in the language of Settings. On a desktop the sheet
  * has two tones and no line between them: the sections down the left on the raised tone (the open one under the gliding capsule), the
  * section's page on the surface with its head (title, one line, the primary action) and its content in a column of at most 1040px; the
- * console's name sits at the top of the nav and Close at the top right of the page. On a phone the sections are one row of tabs under the
- * title that scrolls sideways, its hidden side faded (J3-05: a 2x2 grid took a quarter of the screen).
+ * console's name sits at the top of the nav and Close at the top right of the page. On a phone (DESIGN-v4m R3) the console's name is a
+ * fixed top bar (ui PhoneBar: Close at its start, the open section's one action at its end, so Add person and Add domain never scroll
+ * away), and the sections are one row of tabs fixed under it that scrolls sideways, its hidden side faded (J3-05: a 2x2 grid took a
+ * quarter of the screen); the page scrolls under both.
  */
 const Workspace: React.FC<{ t: ThemeTokens; onClose: () => void }> = ({ t, onClose }) => {
   const tr = useT();
   const [tab, setTab] = React.useState<Tab>('users');
   const rootRef = React.useRef<HTMLDivElement | null>(null);
+  const sheetRef = React.useRef<HTMLDivElement | null>(null);
   const closeRef = React.useRef<HTMLButtonElement | null>(null);
+  const phone = useMediaMatch(PHONE_LAYOUT);
+  // The end of the phone bar, where the open section draws its action (adminUi BarSlot); none on a desktop.
+  const [barSlot, setBarSlot] = React.useState<HTMLElement | null>(null);
   // The admin who acts here, at the top of the nav as Settings shows who is signed in (every change of the console is logged under them).
   const self = useSession().data?.user;
   let selfName = '';
@@ -118,6 +124,12 @@ const Workspace: React.FC<{ t: ThemeTokens; onClose: () => void }> = ({ t, onClo
     }
   };
 
+  const close = (
+    <IconButton ref={closeRef} label={tr('admin.close_console')} onClick={onClose} className="ad-close">
+      <X size={18} aria-hidden="true" />
+    </IconButton>
+  );
+
   return (
     // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the console is a dialog: Escape and Tab are handled here, and the Close button is the pointer route
     <div
@@ -130,15 +142,25 @@ const Workspace: React.FC<{ t: ThemeTokens; onClose: () => void }> = ({ t, onClo
       onKeyDown={onKeyDown}
     >
       <StepUpProvider t={t}>
-        <div className="ad-sheet">
-          <div className="ad-head">
-            <h1 id="admin-title" className="ad-title">
-              {tr('term.admin_console')}
-            </h1>
-            <IconButton ref={closeRef} label={tr('admin.close_console')} onClick={onClose} className="ad-close">
-              <X size={18} aria-hidden="true" />
-            </IconButton>
-          </div>
+        <div ref={sheetRef} className="ad-sheet">
+          {phone ? (
+            <PhoneBar
+              as="h1"
+              titleId="admin-title"
+              title={tr('term.admin_console')}
+              start={close}
+              end={<span ref={setBarSlot} className="ad-bar-slot" />}
+              scroller={sheetRef}
+              className="ad-bar"
+            />
+          ) : (
+            <div className="ad-head">
+              <h1 id="admin-title" className="ad-title">
+                {tr('term.admin_console')}
+              </h1>
+              {close}
+            </div>
+          )}
           <SectionNav open={tab}>
             {self === undefined ? null : (
               <div className="ad-identity">
@@ -171,20 +193,22 @@ const Workspace: React.FC<{ t: ThemeTokens; onClose: () => void }> = ({ t, onClo
               orientation="vertical"
             />
           </SectionNav>
-          <div className="ad-main">
-            <TabPanel tabsId="admin" value="users" selected={tab}>
-              <UsersPanel t={t} onGoToDomains={() => setTab('domains')} />
-            </TabPanel>
-            <TabPanel tabsId="admin" value="domains" selected={tab}>
-              <DomainsPanel t={t} />
-            </TabPanel>
-            <TabPanel tabsId="admin" value="audit" selected={tab}>
-              <AuditPanel t={t} />
-            </TabPanel>
-            <TabPanel tabsId="admin" value="settings" selected={tab}>
-              <LanguagePanel t={t} />
-            </TabPanel>
-          </div>
+          <BarSlot.Provider value={phone ? barSlot : null}>
+            <div className="ad-main">
+              <TabPanel tabsId="admin" value="users" selected={tab}>
+                <UsersPanel t={t} onGoToDomains={() => setTab('domains')} />
+              </TabPanel>
+              <TabPanel tabsId="admin" value="domains" selected={tab}>
+                <DomainsPanel t={t} />
+              </TabPanel>
+              <TabPanel tabsId="admin" value="audit" selected={tab}>
+                <AuditPanel t={t} />
+              </TabPanel>
+              <TabPanel tabsId="admin" value="settings" selected={tab}>
+                <LanguagePanel t={t} />
+              </TabPanel>
+            </div>
+          </BarSlot.Provider>
         </div>
       </StepUpProvider>
     </div>

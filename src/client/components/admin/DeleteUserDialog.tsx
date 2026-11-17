@@ -7,7 +7,7 @@ import { announce } from '../../lib/announce';
 import { useFieldFocus } from '../../lib/fieldFocus';
 import { tRich, useT } from '../../lib/i18n';
 import { Button, TextField } from '../../ui';
-import { ErrorText, ModalFrame } from './adminUi';
+import { ErrorText, ModalFrame, tipLines } from './adminUi';
 import { useAdminAction } from './useAdminAction';
 
 interface DeleteUserDialogProps {
@@ -18,6 +18,8 @@ interface DeleteUserDialogProps {
 }
 
 const CONFIRM_ID = 'delete-user-confirm';
+/** The form of the dialog; its Delete account is in the dialog's foot, outside it. */
+const FORM_ID = 'delete-user-form';
 /** The warning: what is lost. The alert dialog is described by it, so it is read on open, before the field (J1-26). */
 const WARNING_ID = 'delete-user-warning';
 
@@ -63,8 +65,28 @@ export const DeleteUserDialog: React.FC<DeleteUserDialogProps> = ({ t, user, onC
   };
 
   return (
-    <ModalFrame t={t} title={tr('users.delete_title')} onClose={onClose} locked={action.busy} alert describedBy={WARNING_ID}>
+    <ModalFrame
+      t={t}
+      title={tr('users.delete_title')}
+      onClose={onClose}
+      locked={action.busy}
+      alert
+      describedBy={WARNING_ID}
+      // When deleting is the answer (the Product Owner's words, as written) and what a new account at the address means, behind the title.
+      info={tipLines([tr('security.admin_delete_lost_keys'), tr('users.delete_key_note')])}
+      footer={
+        <>
+          <Button onClick={onClose} disabled={action.busy}>
+            {tr('common.cancel')}
+          </Button>
+          <Button type="submit" disabled={action.busy} form={FORM_ID} variant="danger" loading={action.busy}>
+            {action.busy ? tr('users.deleting') : tr('admin.delete_account')}
+          </Button>
+        </>
+      }
+    >
       <form
+        id={FORM_ID}
         noValidate
         onSubmit={(event) => {
           void submit(event);
@@ -76,10 +98,6 @@ export const DeleteUserDialog: React.FC<DeleteUserDialogProps> = ({ t, user, onC
           <TriangleAlert size={16} aria-hidden="true" />
           <span>{tRich('users.delete_body', { address: <strong className="ad-strong ad-wrap">{user.email}</strong> })}</span>
         </p>
-        <div className="ad-field-group">
-          <p className="ad-muted">{tr('security.admin_delete_lost_keys')}</p>
-          <p className="ad-muted">{tr('users.delete_key_note')}</p>
-        </div>
         <TextField
           ref={field}
           id={CONFIRM_ID}
@@ -94,14 +112,6 @@ export const DeleteUserDialog: React.FC<DeleteUserDialogProps> = ({ t, user, onC
           error={submitted && !matches ? mismatch : undefined}
         />
         {action.error === null ? null : <ErrorText>{action.error}</ErrorText>}
-        <div className="ad-dialog-foot">
-          <Button onClick={onClose} disabled={action.busy}>
-            {tr('common.cancel')}
-          </Button>
-          <Button type="submit" disabled={action.busy} variant="danger" loading={action.busy}>
-            {action.busy ? tr('users.deleting') : tr('admin.delete_account')}
-          </Button>
-        </div>
       </form>
     </ModalFrame>
   );

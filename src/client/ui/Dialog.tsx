@@ -5,6 +5,7 @@ import { trapTab } from '../lib/focusTrap';
 import { useT } from '../lib/i18n';
 import { cx } from './cx';
 import { IconButton } from './IconButton';
+import { InfoTip } from './InfoTip';
 import { useLayer, useScrollLock } from './layers';
 import { useOverflows } from './media';
 import { useExitMotion, useSheetResize } from './motion';
@@ -17,8 +18,10 @@ export interface DialogProps {
   onClose: () => void;
   /** The heading of the dialog and its accessible name. */
   title: string;
-  /** One or two sentences under the title; a screen reader reads them when the dialog opens. */
+  /** One line under the title (DESIGN-v4m R1: about ten words); a screen reader reads it when the dialog opens. */
   description?: React.ReactNode;
+  /** A longer explanation behind an InfoTip right after the title, instead of more lines of description. */
+  info?: React.ReactNode;
   /**
    * The id of what a screen reader reads when the dialog opens, for a dialog whose message is a part of its content (the warning callout
    * of a deletion, J1-26); it wins over `description`.
@@ -117,6 +120,7 @@ function DialogPanel({
   onClose,
   title,
   description,
+  info,
   describedBy,
   size = 'md',
   width,
@@ -165,6 +169,26 @@ function DialogPanel({
     enabled: () => canClose && window.matchMedia(SHEET_QUERY).matches,
     startsDrag: inGrip
   });
+
+  // v4m R3: on a phone the head and the foot stay while the body scrolls; the head draws its hairline only once the content has scrolled
+  // under it (`data-scrolled` on the panel, ui.css), the foot its hairline and fade only while the body scrolls at all (`data-scrolls`).
+  React.useEffect(() => {
+    const body = bodyRef.current;
+    const panel = panelRef.current;
+    if (body === null || panel === null) {
+      return;
+    }
+    const onScroll = () => {
+      if (body.scrollTop > 0) {
+        panel.dataset.scrolled = 'true';
+      } else {
+        delete panel.dataset.scrolled;
+      }
+    };
+    onScroll();
+    body.addEventListener('scroll', onScroll, { passive: true });
+    return () => body.removeEventListener('scroll', onScroll);
+  }, []);
 
   // J5-22: on a phone the sheet stands on what the on-screen keyboard leaves (the visual viewport, as compose does): the scrim is padded by
   // the height the keyboard covers and the sheet is never taller than the visible height (ui.css --ui-vv-bottom and --ui-vv-height, read
@@ -293,12 +317,23 @@ function DialogPanel({
         tabIndex={-1}
         className={cx('ui-dialog', className)}
         data-size={size}
+        data-scrolls={bodyScrolls ? 'true' : undefined}
         style={width === undefined ? undefined : { maxWidth: width }}
       >
         <div className="ui-dialog-head">
-          <h2 id={titleId} className="ui-dialog-title">
-            {title}
-          </h2>
+          {info === undefined ? (
+            <h2 id={titleId} className="ui-dialog-title">
+              {title}
+            </h2>
+          ) : (
+            // The tip stands beside the heading, not inside it: the dialog's name (aria-labelledby) stays its title.
+            <div className="ui-dialog-heading ui-tip-row">
+              <h2 id={titleId} className="ui-dialog-title">
+                {title}
+              </h2>
+              <InfoTip label={title}>{info}</InfoTip>
+            </div>
+          )}
           {dismissible && closeButton ? (
             <IconButton label={tr('common.close')} size="sm" onClick={onClose} disabled={closeDisabled}>
               <X size={18} aria-hidden="true" />

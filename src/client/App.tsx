@@ -2259,7 +2259,9 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
                   <AccountButton initials={initials} onClick={() => openSettings()} />
                 </div>
               )}
-              {banners}
+              {/* Account notices and locked mail are the top of the list's scroller on a phone (MessageList `notices`): they scroll away
+                  with the filters, so the app bar and the search are all that stays (DESIGN-v4m R3; a fixed notice left a 320x568 phone no
+                  row at all), and an open message's own bar is the top of the screen. */}
 
               {/* The one main landmark of the mailbox: the list or the open message (WCAG 1.3.1, 2.4.1). */}
               <main className="mb-phone-panes">
@@ -2312,8 +2314,9 @@ function Mailbox({ t, dark, onToggleDark, themeChoice, onThemeChoice }: MailboxP
                         onRefresh={refreshList}
                         isLoading={isLoadingList}
                         {...searchProps}
-                        // The search scrolls away with the rows; the app bar above stays.
+                        // The search stays under the app bar; the notices and the filters scroll away with the rows (DESIGN-v4m R3).
                         searchSlot={renderSearch(true)}
+                        notices={banners}
                         compact
                         scrollMemory={listScroll}
                         hasMore={hasMore}

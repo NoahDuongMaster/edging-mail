@@ -35,8 +35,8 @@
    when a replacing toast's words are shorter or a little longer. */
 .tst-root .ui-toast-text {
   flex: 1 1 auto;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   font-weight: 500;
 }
 

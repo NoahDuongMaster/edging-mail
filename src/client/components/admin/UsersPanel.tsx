@@ -20,14 +20,25 @@ import {
   TableSkeleton,
   TextField,
   Tooltip,
-  useTooltip
+  useTooltip,
+  VisuallyHidden
 } from '../../ui';
 import { CreateUserDialog } from './CreateUserDialog';
 import { DeleteUserDialog } from './DeleteUserDialog';
 import { personName } from './PersonHeader';
 import { TempPasswordDialog } from './TempPasswordDialog';
 import { UserDialog } from './UserDialog';
-import { ErrorText, LoadError, PageHead, PersonRole, PersonStatus, PersonTwoFactor, personState, type PersonState } from './adminUi';
+import {
+  ErrorText,
+  LoadError,
+  PageHead,
+  PersonRole,
+  PersonStatus,
+  PersonTwoFactor,
+  personState,
+  useInBar,
+  type PersonState
+} from './adminUi';
 
 type Dialog =
   | { kind: 'create' }
@@ -53,8 +64,9 @@ interface Sort {
 const nameOf = personName;
 
 /**
- * When the person last signed in, in words ("2 hours ago"); the full date and time is in a tooltip and in the person's dialog. A phone,
- * where no column header names it, says the whole sentence ("Last sign-in 2 hours ago").
+ * When the person last signed in, in words ("2 hours ago"); the full date and time is in a tooltip and in the person's dialog. Screen
+ * readers hear the whole sentence ("Last sign-in 2 hours ago") wherever the row is drawn: a phone's stacked row has no column header,
+ * and there the words stand at the end of the name's line, as the time of a message does in the mail list.
  */
 const LastSignIn: React.FC<{ at: number }> = ({ at }) => {
   const tr = useT();
@@ -71,8 +83,10 @@ const LastSignIn: React.FC<{ at: number }> = ({ at }) => {
         className="ad-when"
         {...tip.anchor}
       >
-        <span className="ad-wide ad-when-main">{when}</span>
-        <span className="ad-narrow">{tr('users.last_sign_in', { when })}</span>
+        <span className="ad-when-main" aria-hidden="true">
+          {when}
+        </span>
+        <VisuallyHidden>{tr('users.last_sign_in', { when })}</VisuallyHidden>
       </time>
       <Tooltip open={tip.open} text={fmt.dateTime(at)} anchorRef={ref} {...tip.bubble} />
     </>
@@ -201,6 +215,8 @@ const UserRow: React.FC<{ user: AdminUser; onOpen: () => void }> = ({ user, onOp
       <td
         className="ad-cell-when ad-quiet"
         data-none={user.last_login_at === null && user.temp_password_expires_at === null ? 'true' : undefined}
+        // A last sign-in stands at the end of the name's line in a phone's stacked row; a temporary password's expiry ends the meta line.
+        data-time={user.last_login_at === null ? undefined : 'true'}
       >
         <div className="ad-when-row">
           {user.last_login_at === null ? (
@@ -230,6 +246,7 @@ interface UsersPanelProps {
 
 export const UsersPanel: React.FC<UsersPanelProps> = ({ t, onGoToDomains }) => {
   const tr = useT();
+  const inBar = useInBar();
   const [search, setSearch] = React.useState('');
   const [filter, setFilter] = React.useState<Filter>('all');
   const [twoFactor, setTwoFactor] = React.useState<TwoFactorFilter>('any');
@@ -382,10 +399,16 @@ export const UsersPanel: React.FC<UsersPanelProps> = ({ t, onGoToDomains }) => {
     <div className="ad-pane">
       <PageHead
         title={tr('admin.tab_people')}
-        description={tr('admin.people_desc')}
+        description={tr('admin.people_desc_short')}
+        info={tr('admin.people_desc')}
         action={
-          <Button variant="primary" leadingIcon={<Plus size={16} aria-hidden="true" />} onClick={() => setDialog({ kind: 'create' })}>
-            {tr('users.add_person')}
+          <Button
+            variant="primary"
+            leadingIcon={<Plus size={16} aria-hidden="true" />}
+            aria-label={inBar ? tr('users.add_person') : undefined}
+            onClick={() => setDialog({ kind: 'create' })}
+          >
+            {tr(inBar ? 'common.add' : 'users.add_person')}
           </Button>
         }
       />

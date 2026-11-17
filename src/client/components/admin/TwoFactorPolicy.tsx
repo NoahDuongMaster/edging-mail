@@ -7,8 +7,8 @@ import { announce } from '../../lib/announce';
 import { sessionKey, useSession } from '../../lib/auth';
 import { useT } from '../../lib/i18n';
 import { orgSettingsKey } from '../../lib/language';
-import { Button, Switch, TextField } from '../../ui';
-import { ErrorText, Group } from './adminUi';
+import { Button, InfoTip, Switch, TextField } from '../../ui';
+import { ErrorText, Group, tipLines } from './adminUi';
 import { useAdminAction } from './useAdminAction';
 
 const SWITCH_ID = 'admin-require-2fa';
@@ -77,12 +77,14 @@ export const TwoFactorPolicy: React.FC<{ required: boolean | undefined }> = ({ r
   };
 
   return (
-    <Group title={tr('admin.policy_title')} description={tr('admin.policy_desc')}>
+    // One InfoTip after the card's title says what the rule is and what each state does (DESIGN-v4m R1); the switch shows the state.
+    <Group
+      title={tr('admin.policy_title')}
+      info={tipLines([tr('admin.policy_desc'), tr('admin.policy_on_effect'), tr('admin.policy_off_effect')])}
+    >
       <Switch
         id={SWITCH_ID}
         label={tr('admin.policy_switch')}
-        // Who the rule touches, for the state it is in now.
-        hint={required === true ? tr('admin.policy_on_effect') : tr('admin.policy_off_effect')}
         // The switch shows what the server has: it stays on while the question is open, and goes off only once the change is made.
         checked={required === true}
         disabled={required === undefined || action.busy}
@@ -113,7 +115,11 @@ export const TwoFactorPolicy: React.FC<{ required: boolean | undefined }> = ({ r
           }}
           className="ad-confirm"
         >
-          <p className="ad-text">{tr('admin.policy_off_body')}</p>
+          {/* The consequence in one line; that the change is logged and told to the other admins, in its InfoTip. */}
+          <p className="ad-text">
+            {tr('admin.policy_off_body_short')}
+            <InfoTip label={tr('admin.policy_turn_off')}>{tr('admin.policy_off_body')}</InfoTip>
+          </p>
           <TextField
             id={FIELD_ID}
             label={tr('admin.policy_confirm_label', { address: email })}

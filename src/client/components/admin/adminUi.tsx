@@ -1,9 +1,44 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { Ban, CircleAlert, Clock, ExternalLink, ShieldCheck, ShieldOff } from 'lucide-react';
 import type { ThemeTokens } from '../../theme';
 import { adminErrorText, type AdminUser } from '../../lib/admin/types';
 import { useT } from '../../lib/i18n';
-import { Badge, Banner, Button, Dialog, Disclosure, DisclosurePanel, Section, VisuallyHidden } from '../../ui';
+import { Badge, Banner, Button, Dialog, Disclosure, DisclosurePanel, InfoTip, Section, VisuallyHidden } from '../../ui';
+
+/** The console's phone layout (admin.css's phone block): the fixed top bar, the row of tabs, the section's action in the bar. */
+export const PHONE_LAYOUT = '(max-width: 640px)';
+
+/**
+ * The end slot of the console's top bar on a phone (AdminConsole), where the open section puts its one action (Add person, Add domain) so
+ * it never scrolls away (DESIGN-v4m R3); null on a desktop, where the action stays in the page head.
+ */
+export const BarSlot = React.createContext<HTMLElement | null>(null);
+
+/**
+ * Whether the section's action stands in the console's top bar (a phone): there it is a compact primary, its icon and the short "Add"
+ * (its accessible name stays the whole "Add person"), so the bar's title keeps its room at 320px and in Vietnamese (DESIGN-v4m R3).
+ */
+export const useInBar = (): boolean => React.useContext(BarSlot) !== null;
+
+/**
+ * The words of an InfoTip in lines of their own: a line may name what it is about first (a button, a state), in bold. A function, not a
+ * component: the tip reads the words of what it is given (nodeText) to say them when it opens.
+ */
+export const tipLines = (lines: readonly (string | readonly [string, string])[]): React.ReactNode[] =>
+  lines.flatMap((line, index) => [
+    // A space between two lines, so the words read as sentences where the lines are joined (the announcement of an opened tip).
+    index === 0 ? null : ' ',
+    typeof line === 'string' ? (
+      <span key={line} className="ad-tip-line">
+        {line}
+      </span>
+    ) : (
+      <span key={line[0]} className="ad-tip-line">
+        <strong>{line[0]}</strong> {line[1]}
+      </span>
+    )
+  ]);
 
 /**
  * A long text that is there for whoever wants it (the full statement of what admins can and cannot do): a quiet disclosure with `label`,
@@ -106,23 +141,22 @@ export const PersonStatus: React.FC<{ user: AdminUser }> = ({ user }) => {
 
 /**
  * Whether the account has two-factor sign-in. On is quiet; Off is a warning on an account someone can sign in to (a disabled one is
- * quiet). `short`: "On" or "Off" under the column header of a
- * table; the whole phrase where nothing names the column (the stacked rows of a phone, the person's dialog).
+ * quiet). `short`: "On" or "Off" under the column header of a table, and "Two-factor on" in the one meta line of a phone's stacked row
+ * (role, status, two-factor), where nothing names the column; the whole phrase in the person's dialog.
  */
 export const PersonTwoFactor: React.FC<{ user: AdminUser; short?: boolean }> = ({ user, short = false }) => {
   const tr = useT();
   // Off is a warning on any account that is not disabled.
   const exposed = !user.two_factor && personState(user) !== 'disabled';
-  const long = tr(user.two_factor ? 'users.two_factor_is_on' : 'users.two_factor_is_off');
   return (
     <StateWord icon={user.two_factor ? <ShieldCheck size={14} /> : <ShieldOff size={14} />} tone={exposed ? 'warning' : undefined}>
       {short ? (
         <>
           <span className="ad-wide">{tr(user.two_factor ? 'users.two_factor_on' : 'users.two_factor_off')}</span>
-          <span className="ad-narrow">{long}</span>
+          <span className="ad-narrow">{tr(user.two_factor ? 'users.two_factor_meta_on' : 'users.two_factor_meta_off')}</span>
         </>
       ) : (
-        long
+        tr(user.two_factor ? 'users.two_factor_is_on' : 'users.two_factor_is_off')
       )}
     </StateWord>
   );
@@ -135,50 +169,60 @@ export const PersonRole: React.FC<{ user: AdminUser }> = ({ user }) => {
 };
 
 /**
- * The head of a section of the console, as a page of Settings has it: its title (the h2 under the console's h1, 24/32), one line that says
- * what the section is for, and on the right the section's one primary action.
+ * The head of a section of the console, as a page of Settings has it: its title (the h2 under the console's h1, 24/32), one short line
+ * that says what the section is for (DESIGN-v4m R1: the rest of the explanation, `info`, behind an InfoTip at the end of that line), and
+ * the section's one primary action: on the right of the head on a desktop, in the console's top bar on a phone (BarSlot), where it never
+ * scrolls away.
  */
-export const PageHead: React.FC<{ title: string; description: string; action?: React.ReactNode }> = ({ title, description, action }) => (
-  <header className="ad-page-head">
-    <div className="ad-page-heading">
-      <h2 className="ad-page-title">{title}</h2>
-      <p className="ad-page-desc">{description}</p>
-    </div>
-    {action === undefined ? null : <div className="ad-page-action">{action}</div>}
-  </header>
-);
+export const PageHead: React.FC<{ title: string; description: string; info?: string; action?: React.ReactNode }> = ({
+  title,
+  description,
+  info,
+  action
+}) => {
+  const slot = React.useContext(BarSlot);
+  let place: React.ReactNode = null;
+  if (action !== undefined) {
+    place =
+      slot === null ? <div className="ad-page-action">{action}</div> : createPortal(<div className="ad-bar-action">{action}</div>, slot);
+  }
+  return (
+    <header className="ad-page-head">
+      <div className="ad-page-heading">
+        <h2 className="ad-page-title">{title}</h2>
+        <p className="ad-page-desc">
+          {description}
+          {info === undefined ? null : <InfoTip label={title}>{info}</InfoTip>}
+        </p>
+      </div>
+      {place}
+    </header>
+  );
+};
 
 /**
  * One grouped card of rows (ui Section `grouped`, the card of a Settings page): each direct child is a row, separated from the next by a
- * hairline that starts at the text. `title` is the quiet label over the card.
+ * hairline that starts at the text. `title` is the quiet label over the card; `info` an InfoTip after it (what the card's rows mean).
  */
-export const Group: React.FC<{ title?: string; description?: string; headingLevel?: 3 | 4; children: React.ReactNode }> = ({
-  title,
-  description,
-  headingLevel = 3,
-  children
-}) => (
-  <Section grouped className="ad-group" title={title} description={description} headingLevel={headingLevel}>
+export const Group: React.FC<{
+  title?: string;
+  description?: string;
+  info?: React.ReactNode;
+  headingLevel?: 3 | 4;
+  children: React.ReactNode;
+}> = ({ title, description, info, headingLevel = 3, children }) => (
+  <Section grouped className="ad-group" title={title} description={description} info={info} headingLevel={headingLevel}>
     {children}
   </Section>
 );
 
-/** A row of a Group: its words (a label, a hint under it) on the left, its control on the right; under the words on a narrow card. */
-export const Row: React.FC<{ label?: string; hint?: string; hintId?: string; children?: React.ReactNode }> = ({
-  label,
-  hint,
-  hintId,
-  children
-}) => (
+/** A row of a Group: its label (with an InfoTip after it that explains it) on the left, its control on the right; under it on a narrow card. */
+export const Row: React.FC<{ label?: string; info?: string; children?: React.ReactNode }> = ({ label, info, children }) => (
   <div className="ad-row">
-    {label === undefined && hint === undefined ? null : (
-      <div className="ad-row-text">
-        {label === undefined ? null : <span className="ad-row-label">{label}</span>}
-        {hint === undefined ? null : (
-          <span id={hintId} className="ad-row-hint">
-            {hint}
-          </span>
-        )}
+    {label === undefined ? null : (
+      <div className="ad-row-text ui-tip-row">
+        <span className="ad-row-label">{label}</span>
+        {info === undefined ? null : <InfoTip label={label}>{info}</InfoTip>}
       </div>
     )}
     {children === undefined ? null : <div className="ad-row-control">{children}</div>}
@@ -228,6 +272,13 @@ interface ModalFrameProps {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
+  /**
+   * The dialog's buttons (the primary last), in the ui Dialog's foot: under the content on a desktop, fixed at the bottom of the sheet on
+   * a phone while the content scrolls (DESIGN-v4m R3), the buttons sharing its width. A form's submit button names its form (`form=`).
+   */
+  footer?: React.ReactNode;
+  /** An explanation behind an InfoTip after the title, instead of lines of text in the content (DESIGN-v4m R1). */
+  info?: React.ReactNode;
   /** A request is running: the dialog cannot be dismissed until it answers. */
   locked?: boolean;
   maxWidth?: number;
@@ -257,6 +308,8 @@ export const ModalFrame: React.FC<ModalFrameProps> = ({
   title,
   onClose,
   children,
+  footer,
+  info,
   locked = false,
   maxWidth = 480,
   alert = false,
@@ -277,6 +330,8 @@ export const ModalFrame: React.FC<ModalFrameProps> = ({
       closeDisabled={locked}
       closeButton={closeButton}
       title={title}
+      info={info}
+      footer={footer}
       role={alert ? 'alertdialog' : 'dialog'}
       describedBy={describedBy}
       width={maxWidth}

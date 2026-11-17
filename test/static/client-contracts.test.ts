@@ -94,7 +94,9 @@ describe('the screens before the mailbox (truong C-9, C-11, C-12)', () => {
     // heading, the view's, whose title changes from the form's (term.recovery_codes) to codes_new_title, so ViewFrame focuses it.
     expect(views.match(/headingLevel=\{5\}/g)).toHaveLength(1);
     expect(views).toMatch(/title=\{tr\('security\.codes_new_title'\)\}[\s\S]*?showHeading=\{false\}/);
-    expect(views).toMatch(/<ViewFrame t=\{t\} title=\{tr\('term\.recovery_codes'\)\} onBack=\{onBack\}>/);
+    expect(views).toMatch(
+      /<ViewFrame t=\{t\} title=\{tr\('term\.recovery_codes'\)\} info=\{\[tr\('security\.codes_lead'\)\]\} onBack=\{onBack\}>/
+    );
     expect(read('components', 'auth', 'TwoFactorEnrolment.tsx')).toContain(
       '<RecoveryCodesPanel t={t} codes={codes} onDone={onDone} headingLevel={headingLevel} />'
     );

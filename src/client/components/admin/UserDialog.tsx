@@ -7,10 +7,10 @@ import { usePatchUser, useReissueTempPassword, useResetTwoFactor, type TwoFactor
 import { formatWhen } from '../../lib/activity';
 import { useT } from '../../lib/i18n';
 import { generateTempPassword } from '../../lib/password/random';
-import { Button } from '../../ui';
+import { Button, useMediaMatch } from '../../ui';
 import { AliasEditor } from './AliasEditor';
-import { NameForm, PersonSummary, personName } from './PersonHeader';
-import { ErrorText, ModalFrame, MoreText } from './adminUi';
+import { AccountHeading, ActionLine, NameForm, PersonSummary, personName } from './PersonHeader';
+import { ErrorText, ModalFrame, MoreText, PHONE_LAYOUT } from './adminUi';
 import { useAdminAction } from './useAdminAction';
 
 interface UserDialogProps {
@@ -35,16 +35,6 @@ type Confirming = 'disable' | 'reset2fa' | 'promote' | 'demote' | 'reissue' | nu
  */
 const BUTTON_PLACE: Record<Exclude<Confirming, null>, number> = { promote: 0, demote: 0, disable: 1, reset2fa: 2, reissue: 3 };
 
-/** One action of the account: the line that says what follows from it (`id`, which describes the button), then the button. */
-const ActionLine: React.FC<{ id: string; text: string; children: React.ReactNode }> = ({ id, text, children }) => (
-  <div className="ad-action">
-    <p id={id} className="ad-muted">
-      {text}
-    </p>
-    {children}
-  </div>
-);
-
 export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose, onDelete, onReissued, focusDelete = false }) => {
   const tr = useT();
   const patch = usePatchUser();
@@ -66,25 +56,28 @@ export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose
   // Cancel button (the least destructive control: a held Enter must not land on the action); when it goes away (Cancel, Escape, or done) focus goes back to the
   // button that asked, never to the page.
   const shownRef = React.useRef<Confirming>(null);
+  const footRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
     const before = shownRef.current;
     shownRef.current = confirming;
     let target: HTMLElement | null | undefined;
     if (confirming !== null) {
-      target = actionsRef.current?.querySelector<HTMLElement>('[data-autofocus]');
+      target = footRef.current?.querySelector<HTMLElement>('[data-autofocus]');
     } else if (before !== null) {
-      target = actionsRef.current?.querySelectorAll<HTMLElement>('button').item(BUTTON_PLACE[before]);
+      target = actionsRef.current?.querySelectorAll<HTMLElement>('.ad-actions-row button').item(BUTTON_PLACE[before]);
     }
     target?.focus({ preventScroll: true });
-    // On a phone sheet a confirmation can open under the fold: it is brought into view with its Cancel button (at once, nothing glides).
+    // On a phone sheet a confirmation can open under the fold: its question is brought into view (at once, nothing glides); its buttons
+    // are the sheet's foot, always in view.
     if (confirming !== null) {
-      target?.closest('.ad-confirm')?.scrollIntoView({ block: 'nearest' });
-      target?.scrollIntoView({ block: 'nearest' });
+      actionsRef.current?.querySelector('.ad-confirm')?.scrollIntoView({ block: 'nearest' });
     }
   }, [confirming]);
   // When an admin's two-factor reset was scheduled for (it is not done yet): said under the buttons, not as a success.
   const [scheduledDue, setScheduledDue] = React.useState<number | null>(null);
   const isSelf = user.id === selfId;
+  // On a phone a confirmation's buttons are the sheet's foot (always in view); on a desktop they stay under its question.
+  const phone = useMediaMatch(PHONE_LAYOUT);
   // A new temporary password is possible only while the person has never signed in with their own password and has no keys.
   const notSignedInYet = user.never_signed_in;
 
@@ -172,21 +165,47 @@ export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose
     }
   };
   const pending = confirming === null ? null : confirmCopy[confirming];
+  // A question's Cancel, then its action: on a phone the sheet's foot (DESIGN-v4m R3: it stays while the body scrolls), described by the
+  // question; on a desktop under it, right-aligned. Cancel is the one that takes the focus; the group answers Escape and a held Enter.
+  const foot =
+    pending === null ? undefined : (
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Escape is a shortcut for the Cancel button inside this group; the buttons are the controls
+      <div
+        ref={footRef}
+        role="group"
+        aria-label={tr('common.confirm')}
+        onKeyDown={confirmKey}
+        aria-describedby={phone ? 'user-confirm' : undefined}
+        className="ad-confirm-foot"
+      >
+        <Button data-autofocus disabled={action.busy} onClick={() => setConfirming(null)}>
+          {tr('common.cancel')}
+        </Button>
+        <Button
+          variant={pending.danger ? 'danger' : 'primary'}
+          disabled={action.busy}
+          loading={action.busy}
+          onClick={() => {
+            void pending.run();
+          }}
+        >
+          {pending.action}
+        </Button>
+      </div>
+    );
 
   return (
-    <ModalFrame t={t} title={personName(user)} onClose={onClose} locked={action.busy} maxWidth={660}>
+    <ModalFrame t={t} title={personName(user)} onClose={onClose} locked={action.busy} maxWidth={660} footer={phone ? foot : undefined}>
       <PersonSummary user={user} isSelf={isSelf} />
       <NameForm user={user} busy={action.busy} run={apply} />
 
       <AliasEditor t={t} user={user} />
 
       <section ref={actionsRef} aria-labelledby="user-actions" className="ad-dsec">
-        <h3 id="user-actions" className="ad-dsec-title">
-          {tr('term.account')}
-        </h3>
+        <AccountHeading id="user-actions" user={user} isSelf={isSelf} />
         {pending === null ? (
           <div className="ad-actions-row">
-            {/* Each action with one line on what follows from it (the button is described by it); Delete account last, apart. */}
+            {/* Each action's button, described by what follows from it (said in the section's InfoTip); Delete account last, apart. */}
             <ActionLine id="user-role-desc" text={tr(user.role === 'member' ? 'users.make_admin_desc' : 'users.make_member_desc')}>
               {user.role === 'member' ? (
                 <Button aria-describedby="user-role-desc" disabled={action.busy} onClick={() => setConfirming('promote')}>
@@ -218,8 +237,12 @@ export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose
                     </Button>
                   )}
                 </ActionLine>
-                {/* Kept in place (and in BUTTON_PLACE) but off when there is no two-factor sign-in to reset. */}
-                <ActionLine id="user-2fa-desc" text={tr(user.two_factor ? 'users.reset_two_factor_desc' : 'users.reset_two_factor_none')}>
+                {/* Kept in place (and in BUTTON_PLACE) but off when there is no two-factor sign-in to reset; then its line says why. */}
+                <ActionLine
+                  id="user-2fa-desc"
+                  text={tr(user.two_factor ? 'users.reset_two_factor_desc' : 'users.reset_two_factor_none')}
+                  shown={!user.two_factor}
+                >
                   <Button
                     aria-describedby="user-2fa-desc"
                     disabled={action.busy || !user.two_factor}
@@ -237,10 +260,9 @@ export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose
                 ) : null}
               </>
             )}
-            {/* Delete account stands apart, under a hairline, with what it does: it cannot be undone. */}
+            {/* Delete account stands apart, under a hairline: its own dialog says what it deletes, before anything is. */}
             {isSelf ? null : (
               <div className="ad-action ad-danger">
-                <p className="ad-muted">{tr('users.delete_hint')}</p>
                 <Button ref={deleteRef} variant="danger" disabled={action.busy} onClick={onDelete}>
                   {tr('admin.delete_account')}
                 </Button>
@@ -248,8 +270,7 @@ export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose
             )}
           </div>
         ) : (
-          // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Escape is a shortcut for the Cancel button inside this group; the buttons are the controls
-          <div role="group" aria-label={tr('common.confirm')} onKeyDown={confirmKey} className="ad-confirm">
+          <div id="user-confirm" className="ad-confirm">
             {pending.title === undefined ? null : <p className="ad-confirm-title">{pending.title}</p>}
             {pending.paragraphs.map((paragraph) => (
               <p key={paragraph} className="ad-text">
@@ -257,22 +278,7 @@ export const UserDialog: React.FC<UserDialogProps> = ({ t, user, selfId, onClose
               </p>
             ))}
             {pending.details === undefined ? null : <MoreText label={tr('users.admin_claim_more')} text={pending.details} />}
-            {/* Cancel, then the action, right-aligned, as in every other confirmation; Cancel is the one that takes the focus. */}
-            <div className="ad-confirm-foot">
-              <Button data-autofocus disabled={action.busy} onClick={() => setConfirming(null)}>
-                {tr('common.cancel')}
-              </Button>
-              <Button
-                variant={pending.danger ? 'danger' : 'primary'}
-                disabled={action.busy}
-                loading={action.busy}
-                onClick={() => {
-                  void pending.run();
-                }}
-              >
-                {pending.action}
-              </Button>
-            </div>
+            {phone ? null : foot}
           </div>
         )}
         {/* Said once: when the list already carries the scheduled reset, the summary at the top says it. */}

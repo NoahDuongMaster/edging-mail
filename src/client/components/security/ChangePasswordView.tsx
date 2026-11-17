@@ -8,6 +8,7 @@ import { contextWords } from '../../lib/password/policy';
 import { usePasswordCheck } from '../../lib/password/usePasswordCheck';
 import { useAction } from '../../lib/useAction';
 import { useCountdown } from '../../lib/useCountdown';
+import { ActionBar } from '../../ui';
 import { PasswordField, SecretField } from '../PasswordField';
 import { AuthButton, ErrorLine } from '../auth/authUi';
 import { DoneNote, Failure, PasswordInput, ViewFrame } from './securityUi';
@@ -77,7 +78,9 @@ export const ChangePasswordView: React.FC<ChangePasswordViewProps> = ({ t, user,
   }
 
   return (
-    <ViewFrame t={t} title={tr('security.change_password')} onBack={onBack}>
+    // The consequence (the other devices are signed out) is the one visible line; that the recovery key and the encryption key stay is in
+    // the tip after the title.
+    <ViewFrame t={t} title={tr('security.change_password')} info={[tr('security.password_note')]} onBack={onBack}>
       <form
         noValidate
         onSubmit={(event) => {
@@ -85,7 +88,7 @@ export const ChangePasswordView: React.FC<ChangePasswordViewProps> = ({ t, user,
         }}
         className="st-view-form"
       >
-        <p className="st-lead">{tr('security.password_note')}</p>
+        <p className="st-lead">{tr('security.password_note_short')}</p>
         {/* A visually hidden copy of the address, so a password manager updates the right entry. Not a secret. */}
         <input
           type="text"
@@ -131,9 +134,9 @@ export const ChangePasswordView: React.FC<ChangePasswordViewProps> = ({ t, user,
           <ErrorLine t={t} id="security-mismatch" text={mismatch ? tr('gate.passwords_differ') : null} />
         </div>
         <Failure t={t} id="security-password-error" error={action.error} wait={wait} />
-        <div>
+        <ActionBar>
           <AuthButton t={t} busy={action.busy} disabled={wait > 0} label={tr('security.change_password')} />
-        </div>
+        </ActionBar>
       </form>
     </ViewFrame>
   );

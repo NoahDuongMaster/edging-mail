@@ -10,7 +10,7 @@ import { useAction } from '../../lib/useAction';
 import { useCountdown } from '../../lib/useCountdown';
 import { SecretField } from '../PasswordField';
 import { TextField } from '../../ui';
-import { AuthButton, AuthCard, CheckboxRow, ErrorLine, HintedLink, TextButton, TrustLine } from './authUi';
+import { AuthActions, AuthButton, AuthCard, CheckboxRow, ErrorLine, HintedLink, TextButton, TrustLine, useAuthPhone } from './authUi';
 
 interface SignInScreenProps {
   t: ThemeTokens;
@@ -43,6 +43,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ t, onForgot }) => {
   const firstRef = React.useRef<HTMLInputElement | null>(null);
   const codeRef = React.useRef<HTMLInputElement | null>(null);
   const focusLater = useFieldFocus();
+  const phone = useAuthPhone();
 
   React.useEffect(() => {
     if (challenge === null) {
@@ -115,6 +116,14 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ t, onForgot }) => {
   const errorText = action.error !== null && wait > 0 ? `${action.error} ${tr('auth.try_again_in', { seconds: wait })}` : action.error;
 
   if (challenge !== null) {
+    const back = () => {
+      abandonSignIn();
+      setChallenge(null);
+      setCode('');
+      setRecoveryMode(false);
+      setSubmitted(false);
+      action.clear();
+    };
     return (
       <AuthCard
         t={t}
@@ -123,6 +132,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ t, onForgot }) => {
         step={{ current: 2, total: 2 }}
         title={tr('auth.second_step_title')}
         lead={recoveryMode ? tr('auth.recovery_code_lead') : tr('auth.second_step_lead')}
+        back={{ label: tr('common.back'), onClick: back }}
         onSubmit={(event) => {
           void submitCode(event);
         }}
@@ -146,31 +156,26 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ t, onForgot }) => {
           aria-describedby={errorText === null ? undefined : 'signin-error'}
         />
         <ErrorLine t={t} id="signin-error" text={errorText} />
-        <AuthButton t={t} busy={action.busy} label={tr('auth.verify')} />
-        <div className="au-alt">
-          <TextButton
-            t={t}
-            label={recoveryMode ? tr('auth.use_app_code') : tr('auth.use_recovery_code')}
-            onClick={() => {
-              setRecoveryMode((current) => !current);
-              setCode('');
-              setSubmitted(false);
-              action.clear();
-            }}
-          />
-          <TextButton
-            t={t}
-            label={tr('common.back')}
-            onClick={() => {
-              abandonSignIn();
-              setChallenge(null);
-              setCode('');
-              setRecoveryMode(false);
-              setSubmitted(false);
-              action.clear();
-            }}
-          />
-        </div>
+        <AuthActions
+          after={
+            <div className="au-alt">
+              <TextButton
+                t={t}
+                label={recoveryMode ? tr('auth.use_app_code') : tr('auth.use_recovery_code')}
+                onClick={() => {
+                  setRecoveryMode((current) => !current);
+                  setCode('');
+                  setSubmitted(false);
+                  action.clear();
+                }}
+              />
+              {/* On a phone Back is the arrow at the start of the top bar (AuthCard `back`). */}
+              {phone ? null : <TextButton t={t} label={tr('common.back')} onClick={back} />}
+            </div>
+          }
+        >
+          <AuthButton t={t} busy={action.busy} label={tr('auth.verify')} />
+        </AuthActions>
       </AuthCard>
     );
   }
@@ -219,11 +224,13 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ t, onForgot }) => {
         id="signin-shared"
         label={tr('auth.shared_device')}
         hint={shared ? tr('auth.shared_device_hint') : tr('auth.shared_device_short')}
+        note={shared ? tr('auth.shared_device_hint_short') : undefined}
         checked={shared}
         onChange={setShared}
       />
-      <AuthButton t={t} busy={action.busy} disabled={wait > 0} label={action.busy ? tr('login.signing_in') : tr('auth.sign_in')} />
-      <TrustLine />
+      <AuthActions after={<TrustLine />}>
+        <AuthButton t={t} busy={action.busy} disabled={wait > 0} label={action.busy ? tr('login.signing_in') : tr('auth.sign_in')} />
+      </AuthActions>
     </AuthCard>
   );
 };

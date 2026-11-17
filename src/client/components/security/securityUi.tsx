@@ -2,10 +2,12 @@ import React from 'react';
 import { ChevronLeft, CircleAlert, CircleCheck, type LucideIcon } from 'lucide-react';
 import type { ThemeTokens } from '../../theme';
 import { useT } from '../../lib/i18n';
-import { Banner, Button, Card, TextField } from '../../ui';
+import { ActionBar, Banner, Button, Card, InfoTip, TextField } from '../../ui';
 import { SecretField } from '../PasswordField';
 import { AuthButton, AuthSteps, ErrorLine, type AuthStep } from '../auth/authUi';
 import { sixDigits } from '../auth/TwoFactorEnrolment';
+import { useSettingsView } from '../settings/SettingsBar';
+import { tipLines } from '../settings/SettingsPage';
 import '../settings/settings.css';
 
 // The small pieces the views of the Security section share: the status cards of the overview, a frame with a Back button and the name of
@@ -27,7 +29,9 @@ interface StatusRowProps {
   tone?: StatusTone;
   /** The state in a word after the title (StatusWord: On, Off, Saved, a count). */
   status?: React.ReactNode;
-  /** Plain lines under the title (each one different): what it is for. */
+  /** What it is for: an InfoTip after the title (DESIGN-v4m R1), not a line under it. */
+  info?: string;
+  /** At most one plain line under the title: what the person must know at a glance (why there is no Turn off, what is locked). */
   lines: readonly string[];
   /** Facts about its state (a date, a device), quieter and in tabular figures under the lines. */
   facts?: readonly string[];
@@ -50,8 +54,8 @@ export const StatusWord: React.FC<{ tone: StatusTone; children: React.ReactNode 
 };
 
 /**
- * One thing of the account's security on the overview, as a status card of its own: an icon tile in a soft tone of its state, its name and
- * state in a word, a line or two, and what can be done about it on the right.
+ * One thing of the account's security on the overview, as a status card of its own: an icon tile in a soft tone of its state, its name with
+ * what it is for in an InfoTip and its state in a word, at most one line, and what can be done about it on the right.
  */
 export const StatusRow: React.FC<StatusRowProps> = ({
   id,
@@ -59,6 +63,7 @@ export const StatusRow: React.FC<StatusRowProps> = ({
   title,
   tone = 'neutral',
   status,
+  info,
   lines,
   facts = NO_FACTS,
   children
@@ -71,9 +76,13 @@ export const StatusRow: React.FC<StatusRowProps> = ({
         <Icon size={20} strokeWidth={1.75} />
       </span>
       <div className="st-status-top">
-        <h4 id={`${id}-label`} className="st-status-title">
-          {title}
-        </h4>
+        {/* The tip stands beside the heading, not inside it: the card's name (and the name its buttons are described by) stays its title. */}
+        <div className="st-status-name ui-tip-row">
+          <h4 id={`${id}-label`} className="st-status-title">
+            {title}
+          </h4>
+          {info === undefined ? null : <InfoTip label={title}>{info}</InfoTip>}
+        </div>
         {status}
       </div>
       {lines.length === 0 && facts.length === 0 ? null : (
@@ -104,6 +113,11 @@ export const StatusList: React.FC<{ children: React.ReactNode }> = ({ children }
 interface ViewFrameProps {
   t: ThemeTokens;
   title: string;
+  /** The name in a phone's bar where the title does not fit it at 320px ("Recovery key" for "Create a new recovery key"); the title stays
+      the heading (read out, and drawn on a desktop). */
+  barTitle?: string;
+  /** What the view does beyond its one visible line, in paragraphs: an InfoTip after the title (in the sheet's bar on a phone). */
+  info?: readonly string[];
   /** null where the view brings its own way out (a Cancel under a recovery key, a Back under a result). */
   onBack: (() => void) | null;
   /** Where this view is in a flow of several (turning on two-factor sign-in: password, app, codes): "Step 2 of 3" over the title. */
@@ -113,10 +127,12 @@ interface ViewFrameProps {
 
 /**
  * What replaces the cards of the section while one action is open: a Back button above, where it is in its flow (Step 2 of 3), the name of
- * the action at the page-title size, and the action itself.
+ * the action at the page-title size with its InfoTip, and the action itself. On a phone the sheet's bar shows the name, the tip and Back
+ * (useSettingsView); here they stay for a desktop, and the heading for screen readers.
  */
-export const ViewFrame: React.FC<ViewFrameProps> = ({ title, onBack, step, children }) => {
+export const ViewFrame: React.FC<ViewFrameProps> = ({ title, barTitle, info, onBack, step, children }) => {
   const tr = useT();
+  useSettingsView({ title: barTitle ?? title, back: onBack, info });
   const heading = React.useRef<HTMLHeadingElement>(null);
   const first = React.useRef(title);
   React.useEffect(() => {
@@ -135,23 +151,26 @@ export const ViewFrame: React.FC<ViewFrameProps> = ({ title, onBack, step, child
         </div>
       )}
       {step === undefined ? null : <AuthSteps current={step.current} total={step.total} />}
-      <h4 ref={heading} tabIndex={-1} className="st-view-title st-focus-title">
-        {title}
-      </h4>
+      <div className="st-view-heading ui-tip-row">
+        <h4 ref={heading} tabIndex={-1} className="st-view-title st-focus-title">
+          {title}
+        </h4>
+        {info === undefined ? null : <InfoTip label={title}>{tipLines(info)}</InfoTip>}
+      </div>
       <div className="st-view-card">{children}</div>
     </div>
   );
 };
 
-/** What an action says when it worked, and the way back to the cards. */
+/** What an action says when it worked, and the way back to the cards (the bottom bar of the sheet on a phone). */
 export const DoneNote: React.FC<{ t: ThemeTokens; text: string; onBack: () => void }> = ({ t, text, onBack }) => {
   const tr = useT();
   return (
     <div className="st-view-form">
       <Banner tone="success">{text}</Banner>
-      <div>
+      <ActionBar>
         <AuthButton t={t} type="button" label={tr('common.back')} onClick={onBack} />
-      </div>
+      </ActionBar>
     </div>
   );
 };

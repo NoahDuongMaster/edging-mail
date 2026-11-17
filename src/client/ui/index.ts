@@ -1,6 +1,11 @@
 // The component library of the app. Hand-built, styled by classes and CSS variables (ui.css), no `t` prop: the colours follow the theme.
 // Import from here: `import { Button, Dialog } from '../ui';`
 
+/**
+ * ActionBar: the bottom action bar of a phone view (DESIGN-v4m R3), docked (sticky) at the bottom of the page or of a dialog body on a phone
+ * or a touch screen, above the on-screen keyboard (`--ui-vv-bottom`); a plain row of buttons elsewhere (`dock="always"` docks it everywhere).
+ */
+export { ActionBar, PHONE_QUERY, type ActionBarProps } from './ActionBar';
 export { Avatar, type AvatarSize } from './Avatar';
 export { Badge, type BadgeTone } from './Badge';
 export { Banner, type BannerTone } from './Banner';
@@ -15,10 +20,22 @@ export { Dialog, type DialogProps } from './Dialog';
 export { Disclosure, DisclosurePanel, type DisclosurePanelProps, type DisclosureProps } from './Disclosure';
 export { Divider } from './Divider';
 export { EmptyState } from './EmptyState';
-export { Field } from './Field';
+/**
+ * Field: the frame of a form control. `HintMode` ('tip' by default: the hint behind an InfoTip after the label, kept for screen readers
+ * by `HiddenHint`; 'inline': a visible line, only for what is needed while acting) is taken by TextField, TextArea, Select, DateTimePicker,
+ * Checkbox, Switch, RadioGroup and Settings' SettingRow.
+ */
+export { Field, HiddenHint, type HintMode } from './Field';
 export { IconButton, type IconButtonProps } from './IconButton';
+/**
+ * InfoTip: a toggletip (DESIGN-v4m R1), the 20 px circled "i" after a label or a title whose press shows a short explanation in a bubble
+ * (Escape, a press outside or Tab close it; a mouse resting 400 ms previews it). Help text lives here instead of on the page.
+ */
+export { InfoTip, INFO_TIP_HOVER_MS, type InfoTipProps } from './InfoTip';
 export { Kbd } from './Kbd';
 export { Menu, type MenuItem, type MenuProps, type MenuTriggerProps } from './Menu';
+/** PhoneBar: the fixed top bar of a phone view (back/close, title, up to two actions; a hairline once the content scrolls under it). */
+export { PhoneBar, type PhoneBarProps } from './PhoneBar';
 export { Popover, type PopoverProps } from './Popover';
 export { RadioGroup, type RadioGroupProps, type RadioOption } from './RadioGroup';
 export { SecretBox, type SecretBoxProps } from './SecretBox';
