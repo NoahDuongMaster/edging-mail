@@ -18,4 +18,3 @@ authRoutes.route('/', noticeRoutes);
 
 export { keyRoutes } from './key-routes';
 export { authenticate, requireAdmin, requireStepUp } from './middleware';
-export { verifiedUser } from './session';

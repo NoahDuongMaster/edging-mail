@@ -235,9 +235,3 @@ export async function lookupSession(request: Request, env: Env): Promise<FoundSe
     return 'unavailable';
   }
 }
-
-/** The signed-in account of this request, or null (also while D1 cannot be read: the site module only needs to know whether to redirect). */
-export async function verifiedUser(request: Request, env: Env): Promise<SessionUser | null> {
-  const found = await lookupSession(request, env);
-  return found === null || found === 'unavailable' ? null : found.user;
-}

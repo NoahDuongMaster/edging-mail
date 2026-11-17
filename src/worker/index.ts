@@ -6,7 +6,7 @@ import { adminRoutes, applyDueTwoFactorResets } from './admin';
 import { apiError, codeFor, withErrorCodes } from './errors';
 import { getDb } from './db';
 import { HTTPException } from 'hono/http-exception';
-import { authenticate, authRoutes, keyRoutes, requireAdmin, verifiedUser } from './auth';
+import { authenticate, authRoutes, keyRoutes, requireAdmin } from './auth';
 import { capBody } from './body-cap';
 import { draftRoutes } from './drafts';
 import { encryptLegacyMail } from './encrypt-job';
@@ -160,7 +160,7 @@ export default {
     }
 
     // The public site answers its own paths first (landing, robots, sitemap, app shell); undefined = not its path.
-    const site = await handleSite(request, env, ctx, () => verifiedUser(request, env).then(Boolean));
+    const site = await handleSite(request, env, ctx);
     if (site !== undefined) {
       return site;
     }

@@ -2,7 +2,7 @@ import { createExecutionContext } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { handleSite, landingEnabled, type SiteEnv } from '../../src/worker/site';
 
-// handleSite is pure: it only needs a Request, the two bindings it reads and the session callback. No Worker, no D1.
+// handleSite is pure: it only needs a Request and the two bindings it reads. No Worker, no D1, no session.
 
 const ORIGIN = 'https://mail.example.com';
 const ctx = createExecutionContext();
@@ -24,13 +24,13 @@ function fakeAssets(): { assets: Fetcher; requested: string[] } {
 
 interface Call {
   env?: SiteEnv;
-  signedIn?: boolean | (() => Promise<boolean>);
   method?: string;
+  cookie?: string;
 }
 
-function call(path: string, { env = { LANDING_PAGE: 'on' }, signedIn = false, method = 'GET' }: Call = {}): Promise<Response | undefined> {
-  const session = typeof signedIn === 'function' ? signedIn : () => Promise.resolve(signedIn);
-  return handleSite(new Request(`${ORIGIN}${path}`, { method }), env, ctx, session);
+function call(path: string, { env = { LANDING_PAGE: 'on' }, method = 'GET', cookie }: Call = {}): Promise<Response | undefined> {
+  const headers = cookie === undefined ? undefined : { Cookie: cookie };
+  return handleSite(new Request(`${ORIGIN}${path}`, { method, headers }), env, ctx);
 }
 
 describe('LANDING_PAGE switch', () => {
@@ -57,26 +57,29 @@ describe('landing page ON', () => {
     expect(await response?.text()).toContain('<html lang="vi">');
   });
 
-  it('redirects / to /app for a real session and keeps the query (notification links are /?m=<id>)', async () => {
-    const response = await call('/?m=abc', { signedIn: true });
+  it('serves the Vietnamese landing at / to a signed-in visitor too: the marketing page is always reachable', async () => {
+    const response = await call('/', { cookie: 'em_session=a-real-looking-session' });
+    expect(response?.status).toBe(200);
+    expect(await response?.text()).toContain('<html lang="vi">');
+    // The same page for everyone: nothing in it depends on the session, so it is not private to one browser.
+    expect(response?.headers.get('Cache-Control')).toBe('no-cache');
+  });
+
+  it('keeps an older notification link working: /?m=<id> goes to /app with its query', async () => {
+    const response = await call('/?m=abc');
     expect(response?.status).toBe(302);
     expect(response?.headers.get('Location')).toBe('/app?m=abc');
     expect(response?.headers.get('Cache-Control')).toBe('no-store');
   });
 
-  it('treats a failing session check as signed out', async () => {
-    const response = await call('/', { signedIn: () => Promise.reject(new Error('D1 is down')) });
-    expect(response?.status).toBe(200);
-  });
-
   it('serves the English landing at /en/ even for a signed-in visitor', async () => {
-    const response = await call('/en/', { signedIn: true });
+    const response = await call('/en/', { cookie: 'em_session=a-real-looking-session' });
     expect(response?.status).toBe(200);
     expect(await response?.text()).toContain('<html lang="en">');
   });
 
   it('serves the Chinese landing at /zh/ even for a signed-in visitor', async () => {
-    const response = await call('/zh/', { signedIn: true });
+    const response = await call('/zh/', { cookie: 'em_session=a-real-looking-session' });
     expect(response?.status).toBe(200);
     expect(await response?.text()).toContain('<html lang="zh-CN">');
   });
@@ -113,18 +116,10 @@ describe('landing page OFF (unset, "off" or anything that is not "on")', () => {
   const unset: SiteEnv = {};
   const garbage: SiteEnv = { LANDING_PAGE: 'yes please' };
 
-  it.each([unset, { LANDING_PAGE: 'off' }, garbage])('sends / straight to /app without asking for a session (%j)', async (env) => {
-    let asked = false;
-    const response = await call('/?m=7', {
-      env,
-      signedIn: () => {
-        asked = true;
-        return Promise.resolve(true);
-      }
-    });
+  it.each([unset, { LANDING_PAGE: 'off' }, garbage])('sends / straight to /app (%j)', async (env) => {
+    const response = await call('/?m=7', { env });
     expect(response?.status).toBe(302);
     expect(response?.headers.get('Location')).toBe('/app?m=7');
-    expect(asked).toBe(false);
   });
 
   it.each(['/en', '/en/', '/zh', '/zh/', '/sitemap.xml'])('answers %s with a plain 404 that is not indexed', async (path) => {

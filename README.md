@@ -103,7 +103,7 @@ The app lives at `/app`. An optional public landing page at `/`, `/en/` and `/zh
 
 **Public landing page**
 
-- Optional: a page served by the Worker at `/` (Vietnamese), `/en/` (English) and `/zh/` (Simplified Chinese), with `robots.txt` and `sitemap.xml`. It is on only when `LANDING_PAGE` is `on`; otherwise `/` goes straight to `/app`.
+- Optional: a page served by the Worker at `/` (Vietnamese), `/en/` (English) and `/zh/` (Simplified Chinese), with `robots.txt` and `sitemap.xml`. It is on only when `LANDING_PAGE` is `on`; otherwise `/` goes straight to `/app`. When on, it is the same page for every visitor, signed in or not; its Sign in opens the mailbox at once for someone already signed in.
 
 **Security**
 

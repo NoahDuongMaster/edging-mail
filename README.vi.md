@@ -108,7 +108,7 @@ Cách một công ty dùng:
 
 **Trang giới thiệu công khai**
 
-- Không bắt buộc: một trang do Worker phục vụ tại `/` (tiếng Việt), `/en/` (tiếng Anh) và `/zh/` (tiếng Trung giản thể), kèm `robots.txt` và `sitemap.xml`. Trang chỉ bật khi `LANDING_PAGE` là `on`; nếu không, `/` chuyển thẳng sang `/app`.
+- Không bắt buộc: một trang do Worker phục vụ tại `/` (tiếng Việt), `/en/` (tiếng Anh) và `/zh/` (tiếng Trung giản thể), kèm `robots.txt` và `sitemap.xml`. Trang chỉ bật khi `LANDING_PAGE` là `on`; nếu không, `/` chuyển thẳng sang `/app`. Khi bật, ai vào cũng thấy cùng một trang, dù đã đăng nhập hay chưa; nút Đăng nhập trên trang mở ngay hộp thư nếu trình duyệt đã đăng nhập.
 
 **Bảo mật**
 

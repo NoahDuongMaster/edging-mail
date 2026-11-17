@@ -4,14 +4,16 @@
 
 // Bump to drop everything cached by older versions of this file.
 const CACHE = 'edging-mail-v3';
-// The app lives at /app. "/" is the public landing page or a redirect to /app, so it is never the shell and never stored.
+// The app lives at /app. "/" is the public landing page (or, with the landing page off, a redirect to /app), so it is never the
+// shell and never stored.
 const SHELL = '/app';
 const NAVIGATION_TIMEOUT_MS = 4000;
 // A notification that appears while the app is in front is dismissed after this long.
 const QUIET_DISMISS_MS = 5000;
 const NOT_CACHED = /^\/(api|cdn-cgi)(\/|$)/;
-// The navigations this worker answers: the app, and "/" (the start URL of apps installed before /app existed, now a
-// redirect to /app or the landing page). Every other page (the English landing page, robots.txt, a 404) is the network's.
+// The navigations this worker answers: the app, and "/" (the start URL of apps installed before /app existed, now the landing
+// page, which public/standalone.js sends on to /app in an installed app). Every other page (the English landing page, robots.txt,
+// a 404) is the network's.
 const APP_NAVIGATION = /^\/(app(\/.*)?)?$/;
 
 self.addEventListener('install', (event) => {
@@ -80,7 +82,7 @@ async function precacheShell() {
 }
 
 // Network first so a deploy shows up at once; the cached shell answers when the network is down or slow. A redirect
-// ("/" -> "/app" for a signed-in user) is handed to the browser untouched, and the landing page is never stored.
+// ("/?m=<id>" -> "/app?m=<id>") is handed to the browser untouched, and the landing page is never stored.
 async function navigate(event) {
   const network = fetch(event.request).then((response) => {
     if (isHtml(response)) {

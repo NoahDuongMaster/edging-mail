@@ -10,7 +10,7 @@ const env = { LANDING_PAGE: 'on' };
 const host = 'https://mail.example.com';
 
 async function fetchText(origin: string, path: string): Promise<string> {
-  const response = await handleSite(new Request(`${origin}${path}`), env, ctx, () => Promise.resolve(false));
+  const response = await handleSite(new Request(`${origin}${path}`), env, ctx);
   if (response === undefined) {
     throw new Error(`${path} is not a site path`);
   }

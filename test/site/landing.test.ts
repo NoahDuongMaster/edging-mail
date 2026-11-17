@@ -22,7 +22,7 @@ const ctx = createExecutionContext();
 const env = { LANDING_PAGE: 'on' };
 
 async function fetchText(origin: string, path: string): Promise<{ response: Response; text: string }> {
-  const response = await handleSite(new Request(`${origin}${path}`), env, ctx, () => Promise.resolve(false));
+  const response = await handleSite(new Request(`${origin}${path}`), env, ctx);
   if (response === undefined) {
     throw new Error(`${path} is not a site path`);
   }

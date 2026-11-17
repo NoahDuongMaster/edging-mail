@@ -65,15 +65,15 @@ A rotation that keeps the old key in `DATA_KEY_PREVIOUS` leaves the pair readabl
 
 The Worker answers a few paths itself, before the static files (`assets.run_worker_first` in `wrangler.jsonc`; the code is `src/worker/site/`):
 
-| Path                          | Answer                                                                                                                                                                                                                      |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/`                           | The Vietnamese landing page. A visitor with a real session (checked in D1, not by a cookie being present) goes to `/app` instead: `302`, query kept, so `/?m=<id>` becomes `/app?m=<id>`                                    |
-| `/en/`                        | The English landing page. It never redirects, so a signed-in reader can read it too. `/en` goes to `/en/` (`308`)                                                                                                           |
-| `/zh/`                        | The Simplified Chinese landing page, same rules as `/en/`: no redirect for a signed-in reader, `/zh` goes to `/zh/` (`308`). Its sign-in buttons link to `/app?lang=zh`; `/app?lang=vi` and `/app?lang=en` on the other two |
-| `/app` and `/app/*`           | The app shell (`index.html` from the static assets) with `X-Robots-Tag: noindex, nofollow`; `index.html` has `<meta name="robots" content="noindex">` as well                                                               |
-| `/robots.txt`, `/sitemap.xml` | Built from the origin of the request, so they are right on any host                                                                                                                                                         |
-| `/api/*`                      | The API                                                                                                                                                                                                                     |
-| anything else                 | A static file (`/assets/*`, `/sw.js`, icons, `/og-image.png`...) or a plain `404`. Unknown paths are no longer the app shell (`not_found_handling` is `none`)                                                               |
+| Path                          | Answer                                                                                                                                                                                                                                                                              |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                           | The Vietnamese landing page, the same for every visitor, signed in or not: the marketing page is always reachable, and its Sign in opens the mailbox at once when the browser is already signed in. An older notification link `/?m=<id>` goes to `/app?m=<id>` (`302`, query kept) |
+| `/en/`                        | The English landing page. It never redirects, so a signed-in reader can read it too. `/en` goes to `/en/` (`308`)                                                                                                                                                                   |
+| `/zh/`                        | The Simplified Chinese landing page, same rules as `/en/`: no redirect for a signed-in reader, `/zh` goes to `/zh/` (`308`). Its sign-in buttons link to `/app?lang=zh`; `/app?lang=vi` and `/app?lang=en` on the other two                                                         |
+| `/app` and `/app/*`           | The app shell (`index.html` from the static assets) with `X-Robots-Tag: noindex, nofollow`; `index.html` has `<meta name="robots" content="noindex">` as well                                                                                                                       |
+| `/robots.txt`, `/sitemap.xml` | Built from the origin of the request, so they are right on any host                                                                                                                                                                                                                 |
+| `/api/*`                      | The API                                                                                                                                                                                                                                                                             |
+| anything else                 | A static file (`/assets/*`, `/sw.js`, icons, `/og-image.png`...) or a plain `404`. Unknown paths are no longer the app shell (`not_found_handling` is `none`)                                                                                                                       |
 
 An entry such as `/` in `run_worker_first` matches that path only, so it does not hide `/sw.js` or `/assets/*`; `/app/*` matches everything below `/app`. `/` has to be
 listed because `index.html` is a real static file that would be served for it otherwise.
@@ -83,7 +83,7 @@ Exactly `on` (case and spaces ignored) turns it on; unset, `off` or anything els
 
 | Off, the default                                                   | On                                                          |
 | ------------------------------------------------------------------ | ----------------------------------------------------------- |
-| `/` goes to `/app` (302) without looking at the session            | `/`, `/en/` and `/zh/` as in the table                      |
+| `/` goes to `/app` (302)                                           | `/`, `/en/` and `/zh/` as in the table                      |
 | `/en`, `/en/`, `/zh`, `/zh/` and `/sitemap.xml` answer a plain 404 | `/sitemap.xml` lists `/`, `/en/` and `/zh/` with alternates |
 | `robots.txt`: `Disallow: /`, no sitemap line                       | `robots.txt` allows `/`, disallows `/app` and `/api`        |
 
@@ -116,8 +116,8 @@ Tested in Chromium and Firefox; the cryptography known-answer tests also run in 
 What the service worker does:
 
 - It caches only the app shell (page, scripts, icons), so the installed app still opens offline. The shell is stored under `/app`. Mail and every `/api` response are never cached.
-- It answers navigations to `/app`, `/app/*` and `/` only. Navigation is network first, with the cached shell as the fallback after 4 seconds or when offline. A redirect (`/` to
-  `/app` for a signed-in user) is handed to the browser untouched.
+- It answers navigations to `/app`, `/app/*` and `/` only. Navigation is network first, with the cached shell as the fallback after 4 seconds or when offline. A redirect (`/?m=<id>` to
+  `/app?m=<id>`) is handed to the browser untouched.
 - Only the app itself is kept as the shell: a response is stored when it is a successful, non-redirected HTML page that contains the app's `#root`. The landing pages, a captive
   portal page and an error page are never stored. The English and Chinese landing pages (`/en/`, `/zh/`), `robots.txt` and 404s are not the worker's business, so they need the network.
 - A new deploy takes over by itself the next time the app is brought to the front.
@@ -139,10 +139,10 @@ need Safari 16 or later (installed apps with notifications need iOS 16.4 anyway)
 The previous version cached the shell under `/` in `edging-mail-v2` and, network first with a 4 second timeout, stored every HTML answer for a navigation under `/`. The cache
 is now `edging-mail-v3` and the shell key is `/app`. A browser that still runs the old worker reaches the new login within one reload, whatever its state:
 
-1. **Online, signed in** (a browser tab or an app installed with start URL `/`). The old worker is network first, so the new Worker's answer wins at once: `/` gives `302 /app`,
-   the old worker passes the redirect on, `/app` is the new shell, and the old worker stores it under `/` (a real shell, so that is harmless). The new bundle registers
+1. **Online, opening the app** (`/app`: the landing page's Sign in, a bookmark, an installed app). The old worker is network first, so the new Worker's answer wins at once:
+   `/app` is the new shell, and the old worker stores it under `/` (a real shell, so that is harmless). The new bundle registers
    `/sw.js`; its bytes differ, so the new worker installs (it caches `/app`), calls `skipWaiting()`, and on activation deletes `edging-mail-v2` and claims the open pages.
-2. **Online, signed out.** `/`, `/en/` or `/zh/` is a landing page with `Vary: *`; the old worker tries to store it as the shell, `Cache.put()` rejects, and the old worker ignores
+2. **Online, on the landing page** (signed in or not). `/`, `/en/` or `/zh/` is a landing page with `Vary: *`; the old worker tries to store it as the shell, `Cache.put()` rejects, and the old worker ignores
    the error, so its cached shell stays a real one. **Sign in** goes to `/app` (new shell, same steps as 1). An installed app opening `/` gets `standalone.js`, which replaces the
    page with `/app` straight away (the landing page may show for an instant).
 3. **Offline or slow during the switch.** Until the new worker is active, the old one answers `/` and `/app` from its cached shell (the previous version of the app, which shows its
@@ -161,6 +161,6 @@ The worker has no migration code on purpose: it only needs the old one to be net
 | No notifications on iPhone                       | Add the app to the Home Screen first and enable notifications from the installed app                                                                                                                                                                   |
 | Live updates do not arrive                       | Check the WebSocket in the browser's network tab: `101` on `/api/ws`. A `403` means the `Origin` did not match; a `401` means signed out                                                                                                               |
 | A device keeps getting notifications after theft | In the app on a device you still have, use Settings > Security > Other devices (signing out ends only that device) or change the password, then run `DELETE FROM push_subscriptions` on the remote D1 (see [Security](security.md#if-something-leaks)) |
-| `/` shows the landing page, not the app          | By design without a session. A signed-in browser goes to `/app`; with `LANDING_PAGE` not `on`, `/` always goes to `/app`                                                                                                                               |
+| `/` shows the landing page, not the app          | By design: `/` is the public page for everyone, signed in or not; its Sign in (or `/app`) opens the mailbox. With `LANDING_PAGE` not `on`, `/` always goes to `/app`                                                                                   |
 | `/en/` or `/zh/` answers 404, `/` goes to `/app` | `LANDING_PAGE` is not exactly `on` (unset, `off` and a typo all mean off): see [Public site and the app URL](#public-site-and-the-app-url)                                                                                                             |
 | An installed app opens the landing page          | Installed before `/app` existed (start URL `/`). Check that `/standalone.js` loads; installing the app again gives start URL `/app`                                                                                                                    |

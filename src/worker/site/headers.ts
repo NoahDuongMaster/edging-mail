@@ -35,7 +35,7 @@ export function respond(request: Request, body: string, status: number, headers:
 }
 
 /**
- * A redirect that must never be cached or stored by anything (it depends on the session or on the LANDING_PAGE setting).
+ * A redirect that must never be cached or stored by anything (it depends on the LANDING_PAGE setting).
  * The query string is kept: a notification link is `/?m=<message id>`.
  */
 export function redirect(url: URL, path: string, status: 302 | 308): Response {

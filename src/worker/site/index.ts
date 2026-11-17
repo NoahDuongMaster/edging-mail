@@ -46,19 +46,9 @@ const routeOf = (pathname: string): Route | undefined => {
   return pathname === APP_PATH || pathname.startsWith(`${APP_PATH}/`) ? 'app' : undefined;
 };
 
-// A broken session lookup must not take the public page down: the visitor gets the landing page, which shows no private data.
-async function hasSession(signedIn: () => Promise<boolean>): Promise<boolean> {
-  try {
-    return await signedIn();
-  } catch (error) {
-    console.error('[edging-mail] site: session check failed, answering as signed out', error);
-    return false;
-  }
-}
-
 // A landing page is never stored by the service worker as the app shell. Cache.put() refuses a response whose Vary header
 // holds "*", and the older worker (cache edging-mail-v2, shell key "/") swallows that refusal; without it, a visit to "/"
-// or "/en/" would replace the cached app shell with this page. "*" also covers the cookie that "/" depends on.
+// or "/en/" would replace the cached app shell with this page.
 const landingPage = (request: Request, url: URL, copy: LandingCopy, cacheControl: string): Response =>
   respond(request, renderLanding(copy, url.origin), 200, {
     ...securityHeaders(url),
@@ -90,15 +80,12 @@ async function appShell(request: Request, env: SiteEnv): Promise<Response | unde
  * `/app` and below. Returns the Response for a path it owns and undefined for every other path, which then falls through to
  * the static assets (see `fetch` in ../index.ts). `/api/*` never gets here.
  *
- * `signedIn` answers "does this request carry a real session?" (decided by D1, not by the mere presence of a cookie). It is
- * asked only for "/" with the landing page on; with it off, "/" always goes to the app.
+ * The landing pages are the marketing site: they answer every visitor the same, signed in or not (no session lookup), and the
+ * page's Sign in button opens the mailbox straight away for someone who is already signed in. Two old ways into the app through
+ * "/" keep working: a notification link of an older Worker (`/?m=<id>`) goes to `/app?m=<id>`, and an app installed with "/" as
+ * its start URL leaves the landing page for `/app` in the browser (public/standalone.js: only a standalone window does).
  */
-export async function handleSite(
-  request: Request,
-  env: SiteEnv,
-  _ctx: ExecutionContext,
-  signedIn: () => Promise<boolean>
-): Promise<Response | undefined> {
+export async function handleSite(request: Request, env: SiteEnv, _ctx: ExecutionContext): Promise<Response | undefined> {
   const url = new URL(request.url);
   const route = routeOf(url.pathname);
   if (route === undefined) {
@@ -118,7 +105,8 @@ export async function handleSite(
     return route === 'home' ? redirect(url, APP_PATH, 302) : notFound(request, url);
   }
   if (route === 'home') {
-    return (await hasSession(signedIn)) ? redirect(url, APP_PATH, 302) : landingPage(request, url, copyVi, 'private, no-cache');
+    // An older Worker's notification link is the app's address, not the page: keep it working (query kept).
+    return url.searchParams.has('m') ? redirect(url, APP_PATH, 302) : landingPage(request, url, copyVi, 'no-cache');
   }
   if (route === 'redirect') {
     return redirect(url, FOLDER_REDIRECTS.get(url.pathname) ?? APP_PATH, 308);
